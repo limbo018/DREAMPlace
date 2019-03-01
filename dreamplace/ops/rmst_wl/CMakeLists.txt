@@ -11,7 +11,7 @@ string(REPLACE ${MATCH_PATH} ${REPLACE_PATH} FLUTE_LINK_DIRS ${FLUTE_INCLUDE_DIR
 message("-- FLUTE_LINK_DIRS ${FLUTE_LINK_DIRS}")
 
 if (PYTHON)
-    set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/src/setup.py")
+    set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/src/setup.py.in")
     set(SETUP_PY    "${CMAKE_CURRENT_BINARY_DIR}/src/setup.py")
     file(GLOB SOURCES 
         "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"

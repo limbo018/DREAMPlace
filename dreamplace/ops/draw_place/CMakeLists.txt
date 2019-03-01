@@ -16,7 +16,7 @@ if (NOT CMAKE_CUDA_FLAGS)
 endif()
 
 if (PYTHON)
-    set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/src/setup.py")
+    set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/src/setup.py.in")
     set(SETUP_PY    "${CMAKE_CURRENT_BINARY_DIR}/src/setup.py")
     file(GLOB SOURCES 
         "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
