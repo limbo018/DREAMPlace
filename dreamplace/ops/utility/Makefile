@@ -15,7 +15,7 @@ $(OBJ_DIR)/Msg.o: src/Msg.cpp
 
 $(TARGET): $(OBJ_DIR)/Msg.o
 	@mkdir -p $(LIB_DIR)
-	$(AR) $(ARFLAGS) -o $@
+	$(AR) $(ARFLAGS) -o $@ $^
 
 clean:
 	rm -f $(TARGET)

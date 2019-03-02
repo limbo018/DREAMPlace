@@ -12,7 +12,7 @@ import time
 import numpy as np 
 import Params 
 import PlaceDB
-from . import NonLinearPlace 
+import NonLinearPlace 
 import pdb 
 
 # print all contents of numpy array 

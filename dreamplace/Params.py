@@ -27,7 +27,6 @@ class Params:
         self.summary_dir = "summary" # summary directory
         self.scale_factor = 1e-3 # scale factor to avoid numerical overflow
         self.ignore_net_degree = 100 # ignore net degree larger than some value
-        self.mlp_net_degrees = None # net degrees to use multi-layer perceptron models 
         self.gp_noise_ratio = 0.025 # noise to initial positions for global placement 
         self.enable_fillers = True # enable filler cells 
         self.global_place_flag = True # whether use global placement 
@@ -52,7 +51,6 @@ class Params:
         data['summary_dir'] = self.summary_dir
         data['scale_factor'] = self.scale_factor
         data['ignore_net_degree'] = self.ignore_net_degree
-        data['mlp_net_degrees'] = self.mlp_net_degrees
         data['gp_noise_ratio'] = self.gp_noise_ratio
         data['enable_fillers'] = self.enable_fillers
         data['global_place_flag'] = self.global_place_flag
@@ -77,7 +75,6 @@ class Params:
         if 'summary_dir' in data: self.summary_dir = data['summary_dir']
         if 'scale_factor' in data: self.scale_factor = data['scale_factor']
         if 'ignore_net_degree' in data: self.ignore_net_degree = data['ignore_net_degree']
-        if 'mlp_net_degrees' in data: self.mlp_net_degrees = data['mlp_net_degrees']
         if 'gp_noise_ratio' in data: self.gp_noise_ratio = data['gp_noise_ratio']
         if 'enable_fillers' in data: self.enable_fillers = data['enable_fillers']
         if 'global_place_flag' in data: self.global_place_flag = data['global_place_flag']

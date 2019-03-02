@@ -3,3 +3,5 @@ lib
 obj
 *.o
 *.a
+*.pyc
+summary

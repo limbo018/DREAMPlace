@@ -10,13 +10,7 @@
 
 # default DBG is off
 DBG = 0
-
-ifeq ($(DBG), 1)
-	CXXFLAGS = $(CXXFLAGS_DEBUG) -DDEBUG
-else
-	CXXFLAGS = $(CXXFLAGS_RELEASE)
-endif
-
+# default SITE_PACKAGE is empty 
 SITE_PACKAGE = # --user or empty 
 
 
@@ -46,7 +40,7 @@ ifneq ($(findstring clang, $(CXX)), ) # CXX contains clang
 
 	ARFLAGS = rvs
 else 
-	CXXFLAGS_BASIC = -fmax-errors=1 -fPIC -W -Wall -Wextra -Wreturn-type -m64 -std=c++11 -Wno-deprecated -Wno-unused-local-typedefs -Wno-ignored-qualifiers
+	CXXFLAGS_BASIC = -fmax-errors=1 -fPIC -W -Wall -Wextra -Wreturn-type -m64 -std=c++11 -D_GLIBCXX_USE_CXX11_ABI=0 -Wno-deprecated -Wno-unused-local-typedefs -Wno-ignored-qualifiers
 	CXXFLAGS_DEBUG = -g $(CXXFLAGS_BASIC) 
 	CXXFLAGS_RELEASE = -O3 -fopenmp $(CXXFLAGS_BASIC) 
 
@@ -56,6 +50,12 @@ else
 
 	ARFLAGS = rvs
 endif 
+
+ifeq ($(DBG), 1)
+	CXXFLAGS = $(CXXFLAGS_DEBUG) -DDEBUG
+else
+	CXXFLAGS = $(CXXFLAGS_RELEASE)
+endif
 
 # dependency to Boost and get BOOST_LINK_FLAG
 ifdef BOOST_DIR

@@ -12,7 +12,7 @@ import time
 import numpy as np 
 import cairocffi as cairo 
 import Params
-from pytorch.ops import place_io
+from ops import place_io
 import pdb 
 
 datatypes = {

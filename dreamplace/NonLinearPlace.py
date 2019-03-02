@@ -15,12 +15,12 @@ if sys.version_info[0] < 3:
     import cPickle as pickle
 else:
     import _pickle as pickle
-from . import BasicPlace
-from . import PlaceObj
-from . import ConjugateGradientOptimizer
-from . import NesterovAcceleratedGradientOptimizer
-from . import LineSearch
-from . import EvalMetrics
+import BasicPlace
+import PlaceObj
+import ConjugateGradientOptimizer
+import NesterovAcceleratedGradientOptimizer
+import LineSearch
+import EvalMetrics
 import pdb 
 
 class NonLinearPlace (BasicPlace.BasicPlace):
@@ -249,26 +249,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
             print("[I] legalization takes %.3f seconds" % (time.time()-tt))
 
         if params.detailed_place_flag: 
-            tt = time.time()
-            #with gzip.open("bigblue4.dp.pklz", "wb") as f:
-            #    pickle.dump((self.data_collections.node_size_x.cpu(), self.data_collections.node_size_y.cpu(), 
-            #        self.data_collections.flat_net2pin_map.cpu(), self.data_collections.flat_net2pin_start_map.cpu(), self.data_collections.pin2net_map.cpu(), 
-            #        self.data_collections.flat_node2pin_map.cpu(), self.data_collections.flat_node2pin_start_map.cpu(), self.data_collections.pin2node_map.cpu(), 
-            #        self.data_collections.pin_offset_x.cpu(), self.data_collections.pin_offset_y.cpu(), 
-            #        self.data_collections.net_mask_ignore_large_degrees.cpu(), 
-            #        placedb.xl, placedb.yl, placedb.xh, placedb.yh, 
-            #        placedb.site_width, placedb.row_height, 
-            #        placedb.num_bins_x, placedb.num_bins_y, 
-            #        placedb.num_movable_nodes, 
-            #        placedb.num_filler_nodes, 
-            #        self.pos[0].cpu()
-            #        ), f)
-            #tmp_pos = self.pos[0].cpu().detach().numpy()
-            #print("hpwl = %g" % (placedb.hpwl(tmp_pos[:placedb.num_nodes], tmp_pos[placedb.num_nodes:])))
-            #pdb.set_trace()
-            #exit()
-            self.pos[0].data.copy_(self.op_collections.detailed_place_op(self.pos[0]))
-            print("[I] detailed placement takes %.3f seconds" % (time.time()-tt))
+            print("[W] detailed placement NOT implemented yet, skipped")
 
         # save results 
         cur_pos = self.pos[0].data.clone().cpu().numpy()

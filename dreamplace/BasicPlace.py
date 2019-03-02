@@ -16,7 +16,7 @@ import re
 import numpy as np 
 import torch 
 import torch.nn as nn
-from . import ops 
+import ops 
 import pdb 
 
 """
@@ -152,8 +152,6 @@ class BasicPlace (nn.Module):
         self.op_collections.density_overflow_op = self.build_electric_overflow(params, placedb, self.data_collections, self.device)
         # legalization 
         self.op_collections.greedy_legalize_op = self.build_greedy_legalization(params, placedb, self.data_collections, self.device)
-        # detailed placement 
-        self.op_collections.detailed_place_op = self.build_detailed_placement(params, placedb, self.data_collections, self.device)
         # draw placement 
         self.op_collections.draw_place_op = self.build_draw_placement(params, placedb)
 
@@ -281,20 +279,6 @@ class BasicPlace (nn.Module):
                 num_movable_nodes=placedb.num_movable_nodes, 
                 num_filler_nodes=placedb.num_filler_nodes
                 )
-
-    def build_detailed_placement(self, params, placedb, data_collections, device):
-        return ops.global_swap.GlobalSwap(
-                node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
-                flat_net2pin_map=data_collections.flat_net2pin_map, flat_net2pin_start_map=data_collections.flat_net2pin_start_map, pin2net_map=data_collections.pin2net_map, 
-                flat_node2pin_map=data_collections.flat_node2pin_map, flat_node2pin_start_map=data_collections.flat_node2pin_start_map, pin2node_map=data_collections.pin2node_map, 
-                pin_offset_x=data_collections.pin_offset_x, pin_offset_y=data_collections.pin_offset_y, 
-                net_mask=data_collections.net_mask_ignore_large_degrees, 
-                xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
-                site_width=placedb.site_width, row_height=placedb.row_height, 
-                num_bins_x=placedb.num_bins_x/16, num_bins_y=placedb.num_bins_y/16, 
-                num_movable_nodes=placedb.num_movable_nodes, 
-                num_filler_nodes=placedb.num_filler_nodes, 
-                batch_size=32)
 
     def build_draw_placement(self, params, placedb):
         return ops.draw_place.DrawPlace(placedb)

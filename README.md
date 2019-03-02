@@ -12,9 +12,6 @@ Deep learning toolkit-enabled VLSI placement
 - [Boost](www.boost.org)
     - Need to install and visible for linking
 
-- [CUSP](https://github.com/cusplibrary/cusplibrary)
-    - Integrated as a git submodule
-
 - [Limbo](https://github.com/limbo018/Limbo)
     - Integrated as a git submodule
 
