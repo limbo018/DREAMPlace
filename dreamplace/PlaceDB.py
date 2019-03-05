@@ -764,10 +764,6 @@ class PlaceDB (object):
     def plot(self, params, iteration, x, y): 
         try: 
             tt = time.time()
-            ## dump intermediate solutions for debug 
-            #if iteration in [1, 200, 250, 300, 350, 400, 450, 500]:
-            #    with open("summary/train/xy%s.pkl" % ('{:04}'.format(iteration)), "wb") as f:
-            #        pickle.dump([x, y], f)
             width = 800
             height = 800
             surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
@@ -859,7 +855,7 @@ class PlaceDB (object):
             ctx.move_to(normalize_x((self.xl+self.xh)/2), normalize_y((self.yl+self.yh)/2))
             ctx.show_text('{:04}'.format(iteration))
 
-            figname = "./summary/train/train%s.png" % ('{:04}'.format(iteration))
+            figname = "%s/plot/iter%s.png" % (params.result_dir, '{:04}'.format(iteration))
             surface.write_to_png(figname)  # Output to PNG
             print("[I] plotting to %s takes %.3f seconds" % (figname, time.time()-tt))
             #print(self.session.run(self.grads))

@@ -24,7 +24,7 @@ class Params:
         self.density_weight = 1.0 # weight of density cost
         self.gamma = 0.5 # log-sum-exp coefficient 
         self.random_seed = 1000 # random seed 
-        self.summary_dir = "summary" # summary directory
+        self.result_dir = "results" # result directory
         self.scale_factor = 1e-3 # scale factor to avoid numerical overflow
         self.ignore_net_degree = 100 # ignore net degree larger than some value
         self.gp_noise_ratio = 0.025 # noise to initial positions for global placement 
@@ -34,6 +34,7 @@ class Params:
         self.detailed_place_flag = True # whether use internal detailed placement
         self.stop_overflow = 0.1 # stopping criteria, consider stop when the overflow reaches to a ratio 
         self.dtype = 'float64' # data type, float32/float64
+        self.detailed_place_engine = ""
     """
     convert to json  
     """
@@ -48,7 +49,7 @@ class Params:
         data['density_weight'] = self.density_weight
         data['gamma'] = self.gamma
         data['random_seed'] = self.random_seed
-        data['summary_dir'] = self.summary_dir
+        data['result_dir'] = self.result_dir
         data['scale_factor'] = self.scale_factor
         data['ignore_net_degree'] = self.ignore_net_degree
         data['gp_noise_ratio'] = self.gp_noise_ratio
@@ -58,6 +59,7 @@ class Params:
         data['detailed_place_flag'] = self.detailed_place_flag
         data['stop_overflow'] = self.stop_overflow
         data['dtype'] = self.dtype
+        data['detailed_place_engine'] = self.detailed_place_engine
         return data 
     """
     load form json 
@@ -72,7 +74,7 @@ class Params:
         if 'density_weight' in data: self.density_weight = data['density_weight']
         if 'gamma' in data: self.gamma = data['gamma']
         if 'random_seed' in data: self.random_seed = data['random_seed']
-        if 'summary_dir' in data: self.summary_dir = data['summary_dir']
+        if 'result_dir' in data: self.result_dir = data['result_dir']
         if 'scale_factor' in data: self.scale_factor = data['scale_factor']
         if 'ignore_net_degree' in data: self.ignore_net_degree = data['ignore_net_degree']
         if 'gp_noise_ratio' in data: self.gp_noise_ratio = data['gp_noise_ratio']
@@ -82,6 +84,7 @@ class Params:
         if 'detailed_place_flag' in data: self.detailed_place_flag = data['detailed_place_flag']
         if 'stop_overflow' in data: self.stop_overflow = data['stop_overflow']
         if 'dtype' in data: self.dtype = data['dtype']
+        if 'detailed_place_engine' in data: self.detailed_place_engine = data['detailed_place_engine']
 
     """
     dump to json file 

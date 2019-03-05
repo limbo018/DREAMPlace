@@ -300,7 +300,7 @@ class BasicPlace (nn.Module):
     """
     def plot(self, params, placedb, iteration, pos): 
         tt = time.time()
-        figname = "./summary/train/train%s.png" % ('{:04}'.format(iteration))
+        figname = "%s/plot/iter%s.png" % (params.result_dir, '{:04}'.format(iteration))
         os.system("mkdir -p %s" % (os.path.dirname(figname)))
         if isinstance(pos, np.ndarray):
             pos = torch.from_numpy(pos)

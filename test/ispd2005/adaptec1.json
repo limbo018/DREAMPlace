@@ -17,6 +17,7 @@
 "global_place_flag" : 1, 
 "legalize_flag" : 1,
 "detailed_place_flag" : 0,
+"detailed_place_engine" : "thirdparty/ntuplace3", 
 "stop_overflow" : 0.07, 
-"dtype" : "float32"
+"dtype" : "float32" 
 }

@@ -4,4 +4,4 @@ obj
 *.o
 *.a
 *.pyc
-summary
+results
