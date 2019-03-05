@@ -23,7 +23,7 @@ else:
     from .ops import *
 
 class PlaceObj(nn.Module):
-    def __init__(self, density_weight, params, placedb, data_collections, op_collections, opt_bin):
+    def __init__(self, density_weight, params, placedb, data_collections, op_collections, global_place_params):
         super(PlaceObj, self).__init__()
 
         self.data_collections = data_collections 
@@ -32,24 +32,22 @@ class PlaceObj(nn.Module):
         self.gamma = torch.tensor(10*self.base_gamma(params, placedb), dtype=self.data_collections.pos[0].dtype, device=self.data_collections.pos[0].device)
 
         # compute weighted average wirelength from position 
-        name = "%dx%d bins" % (opt_bin["x"], opt_bin["y"])
-        # default wirelength model when MLP is not available 
-        self.default_wl_model = opt_bin["default_wirelength"].lower()
-        if opt_bin["wirelength"] == "weighted_average":
+        name = "%dx%d bins" % (global_place_params["num_bins_x"], global_place_params["num_bins_y"])
+        if global_place_params["wirelength"] == "weighted_average":
             self.op_collections.wirelength_op, self.op_collections.update_gamma_op = self.build_weighted_average_wl(params, placedb, self.data_collections, self.op_collections.pin_pos_op)
-        elif opt_bin["wirelength"] == "logsumexp":
+        elif global_place_params["wirelength"] == "logsumexp":
             self.op_collections.wirelength_op, self.op_collections.update_gamma_op = self.build_logsumexp_wl(params, placedb, self.data_collections, self.op_collections.pin_pos_op)
         else:
-            assert 0, "unknown wirelength model %s" % (opt_bin["wirelength"])
-        #self.op_collections.density_op = self.build_density_potential(params, placedb, self.data_collections, opt_bin["x"], opt_bin["y"], padding=1, name)
-        self.op_collections.density_op = self.build_electric_potential(params, placedb, self.data_collections, opt_bin["x"], opt_bin["y"], padding=0, name=name)
+            assert 0, "unknown wirelength model %s" % (global_place_params["wirelength"])
+        #self.op_collections.density_op = self.build_density_potential(params, placedb, self.data_collections, global_place_params["num_bins_x"], global_place_params["num_bins_y"], padding=1, name)
+        self.op_collections.density_op = self.build_electric_potential(params, placedb, self.data_collections, global_place_params["num_bins_x"], global_place_params["num_bins_y"], padding=0, name=name)
         self.op_collections.update_density_weight_op = self.build_update_density_weight(params, placedb)
         self.op_collections.precondition_op = self.build_precondition(params, placedb, self.data_collections)
         self.op_collections.noise_op = self.build_noise(params, placedb, self.data_collections)
 
-        self.iteration = opt_bin["iteration"]
-        #self.learning_rate = opt_bin["learning_rate"]*max((placedb.xh-placedb.xl)/opt_bin["x"], (placedb.yh-placedb.yl)/opt_bin["y"])
-        self.learning_rate = opt_bin["learning_rate"]
+        self.iteration = global_place_params["iteration"]
+        #self.learning_rate = global_place_params["learning_rate"]*max((placedb.xh-placedb.xl)/global_place_params["num_bins_x"], (placedb.yh-placedb.yl)/global_place_params["num_bins_y"])
+        self.learning_rate = global_place_params["learning_rate"]
 
     """compute objective 
     @param pos x 

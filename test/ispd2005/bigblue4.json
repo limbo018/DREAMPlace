@@ -1,10 +1,10 @@
 {
-"aux_file" : "benchmarks/ispd2005/ispd05_circ_decomp/bigblue4/bigblue4.eplace.aux", 
+"aux_file" : "benchmarks/ispd2005/bigblue4/bigblue4.aux", 
 "gpu" : 1,
 "num_bins_x" : 2048,
 "num_bins_y" : 2048, 
-"opt_num_bins" : [
-    {"x" : 2048, "y" : 2048, "iteration" : 1000, "learning_rate" : 0.01, "wirelength" : "weighted_average", "default_wirelength" : "logsumexp", "optimizer" : "nesterov", "mlp_net_degrees" : []}
+"global_place_stages" : [
+    {"num_bins_x" : 2048, "num_bins_y" : 2048, "iteration" : 1000, "learning_rate" : 0.01, "wirelength" : "weighted_average", "optimizer" : "nesterov"}
 ], 
 "target_density" : 1.0,
 "density_weight" : 8e-5,

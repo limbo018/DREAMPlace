@@ -93,13 +93,13 @@ class NonLinearPlace (BasicPlace.BasicPlace):
             return metrics 
 
         if params.global_place_flag: 
-            for opt_bin in params.opt_num_bins:
+            for global_place_params in params.global_place_stages:
                 torch.cuda.synchronize()
                 tt = time.time()
                 # construct model and optimizer 
                 density_weight = metrics[-1].density_weight if metrics else 0.0
-                model = PlaceObj.PlaceObj(density_weight, params, placedb, self.data_collections, self.op_collections, opt_bin).to(self.data_collections.pos[0].device)
-                name = opt_bin["optimizer"]
+                model = PlaceObj.PlaceObj(density_weight, params, placedb, self.data_collections, self.op_collections, global_place_params).to(self.data_collections.pos[0].device)
+                name = global_place_params["optimizer"]
 
                 if name.lower() == "adam": 
                     optimizer = torch.optim.Adam(self.parameters(), lr=model.learning_rate)

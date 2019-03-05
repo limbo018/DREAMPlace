@@ -40,6 +40,13 @@ To clean, run make clean in the root directory.
 make clean
 ```
 
+# How to Get Benchmarks
+
+To get ISPD 2005 benchmarks, run the following script from the directory. 
+```
+python benchmarks/ispd2005.py
+```
+
 # How to Run
 
 Run with JSON configuration file for full placement 

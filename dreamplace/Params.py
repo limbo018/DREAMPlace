@@ -17,15 +17,15 @@ class Params:
     def __init__(self):
         self.aux_file = None # directory for .aux file 
         self.gpu = True # enable gpu or not 
-        self.num_bins_x = 3 # bin width in number of row height 
-        self.num_bins_y = 3 # bin height in number of row height 
-        self.opt_num_bins = None # bin information for optimization, a dictionary of {"x", "y", "iteration", "learning_rate"}, learning_rate is relative to bin size 
+        self.num_bins_x = 512 # number of bins in horizontal direction 
+        self.num_bins_y = 512 # number of bins in vertical direction 
+        self.global_place_stages = None # global placement configurations of each stage, a dictionary of {"num_bins_x", "num_bins_y", "iteration", "learning_rate"}, learning_rate is relative to bin size 
         self.target_density = 0.8 # target density 
         self.density_weight = 1.0 # weight of density cost
         self.gamma = 0.5 # log-sum-exp coefficient 
         self.random_seed = 1000 # random seed 
         self.result_dir = "results" # result directory
-        self.scale_factor = 1e-3 # scale factor to avoid numerical overflow
+        self.scale_factor = 1.0 # scale factor to avoid numerical overflow
         self.ignore_net_degree = 100 # ignore net degree larger than some value
         self.gp_noise_ratio = 0.025 # noise to initial positions for global placement 
         self.enable_fillers = True # enable filler cells 
@@ -33,8 +33,8 @@ class Params:
         self.legalize_flag = True # whether use internal legalization
         self.detailed_place_flag = True # whether use internal detailed placement
         self.stop_overflow = 0.1 # stopping criteria, consider stop when the overflow reaches to a ratio 
-        self.dtype = 'float64' # data type, float32/float64
-        self.detailed_place_engine = ""
+        self.dtype = 'float32' # data type, float32/float64
+        self.detailed_place_engine = "" # external detailed placement engine to be called after placement 
     """
     convert to json  
     """
@@ -44,7 +44,7 @@ class Params:
         data['gpu'] = self.gpu
         data['num_bins_x'] = self.num_bins_x
         data['num_bins_y'] = self.num_bins_y
-        data['opt_num_bins'] = self.opt_num_bins
+        data['global_place_stages'] = self.global_place_stages
         data['target_density'] = self.target_density
         data['density_weight'] = self.density_weight
         data['gamma'] = self.gamma
@@ -69,7 +69,7 @@ class Params:
         if 'gpu' in data: self.gpu = data['gpu']
         if 'num_bins_x' in data: self.num_bins_x = data['num_bins_x']
         if 'num_bins_y' in data: self.num_bins_y = data['num_bins_y']
-        if 'opt_num_bins' in data: self.opt_num_bins = data['opt_num_bins']
+        if 'global_place_stages' in data: self.global_place_stages = data['global_place_stages']
         if 'target_density' in data: self.target_density = data['target_density']
         if 'density_weight' in data: self.density_weight = data['density_weight']
         if 'gamma' in data: self.gamma = data['gamma']
