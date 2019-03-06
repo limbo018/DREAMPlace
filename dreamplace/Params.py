@@ -2,6 +2,7 @@
 # @file   Params.py
 # @author Yibo Lin
 # @date   Apr 2018
+# @brief  User parameters 
 #
 
 import json 
@@ -11,10 +12,10 @@ import math
 Parameter class 
 """
 class Params: 
-    """
-    initialization 
-    """
     def __init__(self):
+        """
+        @brief initialization 
+        """
         self.aux_file = None # directory for .aux file 
         self.gpu = True # enable gpu or not 
         self.num_bins_x = 512 # number of bins in horizontal direction 
@@ -35,10 +36,14 @@ class Params:
         self.stop_overflow = 0.1 # stopping criteria, consider stop when the overflow reaches to a ratio 
         self.dtype = 'float32' # data type, float32/float64
         self.detailed_place_engine = "" # external detailed placement engine to be called after placement 
-    """
-    convert to json  
-    """
+        self.RePlAce_ref_hpwl = 3.5e5
+        self.RePlAce_LOWER_PCOF = 0.95
+        self.RePlAce_UPPER_PCOF = 1.05
+
     def toJson(self):
+        """
+        @brief convert to json  
+        """
         data = dict()
         data['aux_file'] = self.aux_file
         data['gpu'] = self.gpu
@@ -60,11 +65,15 @@ class Params:
         data['stop_overflow'] = self.stop_overflow
         data['dtype'] = self.dtype
         data['detailed_place_engine'] = self.detailed_place_engine
+        data['RePlAce_ref_hpwl'] = self.RePlAce_ref_hpwl
+        data['RePlAce_LOWER_PCOF'] = self.RePlAce_LOWER_PCOF
+        data['RePlAce_UPPER_PCOF'] = self.RePlAce_UPPER_PCOF
         return data 
-    """
-    load form json 
-    """
+
     def fromJson(self, data):
+        """
+        @brief load form json 
+        """
         if 'aux_file' in data: self.aux_file = data['aux_file']
         if 'gpu' in data: self.gpu = data['gpu']
         if 'num_bins_x' in data: self.num_bins_x = data['num_bins_x']
@@ -85,26 +94,32 @@ class Params:
         if 'stop_overflow' in data: self.stop_overflow = data['stop_overflow']
         if 'dtype' in data: self.dtype = data['dtype']
         if 'detailed_place_engine' in data: self.detailed_place_engine = data['detailed_place_engine']
+        if 'RePlAce_ref_hpwl' in data: self.RePlAce_ref_hpwl = data['RePlAce_ref_hpwl']
+        if 'RePlAce_LOWER_PCOF' in data: self.RePlAce_LOWER_PCOF = data['RePlAce_LOWER_PCOF']
+        if 'RePlAce_UPPER_PCOF' in data: self.RePlAce_UPPER_PCOF = data['RePlAce_UPPER_PCOF']
 
-    """
-    dump to json file 
-    """
     def dump(self, filename):
+        """
+        @brief dump to json file 
+        """
         with open(filename, 'w') as f:
             json.dump(self.toJson(), f)
-    """
-    load from json file 
-    """
+
     def load(self, filename):
+        """
+        @brief load from json file 
+        """
         with open(filename, 'r') as f:
             self.fromJson(json.load(f))
-    """
-    string 
-    """
+
     def __str__(self):
+        """
+        @brief string 
+        """
         return str(self.toJson())
-    """
-    print 
-    """
+
     def __repr__(self):
+        """
+        @brief print 
+        """
         return self.__str__()

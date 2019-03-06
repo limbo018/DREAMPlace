@@ -105,8 +105,10 @@ class LogSumExpWirelengthOpTest(unittest.TestCase):
         custom = logsumexp_wirelength.LogSumExpWirelength(
                 torch.from_numpy(flat_net2pin_map), 
                 torch.from_numpy(flat_net2pin_start_map),
-                torch.tensor(gamma),
-                torch.tensor(ignore_net_degree)
+                torch.from_numpy(pin2net_map), 
+                torch.from_numpy(net_mask), 
+                torch.tensor(gamma), 
+                algorithm='sparse'
                 )
         result = custom.forward(pin_pos_var)
         print("custom = ", result)
@@ -122,8 +124,10 @@ class LogSumExpWirelengthOpTest(unittest.TestCase):
         custom_cuda = logsumexp_wirelength.LogSumExpWirelength(
                 Variable(torch.from_numpy(flat_net2pin_map)).cuda(), 
                 Variable(torch.from_numpy(flat_net2pin_start_map)).cuda(),
-                torch.tensor(gamma).cuda(),
-                torch.tensor(ignore_net_degree).cuda()
+                torch.from_numpy(pin2net_map).cuda(), 
+                torch.from_numpy(net_mask).cuda(), 
+                torch.tensor(gamma).cuda(), 
+                algorithm='sparse'
                 )
         result_cuda = custom_cuda.forward(pin_pos_var.cuda())
         print("custom_cuda_result = ", result_cuda.data.cpu())
@@ -136,10 +140,13 @@ class LogSumExpWirelengthOpTest(unittest.TestCase):
 
         # test gpu atomic
         pin_pos_var.grad.zero_()
-        custom_cuda = logsumexp_wirelength.LogSumExpWirelengthAtomic(
-                Variable(torch.from_numpy(pin2net_map)).cuda(), 
-                torch.from_numpy(net_mask).cuda(),
-                torch.tensor(gamma).cuda()
+        custom_cuda = logsumexp_wirelength.LogSumExpWirelength(
+                Variable(torch.from_numpy(flat_net2pin_map)).cuda(), 
+                Variable(torch.from_numpy(flat_net2pin_start_map)).cuda(),
+                torch.from_numpy(pin2net_map).cuda(), 
+                torch.from_numpy(net_mask).cuda(), 
+                torch.tensor(gamma).cuda(), 
+                algorithm='atomic'
                 )
         result_cuda = custom_cuda.forward(pin_pos_var.cuda())
         print("custom_cuda_result atomic = ", result_cuda.data.cpu())

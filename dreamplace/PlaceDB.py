@@ -22,10 +22,13 @@ datatypes = {
 
 class PlaceDB (object):
     """
-    initialization
-    To avoid the usage of list, I flatten everything.  
+    @brief placement database 
     """
     def __init__(self):
+        """
+        initialization
+        To avoid the usage of list, I flatten everything.  
+        """
         self.num_physical_nodes = 0 # number of real nodes, including movable nodes, terminals
         self.num_terminals = 0 # number of terminals 
         self.node_name2id_map = {} # node name to id map, cell name 
@@ -79,17 +82,19 @@ class PlaceDB (object):
 
         self.dtype = None 
 
-    """
-    scale placement solution only
-    """
     def scale_pl(self, scale_factor):
+        """
+        @brief scale placement solution only
+        @param scale_factor scale factor 
+        """
         self.node_x *= scale_factor
         self.node_y *= scale_factor 
 
-    """
-    scale distances
-    """
     def scale(self, scale_factor):
+        """
+        @brief scale distances
+        @param scale_factor scale factor 
+        """
         print("[I] scale coordinate system by %g" % (scale_factor))
         self.scale_pl(scale_factor)
         self.node_size_x *= scale_factor
@@ -103,11 +108,11 @@ class PlaceDB (object):
         self.row_height *= scale_factor
         self.site_width *= scale_factor
 
-    """
-    sort net by degree 
-    sort pin array such that pins belonging to the same net is abutting each other
-    """
     def sort(self):
+        """
+        @brief Sort net by degree. 
+        Sort pin array such that pins belonging to the same net is abutting each other
+        """
         print("\t[I] sort nets by degree and pins by net")
 
         # sort nets by degree 
@@ -149,53 +154,60 @@ class PlaceDB (object):
         #    for j in range(len(self.node2pin_map[node_id])):
         #        assert self.pin2node_map[self.node2pin_map[node_id][j]] == node_id
 
-    """
-    return number of movable nodes 
-    """
     @property
     def num_movable_nodes(self):
+        """
+        @return number of movable nodes 
+        """
         return self.num_physical_nodes - self.num_terminals
-    """
-    return number of movable nodes, terminals and fillers
-    """
+
     @property 
     def num_nodes(self):
+        """
+        @return number of movable nodes, terminals and fillers
+        """
         return self.num_physical_nodes + self.num_filler_nodes
-    """
-    return number of nets
-    """
+
     @property
     def num_nets(self):
+        """
+        @return number of nets
+        """
         return len(self.net2pin_map)
-    """
-    return number of pins
-    """
+
     @property
     def num_pins(self):
+        """
+        @return number of pins
+        """
         return len(self.pin2net_map)
-    """
-    return width of layout 
-    """
+
     @property
     def width(self):
+        """
+        @return width of layout 
+        """
         return self.xh-self.xl
-    """
-    return height of layout 
-    """
+
     @property
     def height(self):
+        """
+        @return height of layout 
+        """
         return self.yh-self.yl
-    """
-    return area of layout 
-    """
+
     @property
     def area(self):
+        """
+        @return area of layout 
+        """
         return self.width*self.height
 
-    """
-    return bin index in x direction 
-    """
     def bin_index_x(self, x): 
+        """
+        @param x horizontal location 
+        @return bin index in x direction 
+        """
         if x < self.xl:
             return 0 
         elif x > self.xh:
@@ -203,10 +215,11 @@ class PlaceDB (object):
         else:
             return int(np.floor((x-self.xl)/self.bin_size_x))
 
-    """
-    return bin index in y direction 
-    """
     def bin_index_y(self, y): 
+        """
+        @param y vertical location 
+        @return bin index in y direction 
+        """
         if y < self.yl:
             return 0 
         elif y > self.yh:
@@ -214,46 +227,52 @@ class PlaceDB (object):
         else:
             return int(np.floor((y-self.yl)/self.bin_size_y))
 
-    """
-    return bin xl
-    """
     def bin_xl(self, id_x):
+        """
+        @param id_x horizontal index 
+        @return bin xl
+        """
         return self.xl+id_x*self.bin_size_x
 
-    """
-    return bin xh
-    """
     def bin_xh(self, id_x):
+        """
+        @param id_x horizontal index 
+        @return bin xh
+        """
         return min(self.bin_xl(id_x)+self.bin_size_x, self.xh)
 
-    """
-    return bin yl
-    """
     def bin_yl(self, id_y):
+        """
+        @param id_y vertical index 
+        @return bin yl
+        """
         return self.yl+id_y*self.bin_size_y
 
-    """
-    return bin yh
-    """
     def bin_yh(self, id_y):
+        """
+        @param id_y vertical index 
+        @return bin yh
+        """
         return min(self.bin_yl(id_y)+self.bin_size_y, self.yh)
 
-    """
-    @param l lower bound 
-    @param h upper bound 
-    @param bin_size bin size 
-    @return number of bins 
-    """
     def num_bins(self, l, h, bin_size):
+        """
+        @brief compute number of bins 
+        @param l lower bound 
+        @param h upper bound 
+        @param bin_size bin size 
+        @return number of bins 
+        """
         return int(np.ceil((h-l)/bin_size))
 
-    """
-    @param l lower bound 
-    @param h upper bound 
-    @param bin_size bin size 
-    @return array of bin centers 
-    """
     def bin_centers(self, l, h, bin_size):
+        """
+        @brief compute bin centers 
+        @param l lower bound 
+        @param h upper bound 
+        @param bin_size bin size 
+        @return array of bin centers 
+        """
         num_bins = self.num_bins(l, h, bin_size)
         centers = np.zeros(num_bins, dtype=self.dtype)
         for id_x in range(num_bins): 
@@ -262,10 +281,13 @@ class PlaceDB (object):
             centers[id_x] = (bin_l+bin_h)/2
         return centers 
 
-    """
-    return hpwl of a net 
-    """
     def net_hpwl(self, x, y, net_id): 
+        """
+        @brief compute HPWL of a net 
+        @param x horizontal cell locations 
+        @param y vertical cell locations
+        @return hpwl of a net 
+        """
         pins = self.net2pin_map[net_id]
         nodes = self.pin2node_map[pins]
         hpwl_x = np.amax(x[nodes]+self.pin_offset_x[pins]) - np.amin(x[nodes]+self.pin_offset_x[pins])
@@ -273,26 +295,32 @@ class PlaceDB (object):
 
         return hpwl_x+hpwl_y
 
-    """
-    return hpwl of all nets
-    """
     def hpwl(self, x, y):
+        """
+        @brief compute total HPWL 
+        @param x horizontal cell locations 
+        @param y vertical cell locations 
+        @return hpwl of all nets
+        """
         wl = 0
         for net_id in range(len(self.net2pin_map)):
             wl += self.net_hpwl(x, y, net_id)
         return wl 
 
-    """
-    return overlap area between two rectangles
-    """
     def overlap(self, xl1, yl1, xh1, yh1, xl2, yl2, xh2, yh2):
+        """
+        @brief compute overlap between two boxes 
+        @return overlap area between two rectangles
+        """
         return max(min(xh1, xh2)-max(xl1, xl2), 0.0) * max(min(yh1, yh2)-max(yl1, yl2), 0.0)
 
-    """
-    return density map 
-    this density map evaluates the overlap between cell and bins 
-    """
     def density_map(self, x, y):
+        """
+        @brief this density map evaluates the overlap between cell and bins 
+        @param x horizontal cell locations 
+        @param y vertical cell locations 
+        @return density map 
+        """
         bin_index_xl = np.maximum(np.floor(x/self.bin_size_x).astype(np.int32), 0)
         bin_index_xh = np.minimum(np.ceil((x+self.node_size_x)/self.bin_size_x).astype(np.int32), self.num_bins_x-1)
         bin_index_yl = np.maximum(np.floor(y/self.bin_size_y).astype(np.int32), 0)
@@ -314,44 +342,71 @@ class PlaceDB (object):
 
         return density_map
 
-    """
-    return density overflow cost 
-    if density of a bin is larger than target_density, consider as overflow bin 
-    """
     def density_overflow(self, x, y, target_density):
+        """
+        @brief if density of a bin is larger than target_density, consider as overflow bin 
+        @param x horizontal cell locations 
+        @param y vertical cell locations 
+        @param target_density target density 
+        @return density overflow cost 
+        """
         density_map = self.density_map(x, y)
         return np.sum(np.square(np.maximum(density_map-target_density, 0.0)))
 
-    """
-    print node information 
-    """
     def print_node(self, node_id): 
+        """
+        @brief print node information 
+        @param node_id cell index 
+        """
         print("node %s(%d), size (%g, %g), pos (%g, %g)" % (self.node_names[node_id], node_id, self.node_size_x[node_id], self.node_size_y[node_id], self.node_x[node_id], self.node_y[node_id]))
         pins = "pins "
         for pin_id in self.node2pin_map[node_id]:
             pins += "%s(%s, %d) " % (self.node_names[self.pin2node_map[pin_id]], self.net_names[self.pin2net_map[pin_id]], pin_id)
         print(pins)
 
-    """
-    print net information
-    """
     def print_net(self, net_id):
+        """
+        @brief print net information
+        @param net_id net index 
+        """
         print("net %s(%d)" % (self.net_names[net_id], net_id))
         pins = "pins "
         for pin_id in self.net2pin_map[net_id]:
             pins += "%s(%s, %d) " % (self.node_names[self.pin2node_map[pin_id]], self.net_names[self.pin2net_map[pin_id]], pin_id)
         print(pins)
 
-    """
-    print row information 
-    """
     def print_row(self, row_id):
+        """
+        @brief print row information 
+        @param row_id row index 
+        """
         print("row %d %s" % (row_id, self.rows[row_id]))
 
-    """
-    read using python 
-    """
+    def flatten_nested_map(self, net2pin_map): 
+        """
+        @brief flatten an array of array to two arrays like CSV format 
+        @param net2pin_map array of array 
+        @return a pair of (elements, cumulative column indices of the beginning element of each row)
+        """
+        # flat netpin map, length of #pins
+        flat_net2pin_map = np.zeros(len(pin2net_map), dtype=np.int32)
+        # starting index in netpin map for each net, length of #nets+1, the last entry is #pins  
+        flat_net2pin_start_map = np.zeros(len(net2pin_map)+1, dtype=np.int32)
+        count = 0
+        for i in range(len(net2pin_map)):
+            flat_net2pin_map[count:count+len(net2pin_map[i])] = net2pin_map[i]
+            flat_net2pin_start_map[i] = count 
+            count += len(net2pin_map[i])
+        assert flat_net2pin_map[-1] != 0
+        flat_net2pin_start_map[len(net2pin_map)] = len(pin2net_map)
+
+        return flat_net2pin_map, flat_net2pin_start_map
+
     def read_bookshelf(self, params): 
+        """
+        @brief read using python 
+        @param params parameters 
+        """
         self.dtype = datatypes[params.dtype]
         node_file = None 
         net_file = None
@@ -410,25 +465,11 @@ class PlaceDB (object):
         # starting index in nodepin map for each node, length of #nodes+1, the last entry is #pins  
         self.flat_node2pin_map, self.flat_node2pin_start_map = self.flatten_nested_map(self.node2pin_map)
 
-    def flatten_nested_map(self, net2pin_map): 
-        # flat netpin map, length of #pins
-        flat_net2pin_map = np.zeros(len(pin2net_map), dtype=np.int32)
-        # starting index in netpin map for each net, length of #nets+1, the last entry is #pins  
-        flat_net2pin_start_map = np.zeros(len(net2pin_map)+1, dtype=np.int32)
-        count = 0
-        for i in range(len(net2pin_map)):
-            flat_net2pin_map[count:count+len(net2pin_map[i])] = net2pin_map[i]
-            flat_net2pin_start_map[i] = count 
-            count += len(net2pin_map[i])
-        assert flat_net2pin_map[-1] != 0
-        flat_net2pin_start_map[len(net2pin_map)] = len(pin2net_map)
-
-        return flat_net2pin_map, flat_net2pin_start_map
-
-    """
-    read using c++ 
-    """
     def read(self, params): 
+        """
+        @brief read using c++ 
+        @param params parameters 
+        """
         self.dtype = datatypes[params.dtype]
         db = place_io.PlaceIOFunction.forward(params)
         self.num_physical_nodes = db.num_nodes
@@ -472,10 +513,11 @@ class PlaceDB (object):
             self.net2pin_map[i] = np.array(self.net2pin_map[i], dtype=np.int32)
         self.net2pin_map = np.array(self.net2pin_map)
 
-    """
-    top API to read placement files 
-    """
     def __call__(self, params):
+        """
+        @brief top API to read placement files 
+        @param params parameters 
+        """
         tt = time.time()
 
         #self.read_bookshelf(params)
@@ -541,10 +583,11 @@ class PlaceDB (object):
 
         print("[I] reading benchmark takes %g seconds" % (time.time()-tt))
 
-    """
-    read .node file 
-    """
     def read_nodes(self, node_file): 
+        """
+        @brief read .node file 
+        @param node_file .node filename 
+        """
         print("[I] reading %s" % (node_file))
         count = 0 
         with open(node_file, "r") as f: 
@@ -576,10 +619,12 @@ class PlaceDB (object):
                     self.node_size_y[count] = float(node.group(6))
                     count += 1
                     # I assume the terminals append to the list, so I will not store extra information about it 
-    """
-    read .net file 
-    """
+
     def read_nets(self, net_file): 
+        """
+        @brief read .net file 
+        @param net_file .net file 
+        """
         print("[I] reading %s" % (net_file))
         net_count = 0 
         pin_count = 0
@@ -631,10 +676,12 @@ class PlaceDB (object):
                         self.node2pin_map[node_id].append(pin_count)
                         pin_count += 1
                         degree_count += 1
-    """
-    read .scl file 
-    """
+
     def read_scl(self, scl_file):
+        """
+        @brief read .scl file 
+        @param scl_file .scl file 
+        """
         print("[I] reading %s" % (scl_file))
         count = 0 
         with open(scl_file, "r") as f:
@@ -696,10 +743,12 @@ class PlaceDB (object):
 
             # set row height 
             self.row_height = self.rows[0][3]-self.rows[0][1]
-    """
-    read .pl file 
-    """
+
     def read_pl(self, pl_file):
+        """
+        @brief read .pl file 
+        @param pl_file .pl file 
+        """
         print("[I] reading %s" % (pl_file))
         count = 0 
         with open(pl_file, "r") as f:
@@ -716,10 +765,12 @@ class PlaceDB (object):
                     #print("%g, %g" % (self.node_x[node_id], self.node_y[node_id]))
                     self.node_orient[node_id] = pos.group(10)
                     orient = pos.group(4)
-    """
-    write .pl file
-    """
+
     def write_pl(self, params, pl_file):
+        """
+        @brief write .pl file
+        @param pl_file .pl file 
+        """
         tt = time.time()
         print("[I] writing to %s" % (pl_file))
         content = "UCLA pl 1.0\n"
@@ -737,10 +788,13 @@ class PlaceDB (object):
         with open(pl_file, "w") as f:
             f.write(content)
         print("[I] write_pl takes %.3f seconds" % (time.time()-tt))
-    """
-    write .net file
-    """
+
     def write_nets(self, params, net_file):
+        """
+        @brief write .net file
+        @param params parameters 
+        @param net_file .net file 
+        """
         tt = time.time()
         print("[I] writing to %s" % (net_file))
         content = "UCLA nets 1.0\n"
@@ -758,10 +812,14 @@ class PlaceDB (object):
             f.write(content)
         print("[I] write_nets takes %.3f seconds" % (time.time()-tt))
 
-    """
-    plot layout
-    """
     def plot(self, params, iteration, x, y): 
+        """
+        @brief plot layout
+        @param params parameters 
+        @param iteration optimization step 
+        @param x horizontal cell locations 
+        @param y vertical cell locations 
+        """
         try: 
             tt = time.time()
             width = 800
@@ -865,19 +923,16 @@ class PlaceDB (object):
             print(str(e))
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("[E] input parameters in json format in required")
-    paramsArray = []
-    for i in range(1, len(sys.argv)):
-        params = Params.Params()
-        params.load(sys.argv[i])
-        paramsArray.append(params)
-    print("[I] parameters[%d] = %s" % (len(paramsArray), paramsArray))
+    if len(sys.argv) != 2:
+        print("[E] One input parameters in json format in required")
 
-    for params in paramsArray: 
-        db = PlaceDB()
-        db(params)
+    params = Params.Params()
+    params.load(sys.argv[sys.argv[1]])
+    print("[I] parameters = %s" % (params))
 
-        db.print_node(1)
-        db.print_net(1)
-        db.print_row(1)
+    db = PlaceDB()
+    db(params)
+
+    db.print_node(1)
+    db.print_net(1)
+    db.print_row(1)

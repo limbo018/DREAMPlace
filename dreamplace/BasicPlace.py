@@ -2,6 +2,7 @@
 # @file   BasicPlace.py
 # @author Yibo Lin
 # @date   Jun 2018
+# @brief  Base placement class 
 #
 
 import os 
@@ -19,11 +20,18 @@ import torch.nn as nn
 import ops 
 import pdb 
 
-"""
-A wraper for all data tensors on device for building ops 
-"""
 class PlaceDataCollection (object):
+    """
+    @brief A wraper for all data tensors on device for building ops 
+    """
     def __init__(self, pos, params, placedb, device):
+        """
+        @brief initialization 
+        @param pos locations of cells 
+        @param params parameters 
+        @param placedb placement database 
+        @param device cpu or cuda 
+        """
         # position should be parameter 
         self.pos = pos 
         # other tensors required to build ops 
@@ -54,6 +62,11 @@ class PlaceDataCollection (object):
         self.bin_center_y = torch.from_numpy(placedb.bin_center_y).to(device)
 
     def bin_center_x_padded(self, placedb, padding): 
+        """
+        @brief compute array of bin center horizontal coordinates with padding 
+        @param placedb placement database 
+        @param padding number of bins padding to boundary of placement region 
+        """
         if padding == 0: 
             return self.bin_center_x 
         else:
@@ -64,6 +77,11 @@ class PlaceDataCollection (object):
             return self.bin_center_x_padded
 
     def bin_center_y_padded(self, placedb, padding): 
+        """
+        @brief compute array of bin center vertical coordinates with padding 
+        @param placedb placement database 
+        @param padding number of bins padding to boundary of placement region 
+        """
         if padding == 0: 
             return self.bin_center_y 
         else:
@@ -73,11 +91,14 @@ class PlaceDataCollection (object):
             self.bin_center_y_padded = torch.from_numpy(placedb.bin_centers(yl, yh, bin_size_y)).to(device)
             return self.bin_center_y_padded
 
-"""
-A wrapper for all ops 
-"""
 class PlaceOpCollection (object):
+    """
+    @brief A wrapper for all ops 
+    """
     def __init__(self):
+        """
+        @brief initialization
+        """
         self.pin_pos_op = None 
         self.move_boundary_op = None 
         self.hpwl_op = None
@@ -95,9 +116,15 @@ class PlaceOpCollection (object):
 
 class BasicPlace (nn.Module):
     """
-    initialization
+    @brief Base placement class. 
+    All placement engines should be derived from this class. 
     """
     def __init__(self, params, placedb):
+        """
+        @brief initialization
+        @param params parameter 
+        @param placedb placement database 
+        """
         torch.manual_seed(params.random_seed)
         super(BasicPlace, self).__init__()
 
@@ -161,16 +188,23 @@ class BasicPlace (nn.Module):
 
         #print("build BasicPlace ops takes %.2f seconds" % (time.time()-tt))
 
-    """
-    solve placement 
-    """
-    def __call__(self, params, placedb, enable_flag=True):
+    def __call__(self, params, placedb):
+        """
+        @brief Solve placement.  
+        placeholder for derived classes. 
+        @param params parameters 
+        @param placedb placement database 
+        """
         pass 
 
-    """
-    sum up the pins for each cell 
-    """
     def build_pin_pos(self, params, placedb, data_collections, device):
+        """
+        @brief sum up the pins for each cell 
+        @param params parameters 
+        @param placedb placement database 
+        @param data_collections a collection of all data and variables required for constructing the ops 
+        @param device cpu or cuda 
+        """
         def build_pin_pos_op(pos): 
             pin_x = data_collections.pin_offset_x.add(torch.index_select(pos[0:placedb.num_physical_nodes], dim=0, index=data_collections.pin2node_map.long()))
             pin_y = data_collections.pin_offset_y.add(torch.index_select(pos[placedb.num_nodes:placedb.num_nodes+placedb.num_physical_nodes], dim=0, index=data_collections.pin2node_map.long()))
@@ -179,10 +213,14 @@ class BasicPlace (nn.Module):
             return pin_pos 
         return build_pin_pos_op
 
-    """
-    bound nodes into layout region 
-    """
     def build_move_boundary(self, params, placedb, data_collections, device):
+        """
+        @brief bound nodes into layout region 
+        @param params parameters 
+        @param placedb placement database 
+        @param data_collections a collection of all data and variables required for constructing the ops 
+        @param device cpu or cuda 
+        """
         return ops.move_boundary.MoveBoundary(
                 data_collections.node_size_x, data_collections.node_size_y, 
                 xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
@@ -190,11 +228,15 @@ class BasicPlace (nn.Module):
                 num_filler_nodes=placedb.num_filler_nodes
                 )
 
-    """
-    compute half-perimeter wirelength 
-    """
     def build_hpwl(self, params, placedb, data_collections, pin_pos_op, device):
-        # wirelength cost 
+        """
+        @brief compute half-perimeter wirelength 
+        @param params parameters 
+        @param placedb placement database 
+        @param data_collections a collection of all data and variables required for constructing the ops 
+        @param pin_pos_op the op to compute pin locations according to cell locations 
+        @param device cpu or cuda 
+        """
 
         wirelength_for_pin_op = ops.hpwl.HPWL(
                 flat_netpin=data_collections.flat_net2pin_map, 
@@ -215,6 +257,13 @@ class BasicPlace (nn.Module):
         return build_wirelength_op
 
     def build_rmst_wl(self, params, placedb, pin_pos_op, device):
+        """
+        @brief compute rectilinear minimum spanning tree wirelength with flute 
+        @param params parameters 
+        @param placedb placement database 
+        @param pin_pos_op the op to compute pin locations according to cell locations 
+        @param device cpu or cuda 
+        """
         # wirelength cost 
 
         POWVFILE = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../thirdparty/flute-3.1/POWV9.dat"))
@@ -239,11 +288,13 @@ class BasicPlace (nn.Module):
         return build_wirelength_op
 
     def build_density_overflow(self, params, placedb, data_collections, device):
-        # dump 
-        #with gzip.open('bigblue4_density.pklz', 'w') as f:
-        #    pickle.dump((placedb.node_size_x, placedb.node_size_y, placedb.bin_center_x, placedb.bin_center_y, params.target_density, placedb.xl, placedb.yl, placedb.xh, placedb.yh, placedb.bin_size_x, placedb.bin_size_y, placedb.num_movable_nodes, placedb.num_terminals, placedb.num_filler_nodes), f)
-        #    exit()
-
+        """
+        @brief compute density overflow 
+        @param params parameters 
+        @param placedb placement database 
+        @param data_collections a collection of all data and variables required for constructing the ops 
+        @param device cpu or cuda 
+        """
         return ops.density_overflow.DensityOverflow(
                 data_collections.node_size_x, data_collections.node_size_x, 
                 data_collections.bin_center_x, data_collections.bin_center_y, 
@@ -257,6 +308,13 @@ class BasicPlace (nn.Module):
                 )
 
     def build_electric_overflow(self, params, placedb, data_collections, device):
+        """
+        @brief compute electric density overflow 
+        @param params parameters 
+        @param placedb placement database 
+        @param data_collections a collection of all data and variables required for constructing the ops 
+        @param device cpu or cuda 
+        """
         return ops.electric_overflow.ElectricOverflow(
                 data_collections.node_size_x, data_collections.node_size_y, 
                 data_collections.bin_center_x, data_collections.bin_center_y, 
@@ -270,6 +328,13 @@ class BasicPlace (nn.Module):
                 )
 
     def build_greedy_legalization(self, params, placedb, data_collections, device):
+        """
+        @brief greedy legalization 
+        @param params parameters 
+        @param placedb placement database 
+        @param data_collections a collection of all data and variables required for constructing the ops 
+        @param device cpu or cuda 
+        """
         return ops.greedy_legalize.GreedyLegalize(
                 node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
                 xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
@@ -281,12 +346,20 @@ class BasicPlace (nn.Module):
                 )
 
     def build_draw_placement(self, params, placedb):
+        """
+        @brief plot placement  
+        @param params parameters 
+        @param placedb placement database 
+        """
         return ops.draw_place.DrawPlace(placedb)
 
-    """
-    validate placement 
-    """
     def validate(self, placedb, pos, iteration):
+        """
+        @brief validate placement 
+        @param placedb placement database 
+        @param pos locations of cells 
+        @param iteration optimization step 
+        """
         pos = torch.from_numpy(pos).to(self.device)
         hpwl = self.op_collections.hpwl_op(pos)
         #rmst_wls = self.rmst_wl_op(pos)
@@ -295,10 +368,15 @@ class BasicPlace (nn.Module):
 
         #return hpwl, rmst_wl, overflow, max_density
         return hpwl, overflow, max_density
-    """
-    plot layout
-    """
+
     def plot(self, params, placedb, iteration, pos): 
+        """
+        @brief plot layout
+        @param params parameters 
+        @param placedb placement database 
+        @param iteration optimization step 
+        @param pos locations of cells 
+        """
         tt = time.time()
         figname = "%s/plot/iter%s.png" % (params.result_dir, '{:04}'.format(iteration))
         os.system("mkdir -p %s" % (os.path.dirname(figname)))

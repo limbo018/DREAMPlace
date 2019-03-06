@@ -2,6 +2,7 @@
 # @file   PlaceObj.py
 # @author Yibo Lin
 # @date   Jul 2018
+# @brief  Placement model class defining the placement objective. 
 #
 
 import os 
@@ -23,7 +24,21 @@ else:
     from .ops import *
 
 class PlaceObj(nn.Module):
+    """
+    @brief Define placement objective: 
+        wirelength + density_weight * density penalty
+    It includes various ops related to global placement as well. 
+    """
     def __init__(self, density_weight, params, placedb, data_collections, op_collections, global_place_params):
+        """
+        @brief initialize ops for placement 
+        @param density_weight density weight in the objective 
+        @param params parameters 
+        @param placedb placement database 
+        @param data_collections a collection of all data and variables required for constructing the ops 
+        @param op_collections a collection of all ops 
+        @param global_place_params global placement parameters for current global placement stage 
+        """
         super(PlaceObj, self).__init__()
 
         self.gpu = params.gpu
@@ -50,11 +65,13 @@ class PlaceObj(nn.Module):
         #self.learning_rate = global_place_params["learning_rate"]*max((placedb.xh-placedb.xl)/global_place_params["num_bins_x"], (placedb.yh-placedb.yl)/global_place_params["num_bins_y"])
         self.learning_rate = global_place_params["learning_rate"]
 
-    """compute objective 
-    @param pos x 
-    @return objective value 
-    """
     def obj_fn(self, pos):
+        """
+        @brief Compute objective.
+            wirelength + density_weight * density penalty
+        @param pos locations of cells 
+        @return objective value 
+        """
         #tt = time.time()
         wirelength = self.op_collections.wirelength_op(pos)
         if self.gpu: 
@@ -66,11 +83,14 @@ class PlaceObj(nn.Module):
             torch.cuda.synchronize()
         #print("\t\tdensity forward %.3f ms" % ((time.time()-tt)*1000))
         return wirelength + self.density_weight*density
-    """compute objective and gradient 
-    @param pos x 
-    @return objective value 
-    """
+
     def obj_and_grad_fn(self, pos): 
+        """
+        @brief compute objective and gradient.  
+            wirelength + density_weight * density penalty
+        @param pos locations of cells  
+        @return objective value 
+        """
         #self.check_gradient(pos)
         obj = self.obj_fn(pos)
 
@@ -89,18 +109,17 @@ class PlaceObj(nn.Module):
 
         return obj, pos.grad 
 
-    """compute objective 
-    @return wirelength and density 
-    """
     def forward(self):
-        wirelength = self.op_collections.wirelength_op(self.data_collections.pos[0])
-        density = self.op_collections.density_op(self.data_collections.pos[0])
+        """
+        @brief Compute objective with current locations of cells. 
+        """
+        return self.obj_fn(self.data_collections.pos[0])
 
-        return wirelength, density
-
-    """ check gradient for debug 
-    """
     def check_gradient(self, pos): 
+        """ 
+        @brief check gradient for debug 
+        @param pos locations of cells 
+        """
         wirelength = self.op_collections.wirelength_op(pos)
         density = self.op_collections.density_op(pos)
 
@@ -120,8 +139,13 @@ class PlaceObj(nn.Module):
         pos.grad.zero_()
 
     def build_weighted_average_wl(self, params, placedb, data_collections, pin_pos_op):
-        # wirelength cost 
-        # weighted-average 
+        """
+        @brief build the op to compute weighted average wirelength 
+        @param params parameters 
+        @param placedb placement database 
+        @param data_collections a collection of data and variables required for constructing ops 
+        @param pin_pos_op the op to compute pin locations according to cell locations 
+        """
 
         # use WeightedAverageWirelength atomic 
         wirelength_for_pin_op = weighted_average_wirelength.WeightedAverageWirelength(
@@ -147,22 +171,23 @@ class PlaceObj(nn.Module):
         return build_wirelength_op, build_update_gamma_op
 
     def build_logsumexp_wl(self, params, placedb, data_collections, pin_pos_op):
-        # wirelength cost 
-        # weighted-average 
-        print("[I] gamma = %g" % (10*self.base_gamma(params, placedb)))
+        """
+        @brief build the op to compute log-sum-exp wirelength 
+        @param params parameters 
+        @param placedb placement database 
+        @param data_collections a collection of data and variables required for constructing ops 
+        @param pin_pos_op the op to compute pin locations according to cell locations 
+        """
+        gamma = 10*self.base_gamma(params, placedb)
+        print("[I] gamma = %g" % (gamma))
 
-        #wirelength_for_pin_op = logsumexp_wirelength.LogSumExpWirelength(
-        #        flat_netpin=data_collections.flat_net2pin_map, 
-        #        netpin_start=data_collections.flat_net2pin_start_map, 
-        #        gamma=torch.tensor(10*self.base_gamma(params, placedb), dtype=data_collections.pos[0].dtype, device=data_collections.pos[0].device), 
-        #        ignore_net_degree=params.ignore_net_degree
-        #        )
-
-        # use Log-Sum-Exp atomic 
-        wirelength_for_pin_op = logsumexp_wirelength.LogSumExpWirelengthAtomic(
+        wirelength_for_pin_op = logsumexp_wirelength.LogSumExpWirelength(
+                flat_netpin=data_collections.flat_net2pin_map, 
+                netpin_start=data_collections.flat_net2pin_start_map,
                 pin2net_map=data_collections.pin2net_map, 
                 net_mask=data_collections.net_mask_ignore_large_degrees, 
-                gamma=torch.tensor(10*self.base_gamma(params, placedb), dtype=data_collections.pos[0].dtype, device=data_collections.pos[0].device)
+                gamma=torch.tensor(gamma, dtype=data_collections.pos[0].dtype, device=data_collections.pos[0].device), 
+                algorithm='atomic'
                 )
 
         # wirelength for position 
@@ -178,10 +203,17 @@ class PlaceObj(nn.Module):
 
         return build_wirelength_op, build_update_gamma_op
 
-    """
-    NTUPlace3 density potential 
-    """
     def build_density_potential(self, params, placedb, data_collections, num_bins_x, num_bins_y, padding, name):
+        """
+        @brief NTUPlace3 density potential 
+        @param params parameters 
+        @param placedb placement database 
+        @param data_collections a collection of data and variables required for constructing ops 
+        @param num_bins_x number of bins in horizontal direction 
+        @param num_bins_y number of bins in vertical direction 
+        @param padding number of padding bins to left, right, bottom, top of the placement region 
+        @param name string for printing 
+        """
         bin_size_x = (placedb.xh-placedb.xl) / num_bins_x
         bin_size_y = (placedb.yh-placedb.yl) / num_bins_y
 
@@ -229,14 +261,6 @@ class PlaceObj(nn.Module):
         integral_potential_y = npfy1(0) + 2*npfy1(bin_size_y) + 2*npfy2(2*bin_size_y)
         cy = (node_size_y.reshape([placedb.num_nodes, 1]) / integral_potential_y).reshape([placedb.num_nodes, 1])
 
-        #print("ax = ", ax)
-        #print("bx = ", bx)
-        #print("cx = ", cx)
-
-        #print("ay = ", ay)
-        #print("by = ", by)
-        #print("cy = ", cy)
-
         return density_potential.DensityPotential(
                 node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
                 ax=torch.tensor(ax.ravel(), dtype=data_collections.pos[0].dtype, device=data_collections.pos[0].device), bx=torch.tensor(bx.ravel(), dtype=data_collections.pos[0].dtype, device=data_collections.pos[0].device), cx=torch.tensor(cx.ravel(), dtype=data_collections.pos[0].dtype, device=data_collections.pos[0].device), 
@@ -253,10 +277,18 @@ class PlaceObj(nn.Module):
                 sigma=(1.0/16)*placedb.width/bin_size_x, 
                 delta=2.0
                 )
-    """
-    e-place electrostatic potential 
-    """
+
     def build_electric_potential(self, params, placedb, data_collections, num_bins_x, num_bins_y, padding, name):
+        """
+        @brief e-place electrostatic potential 
+        @param params parameters 
+        @param placedb placement database 
+        @param data_collections a collection of data and variables required for constructing ops 
+        @param num_bins_x number of bins in horizontal direction 
+        @param num_bins_y number of bins in vertical direction 
+        @param padding number of padding bins to left, right, bottom, top of the placement region 
+        @param name string for printing 
+        """
         bin_size_x = (placedb.xh-placedb.xl) / num_bins_x
         bin_size_y = (placedb.yh-placedb.yl) / num_bins_y
 
@@ -287,10 +319,13 @@ class PlaceObj(nn.Module):
                 padding=padding,
                 fast_mode=True
                 )
-    """
-    compute initial density weight
-    """
+
     def initialize_density_weight(self, params, placedb):
+        """
+        @brief compute initial density weight
+        @param params parameters 
+        @param placedb placement database 
+        """
         wirelength = self.op_collections.wirelength_op(self.data_collections.pos[0])
         if self.data_collections.pos[0].grad is not None:
             self.data_collections.pos[0].grad.zero_()
@@ -306,13 +341,16 @@ class PlaceObj(nn.Module):
         self.density_weight = torch.tensor([params.density_weight*grad_norm_ratio], dtype=self.data_collections.pos[0].dtype, device=self.data_collections.pos[0].device)
 
         return self.density_weight
-    """
-    update density weight 
-    """
+
     def build_update_density_weight(self, params, placedb):
-        ref_hpwl = 3.5e5
-        LOWER_PCOF = 0.95
-        UPPER_PCOF = 1.05
+        """
+        @brief update density weight 
+        @param params parameters 
+        @param placedb placement database 
+        """
+        ref_hpwl = params.RePlAce_ref_hpwl
+        LOWER_PCOF = params.RePlAce_LOWER_PCOF
+        UPPER_PCOF = params.RePlAce_UPPER_PCOF
         def update_density_weight_op(metrics):
             with torch.no_grad(): 
                 delta_hpwl = metrics[-1].hpwl-metrics[-2].hpwl
@@ -326,24 +364,32 @@ class PlaceObj(nn.Module):
 
         return update_density_weight_op
 
-    """
-    compute base gamma 
-    """
     def base_gamma(self, params, placedb):
+        """
+        @brief compute base gamma 
+        @param params parameters 
+        @param placedb placement database 
+        """
         return 4*(placedb.bin_size_x+placedb.bin_size_y)
 
-    """
-    update gamma in wirelength model 
-    """
     def update_gamma(self, iteration, overflow, base_gamma):
+        """
+        @brief update gamma in wirelength model 
+        @param iteration optimization step 
+        @param overflow evaluated in current step 
+        @param base_gamma base gamma 
+        """
         coef = torch.pow(10, (overflow-0.1)*20/9-1)
         self.gamma.data.fill_(base_gamma*coef)
         return True 
 
-    """
-    add noise to cell locations
-    """
     def build_noise(self, params, placedb, data_collections):
+        """
+        @brief add noise to cell locations
+        @param params parameters 
+        @param placedb placement database 
+        @param data_collections a collection of data and variables required for constructing ops 
+        """
         node_size = torch.cat([data_collections.node_size_x, data_collections.node_size_y], dim=0).to(data_collections.pos[0].device)
         def noise_op(pos, noise_ratio):
             with torch.no_grad(): 
@@ -356,10 +402,13 @@ class PlaceObj(nn.Module):
 
         return noise_op
 
-    """
-    preconditioning 
-    """
     def build_precondition(self, params, placedb, data_collections):
+        """
+        @brief preconditioning to gradient 
+        @param params parameters 
+        @param placedb placement database 
+        @param data_collections a collection of data and variables required for constructing ops 
+        """
         num_pins_in_nodes = np.zeros(placedb.num_nodes)
         for  i in range(placedb.num_physical_nodes): 
             num_pins_in_nodes[i] = len(placedb.node2pin_map[i])

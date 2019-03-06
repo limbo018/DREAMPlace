@@ -37,7 +37,7 @@ __global__ void computeMaxAndExp(
         const T* x, 
         const int* flat_netpin, 
         const int* netpin_start, 
-        const int ignore_net_degree, 
+        const unsigned char* net_mask, 
         int num_nets,
         const T* gamma, 
         T* x_max, 
@@ -47,20 +47,20 @@ __global__ void computeMaxAndExp(
     for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_nets; i += blockDim.x * gridDim.x) 
     {
         x_max[i] = -FLT_MAX; 
-        int degree = netpin_start[i+1]-netpin_start[i];
-        if (degree < 2 || degree >= ignore_net_degree)
-            continue; 
-        for (int j = netpin_start[i]; j < netpin_start[i+1]; ++j)
+        if (net_mask[i])
         {
-            int jj = flat_netpin[j];
-            T xx = x[jj];
-            x_max[i] = max(x_max[i], xx);
-        }
-        for (int j = netpin_start[i]; j < netpin_start[i+1]; ++j)
-        {
-            int jj = flat_netpin[j];
-            T xx = x[jj];
-            exp_x[jj] = exp((xx-x_max[i])/(*gamma)); 
+            for (int j = netpin_start[i]; j < netpin_start[i+1]; ++j)
+            {
+                int jj = flat_netpin[j];
+                T xx = x[jj];
+                x_max[i] = max(x_max[i], xx);
+            }
+            for (int j = netpin_start[i]; j < netpin_start[i+1]; ++j)
+            {
+                int jj = flat_netpin[j];
+                T xx = x[jj];
+                exp_x[jj] = exp((xx-x_max[i])/(*gamma)); 
+            }
         }
     }
 }
@@ -70,7 +70,7 @@ __global__ void computeMinAndNegExp(
         const T* x, 
         const int* flat_netpin, 
         const int* netpin_start, 
-        const int ignore_net_degree, 
+        const unsigned char* net_mask, 
         int num_nets,
         const T* gamma, 
         T* x_min, 
@@ -80,20 +80,20 @@ __global__ void computeMinAndNegExp(
     for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_nets; i += blockDim.x * gridDim.x) 
     {
         x_min[i] = FLT_MAX; 
-        int degree = netpin_start[i+1]-netpin_start[i];
-        if (degree < 2 || degree >= ignore_net_degree)
-            continue; 
-        for (int j = netpin_start[i]; j < netpin_start[i+1]; ++j)
+        if (net_mask[i])
         {
-            int jj = flat_netpin[j];
-            T xx = x[jj];
-            x_min[i] = min(x_min[i], xx);
-        }
-        for (int j = netpin_start[i]; j < netpin_start[i+1]; ++j)
-        {
-            int jj = flat_netpin[j];
-            T xx = x[jj];
-            exp_nx[jj] = exp(-(xx-x_min[i])/(*gamma)); 
+            for (int j = netpin_start[i]; j < netpin_start[i+1]; ++j)
+            {
+                int jj = flat_netpin[j];
+                T xx = x[jj];
+                x_min[i] = min(x_min[i], xx);
+            }
+            for (int j = netpin_start[i]; j < netpin_start[i+1]; ++j)
+            {
+                int jj = flat_netpin[j];
+                T xx = x[jj];
+                exp_nx[jj] = exp(-(xx-x_min[i])/(*gamma)); 
+            }
         }
     }
 }
@@ -104,7 +104,7 @@ __global__ void computeLogSumExp(
         const T* x_max, 
         const int* flat_netpin, 
         const int* netpin_start, 
-        const int ignore_net_degree, 
+        const unsigned char* net_mask, 
         int num_nets,
         const T* gamma, 
         T* partial_wl 
@@ -112,10 +112,14 @@ __global__ void computeLogSumExp(
 {
     for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_nets; i += blockDim.x * gridDim.x) 
     {
-        int degree = netpin_start[i+1]-netpin_start[i];
-        if (degree < 2 || degree >= ignore_net_degree)
-            continue; 
-        partial_wl[i] = (*gamma)*log(exp_x_sum[i]) + x_max[i]; 
+        if (net_mask[i])
+        {
+            partial_wl[i] = (*gamma)*log(exp_x_sum[i]) + x_max[i]; 
+        }
+        else 
+        {
+            partial_wl[i] = 0; 
+        }
     }
 }
 
@@ -125,7 +129,7 @@ __global__ void computeLogSumNegExp(
         const T* x_min, 
         const int* flat_netpin, 
         const int* netpin_start, 
-        const int ignore_net_degree, 
+        const unsigned char* net_mask, 
         int num_nets,
         const T* gamma, 
         T* partial_wl 
@@ -133,10 +137,14 @@ __global__ void computeLogSumNegExp(
 {
     for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_nets; i += blockDim.x * gridDim.x) 
     {
-        int degree = netpin_start[i+1]-netpin_start[i];
-        if (degree < 2 || degree >= ignore_net_degree)
-            continue; 
-        partial_wl[i] = (*gamma)*log(exp_nx_sum[i]) - x_min[i]; 
+        if (net_mask[i])
+        {
+            partial_wl[i] = (*gamma)*log(exp_nx_sum[i]) - x_min[i]; 
+        }
+        else 
+        {
+            partial_wl[i] = 0; 
+        }
     }
 }
 
@@ -160,7 +168,7 @@ __global__ void computeLogSumExpWirelengthGrad(
         const T* exp_x_sum, const T* exp_nx_sum, 
         const int* flat_netpin, 
         const int* netpin_start, 
-        const int ignore_net_degree, 
+        const unsigned char* net_mask, 
         int num_nets,
         const T* gamma, 
         const T* grad_tensor, 
@@ -169,16 +177,16 @@ __global__ void computeLogSumExpWirelengthGrad(
 {
     for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_nets; i += blockDim.x * gridDim.x) 
     {
-        int degree = netpin_start[i+1]-netpin_start[i];
-        if (degree < 2 || degree >= ignore_net_degree)
-            continue; 
-        T reciprocal_exp_x_sum = 1.0/exp_x_sum[i]; 
-        T reciprocal_exp_nx_sum = 1.0/exp_nx_sum[i]; 
-        for (int j = netpin_start[i]; j < netpin_start[i+1]; ++j)
+        if (net_mask[i])
         {
-            int jj = flat_netpin[j];
-            grad_x_tensor[jj] = (exp_x[jj]*reciprocal_exp_x_sum - exp_nx[jj]*reciprocal_exp_nx_sum)*(*grad_tensor); 
-            //grad_x_tensor[jj] = (exp_x[jj]/exp_x_sum[i] - exp_nx[jj]/exp_nx_sum[i])*(*grad_tensor); 
+            T reciprocal_exp_x_sum = 1.0/exp_x_sum[i]; 
+            T reciprocal_exp_nx_sum = 1.0/exp_nx_sum[i]; 
+            for (int j = netpin_start[i]; j < netpin_start[i+1]; ++j)
+            {
+                int jj = flat_netpin[j];
+                grad_x_tensor[jj] = (exp_x[jj]*reciprocal_exp_x_sum - exp_nx[jj]*reciprocal_exp_nx_sum)*(*grad_tensor); 
+                //grad_x_tensor[jj] = (exp_x[jj]/exp_x_sum[i] - exp_nx[jj]/exp_nx_sum[i])*(*grad_tensor); 
+            }
         }
     }
 }
@@ -189,7 +197,7 @@ int computeLogSumExpWirelengthCudaLauncher(
         const int* flat_netpin, 
         const int* netpin_start, 
         const T* netpin_values, 
-        const int ignore_net_degree, 
+        const unsigned char* net_mask, 
         int num_nets,
         int num_pins, 
         const T* gamma, 
@@ -230,7 +238,7 @@ int computeLogSumExpWirelengthCudaLauncher(
                 exp_xy_sum, exp_nxy_sum, 
                 flat_netpin, 
                 netpin_start, 
-                ignore_net_degree, 
+                net_mask, 
                 num_nets,
                 gamma, 
                 grad_tensor, 
@@ -241,7 +249,7 @@ int computeLogSumExpWirelengthCudaLauncher(
                 exp_xy_sum+num_nets, exp_nxy_sum+num_nets, 
                 flat_netpin, 
                 netpin_start, 
-                ignore_net_degree, 
+                net_mask, 
                 num_nets,
                 gamma, 
                 grad_tensor, 
@@ -299,7 +307,7 @@ int computeLogSumExpWirelengthCudaLauncher(
                 x, 
                 flat_netpin, 
                 netpin_start, 
-                ignore_net_degree, 
+                net_mask, 
                 num_nets, 
                 gamma, 
                 xy_max,
@@ -309,7 +317,7 @@ int computeLogSumExpWirelengthCudaLauncher(
                 x, 
                 flat_netpin, 
                 netpin_start, 
-                ignore_net_degree, 
+                net_mask, 
                 num_nets, 
                 gamma, 
                 xy_min, 
@@ -319,7 +327,7 @@ int computeLogSumExpWirelengthCudaLauncher(
                 y, 
                 flat_netpin, 
                 netpin_start, 
-                ignore_net_degree, 
+                net_mask, 
                 num_nets, 
                 gamma, 
                 xy_max+num_nets,
@@ -329,7 +337,7 @@ int computeLogSumExpWirelengthCudaLauncher(
                 y, 
                 flat_netpin, 
                 netpin_start, 
-                ignore_net_degree, 
+                net_mask, 
                 num_nets, 
                 gamma, 
                 xy_min+num_nets, 
@@ -443,7 +451,7 @@ int computeLogSumExpWirelengthCudaLauncher(
                 xy_max, 
                 flat_netpin, 
                 netpin_start, 
-                ignore_net_degree, 
+                net_mask, 
                 num_nets,
                 gamma, 
                 partial_wl
@@ -453,7 +461,7 @@ int computeLogSumExpWirelengthCudaLauncher(
                 xy_min, 
                 flat_netpin, 
                 netpin_start, 
-                ignore_net_degree, 
+                net_mask, 
                 num_nets,
                 gamma, 
                 partial_wl+num_nets
@@ -464,7 +472,7 @@ int computeLogSumExpWirelengthCudaLauncher(
                 xy_max+num_nets, 
                 flat_netpin, 
                 netpin_start, 
-                ignore_net_degree, 
+                net_mask, 
                 num_nets,
                 gamma, 
                 partial_wl+2*num_nets
@@ -474,7 +482,7 @@ int computeLogSumExpWirelengthCudaLauncher(
                 xy_min+num_nets, 
                 flat_netpin, 
                 netpin_start, 
-                ignore_net_degree, 
+                net_mask, 
                 num_nets,
                 gamma, 
                 partial_wl+3*num_nets
@@ -591,7 +599,7 @@ int computeLogSumExpWirelengthCudaLauncher(
             const int* flat_netpin, \
             const int* netpin_start, \
             const T* netpin_values, \
-            const int ignore_net_degree, \
+            const unsigned char* net_mask, \
             int num_nets,\
             int num_pins,\
             const T* gamma, \
@@ -607,7 +615,7 @@ int computeLogSumExpWirelengthCudaLauncher(
                 flat_netpin, \
                 netpin_start, \
                 netpin_values, \
-                ignore_net_degree, \
+                net_mask, \
                 num_nets,\
                 num_pins,\
                 gamma, \

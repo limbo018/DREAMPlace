@@ -2,6 +2,7 @@
 # @file   NonLinearPlace.py
 # @author Yibo Lin
 # @date   Jul 2018
+# @brief  Nonlinear placement engine to be called with parameters and placement database 
 #
 
 import os 
@@ -24,107 +25,65 @@ import EvalMetrics
 import pdb 
 
 class NonLinearPlace (BasicPlace.BasicPlace):
+    """
+    @brief Nonlinear placement engine. 
+    It takes parameters and placement database and runs placement flow. 
+    """
     def __init__(self, params, placedb):
+        """
+        @brief initialization. 
+        @param params parameters 
+        @param placedb placement database 
+        """
         super(NonLinearPlace, self).__init__(params, placedb)
 
-    """
-    solve placement 
-    """
-    def __call__(self, params, placedb, enable_flag=True):
-        def evaluate(model, metrics, t): 
-            if "iteration" in metrics: 
-                content = "[I] iteration %4d" % (metrics["iteration"])
-
-            if "wirelength" not in metrics: 
-                #ttt = time.time()
-                wirelength = model.op_collections.wirelength_op(model.data_collections.pos[0])
-                metrics["wirelength"] = wirelength.data 
-                #print("wirelength forward takes %.3f seconds" % (time.time()-ttt))
-            content += ", wirelength %.3E" % (metrics["wirelength"])
-
-            if "density" not in metrics: 
-                #ttt = time.time()
-                density = model.op_collections.density_op(model.data_collections.pos[0])
-                metrics["density"] = density.data 
-                #print("density forward takes %.3f seconds" % (time.time()-ttt))
-            content += ", density %.3E" % (metrics["density"])
-
-            #if "density_weight" not in metrics: 
-            #    metrics["density_weight"] = model.density_weight.data 
-            #content += ", density_weight %.3E" % (metrics["density_weight"])
-
-            if "hpwl" not in metrics: 
-                #ttt = time.time()
-                hpwl = self.op_collections.hpwl_op(model.data_collections.pos[0])
-                metrics["hpwl"] = hpwl.data 
-                #print("hpwl forward takes %.6f seconds" % (time.time()-ttt))
-            content += ", HPWL %.6E" % (metrics["hpwl"])
-
-            #if "rmst_wls" not in metrics: 
-            #    #ttt = time.time()
-            #    rmst_wls = self.op_collections.rmst_wl_op(model.data_collections.pos[0])
-            #    rmst_wl = rmst_wls.sum()
-            #    metrics["rmst_wl"] = rmst_wl.data 
-            #    #print("rmst_wl forward takes %.6f seconds" % (time.time()-ttt))
-            #content += ", RMSTWL %.3E" % (metrics["rmst_wl"])
-
-            if "overflow" not in metrics: 
-                #ttt = time.time()
-                overflow, max_density = self.op_collections.density_overflow_op(model.data_collections.pos[0])
-                metrics["overflow"] = overflow.data / placedb.total_movable_node_area
-                metrics["max_density"] = max_density.data 
-                #print("overflow forward takes %.6f seconds" % (time.time()-ttt))
-            content += ", overflow %.6E" % (metrics["overflow"])
-            content += ", max density %.3E" % (metrics["max_density"])
-
-            # evaluation 
-            #model.op_collections.wirelength_eval_op(model.data_collections.pos[0], rmst_wls.cuda(), write_flag=False)
-
-            content += ", time %.3fms" % ((time.time()-t)*1000)
-
-            print(content)
-
-            return metrics 
-
+    def __call__(self, params, placedb):
+        """
+        @brief Top API to solve placement. 
+        @param params parameters 
+        @param placedb placement database 
+        """
         iteration = 0
         metrics = []
 
-        if not enable_flag:
-            return metrics 
-
+        # global placement 
         if params.global_place_flag: 
+            # global placement may run in multiple stages according to user specification 
             for global_place_params in params.global_place_stages:
                 if params.gpu: 
                     torch.cuda.synchronize()
                 tt = time.time()
                 # construct model and optimizer 
                 density_weight = metrics[-1].density_weight if metrics else 0.0
+                # construct placement model 
                 model = PlaceObj.PlaceObj(density_weight, params, placedb, self.data_collections, self.op_collections, global_place_params).to(self.data_collections.pos[0].device)
-                name = global_place_params["optimizer"]
+                optimizer_name = global_place_params["optimizer"]
 
-                if name.lower() == "adam": 
+                # determine optimizer
+                if optimizer_name.lower() == "adam": 
                     optimizer = torch.optim.Adam(self.parameters(), lr=model.learning_rate)
-                elif name.lower() == "sgd": 
+                elif optimizer_name.lower() == "sgd": 
                     optimizer = torch.optim.SGD(self.parameters(), lr=model.learning_rate)
-                elif name.lower() == "sgd_momentum": 
+                elif optimizer_name.lower() == "sgd_momentum": 
                     optimizer = torch.optim.SGD(self.parameters(), lr=model.learning_rate, momentum=0.9, nesterov=False)
-                elif name.lower() == "sgd_nesterov": 
+                elif optimizer_name.lower() == "sgd_nesterov": 
                     optimizer = torch.optim.SGD(self.parameters(), lr=model.learning_rate, momentum=0.9, nesterov=True)
-                elif name.lower() == "cg": 
+                elif optimizer_name.lower() == "cg": 
                     optimizer = ConjugateGradientOptimizer.ConjugateGradientOptimizer(self.parameters(), lr=model.learning_rate)
-                elif name.lower() == "cgls": 
+                elif optimizer_name.lower() == "cgls": 
                     optimizer = ConjugateGradientOptimizer.ConjugateGradientOptimizer(self.parameters(), lr=model.learning_rate, line_search_fn=LineSearch.build_line_search_fn_armijo(model.obj_fn))
-                elif name.lower() == "nesterov": 
+                elif optimizer_name.lower() == "nesterov": 
                     optimizer = NesterovAcceleratedGradientOptimizer.NesterovAcceleratedGradientOptimizer(self.parameters(), lr=model.learning_rate, 
                             obj_and_grad_fn=model.obj_and_grad_fn,
                             constraint_fn=self.op_collections.move_boundary_op,
                             )
                 else:
-                    assert 0, "unknown optimizer %s" % (name)
+                    assert 0, "unknown optimizer %s" % (optimizer_name)
 
-                print("[I] use %s optimizer" % (name))
+                print("[I] use %s optimizer" % (optimizer_name))
                 model.train()
                 learning_rate = model.learning_rate
+                # defining evaluation ops 
                 eval_ops = {
                         #"wirelength" : self.op_collections.wirelength_op, 
                         #"density" : self.op_collections.density_op, 
@@ -139,32 +98,21 @@ class NonLinearPlace (BasicPlace.BasicPlace):
 
                 if params.gpu: 
                     torch.cuda.synchronize()
-                print("[I] %s initialization takes %g seconds" % (name, (time.time()-tt)))
+                print("[I] %s initialization takes %g seconds" % (optimizer_name, (time.time()-tt)))
 
                 for step in range(model.iteration):
                     # metric for this iteration 
                     cur_metric = EvalMetrics.EvalMetrics(iteration)
                     metrics.append(cur_metric)
 
-                    #print("############## iteration start ###################")
                     t0 = time.time()
 
+                    # move any out-of-bound cell back to placement region 
                     self.op_collections.move_boundary_op(model.data_collections.pos[0])
-
-                    # plot placement 
-                    #if iteration == 0 or (iteration > 600 and iteration % 10 == 0): 
-                    #    #cur_pos = model.data_collections.pos[0].data.clone().cpu().numpy()
-                    #    cur_pos = model.data_collections.pos[0].data.clone().cpu()
-                    #    self.plot(params, placedb, iteration, cur_pos)
-                    #    exit()
 
                     if torch.eq(model.density_weight, 0.0):
                         model.initialize_density_weight(params, placedb)
                         print("[I] density_weight = %.6E" % (model.density_weight.data))
-
-                    # I found it is not possible to call backward inside a backward function in autograd 
-                    # this means it is difficult to wrap wirelength and density gradients into autograd function 
-                    # so the easiest way is to leave it explicitly here 
 
                     optimizer.zero_grad()
                     #t1 = time.time()
@@ -180,14 +128,15 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                     cur_metric.gamma = model.gamma.data
                     #print("update density weight %.3f ms" % ((time.time()-t2)*1000))
 
-                    if name.lower() in ["sgd", "adam", "sgd_momentum", "sgd_nesterov", "cg"]: 
+                    # as nesterov requires line search, we cannot follow the convention of other solvers
+                    if optimizer_name.lower() in ["sgd", "adam", "sgd_momentum", "sgd_nesterov", "cg"]: 
                         model.obj_and_grad_fn(model.data_collections.pos[0])
-                    elif name.lower() != "nesterov":
-                        assert 0, "unsupported optimizer %s" % (name)
+                    elif optimizer_name.lower() != "nesterov":
+                        assert 0, "unsupported optimizer %s" % (optimizer_name)
 
-                    # exit when overflow goes to zero 
+                    # stopping criteria 
                     if iteration > 100 and ((cur_metric.overflow < params.stop_overflow and cur_metric.hpwl > metrics[-2].hpwl) or cur_metric.max_density < 1.0):
-                        print("[D] stoping criteria: %d > 100 and (( %g < 0.1 and %g > %g ) or %g < 1.0)" % (iteration, cur_metric.overflow, cur_metric.hpwl, metrics[-2].hpwl, cur_metric.max_density))
+                        print("[D] stopping criteria: %d > 100 and (( %g < 0.1 and %g > %g ) or %g < 1.0)" % (iteration, cur_metric.overflow, cur_metric.hpwl, metrics[-2].hpwl, cur_metric.max_density))
                         break 
 
                     # update learning rate 
@@ -198,20 +147,21 @@ class NonLinearPlace (BasicPlace.BasicPlace):
 
                     t3 = time.time()
                     optimizer.step()
-                    print("[T] optimizer step %.3f ms" % ((time.time()-t3)*1000))
+                    print("[I] optimizer step %.3f ms" % ((time.time()-t3)*1000))
 
                     iteration += 1
 
-                    print("[T] full step %.3f ms" % ((time.time()-t0)*1000))
-                    #print("############## iteration end ###################")
+                    print("[I] full step %.3f ms" % ((time.time()-t0)*1000))
 
-                print("[T] optimizer %s takes %.3f seconds" % (name, time.time()-tt))
+                print("[I] optimizer %s takes %.3f seconds" % (optimizer_name, time.time()-tt))
 
+        # legalization 
         if params.legalize_flag:
             tt = time.time()
             self.pos[0].data.copy_(self.op_collections.greedy_legalize_op(self.pos[0]))
             print("[I] legalization takes %.3f seconds" % (time.time()-tt))
 
+        # detailed placement 
         if params.detailed_place_flag: 
             print("[W] detailed placement NOT implemented yet, skipped")
 

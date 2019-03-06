@@ -2,6 +2,7 @@
 # @file   Placer.py
 # @author Yibo Lin
 # @date   Apr 2018
+# @brief  Main file to run the entire placement flow. 
 #
 
 import matplotlib 
@@ -15,13 +16,11 @@ import PlaceDB
 import NonLinearPlace 
 import pdb 
 
-# print all contents of numpy array 
-#np.set_printoptions(threshold=np.nan)
-
 def place(params):
-
-    enable_gp_flag = True
-    enable_dp_flag = True
+    """
+    @brief Top API to run the entire placement flow. 
+    @param params parameters 
+    """
 
     np.random.seed(params.random_seed)
     # read database 
@@ -35,7 +34,7 @@ def place(params):
     tt = time.time()
     placer = NonLinearPlace.NonLinearPlace(params, placedb)
     print("[I] non-linear placement initialization takes %.2f seconds" % (time.time()-tt))
-    metrics = placer(params, placedb, enable_gp_flag)
+    metrics = placer(params, placedb)
     print("[I] non-linear placement takes %.2f seconds" % (time.time()-tt))
 
     # write placement solution 
@@ -43,10 +42,9 @@ def place(params):
     if not os.path.exists(path):
         os.system("mkdir -p %s" % (path))
     gp_out_file = os.path.join(path, os.path.basename(params.aux_file).replace(".aux", ".gp.pl"))
-    if enable_gp_flag:
-        placedb.write_pl(params, gp_out_file)
+    placedb.write_pl(params, gp_out_file)
 
-    # call detailed placement
+    # call external detailed placement
     if params.detailed_place_engine and os.path.exists(params.detailed_place_engine): 
         print("[I] Use external detailed placement engine %s" % (params.detailed_place_engine))
         dp_out_file = gp_out_file.replace(".gp.pl", "")
@@ -65,8 +63,7 @@ def place(params):
         cmd = "%s -aux %s -loadpl %s %s -out %s -noglobal %s %s" % (params.detailed_place_engine, params.aux_file, gp_out_file, target_density_cmd, dp_out_file, legalize, detailed_place)
         print("[I] %s" % (cmd))
         tt = time.time()
-        if enable_dp_flag:
-            os.system(cmd)
+        os.system(cmd)
         print("[I] detailed placement takes %.2f seconds" % (time.time()-tt))
 
         # read solution and evaluate 
@@ -83,16 +80,18 @@ def place(params):
         print("[W] External detailed placement engine %s NOT found" % (params.detailed_place_engine))
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("[E] input parameters in json format in required")
-    paramsArray = []
-    for i in range(1, len(sys.argv)):
-        params = Params.Params()
-        params.load(sys.argv[i])
-        paramsArray.append(params)
-    print("[I] parameters[%d] = %s" % (len(paramsArray), paramsArray))
+    """
+    @brief main function to invoke the entire placement flow. 
+    """
+    if len(sys.argv) != 2:
+        print("[E] One input parameters in json format in required")
 
+    # load parameters 
+    params = Params.Params()
+    params.load(sys.argv[1])
+    print("[I] parameters = %s" % (params))
+
+    # run placement 
     tt = time.time()
-    for params in paramsArray: 
-        place(params)
+    place(params)
     print("[I] placement takes %.3f seconds" % (time.time()-tt))

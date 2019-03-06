@@ -2,6 +2,7 @@
 # @file   EvalMetrics.py
 # @author Yibo Lin
 # @date   Sep 2018
+# @brief  Evaluation metrics 
 #
 
 import time
@@ -9,6 +10,10 @@ import pdb
 
 class EvalMetrics (object):
     def __init__(self, iteration=None):
+        """
+        @brief evaluation metrics at one step 
+        @param iteration optimization step 
+        """
         self.iteration = iteration 
         self.wirelength = None
         self.density = None 
@@ -21,6 +26,9 @@ class EvalMetrics (object):
         self.eval_time = None
 
     def __str__(self):
+        """
+        @brief convert to string 
+        """
         content = ""
         if self.iteration is not None:
             content = "[I] iteration %4d" % (self.iteration)
@@ -46,9 +54,18 @@ class EvalMetrics (object):
         return content 
 
     def __repr__(self):
+        """
+        @brief print 
+        """
         return self.__str__()
 
     def evaluate(self, placedb, ops, var):
+        """
+        @brief evaluate metrics 
+        @param placedb placement database 
+        @param ops a list of ops 
+        @param var variables 
+        """
         tt = time.time()
         if "wirelength" in ops:
             self.wirelength = ops["wirelength"](var).data

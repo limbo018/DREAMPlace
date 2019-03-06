@@ -12,7 +12,7 @@ int computeLogSumExpWirelengthLauncher(
         const T* x, const T* y, 
         const int* flat_netpin, 
         const int* netpin_start, 
-        const int ignore_net_degree, 
+        const unsigned char* net_mask, 
         int num_nets, 
         int num_pins, 
         const T* gamma, 
@@ -31,9 +31,8 @@ std::vector<at::Tensor> logsumexp_wirelength_forward(
         at::Tensor pos,
         at::Tensor flat_netpin,
         at::Tensor netpin_start, 
-        at::Tensor netpin_values, // all ones, not used 
-        at::Tensor gamma, // a scalar tensor 
-        int ignore_net_degree 
+        at::Tensor net_mask, 
+        at::Tensor gamma // a scalar tensor 
         ) 
 {
     CHECK_FLAT(pos); 
@@ -54,7 +53,7 @@ std::vector<at::Tensor> logsumexp_wirelength_forward(
                     pos.data<scalar_t>(), pos.data<scalar_t>()+pos.numel()/2, 
                     flat_netpin.data<int>(), 
                     netpin_start.data<int>(), 
-                    ignore_net_degree, 
+                    net_mask.data<unsigned char>(), 
                     netpin_start.numel()-1, 
                     flat_netpin.numel(), 
                     gamma.data<scalar_t>(), 
@@ -76,9 +75,8 @@ at::Tensor logsumexp_wirelength_backward(
         at::Tensor exp_xy_sum, at::Tensor exp_nxy_sum, 
         at::Tensor flat_netpin,
         at::Tensor netpin_start, 
-        at::Tensor netpin_values, // all ones, not used 
-        at::Tensor gamma, // a scalar tensor 
-        int ignore_net_degree
+        at::Tensor net_mask, 
+        at::Tensor gamma // a scalar tensor 
         ) 
 {
     CHECK_FLAT(pos); 
@@ -107,7 +105,7 @@ at::Tensor logsumexp_wirelength_backward(
                     pos.data<scalar_t>(), pos.data<scalar_t>()+pos.numel()/2, 
                     flat_netpin.data<int>(), 
                     netpin_start.data<int>(), 
-                    ignore_net_degree, 
+                    net_mask.data<unsigned char>(), 
                     netpin_start.numel()-1, 
                     flat_netpin.numel(), 
                     gamma.data<scalar_t>(), 
@@ -126,7 +124,7 @@ int computeLogSumExpWirelengthLauncher(
         const T* x, const T* y, 
         const int* flat_netpin, 
         const int* netpin_start, 
-        const int ignore_net_degree, 
+        const unsigned char* net_mask, 
         int num_nets, 
         int num_pins, 
         const T* gamma, 
@@ -152,9 +150,10 @@ int computeLogSumExpWirelengthLauncher(
     }
     for (int i = 0; i < num_nets; ++i)
     {
-        int degree = netpin_start[i+1]-netpin_start[i];
-        if (degree < 2 || degree >= ignore_net_degree)
+        if (!net_mask[i])
+        {
             continue; 
+        }
         for (int k = 0; k < 2; ++k)
         {
             const T* xy = (k)? y : x; 

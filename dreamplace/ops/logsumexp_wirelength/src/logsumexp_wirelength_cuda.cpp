@@ -12,7 +12,7 @@ int computeLogSumExpWirelengthCudaLauncher(
         const int* flat_netpin, 
         const int* netpin_start, 
         const T* netpin_values, 
-        const int ignore_net_degree, 
+        const unsigned char* net_mask, 
         int num_nets, 
         int num_pins, 
         const T* gamma, 
@@ -32,8 +32,9 @@ std::vector<at::Tensor> logsumexp_wirelength_forward(
         at::Tensor flat_netpin,
         at::Tensor netpin_start, 
         at::Tensor netpin_values, // all ones 
-        at::Tensor gamma, // a scalar tensor 
-        int ignore_net_degree) 
+        at::Tensor net_mask, 
+        at::Tensor gamma // a scalar tensor 
+        ) 
 {
     CHECK_FLAT(pos); 
     CHECK_EVEN(pos);
@@ -59,7 +60,7 @@ std::vector<at::Tensor> logsumexp_wirelength_forward(
                     flat_netpin.data<int>(), 
                     netpin_start.data<int>(), 
                     netpin_values.data<scalar_t>(), 
-                    ignore_net_degree, 
+                    net_mask.data<unsigned char>(), 
                     netpin_start.numel()-1, 
                     flat_netpin.numel(),  
                     gamma.data<scalar_t>(), 
@@ -83,8 +84,9 @@ at::Tensor logsumexp_wirelength_backward(
         at::Tensor flat_netpin,
         at::Tensor netpin_start, 
         at::Tensor netpin_values, // all ones 
-        at::Tensor gamma, // a scalar tensor 
-        int ignore_net_degree) 
+        at::Tensor net_mask, 
+        at::Tensor gamma // a scalar tensor 
+        ) 
 {
     CHECK_FLAT(pos); 
     CHECK_EVEN(pos);
@@ -113,7 +115,7 @@ at::Tensor logsumexp_wirelength_backward(
                     flat_netpin.data<int>(), 
                     netpin_start.data<int>(), 
                     nullptr, 
-                    ignore_net_degree, 
+                    net_mask.data<unsigned char>(), 
                     netpin_start.numel()-1, 
                     flat_netpin.numel(),  
                     gamma.data<scalar_t>(), 

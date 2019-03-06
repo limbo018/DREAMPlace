@@ -21,20 +21,20 @@ class LogSumExpWirelengthFunction(Function):
     @param gamma the smaller, the closer to HPWL 
     """
     @staticmethod
-    def forward(ctx, pos, flat_netpin, netpin_start, netpin_values, gamma, ignore_net_degree):
+    def forward(ctx, pos, flat_netpin, netpin_start, netpin_values, net_mask, gamma):
         if pos.is_cuda:
-            output = logsumexp_wirelength_cuda.forward(pos.view(pos.numel()), flat_netpin, netpin_start, netpin_values, gamma, ignore_net_degree)
+            output = logsumexp_wirelength_cuda.forward(pos.view(pos.numel()), flat_netpin, netpin_start, netpin_values, net_mask, gamma)
         else:
-            output = logsumexp_wirelength_cpp.forward(pos.view(pos.numel()), flat_netpin, netpin_start, netpin_values, gamma, ignore_net_degree)
+            output = logsumexp_wirelength_cpp.forward(pos.view(pos.numel()), flat_netpin, netpin_start, net_mask, gamma)
         ctx.flat_netpin = flat_netpin
         ctx.netpin_start = netpin_start
         ctx.netpin_values = netpin_values
+        ctx.net_mask = net_mask 
         ctx.gamma = gamma
-        ctx.ignore_net_degree = ignore_net_degree
         ctx.exp_xy = output[1]
         ctx.exp_nxy = output[2]
-        ctx.exp_xy_sum = output[3];
-        ctx.exp_nxy_sum = output[4];
+        ctx.exp_xy_sum = output[3]
+        ctx.exp_nxy_sum = output[4]
         ctx.pos = pos 
         #if torch.isnan(ctx.exp_xy).any() or torch.isnan(ctx.exp_nxy).any() or torch.isnan(ctx.exp_xy_sum).any() or torch.isnan(ctx.exp_nxy_sum).any() or torch.isnan(output[0]).any():
         #    pdb.set_trace()
@@ -51,8 +51,8 @@ class LogSumExpWirelengthFunction(Function):
                     ctx.flat_netpin, 
                     ctx.netpin_start, 
                     ctx.netpin_values, 
-                    ctx.gamma,
-                    ctx.ignore_net_degree
+                    ctx.net_mask, 
+                    ctx.gamma
                     )
         else:
             output = logsumexp_wirelength_cpp.backward(
@@ -62,35 +62,12 @@ class LogSumExpWirelengthFunction(Function):
                     ctx.exp_xy_sum, ctx.exp_nxy_sum, 
                     ctx.flat_netpin, 
                     ctx.netpin_start, 
-                    ctx.netpin_values, 
-                    ctx.gamma,
-                    ctx.ignore_net_degree
+                    ctx.net_mask, 
+                    ctx.gamma
                     )
         #if torch.isnan(output).any():
         #    pdb.set_trace()
         return output, None, None, None, None, None
-
-class LogSumExpWirelength(nn.Module):
-    def __init__(self, flat_netpin, netpin_start, gamma, ignore_net_degree=None):
-        super(LogSumExpWirelength, self).__init__()
-        self.flat_netpin = flat_netpin 
-        self.netpin_start = netpin_start
-        self.netpin_values = None
-        self.gamma = gamma
-        if ignore_net_degree is None: 
-            self.ignore_net_degree = flat_netpin.numel()
-        else:
-            self.ignore_net_degree = ignore_net_degree
-    def forward(self, pos): 
-        if self.netpin_values is None: 
-            self.netpin_values = torch.ones(self.flat_netpin.numel(), dtype=pos.dtype, device=pos.device)
-        return LogSumExpWirelengthFunction.apply(pos, 
-                self.flat_netpin, 
-                self.netpin_start, 
-                self.netpin_values, 
-                self.gamma, 
-                self.ignore_net_degree
-                )
 
 class LogSumExpWirelengthAtomicFunction(Function):
     """compute weighted average wirelength.
@@ -135,16 +112,58 @@ class LogSumExpWirelengthAtomicFunction(Function):
         #    pdb.set_trace()
         return output, None, None, None
 
-class LogSumExpWirelengthAtomic(nn.Module):
-    def __init__(self, pin2net_map, net_mask, gamma):
-        super(LogSumExpWirelengthAtomic, self).__init__()
+class LogSumExpWirelength(nn.Module):
+    """ Compute log-sum-exp wirelength. 
+    CPU only supports net-by-net algorithm. 
+    GPU supports two algorithms: atomic, sparse. 
+    Different parameters are required for different algorithms. 
+
+    @param flat_netpin flat netpin map, length of #pins 
+    @param netpin_start starting index in netpin map for each net, length of #nets+1, the last entry is #pins  
+    @param pin2net_map pin2net map 
+    @param net_mask whether to compute wirelength, 1 means to compute, 0 means to ignore  
+    @param gamma the smaller, the closer to HPWL 
+    @param algorithm must be net-by-net | atomic | sparse 
+    """
+    def __init__(self, flat_netpin=None, netpin_start=None, pin2net_map=None, net_mask=None, gamma=None, algorithm='atomic'):
+        super(LogSumExpWirelength, self).__init__()
+        assert net_mask is not None and gamma is not None, "net_mask, gamma are requried parameters"
+        if algorithm == 'net-by-net':
+            assert flat_netpin is not None and netpin_start is not None, "flat_netpin, netpin_start are requried parameters for algorithm net-by-net"
+        elif algorithm == 'atomic':
+            assert pin2net_map is not None, "pin2net_map is required for algorithm atomic"
+        elif algorithm == 'sparse':
+            assert flat_netpin is not None and netpin_start is not None and pin2net_map is not None, "flat_netpin, netpin_start, pin2net_map are requried parameters for algorithm sparse"
+        self.flat_netpin = flat_netpin 
+        self.netpin_start = netpin_start
+        self.netpin_values = None 
         self.pin2net_map = pin2net_map 
         self.net_mask = net_mask 
         self.gamma = gamma
+        self.algorithm = algorithm
     def forward(self, pos): 
-        return LogSumExpWirelengthAtomicFunction.apply(pos, 
-                self.pin2net_map, 
-                self.net_mask,
-                self.gamma
-                )
-
+        if pos.is_cuda:
+            if self.algorithm == 'atomic':
+                return LogSumExpWirelengthAtomicFunction.apply(pos, 
+                        self.pin2net_map, 
+                        self.net_mask,
+                        self.gamma
+                        )
+            elif self.algorithm == 'sparse':
+                if self.netpin_values is None: 
+                    self.netpin_values = torch.ones_like(self.flat_netpin, dtype=pos.dtype)
+                return LogSumExpWirelengthFunction.apply(pos, 
+                        self.flat_netpin, 
+                        self.netpin_start, 
+                        self.netpin_values, 
+                        self.net_mask,
+                        self.gamma
+                        )
+        else: # only net-by-net for CPU 
+            return LogSumExpWirelengthFunction.apply(pos, 
+                    self.flat_netpin, 
+                    self.netpin_start, 
+                    None, 
+                    self.net_mask, 
+                    self.gamma
+                    )
