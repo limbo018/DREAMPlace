@@ -34,8 +34,6 @@ at::Tensor hpwl_atomic_forward(
     CHECK_FLAT(pin2net_map);
     CHECK_CONTIGUOUS(pin2net_map);
 
-    AT_ASSERTM(pos.is_cuda() && pos.ndimension() == 1 && (pos.numel()&1) == 0, "pos must be a flat tensor on GPU");
-
     int num_nets = net_mask.numel();
     // x then y 
     at::Tensor scaled_pos = pos.mul(1000)._cast_Int();
@@ -78,5 +76,4 @@ at::Tensor hpwl_atomic_forward(
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("forward", &hpwl_atomic_forward, "HPWL forward (CUDA)");
-  //m.def("backward", &hpwl_backward, "HPWL backward (CUDA)");
 }

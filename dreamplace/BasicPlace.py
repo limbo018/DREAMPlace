@@ -196,17 +196,17 @@ class BasicPlace (nn.Module):
     def build_hpwl(self, params, placedb, data_collections, pin_pos_op, device):
         # wirelength cost 
 
-        #wirelength_for_pin_op = ops.hpwl.HPWL(
-        #        flat_netpin=data_collections.flat_net2pin_map, 
-        #        netpin_start=data_collections.flat_net2pin_start_map,
-        #        ignore_net_degree=None #params.ignore_net_degree
-        #        )
-
-        # use HPWL atomic 
-        wirelength_for_pin_op = ops.hpwl.HPWLAtomic(
-                pin2net_map=data_collections.pin2net_map, 
-                net_mask=data_collections.net_mask_all
+        wirelength_for_pin_op = ops.hpwl.HPWL(
+                flat_netpin=data_collections.flat_net2pin_map, 
+                netpin_start=data_collections.flat_net2pin_start_map,
+                ignore_net_degree=None #params.ignore_net_degree
                 )
+
+        ## use HPWL atomic 
+        #wirelength_for_pin_op = ops.hpwl.HPWLAtomic(
+        #        pin2net_map=data_collections.pin2net_map, 
+        #        net_mask=data_collections.net_mask_all
+        #        )
 
         # wirelength for position 
         def build_wirelength_op(pos): 

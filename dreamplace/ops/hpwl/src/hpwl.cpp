@@ -20,12 +20,11 @@ int computeHPWLLauncher(
 #define CHECK_EVEN(x) AT_ASSERTM((x.numel()&1) == 0, #x "must have even number of elements")
 #define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x "must be contiguous")
 
-int hpwl_forward(
+at::Tensor hpwl_forward(
         at::Tensor pos,
         at::Tensor flat_netpin,
         at::Tensor netpin_start, 
-        int ignore_net_degree, 
-        at::Tensor hpwl) 
+        int ignore_net_degree) 
 {
     CHECK_FLAT(pos); 
     CHECK_EVEN(pos);
@@ -35,18 +34,18 @@ int hpwl_forward(
     CHECK_FLAT(netpin_start);
     CHECK_CONTIGUOUS(netpin_start);
 
-    int ret = 0; 
+    at::Tensor hpwl = at::zeros(1, pos.type()); 
     AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeHPWLLauncher", [&] {
-            ret = computeHPWLLauncher<scalar_t>(
+            computeHPWLLauncher<scalar_t>(
                     pos.data<scalar_t>(), pos.data<scalar_t>()+pos.numel()/2, 
                     flat_netpin.data<int>(), 
                     netpin_start.data<int>(), 
                     ignore_net_degree, 
                     netpin_start.numel()-1, 
                     hpwl.data<scalar_t>()
-            );
+                    );
             });
-    return ret; 
+    return hpwl; 
 }
 
 template <typename T>
@@ -84,7 +83,7 @@ int computeHPWLLauncher(
     return 0; 
 }
 
+
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("forward", &hpwl_forward, "HPWL forward");
-  //m.def("backward", &hpwl_backward, "HPWL backward");
 }

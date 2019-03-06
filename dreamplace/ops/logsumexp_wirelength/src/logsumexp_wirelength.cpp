@@ -5,6 +5,7 @@
  */
 #include <torch/torch.h>
 #include <cfloat>
+#include <limits>
 
 template <typename T>
 int computeLogSumExpWirelengthLauncher(
@@ -175,8 +176,8 @@ int computeLogSumExpWirelengthLauncher(
                 exp_xy_sum[i+k*num_nets] = 0; 
                 exp_nxy_sum[i+k*num_nets] = 0; 
 
-                T xy_max = -FLT_MAX; // maximum x to resolve numerical overflow
-                T xy_min = FLT_MAX; // minimum x to resolve numerical overflow
+                T xy_max = -std::numeric_limits<T>::max(); // maximum x to resolve numerical overflow
+                T xy_min = std::numeric_limits<T>::max(); // minimum x to resolve numerical overflow
 
                 for (int j = netpin_start[i]; j < netpin_start[i+1]; ++j)
                 {

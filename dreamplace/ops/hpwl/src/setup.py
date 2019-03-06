@@ -25,6 +25,10 @@ setup(
                     'hpwl_cuda.cpp',
                     'hpwl_cuda_kernel.cu'
                     ]),
+            CppExtension('hpwl_cpp_atomic', 
+                [
+                    'hpwl_atomic.cpp'
+                    ]),
             CUDAExtension('hpwl_cuda_atomic', 
                 [
                     'hpwl_cuda_atomic.cpp',

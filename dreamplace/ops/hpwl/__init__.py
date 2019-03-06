@@ -91,9 +91,18 @@ class HPWLOpTest(unittest.TestCase):
         print("hpwl_value cuda = ", hpwl_value.data.cpu().numpy())
         np.testing.assert_allclose(hpwl_value.data.cpu().numpy(), golden_value)
 
-        # test atomic gpu 
+        # test atomic cpu 
         net_mask = (net_degrees <= np.amax(net_degrees)).astype(np.uint8)
         print("net_mask = ", net_mask)
+        custom_atomic = hpwl.HPWLAtomic(
+                torch.from_numpy(pin2net_map), 
+                torch.from_numpy(net_mask)
+                )
+        hpwl_value = custom_atomic.forward(pin_pos_var)
+        print("hpwl_value atomic = ", hpwl_value.data.numpy())
+        np.testing.assert_allclose(hpwl_value.data.numpy(), golden_value)
+
+        # test atomic gpu 
         custom_cuda_atomic = hpwl.HPWLAtomic(
                 torch.from_numpy(pin2net_map).cuda(), 
                 torch.from_numpy(net_mask).cuda()
@@ -103,4 +112,4 @@ class HPWLOpTest(unittest.TestCase):
         np.testing.assert_allclose(hpwl_value.data.cpu().numpy(), golden_value)
 
 if __name__ == '__main__':
-  unittest.main()
+    unittest.main()

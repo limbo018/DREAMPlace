@@ -94,7 +94,8 @@ class NonLinearPlace (BasicPlace.BasicPlace):
 
         if params.global_place_flag: 
             for global_place_params in params.global_place_stages:
-                torch.cuda.synchronize()
+                if params.gpu: 
+                    torch.cuda.synchronize()
                 tt = time.time()
                 # construct model and optimizer 
                 density_weight = metrics[-1].density_weight if metrics else 0.0
@@ -136,7 +137,8 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                         print("[I] add %g%% noise" % (params.gp_noise_ratio*100))
                         model.op_collections.noise_op(model.data_collections.pos[0], params.gp_noise_ratio)
 
-                torch.cuda.synchronize()
+                if params.gpu: 
+                    torch.cuda.synchronize()
                 print("[I] %s initialization takes %g seconds" % (name, (time.time()-tt)))
 
                 for step in range(model.iteration):
@@ -198,50 +200,12 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                     optimizer.step()
                     print("[T] optimizer step %.3f ms" % ((time.time()-t3)*1000))
 
-                    #if (model.data_collections.pos[0][:placedb.num_movable_nodes] < placedb.xl-1).any():
-                    #    print("out of bounds ", (model.data_collections.pos[0][:placedb.num_movable_nodes] < placedb.xl-1).nonzero().size())
-                    #    #pdb.set_trace()
-                    #if (model.data_collections.pos[0][placedb.num_physical_nodes:placedb.num_nodes] < placedb.xl-1).any():
-                    #    print("out of bounds ", (model.data_collections.pos[0][placedb.num_physical_nodes:placedb.num_nodes] < placedb.xl-1).nonzero().size())
-                    #    #pdb.set_trace()
-                    #if (model.data_collections.pos[0][placedb.num_nodes:placedb.num_nodes+placedb.num_movable_nodes] < placedb.yl-1).any():
-                    #    print("out of bounds ", (model.data_collections.pos[0][placedb.num_nodes:placedb.num_nodes+placedb.num_movable_nodes] < placedb.yl-1).nonzero().size())
-                    #    #pdb.set_trace()
-                    #if (model.data_collections.pos[0][placedb.num_nodes+placedb.num_physical_nodes:2*placedb.num_nodes] < placedb.yl-1).any():
-                    #    print("out of bounds ", (model.data_collections.pos[0][placedb.num_nodes+placedb.num_physical_nodes:2*placedb.num_nodes] < placedb.yl-1).nonzero().size())
-                    #    #pdb.set_trace()
-
                     iteration += 1
 
                     print("[T] full step %.3f ms" % ((time.time()-t0)*1000))
                     #print("############## iteration end ###################")
 
                 print("[T] optimizer %s takes %.3f seconds" % (name, time.time()-tt))
-
-                #### for debug ### 
-                #from ops import density_overflow
-                #num_bins_x = 4
-                #num_bins_y = 4
-                #bin_size_x = (placedb.xh-placedb.xl)/num_bins_x 
-                #bin_size_y = (placedb.yh-placedb.yl)/num_bins_y 
-                #bin_center_x = placedb.bin_centers(placedb.xl, placedb.xh, bin_size_x)
-                #bin_center_y = placedb.bin_centers(placedb.yl, placedb.yh, bin_size_y)
-                #density_overflow_op = density_overflow.DensityOverflow(
-                #    torch.from_numpy(placedb.node_size_x).to(self.device), torch.from_numpy(placedb.node_size_y).to(self.device), 
-                #    torch.from_numpy(bin_center_x).to(self.device), torch.from_numpy(bin_center_y).to(self.device), 
-                #    target_density=params.target_density, 
-                #    xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
-                #    bin_size_x=bin_size_x, bin_size_y=bin_size_y, 
-                #    num_movable_nodes=placedb.num_movable_nodes, 
-                #    num_terminals=placedb.num_terminals, 
-                #    num_filler_nodes=0
-                #    )
-                #tmp_overflow, tmp_max_density = density_overflow_op(model.data_collections.pos[0])
-                #overflow = tmp_overflow.data / placedb.total_movable_node_area
-                #max_density = tmp_max_density.data 
-                #print("real density overflow for %dx%d bins %g, max_density %g" % (num_bins_x, num_bins_y, overflow, max_density))
-                #exit()
-                #### for debug ###
 
         if params.legalize_flag:
             tt = time.time()

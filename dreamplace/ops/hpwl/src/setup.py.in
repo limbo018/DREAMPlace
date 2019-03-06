@@ -23,6 +23,10 @@ modules.extend([
         [
             add_prefix('hpwl.cpp')
             ]),
+    CppExtension('hpwl_cpp_atomic', 
+        [
+            add_prefix('hpwl_atomic.cpp')
+            ]),
     ])
 
 if not "${CUDA_FOUND}" or "${CUDA_FOUND}".upper() == 'TRUE': 

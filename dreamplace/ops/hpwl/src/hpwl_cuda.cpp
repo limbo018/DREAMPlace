@@ -34,8 +34,6 @@ at::Tensor hpwl_forward(
     CHECK_FLAT(netpin_start);
     CHECK_CONTIGUOUS(netpin_start);
 
-    AT_ASSERTM(pos.is_cuda() && pos.ndimension() == 1 && (pos.numel()&1) == 0, "pos must be a flat tensor on GPU");
-
     // x then y 
     at::Tensor partial_wl = at::zeros({2, netpin_start.numel()-1}, pos.type()); 
 

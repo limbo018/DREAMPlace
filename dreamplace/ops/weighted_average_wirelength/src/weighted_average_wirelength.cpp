@@ -124,12 +124,25 @@ int computeWeightedAverageWirelengthLauncher(
         {
             continue; 
         }
+        T x_max = -std::numeric_limits<T>::max(); 
+        T x_min = std::numeric_limits<T>::max(); 
+        T y_max = -std::numeric_limits<T>::max(); 
+        T y_min = std::numeric_limits<T>::max(); 
+        for (int j = netpin_start[i]; j < netpin_start[i+1]; ++j)
+        {
+            T xx = x[flat_netpin[j]]; 
+            x_max = std::max(xx, x_max); 
+            x_min = std::min(xx, x_min); 
+            T yy = y[flat_netpin[j]]; 
+            y_max = std::max(yy, y_max); 
+            y_min = std::min(yy, y_min); 
+        }
         for (int j = netpin_start[i]; j < netpin_start[i+1]; ++j)
         {
             // for x 
             T xx = x[flat_netpin[j]]; 
-            T exp_x = exp(xx/(*gamma)); 
-            T exp_nx = exp(-xx/(*gamma)); 
+            T exp_x = exp((xx-x_max)/(*gamma)); 
+            T exp_nx = exp(-(xx-x_min)/(*gamma)); 
 
             xexp_x_sum += xx*exp_x; 
             xexp_nx_sum += xx*exp_nx; 
@@ -138,8 +151,8 @@ int computeWeightedAverageWirelengthLauncher(
 
             // for y 
             T yy = y[flat_netpin[j]]; 
-            T exp_y = exp(yy/(*gamma)); 
-            T exp_ny = exp(-yy/(*gamma)); 
+            T exp_y = exp((yy-y_max)/(*gamma)); 
+            T exp_ny = exp(-(yy-y_min)/(*gamma)); 
 
             yexp_y_sum += yy*exp_y; 
             yexp_ny_sum += yy*exp_ny; 
@@ -161,8 +174,8 @@ int computeWeightedAverageWirelengthLauncher(
             {
                 // for x 
                 T xx = x[flat_netpin[j]]; 
-                T exp_x = exp(xx/(*gamma)); 
-                T exp_nx = exp(-xx/(*gamma)); 
+                T exp_x = exp((xx-x_max)/(*gamma)); 
+                T exp_nx = exp(-(xx-x_min)/(*gamma)); 
                 T xexp_x = xx*exp_x; 
                 T xexp_nx = xx*exp_nx;
 
@@ -170,8 +183,8 @@ int computeWeightedAverageWirelengthLauncher(
 
                 // for y 
                 T yy = y[flat_netpin[j]]; 
-                T exp_y = exp(yy/(*gamma)); 
-                T exp_ny = exp(-yy/(*gamma)); 
+                T exp_y = exp((yy-y_max)/(*gamma)); 
+                T exp_ny = exp(-(yy-y_min)/(*gamma)); 
                 T yexp_y = yy*exp_y; 
                 T yexp_ny = yy*exp_ny;
 

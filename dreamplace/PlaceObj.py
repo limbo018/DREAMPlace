@@ -26,9 +26,10 @@ class PlaceObj(nn.Module):
     def __init__(self, density_weight, params, placedb, data_collections, op_collections, global_place_params):
         super(PlaceObj, self).__init__()
 
+        self.gpu = params.gpu
         self.data_collections = data_collections 
         self.op_collections = op_collections 
-        self.density_weight = torch.tensor(density_weight, dtype=self.data_collections.pos[0].dtype, device=self.data_collections.pos[0].device)
+        self.density_weight = torch.tensor([density_weight], dtype=self.data_collections.pos[0].dtype, device=self.data_collections.pos[0].device)
         self.gamma = torch.tensor(10*self.base_gamma(params, placedb), dtype=self.data_collections.pos[0].dtype, device=self.data_collections.pos[0].device)
 
         # compute weighted average wirelength from position 
@@ -56,11 +57,13 @@ class PlaceObj(nn.Module):
     def obj_fn(self, pos):
         #tt = time.time()
         wirelength = self.op_collections.wirelength_op(pos)
-        torch.cuda.synchronize()
+        if self.gpu: 
+            torch.cuda.synchronize()
         #print("\t\twirelength forward %.3f ms" % ((time.time()-tt)*1000))
         #tt = time.time()
         density = self.op_collections.density_op(pos)
-        torch.cuda.synchronize()
+        if self.gpu: 
+            torch.cuda.synchronize()
         #print("\t\tdensity forward %.3f ms" % ((time.time()-tt)*1000))
         return wirelength + self.density_weight*density
     """compute objective and gradient 
@@ -73,11 +76,13 @@ class PlaceObj(nn.Module):
 
         if pos.grad is not None:
             pos.grad.zero_()
-        torch.cuda.synchronize()
+        if self.gpu: 
+            torch.cuda.synchronize()
 
         #tt = time.time()
         obj.backward()
-        #torch.cuda.synchronize()
+        #if self.gpu: 
+        #    torch.cuda.synchronize()
         #print("\tobj backward takes %.3f ms" % ((time.time()-tt)*1000))
 
         self.op_collections.precondition_op(pos.grad)
@@ -117,11 +122,6 @@ class PlaceObj(nn.Module):
     def build_weighted_average_wl(self, params, placedb, data_collections, pin_pos_op):
         # wirelength cost 
         # weighted-average 
-
-        # dump 
-        #with gzip.open('bigblue3_wirelength.pklz', 'w') as f:
-        #    pickle.dump((placedb.flat_net2pin_map, placedb.flat_net2pin_start_map, placedb.pin2net_map, net_mask, pin_mask, self.gamma), f)
-        #    exit()
 
         # use WeightedAverageWirelength atomic 
         wirelength_for_pin_op = weighted_average_wirelength.WeightedAverageWirelength(
@@ -303,7 +303,7 @@ class PlaceObj(nn.Module):
         density_grad_norm = self.data_collections.pos[0].grad.norm(p=1)
 
         grad_norm_ratio = wirelength_grad_norm / density_grad_norm
-        self.density_weight = params.density_weight*grad_norm_ratio
+        self.density_weight = torch.tensor([params.density_weight*grad_norm_ratio], dtype=self.data_collections.pos[0].dtype, device=self.data_collections.pos[0].device)
 
         return self.density_weight
     """
