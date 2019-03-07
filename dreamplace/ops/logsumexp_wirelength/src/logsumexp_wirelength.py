@@ -2,6 +2,7 @@
 # @file   logsumexp_wirelength.py
 # @author Yibo Lin
 # @date   Jun 2018
+# @brief  Compute log-sum-exp wirelength and gradient according to NTUPlace3 
 #
 
 import torch

@@ -2,6 +2,7 @@
 # @file   draw_place.py
 # @author Yibo Lin
 # @date   Jan 2019
+# @brief  Plot placement to an image 
 #
 
 import torch 
@@ -35,9 +36,13 @@ class DrawPlaceFunction(Function):
                 )
 
 class DrawPlace(object):
-    """ Draw placement
+    """ 
+    @brief Draw placement
     """
     def __init__(self, placedb):
+        """
+        @brief initialization 
+        """
         self.placedb = placedb 
         self.node_size_x = torch.from_numpy(placedb.node_size_x)
         self.node_size_y = torch.from_numpy(placedb.node_size_y)
@@ -55,10 +60,11 @@ class DrawPlace(object):
         self.num_movable_nodes = placedb.num_movable_nodes
         self.num_filler_nodes = placedb.num_filler_nodes
 
-    """ 
-    @param filename suffix specifies the format 
-    """
     def forward(self, pos, filename): 
+        """ 
+        @param pos cell locations, array of x locations and then y locations 
+        @param filename suffix specifies the format 
+        """
         return DrawPlaceFunction.forward(
                 pos, 
                 self.node_size_x, 
@@ -78,8 +84,11 @@ class DrawPlace(object):
                 self.num_filler_nodes, 
                 filename
                 )
-    """
-    top API 
-    """
+
     def __call__(self, pos, filename):
+        """
+        @brief top API 
+        @param pos cell locations, array of x locations and then y locations 
+        @param filename suffix specifies the format 
+        """
         return self.forward(pos, filename)

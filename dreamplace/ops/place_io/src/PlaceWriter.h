@@ -5,14 +5,14 @@
     > Created Time: Mon 20 Jul 2015 11:34:51 AM CDT
  ************************************************************************/
 
-#ifndef GPF_PLACEWRITER_H
-#define GPF_PLACEWRITER_H
+#ifndef DREAMPLACE_PLACEWRITER_H
+#define DREAMPLACE_PLACEWRITER_H
 
 #include <cstdio>
 #include <vector>
 #include "PlaceDB.h"
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 /// class PlaceSolWriter is the base class to write placement solutions 
 class PlaceSolWriter
@@ -25,6 +25,6 @@ class PlaceSolWriter
         PlaceDB const& m_db;
 };
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE
 
 #endif

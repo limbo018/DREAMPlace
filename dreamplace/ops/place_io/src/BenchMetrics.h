@@ -5,14 +5,14 @@
     > Created Time: Mon 14 Mar 2016 09:15:53 PM CDT
  ************************************************************************/
 
-#ifndef GPF_BENCHMETRICS_H
-#define GPF_BENCHMETRICS_H
+#ifndef DREAMPLACE_BENCHMETRICS_H
+#define DREAMPLACE_BENCHMETRICS_H
 
 #include <string>
 #include <vector>
 #include "Box.h"
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 /// ================================================
 /// a simple class storing metrics for benchmarks 
@@ -68,6 +68,6 @@ struct BenchMetrics
     void print() const;
 };
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE
 
 #endif

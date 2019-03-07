@@ -17,7 +17,7 @@ class Params (object):
 
 if __name__ == "__main__":
     params = Params()
-    params.aux_file = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../benchmarks/simple/simple.aux"))
+    params.aux_file = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../benchmarks/simple/simple.aux"))
 
     db = place_io.PlaceIOFunction.forward(params)
 

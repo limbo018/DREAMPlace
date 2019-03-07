@@ -10,7 +10,7 @@
 #include "Iterators.h"
 #include <algorithm>
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 SubRowNodeMap::SubRowNodeMap(AlgoDB const* db)
 {
@@ -114,7 +114,7 @@ std::vector<SubRowNodeMap::index_type> SubRowNodeMap::queryRange(Box<SubRowNodeM
             {
 #ifdef DEBUG
 #ifdef USE_RTREE
-                gpfAssert(getMapElementHigh(itn) > box.xl()); // skip cells that do not have overlap with the range 
+                dreamplaceAssert(getMapElementHigh(itn) > box.xl()); // skip cells that do not have overlap with the range 
 #endif
 #endif
 #ifdef USE_RTREE
@@ -221,7 +221,7 @@ void SubRowNodeMap::printRange(SubRowNodeMap::index_type idx,
         SubRowNodeMap::coordinate_type xl, SubRowNodeMap::coordinate_type xh) const 
 {
     char prefix[16];
-    gpfSPrint(kNONE, prefix, "r%u: ", idx);
+    dreamplaceSPrint(kNONE, prefix, "r%u: ", idx);
 #ifdef USE_RTREE
     for (map_const_iterator_type it = subRowMap(idx).qbegin(
                 bgi::intersects(
@@ -231,18 +231,18 @@ void SubRowNodeMap::printRange(SubRowNodeMap::index_type idx,
                     NoBoundaryPredicate(xl, xh)
                     )); it != subRowMap(idx).qend(); ++it)
     {
-        gpfPrint(kNONE, "%s%u@%d", prefix, getMapElementId(it), getMapElementLow(it));
-        gpfSPrint(kNONE, prefix, ", ");
+        dreamplacePrint(kNONE, "%s%u@%d", prefix, getMapElementId(it), getMapElementLow(it));
+        dreamplaceSPrint(kNONE, prefix, ", ");
     }
 #elif defined(USE_INTERVALHASHMAP)
     std::pair<map_const_iterator_type, map_const_iterator_type> found = query(subRowMap(idx), xl, xh, true); 
     for (map_const_iterator_type it = found.first; it != found.second; ++it)
     {
-        gpfPrint(kNONE, "%s%u@%d", prefix, getMapElementId(it), getMapElementLow(it));
-        gpfSPrint(kNONE, prefix, ", ");
+        dreamplacePrint(kNONE, "%s%u@%d", prefix, getMapElementId(it), getMapElementLow(it));
+        dreamplaceSPrint(kNONE, prefix, ", ");
     }
 #endif 
-    gpfPrint(kNONE, "\n");
+    dreamplacePrint(kNONE, "\n");
 }
 
 #if 0
@@ -257,4 +257,4 @@ Node const& SubRowNodeMap::getMapElement(SubRowNodeMap::map_element_type const& 
 }
 #endif
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE

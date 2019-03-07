@@ -10,6 +10,11 @@ from torch.utils.cpp_extension import BuildExtension, CppExtension, CUDAExtensio
 import os 
 import sys
 
+ops_dir = "${OPS_DIR}"
+include_dirs = [ops_dir]
+lib_dirs = ['${UTILITY_LIBRARY_DIRS}']
+libs = ['utility'] 
+
 def add_prefix(filename):
     return os.path.join('${CMAKE_CURRENT_SOURCE_DIR}/src', filename)
 
@@ -24,6 +29,9 @@ modules.extend([
             add_prefix('merge_bin_cpu.cpp'), 
             add_prefix('greedy_legalize_cpu.cpp') 
             ], 
+        include_dirs=include_dirs, 
+        library_dirs=lib_dirs,
+        libraries=libs,
         extra_compile_args={
             #'cxx': ['-g', '-O0'], 
             'cxx': ['-O2'], 

@@ -2,6 +2,7 @@
  * @file   hpwl_cuda.cpp
  * @author Yibo Lin
  * @date   Jun 2018
+ * @brief  Compute weighted-average wirelength and gradient according to e-place
  */
 #include <torch/torch.h>
 #include <limits>
@@ -84,6 +85,13 @@ at::Tensor weighted_average_wirelength_forward(
     return wl; 
 }
 
+/// @brief Compute gradient 
+/// @param grad_pos input gradient from backward propagation 
+/// @param pos locations of pins 
+/// @param flat_netpin similar to the JA array in CSR format, which is flattened from the net2pin map (array of array)
+/// @param netpin_start similar to the IA array in CSR format, IA[i+1]-IA[i] is the number of pins in each net, the length of IA is number of nets + 1
+/// @param net_mask an array to record whether compute the where for a net or not 
+/// @param gamma a scalar tensor for the parameter in the equation 
 at::Tensor weighted_average_wirelength_backward(
         at::Tensor grad_pos, 
         at::Tensor pos,

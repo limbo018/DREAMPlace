@@ -5,14 +5,14 @@
     > Created Time: Sun Jun 21 20:06:50 2015
  ************************************************************************/
 
-#ifndef GPF_BIN_H
-#define GPF_BIN_H
+#ifndef DREAMPLACE_BIN_H
+#define DREAMPLACE_BIN_H
 
 #include "Box.h"
 #include "Object.h"
 #include "HrchyList.h"
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 enum BinType
 {
@@ -25,7 +25,7 @@ inline BinType& operator++(BinType& t)
 {
     if (t == kBin) return (t = kSBin);
     else if (t == kSBin) return (t = kBinTypeNum);
-    gpfAssertMsg(0, "overflow for increment BinType");
+    dreamplaceAssertMsg(0, "overflow for increment BinType");
     return t;
 }
 
@@ -192,6 +192,6 @@ inline double Bin::pinDensity(Bin::index_type d) const
         return (double)d/m_siteCapacity;
 }
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE
 
 #endif

@@ -7,7 +7,7 @@
 
 #include "Node.h"
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 Node::Node() 
     : Node::base_type1()
@@ -65,4 +65,4 @@ void NodeProperty::copy(NodeProperty const& rhs)
     m_macroId = rhs.m_macroId;
 }
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE

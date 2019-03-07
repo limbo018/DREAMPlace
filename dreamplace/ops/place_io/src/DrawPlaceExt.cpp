@@ -17,7 +17,7 @@
 #endif
 
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 void ChainMoveDrawerExt::paintCairo(AlgoDB const& db, cairo_t* c, double width, double height) const 
 {
@@ -27,7 +27,7 @@ void ChainMoveDrawerExt::paintCairo(AlgoDB const& db, cairo_t* c, double width, 
 
     AlgoDB::box_type region = intersection(m_region, placeDB.dieArea()).first;
     double regionRatio = region.area()/(double)placeDB.dieArea().area();
-    gpfPrint(kINFO, "draw region (%d, %d, %d, %d) ratio = %g\n", region.xl(), region.yl(), region.xh(), region.yh(), regionRatio);
+    dreamplacePrint(kINFO, "draw region (%d, %d, %d, %d) ratio = %g\n", region.xl(), region.yl(), region.xh(), region.yh(), regionRatio);
     cairo_save(c);
 
     // the order of transform matters 
@@ -94,7 +94,7 @@ void ChainMoveDrawerExt::paintCairo(AlgoDB const& db, cairo_t* c, double width, 
         cairo_stroke(c);
     }
 #else 
-    gpfPrint(kWARN, "&db = %p, c = %p, width = %g, height = %g are not used, as DRAWPLACE not enabled\n", &db, c, width, height);
+    dreamplacePrint(kWARN, "&db = %p, c = %p, width = %g, height = %g are not used, as DRAWPLACE not enabled\n", &db, c, width, height);
 #endif
 }
 
@@ -110,7 +110,7 @@ void RowDPDrawerExt::paintCairo(AlgoDB const& db, cairo_t* c, double width, doub
 
     AlgoDB::box_type region = intersection(m_region, placeDB.dieArea()).first;
     double regionRatio = region.area()/(double)placeDB.dieArea().area();
-    gpfPrint(kINFO, "draw region (%d, %d, %d, %d) ratio = %g\n", region.xl(), region.yl(), region.xh(), region.yh(), regionRatio);
+    dreamplacePrint(kINFO, "draw region (%d, %d, %d, %d) ratio = %g\n", region.xl(), region.yl(), region.xh(), region.yh(), regionRatio);
     cairo_save(c);
 
     // the order of transform matters 
@@ -183,7 +183,7 @@ void RowDPDrawerExt::paintCairo(AlgoDB const& db, cairo_t* c, double width, doub
         }
     }
 #else 
-    gpfPrint(kWARN, "&db = %p, c = %p, width = %g, height = %g are not used, as DRAWPLACE not enabled\n", &db, c, width, height);
+    dreamplacePrint(kWARN, "&db = %p, c = %p, width = %g, height = %g are not used, as DRAWPLACE not enabled\n", &db, c, width, height);
 #endif
 }
 
@@ -191,4 +191,4 @@ void RowDPDrawerExt::writeGdsii(AlgoDB const& /*db*/, GdsParser::GdsWriter& /*gw
 {
 }
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE

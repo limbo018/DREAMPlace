@@ -2,8 +2,8 @@
 #include <stdio.h>
 #include "assert.h"
 #include "cuda_runtime.h"
-#include "csrmv.h"
-#include "print.h"
+#include "utility/src/csrmv.h"
+#include "utility/src/print.h"
 
 template <typename T>
 __global__ void fillArray(T* x, const int n, const T v)

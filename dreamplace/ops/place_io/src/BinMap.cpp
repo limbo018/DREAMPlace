@@ -7,7 +7,7 @@
 
 #include "BinMap.h"
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 BinMap& BinMap::set(BinType type, BinMap::index_type xNum, BinMap::index_type yNum)
 {
@@ -48,4 +48,4 @@ BinMap& BinMap::resetBinDemand()
     return *this;
 }
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE

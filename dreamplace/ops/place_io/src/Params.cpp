@@ -13,7 +13,7 @@
 #include <boost/algorithm/string.hpp>
 #include <limbo/string/String.h>
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 std::string toString(PlaceConfig pc)
 {
@@ -73,13 +73,13 @@ bool UserParam::read(int argc, char** argv)
     {
         if (strcmp(argv[i], "-config") == 0)
         {
-            gpfAssertMsg(i+1 < argc, "need argument for -config");
+            dreamplaceAssertMsg(i+1 < argc, "need argument for -config");
             if (limbo::iequals(argv[i+1], "NORMAL"))
                 placeConfig = NORMAL;
             else if (limbo::iequals(argv[i+1], "ICCAD"))
                 placeConfig = ICCAD;
             else 
-                gpfAssertMsg(0, "unknown placeConfig %s", argv[i+1]);
+                dreamplaceAssertMsg(0, "unknown placeConfig %s", argv[i+1]);
         }
     }
 
@@ -102,7 +102,7 @@ bool UserParam::readNormal(int argc, char** argv, UserParamExtHelper const& help
     // some default vectors 
     // program_options does not support passing a pair of values, so add comma to make it a std::string and convert to pairs later 
     std::string defaultAbuPercStr[4] = {"2,10", "5,5", "10,2", "20,1"};
-    gpfSPrint(kNONE, buf, "%d,%d,%d,%d", defaultParam.drawRegion[0], defaultParam.drawRegion[1], defaultParam.drawRegion[2], defaultParam.drawRegion[3]);
+    dreamplaceSPrint(kNONE, buf, "%d,%d,%d,%d", defaultParam.drawRegion[0], defaultParam.drawRegion[1], defaultParam.drawRegion[2], defaultParam.drawRegion[3]);
     std::string defaultDrawRegionStr = buf; 
     std::vector<std::string> vAbuPercStr;
     std::vector<std::string> vDefIgnoreCellType;
@@ -169,7 +169,7 @@ bool UserParam::readNormal(int argc, char** argv, UserParamExtHelper const& help
         if (!desc.count("--bookshelf_aux_input")) // if specified Bookshelf input, LEF/DEF input is no longer required 
         {
             // if not specified, must provide LEF/DEF 
-            gpfAssertMsg(desc.count("--lef_input") && desc.count("--def_input"), "need either Bookshelf or LEF/DEF input files"); 
+            dreamplaceAssertMsg(desc.count("--lef_input") && desc.count("--def_input"), "need either Bookshelf or LEF/DEF input files"); 
         }
         if (!desc.count("--def_output"))
         {
@@ -201,7 +201,7 @@ bool UserParam::readNormal(int argc, char** argv, UserParamExtHelper const& help
         if (defInput.empty() && (fileFormat == DEF || fileFormat == DEFSIMPLE))
         {
             fileFormat = BOOKSHELF;
-            gpfPrint(kWARN, "DEF input file not specified, cannot output DEF file; set to DEFSIMPLE\n");
+            dreamplacePrint(kWARN, "DEF input file not specified, cannot output DEF file; set to DEFSIMPLE\n");
         }
 
         // post processing drawRegion 
@@ -217,7 +217,7 @@ bool UserParam::readNormal(int argc, char** argv, UserParamExtHelper const& help
     {
         // print help message and error message 
         std::cout << desc << "\n";
-        gpfPrint(kERROR, "%s\n", e.what());
+        dreamplacePrint(kERROR, "%s\n", e.what());
         return false;
     }
 
@@ -274,7 +274,7 @@ bool UserParam::readICCAD(int argc, char** argv, UserParamExtHelper const& helpe
         std::ifstream in (iccadFile.c_str());
         if (!in.good())
         {
-            gpfPrint(kERROR, "unable to open %s for read\n", iccadFile.c_str());
+            dreamplacePrint(kERROR, "unable to open %s for read\n", iccadFile.c_str());
             return false;
         }
         std::vector<std::string> vToken;
@@ -315,7 +315,7 @@ bool UserParam::readICCAD(int argc, char** argv, UserParamExtHelper const& helpe
     {
         // print help message and error message 
         std::cout << desc << "\n";
-        gpfPrint(kERROR, "%s\n", e.what());
+        dreamplacePrint(kERROR, "%s\n", e.what());
         return false;
     }
 
@@ -337,50 +337,50 @@ bool UserParam::readICCAD(int argc, char** argv, UserParamExtHelper const& helpe
 
 void UserParam::printParams() const 
 {
-    gpfPrint(kINFO, "lef_input = ");
+    dreamplacePrint(kINFO, "lef_input = ");
     for (std::vector<std::string>::const_iterator it = vLefInput.begin(), ite = vLefInput.end(); it != ite; ++it)
-        gpfPrint(kNONE, "%s ", it->c_str());
-    gpfPrint(kNONE, "\n");
-    gpfPrint(kINFO, "def_input = %s\n", defInput.c_str());
-    gpfPrint(kINFO, "verilog_input = %s\n", verilogInput.c_str());
-    gpfPrint(kINFO, "bookshelf_aux_input = %s\n", bookshelfAuxInput.c_str());
-    gpfPrint(kINFO, "bookshelf_pl_input = %s\n", bookshelfPlInput.c_str());
-    gpfPrint(kINFO, "def_size_input = %s\n", defSizeInput.c_str());
-    gpfPrint(kINFO, "def_output = %s\n", defOutput.c_str());
-    gpfPrint(kINFO, "rpt_output = %s\n", rptOutput.c_str());
-    gpfPrint(kINFO, "target_util = %g\n", targetUtil);
-    gpfPrint(kINFO, "max_displace = %g\n", maxDisplace);
-    gpfPrint(kINFO, "bin size = (%u, %u) #rows\n", binSize[kX], binSize[kY]);
-    gpfPrint(kINFO, "sbin size = (%u, %u) #rows\n", binSize[2+kX], binSize[2+kY]);
-    gpfPrint(kINFO, "bin_space_threshold = %g\n", binSpaceThreshold);
-    gpfPrint(kINFO, "abu = ");
+        dreamplacePrint(kNONE, "%s ", it->c_str());
+    dreamplacePrint(kNONE, "\n");
+    dreamplacePrint(kINFO, "def_input = %s\n", defInput.c_str());
+    dreamplacePrint(kINFO, "verilog_input = %s\n", verilogInput.c_str());
+    dreamplacePrint(kINFO, "bookshelf_aux_input = %s\n", bookshelfAuxInput.c_str());
+    dreamplacePrint(kINFO, "bookshelf_pl_input = %s\n", bookshelfPlInput.c_str());
+    dreamplacePrint(kINFO, "def_size_input = %s\n", defSizeInput.c_str());
+    dreamplacePrint(kINFO, "def_output = %s\n", defOutput.c_str());
+    dreamplacePrint(kINFO, "rpt_output = %s\n", rptOutput.c_str());
+    dreamplacePrint(kINFO, "target_util = %g\n", targetUtil);
+    dreamplacePrint(kINFO, "max_displace = %g\n", maxDisplace);
+    dreamplacePrint(kINFO, "bin size = (%u, %u) #rows\n", binSize[kX], binSize[kY]);
+    dreamplacePrint(kINFO, "sbin size = (%u, %u) #rows\n", binSize[2+kX], binSize[2+kY]);
+    dreamplacePrint(kINFO, "bin_space_threshold = %g\n", binSpaceThreshold);
+    dreamplacePrint(kINFO, "abu = ");
     for (std::vector<std::pair<int, int> >::const_iterator it = vAbuPerc.begin(), ite = vAbuPerc.end(); it != ite; ++it)
-        gpfPrint(kNONE, "%d,%d ", it->first, it->second);
-    gpfPrint(kNONE, "\n");
-    gpfPrint(kINFO, "def_ignore_cells = ");
+        dreamplacePrint(kNONE, "%d,%d ", it->first, it->second);
+    dreamplacePrint(kNONE, "\n");
+    dreamplacePrint(kINFO, "def_ignore_cells = ");
     for (std::set<std::string>::const_iterator it = sDefIgnoreCellType.begin(), ite = sDefIgnoreCellType.end(); it != ite; ++it)
-        gpfPrint(kNONE, "%s ", it->c_str());
-    gpfPrint(kNONE, "\n");
-    gpfPrint(kINFO, "macro_obs_aware_layers = ");
+        dreamplacePrint(kNONE, "%s ", it->c_str());
+    dreamplacePrint(kNONE, "\n");
+    dreamplacePrint(kINFO, "macro_obs_aware_layers = ");
     for (std::set<std::string>::const_iterator it = sMacroObsAwareLayer.begin(), ite = sMacroObsAwareLayer.end(); it != ite; ++it)
-        gpfPrint(kNONE, "%s ", it->c_str());
-    gpfPrint(kNONE, "\n");
-    gpfPrint(kINFO, "enable_place = %s\n", ((enablePlace)? "true" : "false"));
-    gpfPrint(kINFO, "enable_legalize = %s\n", ((enableLegalize)? "true" : "false"));
-    gpfPrint(kINFO, "evaluate_overlap = %s\n", ((evaluateOverlap)? "true" : "false"));
-    gpfPrint(kINFO, "move_multi_row_cell = %s\n", ((moveMultiRowCell)? "true" : "false"));
-    gpfPrint(kINFO, "align_power_line = %s\n", ((alignPowerLine)? "true" : "false"));
-    gpfPrint(kINFO, "cluster_cell = %s\n", ((clusterCell)? "true" : "false"));
-    gpfPrint(kINFO, "file_format = %s\n", toString(fileFormat).c_str());
-    gpfPrint(kINFO, "max_iters = %u\n", maxIters);
+        dreamplacePrint(kNONE, "%s ", it->c_str());
+    dreamplacePrint(kNONE, "\n");
+    dreamplacePrint(kINFO, "enable_place = %s\n", ((enablePlace)? "true" : "false"));
+    dreamplacePrint(kINFO, "enable_legalize = %s\n", ((enableLegalize)? "true" : "false"));
+    dreamplacePrint(kINFO, "evaluate_overlap = %s\n", ((evaluateOverlap)? "true" : "false"));
+    dreamplacePrint(kINFO, "move_multi_row_cell = %s\n", ((moveMultiRowCell)? "true" : "false"));
+    dreamplacePrint(kINFO, "align_power_line = %s\n", ((alignPowerLine)? "true" : "false"));
+    dreamplacePrint(kINFO, "cluster_cell = %s\n", ((clusterCell)? "true" : "false"));
+    dreamplacePrint(kINFO, "file_format = %s\n", toString(fileFormat).c_str());
+    dreamplacePrint(kINFO, "max_iters = %u\n", maxIters);
 }
 
 void UserParam::printWelcome() const 
 {
-    gpfPrint(kNONE, "========================= Generic Placement Framework =========================\n");
-    gpfPrint(kNONE, "Authors: Yibo Lin, David Pan at UTDA\n");
-    gpfPrint(kNONE, "Email: yibolin@utexas.edu\n");
-    gpfPrint(kNONE, "===============================================================================\n\n");
+    dreamplacePrint(kNONE, "========================= Generic Placement Framework =========================\n");
+    dreamplacePrint(kNONE, "Authors: Yibo Lin, David Pan at UTDA\n");
+    dreamplacePrint(kNONE, "Email: yibolin@utexas.edu\n");
+    dreamplacePrint(kNONE, "===============================================================================\n\n");
 }
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE

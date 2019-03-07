@@ -5,8 +5,8 @@
     > Created Time: Sun 14 Feb 2016 10:27:34 AM CST
  ************************************************************************/
 
-#ifndef GPF_SUBROWNODEMAP_H
-#define GPF_SUBROWNODEMAP_H
+#ifndef DREAMPLACE_SUBROWNODEMAP_H
+#define DREAMPLACE_SUBROWNODEMAP_H
 
 #include <iostream>
 #include "Interval.h"
@@ -20,7 +20,7 @@
 //#define USE_RTREE 
 #define USE_INTERVALHASHMAP 
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 /// forward declaration of data 
 class AlgoDB;
@@ -164,6 +164,6 @@ struct NoBoundaryPredicate
 
 };
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE
 
 #endif

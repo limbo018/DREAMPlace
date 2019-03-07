@@ -5,8 +5,8 @@
     > Created Time: Thu Jun 18 01:03:56 2015
  ************************************************************************/
 
-#ifndef GPF_PARAMS_H
-#define GPF_PARAMS_H
+#ifndef DREAMPLACE_PARAMS_H
+#define DREAMPLACE_PARAMS_H
 
 #include <string>
 #include <vector>
@@ -15,7 +15,7 @@
 
 #include "Enums.h"
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 enum PlaceConfig 
 {
@@ -126,6 +126,6 @@ struct UserParam
 
 };
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE
 
 #endif

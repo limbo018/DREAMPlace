@@ -2,6 +2,7 @@
  * @file   hpwl_cuda.cpp
  * @author Yibo Lin
  * @date   Jun 2018
+ * @brief  Compute log-sum-exp wirelength and gradient according to NTUPlace3 
  */
 #include <torch/torch.h>
 #include <limits>
@@ -27,6 +28,14 @@ int computeLogSumExpWirelengthCudaLauncher(
 #define CHECK_EVEN(x) AT_ASSERTM((x.numel()&1) == 0, #x "must have even number of elements")
 #define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x "must be contiguous")
 
+/// @brief Compute log-sum-exp wirelength according to NTUPlace3 
+///     gamma * (log(\sum exp(x_i/gamma)) + log(\sum exp(-x_i/gamma)))
+/// @param pos cell locations, array of x locations and then y locations 
+/// @param flat_netpin similar to the JA array in CSR format, which is flattened from the net2pin map (array of array)
+/// @param netpin_start similar to the IA array in CSR format, IA[i+1]-IA[i] is the number of pins in each net, the length of IA is number of nets + 1
+/// @param netpin_values similar to the value array in CSR format, a dummy array of all ones
+/// @param net_mask an array to record whether compute the where for a net or not 
+/// @param gamma a scalar tensor for the parameter in the equation 
 std::vector<at::Tensor> logsumexp_wirelength_forward(
         at::Tensor pos,
         at::Tensor flat_netpin,
@@ -76,6 +85,17 @@ std::vector<at::Tensor> logsumexp_wirelength_forward(
     return {wl, exp_xy, exp_nxy, exp_xy_sum, exp_nxy_sum}; 
 }
 
+/// @brief Compute gradient 
+/// @param grad_pos input gradient from back-propagation 
+/// @param pos locations of pins 
+/// @param exp_xy array of exp(x/gamma) and then exp(y/gamma)
+/// @param exp_nxy array of exp(-x/gamma) and then exp(-y/gamma)
+/// @param exp_xy_sum array of \sum(exp(x/gamma)) for each net and then \sum(exp(y/gamma))
+/// @param exp_nxy_sum array of \sum(exp(-x/gamma)) for each net and then \sum(exp(-y/gamma))
+/// @param flat_netpin similar to the JA array in CSR format, which is flattened from the net2pin map (array of array)
+/// @param netpin_start similar to the IA array in CSR format, IA[i+1]-IA[i] is the number of pins in each net, the length of IA is number of nets + 1
+/// @param net_mask an array to record whether compute the where for a net or not 
+/// @param gamma a scalar tensor for the parameter in the equation 
 at::Tensor logsumexp_wirelength_backward(
         at::Tensor grad_pos, 
         at::Tensor pos,

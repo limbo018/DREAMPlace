@@ -5,15 +5,15 @@
     > Created Time: Mon Jun 15 21:43:53 2015
  ************************************************************************/
 
-#ifndef GPF_ENUMS_H
-#define GPF_ENUMS_H
+#ifndef DREAMPLACE_ENUMS_H
+#define DREAMPLACE_ENUMS_H
 
 #include <string>
 #include <map>
 #include <ostream>
 #include "Util.h"
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 /// base class for enumeration types 
 /// these types are not recommended for storage, since they takes larger memory 
@@ -589,6 +589,6 @@ class GlobalMoveAlgo : public EnumExt<GlobalMoveAlgoEnum::GlobalMoveAlgoType>
         virtual enum_type str2Enum(std::string const& s) const;
 };
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE
 
 #endif

@@ -5,15 +5,15 @@
     > Created Time: Wed Jun 17 21:54:17 2015
  ************************************************************************/
 
-#ifndef GPF_ROW_H
-#define GPF_ROW_H
+#ifndef DREAMPLACE_ROW_H
+#define DREAMPLACE_ROW_H
 
 #include "Object.h"
 #include "Box.h"
 #include "Enums.h"
 #include <vector>
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 class Row : public Box<Object::coordinate_type>, public Object
 {
@@ -234,6 +234,6 @@ inline void BinRow::copy(BinRow const& rhs)
 }
 
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE
 
 #endif

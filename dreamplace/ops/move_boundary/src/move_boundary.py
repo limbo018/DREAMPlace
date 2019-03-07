@@ -13,7 +13,8 @@ import move_boundary_cpp
 import move_boundary_cuda
 
 class MoveBoundaryFunction(Function):
-    """ Bound cells into layout boundary, perform in-place update 
+    """ 
+    @brief Bound cells into layout boundary, perform in-place update 
     """
     @staticmethod
     def forward(
@@ -54,7 +55,8 @@ class MoveBoundaryFunction(Function):
         return output
 
 class MoveBoundary(Function):
-    """ Bound cells into layout boundary, perform in-place update 
+    """ 
+    @brief Bound cells into layout boundary, perform in-place update 
     """
     def __init__(self, node_size_x, node_size_y, xl, yl, xh, yh, num_movable_nodes, num_filler_nodes):
         super(MoveBoundary, self).__init__()

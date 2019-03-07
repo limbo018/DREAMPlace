@@ -4,6 +4,7 @@ project(weighted_average_wirelength)
 
 find_program(PYTHON "python")
 find_package(CUDA 9.0 REQUIRED)
+get_filename_component(OPS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/.. ABSOLUTE)
 
 if (NOT CMAKE_CUDA_FLAGS)
     set(CMAKE_CUDA_FLAGS "-gencode=arch=compute_60,code=sm_60")

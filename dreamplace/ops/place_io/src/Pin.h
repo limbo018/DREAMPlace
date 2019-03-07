@@ -5,15 +5,15 @@
     > Created Time: Mon Jun 15 21:48:45 2015
  ************************************************************************/
 
-#ifndef GPF_PIN_H
-#define GPF_PIN_H
+#ifndef DREAMPLACE_PIN_H
+#define DREAMPLACE_PIN_H
 
 #include <string>
 #include "Object.h"
 #include "Point.h"
 #include "Enums.h"
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 class Pin : public Object
 {
@@ -88,6 +88,6 @@ inline void Pin::copy(Pin const& rhs)
 }
 
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE
 
 #endif

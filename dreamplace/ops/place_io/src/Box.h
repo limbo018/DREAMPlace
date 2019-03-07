@@ -5,13 +5,13 @@
     > Created Time: Sun 14 Jun 2015 04:05:16 PM CDT
  ************************************************************************/
 
-#ifndef GPF_BOX_H
-#define GPF_BOX_H
+#ifndef DREAMPLACE_BOX_H
+#define DREAMPLACE_BOX_H
 
 #include "Point.h"
 #include "Interval.h"
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T>
 class Box 
@@ -405,6 +405,6 @@ inline bool onBoundary(Box<T> const& b, Point<T> const& p)
         || (onBoundary(b.get(kY), p.y()) && contain(b.get(kX), p.x()));
 }
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE
 
 #endif

@@ -2,6 +2,7 @@
  * @file   src/draw_place.cpp
  * @author Yibo Lin
  * @date   Jun 2018
+ * @brief  Plot placement to an image 
  */
 #include <sstream>
 #include <pybind11/stl.h>
@@ -15,6 +16,24 @@ DREAMPLACE_BEGIN_NAMESPACE
 #define CHECK_EVEN(x) AT_ASSERTM((x.numel()&1) == 0, #x "must have even number of elements")
 #define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x "must be contiguous")
 
+/// @brief plot placement solution to an image 
+/// @param pos cell locations, array of x locations and then y locations 
+/// @param node_size_x_tensor cell width array
+/// @param node_size_y_tensor cell height array 
+/// @param pin_offset_x pin offset to its cell origin
+/// @param pin_offset_y pin offset to its cell origin
+/// @param pin2node_map map pin to cell 
+/// @param xl left boundary 
+/// @param yl bottom boundary 
+/// @param xh right boundary 
+/// @param yh top boundary 
+/// @param site_width width of a placement site 
+/// @param row_height height of a placement row, same as height of a placement site 
+/// @param bin_size_x bin width 
+/// @param bin_size_y bin height 
+/// @param num_movable_nodes number of movable cells 
+/// @param num_filler_nodes number of filler cells 
+/// @param filename output image file name 
 int draw_place_forward(
         at::Tensor pos,
         at::Tensor node_size_x,

@@ -6,6 +6,8 @@
 
 #include "function_cpu.h"
 
+DREAMPLACE_BEGIN_NAMESPACE
+
 template <typename T>
 void assignCells2BinsCPU(
         const int* ordered_nodes, 
@@ -17,7 +19,6 @@ void assignCells2BinsCPU(
         int num_bins_x, int num_bins_y, 
         int num_nodes, int num_movable_nodes, int num_filler_nodes, 
         int* bin_capacities, // bin capacity in number of sites
-        //CVector::CVector2D<int> bin_cells
         T* x, T* y
         )
 {
@@ -58,11 +59,6 @@ void assignCells2BinsCPU(
 
                 int& capacity = bin_capacities[bin_id]; 
                 int& demand = bin_demands[bin_id];
-
-                //if (node_id == 1)
-                //{
-                //    printf("check bin (%d, %d), capacity %d, node_size %d\n", ix, iy, *capacity, node_size);
-                //}
 
                 // use two atomic operations to perform 
                 // capacity >= size? capacity-size : capacity 
@@ -145,10 +141,6 @@ void assignCells2BinsCPU(
             {
                 y[node_id] = init_y[node_id]; 
             }
-            //printf("%s assign cell %d to bin %d, offset x %d, y %d, (%g, %g, %g, %g), move from %g, %g, to %g, %g\n", 
-            //        __func__, node_id, bin_id, bin_id_offset_x, bin_id_offset_y, bin_xl, bin_yl, bin_xl+bin_size_x, bin_yl+bin_size_y, init_x[node_id], init_y[node_id], x[node_id], y[node_id]); 
-            //search_flag = false; 
-            //break; 
         }
     }
 }
@@ -268,3 +260,5 @@ void instantiateBinAssignmentCPU(
             num_filler_nodes
             );
 }
+
+DREAMPLACE_END_NAMESPACE

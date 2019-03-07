@@ -5,12 +5,12 @@
     > Created Time: Wed Jun 17 22:09:40 2015
  ************************************************************************/
 
-#ifndef GPF_SITE_H
-#define GPF_SITE_H
+#ifndef DREAMPLACE_SITE_H
+#define DREAMPLACE_SITE_H
 
 #include "Object.h" 
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 class Site : public Object
 {
@@ -82,6 +82,6 @@ inline void Site::copy(Site const& rhs)
 }
 
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE
 
 #endif

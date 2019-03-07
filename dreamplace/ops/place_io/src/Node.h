@@ -5,14 +5,14 @@
     > Created Time: Mon Jun 15 21:23:38 2015
  ************************************************************************/
 
-#ifndef GPF_NODE_H
-#define GPF_NODE_H
+#ifndef DREAMPLACE_NODE_H
+#define DREAMPLACE_NODE_H
 
 #include <vector>
 #include "Pin.h"
 #include "Box.h"
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 /// class Node denotes an instantiation of a standard cell 
 class Node : public Box<Object::coordinate_type>, public Object
@@ -110,6 +110,6 @@ class NodeProperty
         index_type m_macroId; ///< standard cell id 
 };
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE
 
 #endif

@@ -5,14 +5,14 @@
     > Created Time: Mon Jun 15 22:37:37 2015
  ************************************************************************/
 
-#ifndef GPF_NET_H
-#define GPF_NET_H
+#ifndef DREAMPLACE_NET_H
+#define DREAMPLACE_NET_H
 
 #include <vector>
 #include "Pin.h"
 #include "Box.h"
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 class Net : public Object
 {
@@ -67,6 +67,6 @@ class NetProperty
         std::string m_name; ///< net name 
 };
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE
 
 #endif

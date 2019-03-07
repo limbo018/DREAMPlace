@@ -5,8 +5,8 @@
     > Created Time: Tue Jun 30 16:57:11 2015
  ************************************************************************/
 
-#ifndef GPF_GEOMETRYAPI_H
-#define GPF_GEOMETRYAPI_H
+#ifndef DREAMPLACE_GEOMETRYAPI_H
+#define DREAMPLACE_GEOMETRYAPI_H
 
 #include <limits>
 #include <limbo/geometry/Geometry.h>
@@ -21,10 +21,10 @@ namespace limbo { namespace geometry {
 
 /// \brief specialization for boost::polygon::point_data
 template <typename T>
-struct point_traits<GPF_NAMESPACE::Point<T> >
+struct point_traits<DREAMPLACE_NAMESPACE::Point<T> >
 {
 	typedef T coordinate_type;
-	typedef GPF_NAMESPACE::Point<T> point_type;
+	typedef DREAMPLACE_NAMESPACE::Point<T> point_type;
 
 	static coordinate_type get(const point_type& point, orientation_2d const& orient) 
 	{
@@ -34,9 +34,9 @@ struct point_traits<GPF_NAMESPACE::Point<T> >
 	}
 	static void set(point_type& point, orientation_2d const& orient, coordinate_type const& value) 
 	{
-		if (orient == HORIZONTAL) point.set(GPF_NAMESPACE::kX, value);
-		else if (orient == VERTICAL) point.set(GPF_NAMESPACE::kY, value);
-		else gpfAssertMsg(0, "unknown orient");
+		if (orient == HORIZONTAL) point.set(DREAMPLACE_NAMESPACE::kX, value);
+		else if (orient == VERTICAL) point.set(DREAMPLACE_NAMESPACE::kY, value);
+		else dreamplaceAssertMsg(0, "unknown orient");
 	}
 	static point_type construct(coordinate_type const& x, coordinate_type const& y) 
 	{
@@ -46,10 +46,10 @@ struct point_traits<GPF_NAMESPACE::Point<T> >
 
 /// \brief specialization for boost::polygon::rectangle_data
 template <typename T>
-struct rectangle_traits<GPF_NAMESPACE::Box<T> >
+struct rectangle_traits<DREAMPLACE_NAMESPACE::Box<T> >
 {
 	typedef T coordinate_type;
-	typedef GPF_NAMESPACE::Box<T> rectangle_type;
+	typedef DREAMPLACE_NAMESPACE::Box<T> rectangle_type;
 
 	static coordinate_type get(const rectangle_type& rect, direction_2d const& dir) 
 	{
@@ -59,7 +59,7 @@ struct rectangle_traits<GPF_NAMESPACE::Box<T> >
 			case BOTTOM: return rect.yl();
 			case RIGHT: return rect.xh();
 			case TOP: return rect.yh();
-			default: gpfAssertMsg(0, "unknown orient");
+			default: dreamplaceAssertMsg(0, "unknown orient");
 		}
         return std::numeric_limits<coordinate_type>::max();
 	}
@@ -67,11 +67,11 @@ struct rectangle_traits<GPF_NAMESPACE::Box<T> >
 	{
 		switch (dir)
 		{
-            case LEFT: rect.set(GPF_NAMESPACE::kXLOW, value); break;
-			case BOTTOM: rect.set(GPF_NAMESPACE::kYLOW, value); break;
-			case RIGHT: rect.set(GPF_NAMESPACE::kXHIGH, value); break;
-			case TOP: rect.set(GPF_NAMESPACE::kYHIGH, value); break;
-			default: gpfAssertMsg(0, "unknown orient");
+            case LEFT: rect.set(DREAMPLACE_NAMESPACE::kXLOW, value); break;
+			case BOTTOM: rect.set(DREAMPLACE_NAMESPACE::kYLOW, value); break;
+			case RIGHT: rect.set(DREAMPLACE_NAMESPACE::kXHIGH, value); break;
+			case TOP: rect.set(DREAMPLACE_NAMESPACE::kYHIGH, value); break;
+			default: dreamplaceAssertMsg(0, "unknown orient");
 		}
 	}
 	static rectangle_type construct(coordinate_type const& xl, coordinate_type const& yl, 

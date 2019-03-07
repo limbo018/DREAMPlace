@@ -12,7 +12,7 @@
 #include <algorithm>
 #include <boost/algorithm/cxx11/is_sorted.hpp>
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 /// helper object of ObsWraper for collectBlockageIntervals()
 struct CollectFixedCellIntervalHelper
@@ -196,11 +196,11 @@ BinRowMap& BinRowMap::set(AlgoDB& algo)
     {
         Bin const& bin = *it;
         // check whether bin rows in a sbin are sorted 
-        gpfAssert(boost::algorithm::is_sorted(bin.binRows().begin(), bin.binRows().end()));
+        dreamplaceAssert(boost::algorithm::is_sorted(bin.binRows().begin(), bin.binRows().end()));
     }
 #endif
 
     return *this;
 }
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE

@@ -5,21 +5,21 @@
     > Created Time: Sun 14 Jun 2015 04:08:18 PM CDT
  ************************************************************************/
 
-#ifndef GPF_UTIL_H
-#define GPF_UTIL_H
+#ifndef DREAMPLACE_UTIL_H
+#define DREAMPLACE_UTIL_H
 
 #include <string>
-#include "Namespace.h"
-#include "Msg.h"
+#include "utility/src/Namespace.h"
+#include "utility/src/Msg.h"
 
 /// headers for hash tables 
 #include <tr1/unordered_map>
 #include <tr1/unordered_set>
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 namespace hashspace = std::tr1;
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 enum Direction1DType {
 	kLOW = 0,
@@ -101,6 +101,6 @@ template <typename T> struct ConstTypeHelper<T, 1>
     typedef T const* pointer_type;
 };
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE
 
 #endif

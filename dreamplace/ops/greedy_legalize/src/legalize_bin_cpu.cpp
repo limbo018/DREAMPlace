@@ -5,6 +5,8 @@
  */
 #include "function_cpu.h"
 
+DREAMPLACE_BEGIN_NAMESPACE
+
 template <typename T>
 void legalizeBinCPU(
         const T* init_x, const T* init_y, 
@@ -29,7 +31,6 @@ void legalizeBinCPU(
         int bin_id_x = i/num_bins_y; 
         int bin_id_y = i-bin_id_x*num_bins_y; 
         int blank_num_bins_per_bin = round(bin_size_y/blank_bin_size_y);
-        //printf("blank_num_bins_per_bin = %d, %g, %g\n", blank_num_bins_per_bin, round(bin_size_y/blank_bin_size_y), bin_size_y/row_height);
         int blank_bin_id_yl = bin_id_y*blank_num_bins_per_bin;
         int blank_bin_id_yh = std::min(blank_bin_id_yl+blank_num_bins_per_bin, blank_num_bins_y);
 
@@ -47,8 +48,6 @@ void legalizeBinCPU(
         {
             std::sort(cells.begin(), cells.end(), CompareByNodeNTUPlaceCostCPU<T>(init_x, init_y, node_size_x, node_size_y));
         }
-
-        //printf("bin[%d, %d], blank bin [%d, %d-%d]\n", bin_id_x, bin_id_y, bin_id_x, blank_bin_id_yl, blank_bin_id_yh);
 
         for (int ci = bin_cells.at(i).size()-1; ci >= 0; --ci)
         {
@@ -131,7 +130,6 @@ void legalizeBinCPU(
                                 break; 
                             }
                         }
-                        //printf("check blank %g, %g, %g, %g for cell %d\n", blank.xl, blank.yl, blank.xh, blank.yh, node_id);
                         T intersect_blank_width = intersect_blank.xh-intersect_blank.xl;
                         if (intersect_blank_width >= width)
                         {
@@ -200,38 +198,32 @@ void legalizeBinCPU(
                     int best_blank_bin_id = bin_id_x*blank_num_bins_y+best_blank_bin_id_y+row_offset; 
                     std::vector<Blank<T> >& blanks = bin_blanks.at(best_blank_bin_id);
                     Blank<T>& blank = blanks.at(best_blank_bi[row_offset]); 
-                    //printf("found blank %g, %g, %g, %g for cell %d\n", blank.xl, blank.yl, blank.xh, blank.yh, node_id);
                     assert(best_xl >= blank.xl && best_xl+width <= blank.xh);
                     assert(best_yl+row_height*row_offset == blank.yl);
-                    //printf("after place node %d, update blank (%g, %g, %g, %g) to ", node_id, blank.xl, blank.yl, blank.xh, blank.yh);
                     if (best_xl == blank.xl)
                     {
                         // update blank 
                         blank.xl += width; 
-                        //printf("(%g, %g, %g, %g) ", blank.xl, blank.yl, blank.xh, blank.yh);
                         if (floor((blank.xl-xl)/site_width)*site_width != blank.xl-xl)
                         {
-                            printf("1. move node %d from %g to %g, blank (%g, %g)\n", node_id, x[node_id], blank.xl, blank.xl, blank.xh);
+                            dreamplacePrint(kDEBUG, "1. move node %d from %g to %g, blank (%g, %g)\n", node_id, x[node_id], blank.xl, blank.xl, blank.xh);
                         }
                         if (blank.xl >= blank.xh)
                         {
                             bin_blanks.at(best_blank_bin_id).erase(bin_blanks.at(best_blank_bin_id).begin()+best_blank_bi[row_offset]);
-                            //printf("erase");
                         }
                     }
                     else if (best_xl+width == blank.xh)
                     {
                         // update blank 
                         blank.xh -= width; 
-                        //printf("(%g, %g, %g, %g) ", blank.xl, blank.yl, blank.xh, blank.yh);
                         if (floor((blank.xh-xl)/site_width)*site_width != blank.xh-xl)
                         {
-                            printf("2. move node %d from %g to %g, blank (%g, %g)\n", node_id, x[node_id], blank.xh-width, blank.xl, blank.xh);
+                            dreamplacePrint(kDEBUG, "2. move node %d from %g to %g, blank (%g, %g)\n", node_id, x[node_id], blank.xh-width, blank.xl, blank.xh);
                         }
                         if (blank.xl >= blank.xh)
                         {
                             bin_blanks.at(best_blank_bin_id).erase(bin_blanks.at(best_blank_bin_id).begin()+best_blank_bi[row_offset]);
-                            //printf("erase");
                         }
                     }
                     else 
@@ -243,30 +235,22 @@ void legalizeBinCPU(
                         new_blank.yl = blank.yl; 
                         new_blank.yh = blank.yh; 
                         blank.xh = best_xl; 
-                        //printf("(%g, %g, %g, %g) ", blank.xl, blank.yl, blank.xh, blank.yh);
-                        //printf("(%g, %g, %g, %g) ", new_blank.xl, new_blank.yl, new_blank.xh, new_blank.yh);
                         if (floor((blank.xl-xl)/site_width)*site_width != blank.xl-xl 
                                 || floor((blank.xh-xl)/site_width)*site_width != blank.xh-xl
                                 || floor((new_blank.xl-xl)/site_width)*site_width != new_blank.xl-xl
                                 || floor((new_blank.xh-xl)/site_width)*site_width != new_blank.xh-xl)
                         {
-                            printf("3. move node %d from %g to %g, blank (%g, %g), new_blank (%g, %g)\n", node_id, x[node_id], init_xl, blank.xl, blank.xh, new_blank.xl, new_blank.xh);
+                            dreamplacePrint(kDEBUG, "3. move node %d from %g to %g, blank (%g, %g), new_blank (%g, %g)\n", node_id, x[node_id], init_xl, blank.xl, blank.xh, new_blank.xl, new_blank.xh);
                         }
                         bin_blanks.at(best_blank_bin_id).insert(bin_blanks.at(best_blank_bin_id).begin()+best_blank_bi[row_offset]+1, new_blank);
                     }
-                        //printf("\n");
                 }
 
                 // remove from cells 
                 bin_cells.at(i).erase(bin_cells.at(i).begin()+ci);
-
-                //printf("place cell %d to %g, %g\n", node_id, x[node_id], y[node_id]); 
-                //num_cells += 1; 
-                //total_displace += fabs(x[node_id]-init_x[node_id]) + fabs(y[node_id]-init_y[node_id]);
             }
         }
         *num_unplaced_cells += bin_cells.at(i).size();
-        //printf("legalizeBin[%d] #cells %d, average displacement %g\n", i, num_cells, (num_cells == 0)? 0 : total_displace/num_cells);
     }
 }
 
@@ -336,3 +320,4 @@ void instantiateLegalizeBinCPU(
             );
 }
 
+DREAMPLACE_END_NAMESPACE

@@ -2,6 +2,7 @@
  * @file   logsumexp_wirelength_cuda_atomic.cpp
  * @author Yibo Lin
  * @date   Jul 2018
+ * @brief  Compute log-sum-exp wirelength and gradient according to NTUPlace3 
  */
 #include <torch/torch.h>
 #include <limits>
@@ -28,6 +29,12 @@ int computeLogSumExpWirelengthCudaAtomicLauncher(
 
 typedef int V; 
 
+/// @brief Compute log-sum-exp wirelength according to NTUPlace3 
+///     gamma * (log(\sum exp(x_i/gamma)) + log(\sum exp(-x_i/gamma)))
+/// @param pos cell locations, array of x locations and then y locations 
+/// @param pin2net_map map pin to net 
+/// @param net_mask an array to record whether compute the where for a net or not 
+/// @param gamma a scalar tensor for the parameter in the equation 
 std::vector<at::Tensor> logsumexp_wirelength_atomic_forward(
         at::Tensor pos,
         at::Tensor pin2net_map, 
@@ -81,6 +88,16 @@ std::vector<at::Tensor> logsumexp_wirelength_atomic_forward(
     return {wl, exp_xy, exp_nxy, exp_xy_sum, exp_nxy_sum}; 
 }
 
+/// @brief Compute gradient 
+/// @param grad_pos input gradient from back-propagation 
+/// @param pos locations of pins 
+/// @param exp_xy array of exp(x/gamma) and then exp(y/gamma)
+/// @param exp_nxy array of exp(-x/gamma) and then exp(-y/gamma)
+/// @param exp_xy_sum array of \sum(exp(x/gamma)) for each net and then \sum(exp(y/gamma))
+/// @param exp_nxy_sum array of \sum(exp(-x/gamma)) for each net and then \sum(exp(-y/gamma))
+/// @param pin2net_map map pin to net 
+/// @param net_mask an array to record whether compute the where for a net or not 
+/// @param gamma a scalar tensor for the parameter in the equation 
 at::Tensor logsumexp_wirelength_atomic_backward(
         at::Tensor grad_pos, 
         at::Tensor pos,

@@ -9,7 +9,10 @@
 
 #include <cmath>
 #include <vector>
+#include "utility/src/Msg.h"
 #include "blank.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T>
 void distributeCells2BinsCPU(
@@ -64,7 +67,6 @@ void distributeFixedCells2BinsCPU(
             {
                 int bin_id = bin_id_x*num_bins_y + bin_id_y; 
 
-                //printf("cell %d to bin %d\n", node_id, bin_id);
                 bin_cells[bin_id].push_back(node_id); 
             }
         }
@@ -110,7 +112,6 @@ void distributeMovableAndFixedCells2BinsCPU(
                 {
                     int bin_id = bin_id_x*num_bins_y + bin_id_y; 
 
-                    //printf("cell %d to bin %d\n", node_id, bin_id);
                     bin_cells[bin_id].push_back(node_id); 
                 }
             }
@@ -257,5 +258,7 @@ void assignCells2BinsCPU(
         //CVector::CVector2D<int> bin_cells
         T* x, T* y
         );
+
+DREAMPLACE_END_NAMESPACE
 
 #endif

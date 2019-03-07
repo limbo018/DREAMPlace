@@ -5,14 +5,14 @@
     > Created Time: Mon 22 Jun 2015 08:11:03 PM CDT
  ************************************************************************/
 
-#ifndef GPF_DEFWRITER_H
-#define GPF_DEFWRITER_H
+#ifndef DREAMPLACE_DEFWRITER_H
+#define DREAMPLACE_DEFWRITER_H
 
 #include <cstdio>
 #include <vector>
 #include "PlaceWriter.h"
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 class DefWriter : public PlaceSolWriter
 {
@@ -37,6 +37,6 @@ class DefWriter : public PlaceSolWriter
         void writeComp(FILE* os, Node const& n) const;
 };
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE
 
 #endif

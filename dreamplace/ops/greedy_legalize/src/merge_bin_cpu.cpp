@@ -6,6 +6,8 @@
 
 #include "function_cpu.h"
 
+DREAMPLACE_BEGIN_NAMESPACE
+
 void mergeBinCellsCPU(
         const std::vector<std::vector<int> >& src_bin_cells, 
         int src_num_bins_x, int src_num_bins_y, // dimensions for the src
@@ -38,3 +40,4 @@ void mergeBinCellsCPU(
     }
 }
 
+DREAMPLACE_END_NAMESPACE

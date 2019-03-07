@@ -5,8 +5,8 @@
     > Created Time: Sat 20 Jun 2015 12:18:01 AM CDT
  ************************************************************************/
 
-#ifndef GPF_DRAWPLACE_H
-#define GPF_DRAWPLACE_H
+#ifndef DREAMPLACE_DRAWPLACE_H
+#define DREAMPLACE_DRAWPLACE_H
 
 #include <string>
 #include <ostream>
@@ -19,14 +19,14 @@ namespace GdsParser {
 struct GdsWriter; 
 } // namespace GdsParser 
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 class Node;
 class Pin;
 class AlgoDB;
 class PlaceDrawerExt; 
 
-/// PlaceDrawer write files in various formats from gpf::PlaceDB
+/// PlaceDrawer write files in various formats from DREAMPLACE_NAMESPACE::PlaceDB
 class PlaceDrawer
 {
     public:
@@ -93,6 +93,6 @@ bool PlaceDrawer::run(std::string const& filename, PlaceDrawer::FileFormat ff, I
     return flag;
 }
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE
 
 #endif

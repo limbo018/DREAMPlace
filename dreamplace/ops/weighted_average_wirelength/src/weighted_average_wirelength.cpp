@@ -2,6 +2,7 @@
  * @file   src/weighted_average_wirelength.cpp
  * @author Yibo Lin
  * @date   Jun 2018
+ * @brief  Compute weighted-average wirelength and gradient according to e-place
  */
 #include <torch/torch.h>
 #include <limits>
@@ -23,6 +24,13 @@ int computeWeightedAverageWirelengthLauncher(
 #define CHECK_EVEN(x) AT_ASSERTM((x.numel()&1) == 0, #x " must have even number of elements")
 #define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x " must be contiguous")
 
+/// @brief Compute weighted-average wirelength according to e-place 
+///     \sum(x*exp(x/gamma)) / \sum(exp(x/gamma)) - \sum(x*exp(-x/gamma)) / \sum(exp(-x/gamma))
+/// @param pos cell locations, array of x locations and then y locations 
+/// @param flat_netpin similar to the JA array in CSR format, which is flattened from the net2pin map (array of array)
+/// @param netpin_start similar to the IA array in CSR format, IA[i+1]-IA[i] is the number of pins in each net, the length of IA is number of nets + 1
+/// @param net_mask an array to record whether compute the where for a net or not 
+/// @param gamma a scalar tensor for the parameter in the equation 
 at::Tensor weighted_average_wirelength_forward(
         at::Tensor pos,
         at::Tensor flat_netpin,
@@ -56,6 +64,13 @@ at::Tensor weighted_average_wirelength_forward(
     return wl; 
 }
 
+/// @brief Compute gradient 
+/// @param grad_pos input gradient from backward propagation 
+/// @param pos locations of pins 
+/// @param flat_netpin similar to the JA array in CSR format, which is flattened from the net2pin map (array of array)
+/// @param netpin_start similar to the IA array in CSR format, IA[i+1]-IA[i] is the number of pins in each net, the length of IA is number of nets + 1
+/// @param net_mask an array to record whether compute the where for a net or not 
+/// @param gamma a scalar tensor for the parameter in the equation 
 at::Tensor weighted_average_wirelength_backward(
         at::Tensor grad_pos, 
         at::Tensor pos,

@@ -8,7 +8,7 @@
 #include "DefWriter.h"
 #include <fstream>
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 bool DefWriter::write(std::string const& outFile, std::string const& inFile, 
         std::vector<Node>::const_iterator first, std::vector<Node>::const_iterator last) const 
@@ -21,16 +21,16 @@ bool DefWriter::write(std::string const& outFile, std::string const& inFile,
     bool flag = false; // whether in COMPONENTS block 
     std::size_t rowCount = 0; 
 
-    gpfPrint(kINFO, "writing placement to %s\n", outFile.c_str());
+    dreamplacePrint(kINFO, "writing placement to %s\n", outFile.c_str());
 
     if (!in.good())
     {
-        gpfPrint(kERROR, "unable to open %s for read\n", inFile.c_str());
+        dreamplacePrint(kERROR, "unable to open %s for read\n", inFile.c_str());
         return false;
     }
     if (out == NULL)
     {
-        gpfPrint(kERROR, "unable to open %s for write\n", outFile.c_str());
+        dreamplacePrint(kERROR, "unable to open %s for write\n", outFile.c_str());
         return false;
     }
 
@@ -77,12 +77,12 @@ bool DefWriter::write(std::string const& outFile, std::string const& inFile,
 bool DefWriter::writeSimple(std::string const& outFile, std::string const& version, std::string const& designName, 
         std::vector<Node>::const_iterator first, std::vector<Node>::const_iterator last) const 
 {
-    gpfPrint(kINFO, "writing placement to %s\n", outFile.c_str());
+    dreamplacePrint(kINFO, "writing placement to %s\n", outFile.c_str());
 
     FILE* out = fopen(outFile.c_str(), "w");
     if (out == NULL)
     {
-        gpfPrint(kERROR, "failed to open %s for write\n", outFile.c_str());
+        dreamplacePrint(kERROR, "failed to open %s for write\n", outFile.c_str());
         return false;
     }
 
@@ -110,4 +110,4 @@ void DefWriter::writeComp(FILE* os, Node const& n) const
             std::string(Orient(n.orient())).c_str());
 }
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE

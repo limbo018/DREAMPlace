@@ -5,12 +5,12 @@
     > Created Time: Wed Jun 24 21:03:54 2015
  ************************************************************************/
 
-#ifndef GPF_ROWMAP_H
-#define GPF_ROWMAP_H
+#ifndef DREAMPLACE_ROWMAP_H
+#define DREAMPLACE_ROWMAP_H
 
 #include "Row.h"
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 /// forward declaration of data 
 class BinMap;
@@ -203,6 +203,6 @@ inline void BinRowMap::copy(BinRowMap const& rhs)
 typedef BinRowMap::BinRowMap1DIterator BinRowMap1DIterator;
 typedef BinRowMap::BinRowMap1DConstIterator BinRowMap1DConstIterator;
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE
 
 #endif

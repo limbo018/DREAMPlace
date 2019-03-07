@@ -13,7 +13,7 @@
 #include "LefCbkHelper.h"
 //#include <boost/timer/timer.hpp>
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 /// default constructor
 PlaceDB::PlaceDB()
@@ -39,7 +39,7 @@ void PlaceDB::lef_version_cbk(std::string const& v)
 void PlaceDB::lef_version_cbk(double v) 
 {
     if (v < 5.6) 
-        gpfPrint(kWARN, "current LEF version %g may be not well supported\n", v);
+        dreamplacePrint(kWARN, "current LEF version %g may be not well supported\n", v);
 }
 void PlaceDB::lef_casesensitive_cbk(int v) 
 {
@@ -94,7 +94,7 @@ void PlaceDB::lef_macrobegin_cbk(std::string const& n)
     // check duplicate 
     if (!insertMacroRet.second) 
     {
-        gpfPrint(kWARN, "duplicate macro found in LEF file: %s\n", n.c_str());
+        dreamplacePrint(kWARN, "duplicate macro found in LEF file: %s\n", n.c_str());
     }
 }
 void PlaceDB::lef_macro_cbk(LefParser::lefiMacro const& m)
@@ -131,7 +131,7 @@ void PlaceDB::lef_pin_cbk(LefParser::lefiPin const& p)
     std::pair<index_type, bool> insertMacroPinRet = macro.addMacroPin(p.name());
     if (!insertMacroPinRet.second) 
     {
-        gpfPrint(kWARN, "duplicate macro pin found in LEF file: %s.(%s, %d)\n", macro.name().c_str(), p.name(), insertMacroPinRet.first);
+        dreamplacePrint(kWARN, "duplicate macro pin found in LEF file: %s.(%s, %d)\n", macro.name().c_str(), p.name(), insertMacroPinRet.first);
         return;
     }
     MacroPin& mPin = macro.macroPin(insertMacroPinRet.first);
@@ -205,7 +205,7 @@ void PlaceDB::add_def_row(DefParser::Row const& r)
     }
     else 
     {
-        gpfPrint(kWARN, "unsupported row orientation %s\n", r.orient.c_str());
+        dreamplacePrint(kWARN, "unsupported row orientation %s\n", r.orient.c_str());
         row.set(r.origin[0], r.origin[1], r.origin[0]+r.repeat[0]*r.step[0], r.origin[1]+m_site.size(kY));
     }
 
@@ -236,7 +236,7 @@ void PlaceDB::add_def_component(DefParser::Component const& c)
     // check duplicate 
     if (!insertRet.second)
     {
-        gpfPrint(kWARN, "duplicate component found in DEF file: %s\n", c.comp_name.c_str());
+        dreamplacePrint(kWARN, "duplicate component found in DEF file: %s\n", c.comp_name.c_str());
         return;
     }
 
@@ -276,17 +276,17 @@ void PlaceDB::add_def_pin(DefParser::Pin const& p)
 {
     if (p.vLayer.empty())
     {
-        gpfPrint(kWARN, "no layer specified by pin %s, ignored\n", p.pin_name.c_str()); 
+        dreamplacePrint(kWARN, "no layer specified by pin %s, ignored\n", p.pin_name.c_str()); 
         return; 
     }
     if (p.vBbox.empty())
     {
-        gpfPrint(kWARN, "no position or bounding box specified by pin %s, ignored\n", p.pin_name.c_str()); 
+        dreamplacePrint(kWARN, "no position or bounding box specified by pin %s, ignored\n", p.pin_name.c_str()); 
         return; 
     }
     // create virtual macro 
     std::pair<index_type, bool> insertMacroRet = addMacro(p.pin_name);
-    gpfAssertMsg(insertMacroRet.second, "failed to create virtual macro for io pin: %s", p.pin_name.c_str());
+    dreamplaceAssertMsg(insertMacroRet.second, "failed to create virtual macro for io pin: %s", p.pin_name.c_str());
     Macro& macro = m_vMacro.at(insertMacroRet.first);
 
     // only read the first layer of pins 
@@ -298,7 +298,7 @@ void PlaceDB::add_def_pin(DefParser::Pin const& p)
 
     // create and add io pin 
     std::pair<index_type, bool> insertMacroPinRet = macro.addMacroPin(p.pin_name);
-    gpfAssertMsg(insertMacroPinRet.second, "failed to create virtual io pin: %s.%s", macro.name().c_str(), p.pin_name.c_str());
+    dreamplaceAssertMsg(insertMacroPinRet.second, "failed to create virtual io pin: %s.%s", macro.name().c_str(), p.pin_name.c_str());
     MacroPin& iopin = macro.macroPin(insertMacroPinRet.first);
     // reverse direction for primary input and output 
     // I hope this will not cause incompatible issues with writer of other formats
@@ -320,7 +320,7 @@ void PlaceDB::add_def_pin(DefParser::Pin const& p)
 
     // create and add virtual node 
     std::pair<index_type, bool> insertNodeRet = addNode(p.pin_name);
-    gpfAssertMsg(insertNodeRet.second, "failed to create virtual node for io pin %s", p.pin_name.c_str());
+    dreamplaceAssertMsg(insertNodeRet.second, "failed to create virtual node for io pin %s", p.pin_name.c_str());
     Node& node = m_vNode.at(insertNodeRet.first);
     NodeProperty& property = m_vNodeProperty.at(node.id());
 
@@ -370,7 +370,7 @@ void PlaceDB::add_def_net(DefParser::Net const& n)
         }
         if (all_pin_in_one_node)
         {
-            //gpfPrint(kWARN, "net %s has all pins belong to the same node or io pins: ignored\n", n.net_name.c_str());
+            //dreamplacePrint(kWARN, "net %s has all pins belong to the same node or io pins: ignored\n", n.net_name.c_str());
             //return;
             ignoreFlag = true;
         }
@@ -382,7 +382,7 @@ void PlaceDB::add_def_net(DefParser::Net const& n)
     if (!insertNetRet.second)
     {
         m_vDuplicateNet.push_back(n.net_name);
-        //gpfPrint(kWARN, "duplicate net found in Verilog file: %s\n", n.net_name.c_str());
+        //dreamplacePrint(kWARN, "duplicate net found in Verilog file: %s\n", n.net_name.c_str());
         return;
     }
     Net& net = m_vNet.at(insertNetRet.first);
@@ -404,7 +404,7 @@ void PlaceDB::add_def_net(DefParser::Net const& n)
             nodeId = foundNode->second;
         else 
         {
-            gpfPrint(kWARN, "Pin not found: %s.%s\n", n.vNetPin[i].first.c_str(), n.vNetPin[i].second.c_str());
+            dreamplacePrint(kWARN, "Pin not found: %s.%s\n", n.vNetPin[i].first.c_str(), n.vNetPin[i].second.c_str());
             continue;
         }
         Node& node = m_vNode[nodeId];
@@ -434,8 +434,8 @@ void PlaceDB::end_def_design()
 #ifdef DEBUG
     for (unsigned int i = 1, ie = m_vRow.size(); i < ie; ++i)
     {
-        gpfAssert(m_vRow[i-1].yl() < m_vRow[i].yl()); 
-        gpfAssert(m_vRow[i-1].yh() == m_vRow[i].yl()); 
+        dreamplaceAssert(m_vRow[i-1].yl() < m_vRow[i].yl()); 
+        dreamplaceAssert(m_vRow[i-1].yh() == m_vRow[i].yl()); 
     }
 #endif
 }
@@ -443,12 +443,12 @@ void PlaceDB::end_def_design()
 ///==== Verilog Callbacks ==== 
 void PlaceDB::verilog_net_declare_cbk(std::string const& netName, VerilogParser::Range const& range)
 {
-    gpfAssertMsg(range.low == range.high, "do not support bus yet");
+    dreamplaceAssertMsg(range.low == range.high, "do not support bus yet");
 
     std::pair<index_type, bool> insertNetRet = addNet(netName);
     // check duplicate 
     if (!insertNetRet.second)
-        gpfPrint(kWARN, "duplicate net found in Verilog file: %s\n", netName.c_str());
+        dreamplacePrint(kWARN, "duplicate net found in Verilog file: %s\n", netName.c_str());
 }
 void PlaceDB::verilog_pin_declare_cbk(std::string const& pinName, unsigned /*type*/, VerilogParser::Range const& range)
 {
@@ -459,21 +459,21 @@ void PlaceDB::verilog_pin_declare_cbk(std::string const& pinName, unsigned /*typ
         nodeId = foundNode->second;
     else 
     {
-        gpfPrint(kWARN, "IO pin not found: %s\n", pinName.c_str());
+        dreamplacePrint(kWARN, "IO pin not found: %s\n", pinName.c_str());
         return;
     }
     Node& node = m_vNode[nodeId];
 
     // for io pin, it has the net with the same name as pin name 
     std::string const& netName = pinName;
-    gpfAssertMsg(range.low == range.high, "do not support bus yet");
+    dreamplaceAssertMsg(range.low == range.high, "do not support bus yet");
 
     // for io pin, the net name is the same as pin name 
     std::pair<index_type, bool> insertNetRet = addNet(netName);
     // check duplicate 
     if (!insertNetRet.second)
     {
-        gpfPrint(kWARN, "duplicate net found in Verilog file: %s\n", netName.c_str());
+        dreamplacePrint(kWARN, "duplicate net found in Verilog file: %s\n", netName.c_str());
         return;
     }
     Net& net = m_vNet.at(insertNetRet.first);
@@ -484,15 +484,15 @@ void PlaceDB::verilog_pin_declare_cbk(std::string const& pinName, unsigned /*typ
 void PlaceDB::verilog_instance_cbk(std::string const& macroName, std::string const& instName, std::vector<VerilogParser::NetPin> const& vNetPin)
 {
     string2index_map_type::iterator foundNode = m_mNodeName2Index.find(instName);
-    gpfAssertMsg(foundNode != m_mNodeName2Index.end(), "failed to find instance name %s", instName.c_str());
+    dreamplaceAssertMsg(foundNode != m_mNodeName2Index.end(), "failed to find instance name %s", instName.c_str());
     Node& node = m_vNode.at(foundNode->second);
     Macro const& macro = m_vMacro.at(macroId(node));
-    gpfAssertMsg(macro.name() == macroName, "macro name mismatch %s != %s", macroName.c_str(), macro.name().c_str());
+    dreamplaceAssertMsg(macro.name() == macroName, "macro name mismatch %s != %s", macroName.c_str(), macro.name().c_str());
     for (std::vector<VerilogParser::NetPin>::const_iterator it = vNetPin.begin(), ite = vNetPin.end(); it != ite; ++it)
     {
         VerilogParser::NetPin const& np = *it;
         string2index_map_type::iterator foundNet = m_mNetName2Index.find(np.net);
-        gpfAssertMsg(foundNet != m_mNetName2Index.end(), "failed to find net %s", np.net.c_str());
+        dreamplaceAssertMsg(foundNet != m_mNetName2Index.end(), "failed to find net %s", np.net.c_str());
         Net& net = m_vNet.at(foundNet->second);
 
         // add pin 
@@ -536,7 +536,7 @@ void PlaceDB::add_bookshelf_node(std::string& name, int w, int h)
     // check duplicate 
     if (!insertRet.second)
     {
-        gpfPrint(kWARN, "duplicate component found in .nodes file: %s\n", name.c_str());
+        dreamplacePrint(kWARN, "duplicate component found in .nodes file: %s\n", name.c_str());
         return;
     }
 
@@ -572,7 +572,7 @@ void PlaceDB::add_bookshelf_net(BookshelfParser::Net const& n)
     vNetPin.resize(std::distance(vNetPin.begin(), itnp));
     if (vNetPin.size() < n.vNetPin.size())
     {
-        //gpfPrint(kWARN, "net %s ignore %d pins from same nodes\n", n.net_name.c_str(), n.vNetPin.size()-vNetPin.size());
+        //dreamplacePrint(kWARN, "net %s ignore %d pins from same nodes\n", n.net_name.c_str(), n.vNetPin.size()-vNetPin.size());
         m_numNetsWithDuplicatePins += 1; 
         m_numPinsDuplicatedInNets += n.vNetPin.size()-vNetPin.size();
     }
@@ -594,7 +594,7 @@ void PlaceDB::add_bookshelf_net(BookshelfParser::Net const& n)
     }
     if (all_pin_in_one_node)
     {
-        //gpfPrint(kWARN, "net %s has all pins belong to the same node or io pins: ignored\n", n.net_name.c_str());
+        //dreamplacePrint(kWARN, "net %s has all pins belong to the same node or io pins: ignored\n", n.net_name.c_str());
         //return;
         ignoreFlag = true;
     }
@@ -604,7 +604,7 @@ void PlaceDB::add_bookshelf_net(BookshelfParser::Net const& n)
     // check duplicate 
     if (!insertNetRet.second)
     {
-        gpfPrint(kWARN, "duplicate net found in Verilog file: %s\n", n.net_name.c_str());
+        dreamplacePrint(kWARN, "duplicate net found in Verilog file: %s\n", n.net_name.c_str());
         return;
     }
     Net& net = m_vNet.at(insertNetRet.first);
@@ -627,7 +627,7 @@ void PlaceDB::add_bookshelf_net(BookshelfParser::Net const& n)
             nodeId = foundNode->second;
         else 
         {
-            gpfPrint(kWARN, "Pin not found: %s.%s\n", netPin.node_name.c_str(), netPin.pin_name.c_str());
+            dreamplacePrint(kWARN, "Pin not found: %s.%s\n", netPin.node_name.c_str(), netPin.pin_name.c_str());
             continue;
         }
         Node& node = m_vNode.at(nodeId);
@@ -661,11 +661,11 @@ void PlaceDB::add_bookshelf_row(BookshelfParser::Row const& r)
                 row.setOrient(OrientEnum::FS);
                 break; 
             default:
-                gpfAssertMsg(0, "unknown row orientation %d", r.site_orient);
+                dreamplaceAssertMsg(0, "unknown row orientation %d", r.site_orient);
         }
     }
     else 
-        gpfPrint(kWARN, "unsupported row orientation %s\n", r.orient.c_str());
+        dreamplacePrint(kWARN, "unsupported row orientation %s\n", r.orient.c_str());
     row.set(r.origin[0], r.origin[1], r.origin[0]+r.site_width*r.site_num, r.origin[1]+r.height);
 
     row.setStep(r.site_width, 0);
@@ -681,7 +681,7 @@ void PlaceDB::set_bookshelf_node_position(std::string const& name, double x, dou
     string2index_map_type::iterator found = m_mNodeName2Index.find(name);
     if (found == m_mNodeName2Index.end())
     {
-        gpfPrint(kWARN, "component not found from .pl file: %s\n", name.c_str());
+        dreamplacePrint(kWARN, "component not found from .pl file: %s\n", name.c_str());
         return;
     }
     Node& node = m_vNode.at(found->second);
@@ -698,7 +698,7 @@ void PlaceDB::set_bookshelf_node_position(std::string const& name, double x, dou
         // simply fix them 
         if (node.status() != PlaceStatusEnum::FIXED && node.height() > (rowHeight()<<2))
         {
-            gpfPrint(kWARN, "detect large movable cells that cannot be handled: %s %ldx%ld @(%d,%d) with %lu pins\n", nodeName(node).c_str(), node.width(), node.height(), node.xl(), node.yl(), node.pins().size());
+            dreamplacePrint(kWARN, "detect large movable cells that cannot be handled: %s %ldx%ld @(%d,%d) with %lu pins\n", nodeName(node).c_str(), node.width(), node.height(), node.xl(), node.yl(), node.pins().size());
             node.setStatus(PlaceStatusEnum::DUMMY_FIXED);
         }
         deriveMultiRowAttr(node); // update MultiRowAttr
@@ -744,19 +744,19 @@ void PlaceDB::bookshelf_end()
 
 void PlaceDB::reportStats() 
 {
-    gpfPrint(kNONE, "========================= benchmark statistics =========================\n");
+    dreamplacePrint(kNONE, "========================= benchmark statistics =========================\n");
     reportStatsKernel();
     m_benchMetrics.print();
-    gpfPrint(kNONE, "========================================================================\n");
+    dreamplacePrint(kNONE, "========================================================================\n");
 }
 
 void PlaceDB::reportStatsKernel() 
 {
     if (!m_benchMetrics.initPlaceDBFlag)
     {
-        gpfPrint(kINFO, "size of Box object %u bytes, Object object %u bytes\n", sizeof(Box<coordinate_type>), sizeof(Object));
-        gpfPrint(kINFO, "size of Node object %u bytes, NodeProperty object %u bytes\n", sizeof(Node), sizeof(NodeProperty));
-        gpfPrint(kINFO, "size of Net object %u bytes, NetProperty object %u bytes\n", sizeof(Net), sizeof(NetProperty));
+        dreamplacePrint(kINFO, "size of Box object %u bytes, Object object %u bytes\n", sizeof(Box<coordinate_type>), sizeof(Object));
+        dreamplacePrint(kINFO, "size of Node object %u bytes, NodeProperty object %u bytes\n", sizeof(Node), sizeof(NodeProperty));
+        dreamplacePrint(kINFO, "size of Net object %u bytes, NetProperty object %u bytes\n", sizeof(Net), sizeof(NetProperty));
         m_benchMetrics.designName = designName();
         m_benchMetrics.lefUnit = lefUnit();
         m_benchMetrics.defUnit = defUnit();
@@ -792,17 +792,17 @@ void PlaceDB::reportStatsKernel()
 
         m_benchMetrics.initPlaceDBFlag = true; 
 
-        gpfAssertMsg(numMovable() == m_vMovableNodeIndex.size(), "inconsistent number of movable cells: %lu != %lu\n", numMovable(), m_vMovableNodeIndex.size());
-        gpfAssertMsg(numFixed() == m_vFixedNodeIndex.size(), "inconsistent number of fixed cells: %lu != %lu\n", numMovable(), m_vFixedNodeIndex.size());
+        dreamplaceAssertMsg(numMovable() == m_vMovableNodeIndex.size(), "inconsistent number of movable cells: %lu != %lu\n", numMovable(), m_vMovableNodeIndex.size());
+        dreamplaceAssertMsg(numFixed() == m_vFixedNodeIndex.size(), "inconsistent number of fixed cells: %lu != %lu\n", numMovable(), m_vFixedNodeIndex.size());
         std::size_t countNum = std::count(m_vNetIgnoreFlag.begin(), m_vNetIgnoreFlag.end(), true);
-        gpfAssertMsg(numIgnoredNet() == countNum, "inconsistent number of ignored nets: %lu != %lu\n", numIgnoredNet(), countNum);
+        dreamplaceAssertMsg(numIgnoredNet() == countNum, "inconsistent number of ignored nets: %lu != %lu\n", numIgnoredNet(), countNum);
     }
 }
 
 bool PlaceDB::write(std::string const& filename) const 
 {
     //char buf[256];
-    //gpfSPrint(kINFO, buf, "writing placement solution takes %%t seconds CPU, %%w seconds real\n");
+    //dreamplaceSPrint(kINFO, buf, "writing placement solution takes %%t seconds CPU, %%w seconds real\n");
 	//boost::timer::auto_cpu_timer timer (buf);
 
     return write(filename, userParam().fileFormat);
@@ -826,7 +826,7 @@ bool PlaceDB::write(std::string const& filename, SolutionFileFormat ff) const
             flag = BookShelfWriter(*this).writeAll(filename, designName());
             break;
         default:
-            gpfPrint(kERROR, "unknown solution format at line %u\n", __LINE__);
+            dreamplacePrint(kERROR, "unknown solution format at line %u\n", __LINE__);
             break;
     }
     return flag;
@@ -846,7 +846,7 @@ std::pair<PlaceDB::index_type, bool> PlaceDB::addNode(std::string const& n)
         property.setName(n);
         node.setId(m_vNode.size()-1);
         std::pair<string2index_map_type::iterator, bool> insertRet = m_mNodeName2Index.insert(std::make_pair(property.name(), node.id()));
-        gpfAssertMsg(insertRet.second, "failed to insert node (%s, %d)", property.name().c_str(), node.id());
+        dreamplaceAssertMsg(insertRet.second, "failed to insert node (%s, %d)", property.name().c_str(), node.id());
 
         return std::make_pair(node.id(), true);
     }
@@ -864,7 +864,7 @@ std::pair<PlaceDB::index_type, bool> PlaceDB::addMacro(std::string const& n)
         macro.setName(n);
         macro.setId(m_vMacro.size()-1);
         std::pair<string2index_map_type::iterator, bool> insertRet = m_mMacroName2Index.insert(std::make_pair(macro.name(), macro.id()));
-        gpfAssertMsg(insertRet.second, "failed to insert macro (%s, %d)", macro.name().c_str(), macro.id());
+        dreamplaceAssertMsg(insertRet.second, "failed to insert macro (%s, %d)", macro.name().c_str(), macro.id());
 
         m_numMacro = m_vMacro.size(); // update number of macros  
 
@@ -887,7 +887,7 @@ std::pair<PlaceDB::index_type, bool> PlaceDB::addNet(std::string const& n)
         property.setName(n);
         net.setId(m_vNet.size()-1);
         std::pair<string2index_map_type::iterator, bool> insertRet = m_mNetName2Index.insert(std::make_pair(property.name(), net.id()));
-        gpfAssertMsg(insertRet.second, "failed to insert net (%s, %d)", property.name().c_str(), net.id());
+        dreamplaceAssertMsg(insertRet.second, "failed to insert net (%s, %d)", property.name().c_str(), net.id());
 
         return std::make_pair(net.id(), true);
     }
@@ -897,7 +897,7 @@ void PlaceDB::addPin(std::string const& macroPinName, Net& net, Node& node)
 {
     Macro const& macro = m_vMacro.at(macroId(node));
     index_type macroPinId = macro.macroPinIndex(macroPinName);
-    gpfAssertMsg(macroPinId < std::numeric_limits<index_type>::max(), "failed to find pin %s in macro %s", macroPinName.c_str(), macro.name().c_str());
+    dreamplaceAssertMsg(macroPinId < std::numeric_limits<index_type>::max(), "failed to find pin %s in macro %s", macroPinName.c_str(), macro.name().c_str());
 
     addPin(macroPinId, net, node);
 }
@@ -1136,8 +1136,8 @@ IOPinMacroConstIterator PlaceDB::iopinMacroEnd() const
 }
 void PlaceDB::adjustParams()
 {
-    gpfPrint(kWARN, "%lu nets with %lu pins from same nodes\n", m_numNetsWithDuplicatePins, m_numPinsDuplicatedInNets);
-    gpfPrint(kWARN, "%lu nets should be ignored due to not enough pins\n", std::count(m_vNetIgnoreFlag.begin(), m_vNetIgnoreFlag.end(), true));
+    dreamplacePrint(kWARN, "%lu nets with %lu pins from same nodes\n", m_numNetsWithDuplicatePins, m_numPinsDuplicatedInNets);
+    dreamplacePrint(kWARN, "%lu nets should be ignored due to not enough pins\n", std::count(m_vNetIgnoreFlag.begin(), m_vNetIgnoreFlag.end(), true));
 
     // sort nets and pins such that 
     // nets are ordered from small to large degrees 
@@ -1247,22 +1247,22 @@ std::size_t PlaceDB::numKRowMovable(PlaceDB::index_type k) const
 void PlaceDB::printNode(PlaceDB::index_type id) const 
 {
     Node const& node = nodes().at(id);
-    gpfPrint(kNONE, "node %u: \n", node.id());
+    dreamplacePrint(kNONE, "node %u: \n", node.id());
     for (index_type i = 0; i < node.pins().size(); ++i)
     {
         Pin const& pin = pins().at(node.pins().at(i));
-        gpfPrint(kNONE, "[%u] pin %u, net %u, offset (%d,%d)\n", 
+        dreamplacePrint(kNONE, "[%u] pin %u, net %u, offset (%d,%d)\n", 
                 i, pin.id(), pin.netId(), pin.offset().x(), pin.offset().y());
     }
 }
 void PlaceDB::printNet(PlaceDB::index_type id) const
 {
     Net const& net = nets().at(id);
-    gpfPrint(kNONE, "net %u: \n", net.id());
+    dreamplacePrint(kNONE, "net %u: \n", net.id());
     for (index_type i = 0; i < net.pins().size(); ++i)
     {
         Pin const& pin = pins().at(net.pins().at(i));
-        gpfPrint(kNONE, "[%u] pin %u, node %u, offset (%d,%d)\n", 
+        dreamplacePrint(kNONE, "[%u] pin %u, node %u, offset (%d,%d)\n", 
                 i, pin.id(), pin.nodeId(), pin.offset().x(), pin.offset().y());
     }
 }
@@ -1334,8 +1334,8 @@ void PlaceDB::sortNetByDegree()
     }
     for (index_type i = 1, ie = vNetOrder.size(); i != ie; ++i)
     {
-        gpfAssert(m_vNet[i].id() == vNetOrder[i]); 
-        gpfAssertMsg(m_vNet[i-1].pins().size() <= m_vNet[i].pins().size(), "permuting nets error"); 
+        dreamplaceAssert(m_vNet[i].id() == vNetOrder[i]); 
+        dreamplaceAssertMsg(m_vNet[i-1].pins().size() <= m_vNet[i].pins().size(), "permuting nets error"); 
     }
     // update net id and pin to net id 
     for (index_type i = 0, ie = m_vNet.size(); i != ie; ++i)
@@ -1345,7 +1345,7 @@ void PlaceDB::sortNetByDegree()
         {
             // we have not update the net id yet 
             // so it should be consistent 
-            gpfAssert(m_vPin[*it].netId() == net.id()); 
+            dreamplaceAssert(m_vPin[*it].netId() == net.id()); 
             m_vPin[*it].setNetId(i); 
         }
         net.setId(i); 
@@ -1379,8 +1379,8 @@ void PlaceDB::sortNetByDegree()
     }
     for (index_type i = 1, ie = vPinOrder.size(); i != ie; ++i)
     {
-        gpfAssert(m_vPin[i].id() == vPinOrder[i]); 
-        gpfAssertMsg(m_vPin[i-1].netId() <= m_vPin[i].netId(), "permuting pins error"); 
+        dreamplaceAssert(m_vPin[i].id() == vPinOrder[i]); 
+        dreamplaceAssertMsg(m_vPin[i-1].netId() <= m_vPin[i].netId(), "permuting pins error"); 
     }
     // update pins in node  
     for (index_type i = 0, ie = vPinOrder.size(); i != ie; ++i)
@@ -1392,7 +1392,7 @@ void PlaceDB::sortNetByDegree()
         {
             // since the pin id has not been updated yet
             // we can check the correctness 
-            gpfAssert(m_vPin[vPinId2Order[*itp]].id() == *itp); 
+            dreamplaceAssert(m_vPin[vPinId2Order[*itp]].id() == *itp); 
             *itp = vPinId2Order[*itp];
         }
     }
@@ -1404,7 +1404,7 @@ void PlaceDB::sortNetByDegree()
         {
             // since the pin id has not been updated yet
             // we can check the correctness 
-            gpfAssert(m_vPin[vPinId2Order[*itp]].id() == *itp); 
+            dreamplaceAssert(m_vPin[vPinId2Order[*itp]].id() == *itp); 
             *itp = vPinId2Order[*itp];
         }
     }
@@ -1421,7 +1421,7 @@ void PlaceDB::sortNetByDegree()
     //    for (std::vector<index_type>::const_iterator itp = node.pins().begin(), itpe = node.pins().end(); itp != itpe; ++itp)
     //    {
     //        Pin const& pin = m_vPin[*itp]; 
-    //        gpfAssert(pin.nodeId() == node.id()); 
+    //        dreamplaceAssert(pin.nodeId() == node.id()); 
     //    }
     //}
     //for (std::vector<Net>::const_iterator it = m_vNet.begin(), ite = m_vNet.end(); it != ite; ++it)
@@ -1430,9 +1430,9 @@ void PlaceDB::sortNetByDegree()
     //    for (std::vector<index_type>::const_iterator itp = net.pins().begin(), itpe = net.pins().end(); itp != itpe; ++itp)
     //    {
     //        Pin const& pin = m_vPin[*itp]; 
-    //        gpfAssert(pin.netId() == net.id()); 
+    //        dreamplaceAssert(pin.netId() == net.id()); 
     //    }
     //}
 }
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE

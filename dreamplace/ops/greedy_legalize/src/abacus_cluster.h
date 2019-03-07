@@ -7,6 +7,9 @@
 #define GPUPLACE_LEGALIZE_CLUSTER_H
 
 #include <limits.h>
+#include "utility/src/Msg.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 /// A cluster recording abutting cells 
 /// behave liked a linked list but allocated on a continuous memory
@@ -28,5 +31,7 @@ struct AbacusCluster
         return prev_cluster_id != INT_MIN && next_cluster_id != INT_MIN;
     }
 };
+
+DREAMPLACE_END_NAMESPACE
 
 #endif

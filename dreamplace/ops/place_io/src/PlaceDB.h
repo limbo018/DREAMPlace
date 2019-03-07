@@ -5,8 +5,8 @@
     > Created Time: Wed Jun 17 21:09:24 2015
  ************************************************************************/
 
-#ifndef GPF_PLACEDB_H
-#define GPF_PLACEDB_H
+#ifndef DREAMPLACE_PLACEDB_H
+#define DREAMPLACE_PLACEDB_H
 
 #include <limbo/parsers/lef/adapt/LefDriver.h> // LEF parser 
 #include <limbo/parsers/def/adapt/DefDriver.h> // DEF parser 
@@ -24,7 +24,7 @@
 #include "Params.h"
 #include "BenchMetrics.h"
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 /// different tags for data traversal 
 struct MovableNodeIteratorTag;
@@ -437,6 +437,6 @@ inline PlaceDB::index_type PlaceDB::getRowIndex(PlaceDB::coordinate_type y) cons
     else return (y-rowYL())/rowHeight(); // bottom or top row may be redundant 
 }
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE
 
 #endif

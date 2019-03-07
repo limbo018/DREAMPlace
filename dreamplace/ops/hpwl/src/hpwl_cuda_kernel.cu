@@ -55,7 +55,7 @@ __global__ void computeHPWL(
         const T* x, 
         const int* flat_netpin, 
         const int* netpin_start, 
-        const int ignore_net_degree, 
+        const unsigned char* net_mask, 
         int num_nets,
         T* partial_hpwl 
         )
@@ -65,19 +65,19 @@ __global__ void computeHPWL(
         T max_x = -FLT_MAX;
         T min_x = FLT_MAX;
 
-        // ignore large degree nets 
-        if (netpin_start[i+1]-netpin_start[i] >= ignore_net_degree)
+        if (net_mask[i])
+        {
+            for (int j = netpin_start[i]; j < netpin_start[i+1]; ++j)
+            {
+                min_x = min(min_x, x[flat_netpin[j]]);
+                max_x = max(max_x, x[flat_netpin[j]]);
+            }
+            partial_hpwl[i] = max_x-min_x; 
+        }
+        else 
         {
             partial_hpwl[i] = 0; 
-            continue; 
         }
-
-        for (int j = netpin_start[i]; j < netpin_start[i+1]; ++j)
-        {
-            min_x = min(min_x, x[flat_netpin[j]]);
-            max_x = max(max_x, x[flat_netpin[j]]);
-        }
-        partial_hpwl[i] = max_x-min_x; 
     }
 }
 
@@ -86,7 +86,7 @@ int computeHPWLCudaLauncher(
         const T* x, const T* y, 
         const int* flat_netpin, 
         const int* netpin_start, 
-        const int ignore_net_degree, 
+        const unsigned char* net_mask, 
         int num_nets,
         T* partial_hpwl
         )
@@ -116,7 +116,7 @@ int computeHPWLCudaLauncher(
             x, 
             flat_netpin, 
             netpin_start, 
-            ignore_net_degree, 
+            net_mask, 
             num_nets,
             partial_hpwl
             );
@@ -125,7 +125,7 @@ int computeHPWLCudaLauncher(
             y, 
             flat_netpin, 
             netpin_start, 
-            ignore_net_degree, 
+            net_mask, 
             num_nets,
             partial_hpwl+num_nets
             );
@@ -163,7 +163,7 @@ int computeHPWLCudaLauncher(
         const type* x, const type* y, \
         const int* flat_netpin, \
         const int* netpin_start, \
-        const int ignore_net_degree, \
+        const unsigned char* net_mask, \
         int num_nets, \
         type* partial_hpwl \
         ) \
@@ -171,7 +171,7 @@ int computeHPWLCudaLauncher(
         return computeHPWLCudaLauncher(x, y, \
                 flat_netpin, \
                 netpin_start, \
-                ignore_net_degree, \
+                net_mask, \
                 num_nets, \
                 partial_hpwl \
                 ); \

@@ -2,6 +2,7 @@
  * @file   hpwl_cuda.cpp
  * @author Yibo Lin
  * @date   Jun 2018
+ * @brief  Move out-of-bound cells back to inside placement region 
  */
 #include <torch/torch.h>
 #include <limits>

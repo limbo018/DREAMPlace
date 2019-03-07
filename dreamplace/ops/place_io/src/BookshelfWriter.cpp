@@ -11,7 +11,7 @@
 #include <cstdio>
 #include <limbo/string/String.h>
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 bool BookShelfWriter::write(std::string const& outFile) const
 {
@@ -307,11 +307,11 @@ void BookShelfWriter::writeHeader(FILE* os, std::string const& fileType) const
 }
 FILE* BookShelfWriter::openFile(std::string const& outFileNoSuffix, std::string const& fileType) const
 {
-    gpfPrint(kINFO, "writing placement to %s\n", (outFileNoSuffix+"."+fileType).c_str());
+    dreamplacePrint(kINFO, "writing placement to %s\n", (outFileNoSuffix+"."+fileType).c_str());
 
     FILE* out = fopen((outFileNoSuffix+"."+fileType).c_str(), "w");
     if (out == NULL)
-        gpfPrint(kERROR, "unable to open %s for write\n", (outFileNoSuffix+"."+fileType).c_str());
+        dreamplacePrint(kERROR, "unable to open %s for write\n", (outFileNoSuffix+"."+fileType).c_str());
     return out;
 }
 void BookShelfWriter::closeFile(FILE* os) const 
@@ -319,4 +319,4 @@ void BookShelfWriter::closeFile(FILE* os) const
     fclose(os);
 }
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE

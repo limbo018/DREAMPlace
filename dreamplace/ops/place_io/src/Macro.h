@@ -5,8 +5,8 @@
     > Created Time: Mon Jun 15 22:57:05 2015
  ************************************************************************/
 
-#ifndef GPF_MACRO_H
-#define GPF_MACRO_H
+#ifndef DREAMPLACE_MACRO_H
+#define DREAMPLACE_MACRO_H
 
 #include <string>
 #include <vector>
@@ -14,7 +14,7 @@
 #include "MacroPin.h"
 #include "MacroObs.h"
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 class Macro : public Box<Object::coordinate_type>, public Object
 {
@@ -150,11 +150,11 @@ inline std::pair<Macro::index_type, bool> Macro::addMacroPin(std::string const& 
         mp.setName(n);
         mp.setId(m_vMacroPin.size()-1);
         std::pair<string2index_map_type::iterator, bool> insertRet = m_mMacroPinName2Index.insert(std::make_pair(mp.name(), mp.id()));
-        gpfAssertMsg(insertRet.second, "failed to insert macro pin (%s, %d).(%s, %d)", name().c_str(), id(), mp.name().c_str(), mp.id());
+        dreamplaceAssertMsg(insertRet.second, "failed to insert macro pin (%s, %d).(%s, %d)", name().c_str(), id(), mp.name().c_str(), mp.id());
         return std::make_pair(mp.id(), true);
     }
 }
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE
 
 #endif

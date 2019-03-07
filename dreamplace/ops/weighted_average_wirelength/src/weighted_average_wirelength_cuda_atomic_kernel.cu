@@ -2,8 +2,8 @@
 #include <stdio.h>
 #include "assert.h"
 #include "cuda_runtime.h"
-#include "print.h"
-#include "functional_cuda.h"
+#include "utility/src/print.h"
+#include "weighted_average_wirelength/src/functional_cuda.h"
 
 template <typename T>
 __global__ void computeExpSum(

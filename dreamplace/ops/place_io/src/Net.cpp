@@ -7,7 +7,7 @@
 
 #include "Net.h"
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 Net::Net() 
     : Net::base_type()
@@ -54,4 +54,4 @@ void NetProperty::copy(NetProperty const& rhs)
     m_name = rhs.m_name;
 }
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE

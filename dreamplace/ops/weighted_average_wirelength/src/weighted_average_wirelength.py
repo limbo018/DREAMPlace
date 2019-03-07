@@ -2,6 +2,7 @@
 # @file   weighted_average_wirelength.py
 # @author Yibo Lin
 # @date   Jun 2018
+# @brief  Compute weighted-average wirelength according to e-place 
 #
 
 import time
@@ -16,16 +17,19 @@ import weighted_average_wirelength_cuda_sparse
 import pdb 
 
 class WeightedAverageWirelengthFunction(Function):
-    """compute weighted average wirelength.
-    @param pos pin location (x array, y array), not cell location 
-    @param flat_netpin flat netpin map, length of #pins 
-    @param netpin_start starting index in netpin map for each net, length of #nets+1, the last entry is #pins  
-    @param net_mask whether to compute wirelength, 1 means to compute, 0 means to ignore  
-    @param pin_mask whether compute gradient for a pin, 1 means to fill with zero, 0 means to compute
-    @param gamma the smaller, the closer to HPWL 
+    """
+    @brief compute weighted average wirelength.
     """
     @staticmethod
     def forward(ctx, pos, flat_netpin, netpin_start, net_mask, pin_mask, gamma):
+        """
+        @param pos pin location (x array, y array), not cell location 
+        @param flat_netpin flat netpin map, length of #pins 
+        @param netpin_start starting index in netpin map for each net, length of #nets+1, the last entry is #pins  
+        @param net_mask whether to compute wirelength, 1 means to compute, 0 means to ignore  
+        @param pin_mask whether compute gradient for a pin, 1 means to fill with zero, 0 means to compute
+        @param gamma the smaller, the closer to HPWL 
+        """
         if pos.is_cuda:
             output = weighted_average_wirelength_cuda.forward(pos.view(pos.numel()), flat_netpin, netpin_start, net_mask, gamma)
         else:
@@ -63,15 +67,18 @@ class WeightedAverageWirelengthFunction(Function):
         return output, None, None, None, None, None
 
 class WeightedAverageWirelengthAtomicFunction(Function):
-    """compute weighted average wirelength.
-    @param pos pin location (x array, y array), not cell location 
-    @param pin2net_map pin2net map 
-    @param net_mask whether to compute wirelength 
-    @param pin_mask whether compute gradient for a pin, 1 means to fill with zero, 0 means to compute
-    @param gamma the smaller, the closer to HPWL 
+    """
+    @brief compute weighted average wirelength.
     """
     @staticmethod
     def forward(ctx, pos, pin2net_map, net_mask, pin_mask, gamma):
+        """
+        @param pos pin location (x array, y array), not cell location 
+        @param pin2net_map pin2net map 
+        @param net_mask whether to compute wirelength 
+        @param pin_mask whether compute gradient for a pin, 1 means to fill with zero, 0 means to compute
+        @param gamma the smaller, the closer to HPWL 
+        """
         #tt = time.time()
         if pos.is_cuda:
             output = weighted_average_wirelength_cuda_atomic.forward(pos.view(pos.numel()), pin2net_map, net_mask, gamma)
@@ -119,15 +126,18 @@ class WeightedAverageWirelengthAtomicFunction(Function):
         return output, None, None, None, None
 
 class WeightedAverageWirelengthSparseFunction(Function):
-    """compute weighted average wirelength.
-    @param pos pin location (x array, y array), not cell location 
-    @param pin2net_map pin2net map 
-    @param net_mask whether to compute wirelength 
-    @param pin_mask whether compute gradient for a pin, 1 means to fill with zero, 0 means to compute
-    @param gamma the smaller, the closer to HPWL 
+    """
+    @brief compute weighted average wirelength.
     """
     @staticmethod
     def forward(ctx, pos, flat_netpin, netpin_start, netpin_values, pin2net_map, net_mask, pin_mask, gamma):
+        """
+        @param pos pin location (x array, y array), not cell location 
+        @param pin2net_map pin2net map 
+        @param net_mask whether to compute wirelength 
+        @param pin_mask whether compute gradient for a pin, 1 means to fill with zero, 0 means to compute
+        @param gamma the smaller, the closer to HPWL 
+        """
         #tt = time.time()
         if pos.is_cuda:
             output = weighted_average_wirelength_cuda_sparse.forward(pos.view(pos.numel()), flat_netpin, netpin_start, netpin_values, pin2net_map, net_mask, gamma)
@@ -175,20 +185,23 @@ class WeightedAverageWirelengthSparseFunction(Function):
         return output, None, None, None, None, None, None, None, None
 
 class WeightedAverageWirelength(nn.Module):
-    """ Compute weighted average wirelength. 
+    """ 
+    @brief Compute weighted average wirelength. 
     CPU only supports net-by-net algorithm. 
     GPU supports three algorithms: net-by-net, atomic, sparse. 
     Different parameters are required for different algorithms. 
-
-    @param flat_netpin flat netpin map, length of #pins 
-    @param netpin_start starting index in netpin map for each net, length of #nets+1, the last entry is #pins  
-    @param pin2net_map pin2net map 
-    @param net_mask whether to compute wirelength, 1 means to compute, 0 means to ignore  
-    @param pin_mask whether compute gradient for a pin, 1 means to fill with zero, 0 means to compute
-    @param gamma the smaller, the closer to HPWL 
-    @param algorithm must be net-by-net | atomic | sparse 
     """
     def __init__(self, flat_netpin=None, netpin_start=None, pin2net_map=None, net_mask=None, pin_mask=None, gamma=None, algorithm='atomic'):
+        """
+        @brief initialization 
+        @param flat_netpin flat netpin map, length of #pins 
+        @param netpin_start starting index in netpin map for each net, length of #nets+1, the last entry is #pins  
+        @param pin2net_map pin2net map 
+        @param net_mask whether to compute wirelength, 1 means to compute, 0 means to ignore  
+        @param pin_mask whether compute gradient for a pin, 1 means to fill with zero, 0 means to compute
+        @param gamma the smaller, the closer to HPWL 
+        @param algorithm must be net-by-net | atomic | sparse 
+        """
         super(WeightedAverageWirelength, self).__init__()
         assert net_mask is not None and pin_mask is not None and gamma is not None, "net_mask, pin_mask, gamma are requried parameters"
         if algorithm == 'net-by-net':

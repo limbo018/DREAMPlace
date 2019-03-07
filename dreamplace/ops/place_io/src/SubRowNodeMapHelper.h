@@ -5,8 +5,8 @@
     > Created Time: Sun 14 Feb 2016 09:24:33 PM CST
  ************************************************************************/
 
-#ifndef GPF_SUBROWNODEMAPHELPER_H
-#define GPF_SUBROWNODEMAPHELPER_H
+#ifndef DREAMPLACE_SUBROWNODEMAPHELPER_H
+#define DREAMPLACE_SUBROWNODEMAPHELPER_H
 
 #include <boost/geometry.hpp>
 #include <boost/geometry/index/rtree.hpp>
@@ -28,19 +28,19 @@ struct indexable< std::pair<boost::geometry::model::box<boost::geometry::model::
 };
 
 template <>
-struct indexable<GPF_NAMESPACE::Node const*>
+struct indexable<DREAMPLACE_NAMESPACE::Node const*>
 {
-    typedef GPF_NAMESPACE::Node const* value_type;
-    typedef GPF_NAMESPACE::Interval<GPF_NAMESPACE::Node::coordinate_type> const& result_type;
+    typedef DREAMPLACE_NAMESPACE::Node const* value_type;
+    typedef DREAMPLACE_NAMESPACE::Interval<GPF_NAMESPACE::Node::coordinate_type> const& result_type;
 
-    result_type operator()(value_type const& v) const {return v->get(GPF_NAMESPACE::kX);}
+    result_type operator()(value_type const& v) const {return v->get(DREAMPLACE_NAMESPACE::kX);}
 };
 
 template <>
-struct indexable<GPF_NAMESPACE::NodeMapElement>
+struct indexable<DREAMPLACE_NAMESPACE::NodeMapElement>
 {
-    typedef GPF_NAMESPACE::NodeMapElement value_type;
-    typedef GPF_NAMESPACE::NodeMapElement::interval_type const& result_type;
+    typedef DREAMPLACE_NAMESPACE::NodeMapElement value_type;
+    typedef DREAMPLACE_NAMESPACE::NodeMapElement::interval_type const& result_type;
 
     result_type operator()(value_type const& v) const {return v.inv;}
 };
@@ -51,13 +51,13 @@ namespace boost { namespace geometry { namespace traits {
 
 //////// for intervals ////////
 template <typename CoordinateType>
-struct tag<GPF_NAMESPACE::Interval<CoordinateType> > 
+struct tag<DREAMPLACE_NAMESPACE::Interval<CoordinateType> > 
 {
     typedef box_tag type;
 };
 
 template <typename CoordinateType>
-struct point_type<GPF_NAMESPACE::Interval<CoordinateType> >
+struct point_type<DREAMPLACE_NAMESPACE::Interval<CoordinateType> >
 {
     // a 1D point 
     typedef boost::geometry::model::point<CoordinateType, 1, boost::geometry::cs::cartesian> type;
@@ -66,19 +66,19 @@ struct point_type<GPF_NAMESPACE::Interval<CoordinateType> >
 template <typename CoordinateType, std::size_t Dimension>
 struct indexed_access
 <
-    GPF_NAMESPACE::Interval<CoordinateType>,
+    DREAMPLACE_NAMESPACE::Interval<CoordinateType>,
     min_corner, Dimension
 > 
 {
     typedef CoordinateType coordinate_type;
 
-    static inline coordinate_type get(GPF_NAMESPACE::Interval<coordinate_type> const& inv)
+    static inline coordinate_type get(DREAMPLACE_NAMESPACE::Interval<coordinate_type> const& inv)
     {
         return inv.low();
     }
-    static inline void set(GPF_NAMESPACE::Interval<coordinate_type>& inv, coordinate_type const& value)
+    static inline void set(DREAMPLACE_NAMESPACE::Interval<coordinate_type>& inv, coordinate_type const& value)
     {
-        inv.set(GPF_NAMESPACE::kLOW, value);
+        inv.set(DREAMPLACE_NAMESPACE::kLOW, value);
     }
 };
 
@@ -86,26 +86,26 @@ struct indexed_access
 template <typename CoordinateType, std::size_t Dimension>
 struct indexed_access
 <
-    GPF_NAMESPACE::Interval<CoordinateType>,
+    DREAMPLACE_NAMESPACE::Interval<CoordinateType>,
     max_corner, Dimension
 > 
 {
     typedef CoordinateType coordinate_type;
 
-    static inline coordinate_type get(GPF_NAMESPACE::Interval<coordinate_type> const& inv)
+    static inline coordinate_type get(DREAMPLACE_NAMESPACE::Interval<coordinate_type> const& inv)
     {
         return inv.high();
     }
-    static inline void set(GPF_NAMESPACE::Interval<coordinate_type>& inv, coordinate_type const& value)
+    static inline void set(DREAMPLACE_NAMESPACE::Interval<coordinate_type>& inv, coordinate_type const& value)
     {
-        inv.set(GPF_NAMESPACE::kHIGH, value);
+        inv.set(DREAMPLACE_NAMESPACE::kHIGH, value);
     }
 };
 
 }}} // namespace boost // namespace geometry // namespace traits
 
 /// API for IntervalHashMap
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 template <>
 struct IntervalHashMapTraits<NodeMapElement> 
@@ -127,7 +127,7 @@ struct IntervalHashMapTraits<NodeMapElement>
     }; 
 };
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE
 
 
 #endif

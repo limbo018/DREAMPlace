@@ -28,7 +28,6 @@ setup(
                     add_prefix('BenchMetrics.cpp'),  
                     add_prefix('BinMap.cpp'),  
                     add_prefix('Enums.cpp'),  
-                    add_prefix('Msg.cpp'),  
                     add_prefix('Net.cpp'),  
                     add_prefix('Node.cpp'),  
                     add_prefix('Params.cpp'),  

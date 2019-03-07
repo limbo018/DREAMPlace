@@ -5,14 +5,14 @@
     > Created Time: Sun 14 Jun 2015 08:52:22 PM CDT
  ************************************************************************/
 
-#ifndef GPF_INTERVAL_H
-#define GPF_INTERVAL_H
+#ifndef DREAMPLACE_INTERVAL_H
+#define DREAMPLACE_INTERVAL_H
 
 #include <limits>
 #include <limbo/math/Math.h>
 #include "Util.h"
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 /// an interval class 
 /// it consists of a low value and a high value 
@@ -261,6 +261,6 @@ inline bool onBoundary(Interval<T> const& t, typename coordinate_traits<T>::coor
     return t.low() == v || t.high() == v;
 }
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE
 
 #endif

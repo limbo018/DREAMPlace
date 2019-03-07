@@ -66,16 +66,17 @@ def place(params):
         os.system(cmd)
         print("[I] detailed placement takes %.2f seconds" % (time.time()-tt))
 
-        # read solution and evaluate 
-        placedb.read_pl(dp_out_file+".ntup.pl")
-        placedb.scale_pl(params.scale_factor)
-        iteration = len(metrics)
-        pos = placer.init_pos
-        pos[0:placedb.num_physical_nodes] = placedb.node_x
-        pos[placedb.num_nodes:placedb.num_nodes+placedb.num_physical_nodes] = placedb.node_y
-        hpwl, density_overflow, max_density = placer.validate(placedb, pos, iteration)
-        print("[I] iteration %4d, HPWL %.3E, overflow %.3E, max density %.3E" % (iteration, hpwl, density_overflow, max_density))
-        placer.plot(params, placedb, iteration, pos)
+        if params.plot_flag: 
+            # read solution and evaluate 
+            placedb.read_pl(dp_out_file+".ntup.pl")
+            placedb.scale_pl(params.scale_factor)
+            iteration = len(metrics)
+            pos = placer.init_pos
+            pos[0:placedb.num_physical_nodes] = placedb.node_x
+            pos[placedb.num_nodes:placedb.num_nodes+placedb.num_physical_nodes] = placedb.node_y
+            hpwl, density_overflow, max_density = placer.validate(placedb, pos, iteration)
+            print("[I] iteration %4d, HPWL %.3E, overflow %.3E, max density %.3E" % (iteration, hpwl, density_overflow, max_density))
+            placer.plot(params, placedb, iteration, pos)
     elif params.detailed_place_engine:
         print("[W] External detailed placement engine %s NOT found" % (params.detailed_place_engine))
 

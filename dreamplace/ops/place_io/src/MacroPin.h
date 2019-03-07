@@ -5,15 +5,15 @@
     > Created Time: Tue Jun 16 21:08:59 2015
  ************************************************************************/
 
-#ifndef GPF_MACROPIN_H
-#define GPF_MACROPIN_H
+#ifndef DREAMPLACE_MACROPIN_H
+#define DREAMPLACE_MACROPIN_H
 
 #include <string>
 #include <vector>
 #include "Object.h"
 #include "Box.h"
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 /// class MacroPort describes the ports in a macro pin 
 /// it consists of rectangles and polygons 
@@ -200,6 +200,6 @@ inline void deriveMacroPinBbox(MacroPin& mp)
     mp.setBbox(box);
 }
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE
 
 #endif

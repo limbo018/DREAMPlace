@@ -8,6 +8,9 @@
 
 #include <cstdio>
 #include <vector>
+#include "utility/src/Msg.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 /// assume num_bins_x*num_bins_y is smaller than bin_objs.size
 /// assume num_bins_x*num_bins_y*max_objs_per_bin is no larger than the numbers in original bin_objs
@@ -28,7 +31,7 @@ void countBinObjects(const std::vector<std::vector<T> >& bin_objs)
     {
         count += bin_objs.at(i).size();
     }
-    printf("[D] #bin_objs = %d\n", count);
+    dreamplacePrint(kDEBUG, "#bin_objs = %d\n", count);
 }
 
 template <typename T>
@@ -54,7 +57,7 @@ void mergeBinBlanksCPU(
 
         std::vector<Blank<T> >& dst_bin_blank = dst_bin_blanks.at(i); 
 
-        //printf("[D] dst_bin_blanks[%d] (%d, %d) found src_bin_blanks (%d, %d) (%d)\n", i, dst_bin_id_x, dst_bin_id_y, src_bin_id_x_bgn, src_bin_id_x_end, dst_bin_id_y);
+        //dreamplacePrint(kDEBUG, "dst_bin_blanks[%d] (%d, %d) found src_bin_blanks (%d, %d) (%d)\n", i, dst_bin_id_x, dst_bin_id_y, src_bin_id_x_bgn, src_bin_id_x_end, dst_bin_id_y);
 
         for (int ix = src_bin_id_x_bgn; ix < src_bin_id_x_end; ++ix)
         {
@@ -91,25 +94,6 @@ void mergeBinBlanksCPU(
                 }
             }
         }
-
-        //thrust::sort(thrust::seq, dst_bin_blank, dst_bin_blank+dst_bin_blanks.sizes[i], CompareByBlankYLXL<T>()); 
-
-        // merge adjacent spaces 
-        //for (int j = 1; j < dst_bin_blanks.sizes[i]; ++j)
-        //{
-        //    Blank<T>& blank1 = dst_bin_blank[j-1]; 
-        //    Blank<T>& blank2 = dst_bin_blank[j]; 
-
-        //    if (blank1.yl == blank2.yl && blank1.xh == blank2.xl)
-        //    {
-        //        printf("[E] detect adjacent blanks (%g, %g, %g, %g) (%g, %g, %g, %g)\n", blank1.xl, blank1.yl, blank1.xh, blank1.yh, blank2.xl, blank2.yl, blank2.xh, blank2.yh);
-        //        // update blank1 
-        //        blank1.xh = blank2.xh; 
-        //        // remove blank2 
-        //        CVector::erase(dst_bin_blanks, i, j); 
-        //        --j; 
-        //    }
-        //}
     }
 }
 
@@ -120,5 +104,7 @@ void mergeBinCellsCPU(
         int dst_num_bins_x, int dst_num_bins_y, // dimensions for the dst
         int scale_ratio_x, int scale_ratio_y // roughly src_num_bins_x/dst_num_bins_x, but may not be exactly the same due to even/odd numbers
         );
+
+DREAMPLACE_END_NAMESPACE
 
 #endif

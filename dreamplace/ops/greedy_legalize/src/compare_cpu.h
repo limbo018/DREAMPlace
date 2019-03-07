@@ -7,7 +7,10 @@
 #ifndef GPUPLACE_COMPARE_CPU_H
 #define GPUPLACE_COMPARE_CPU_H
 
+#include "utility/src/Msg.h"
 #include "blank.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T>
 struct CompareByBlankYLXLCPU 
@@ -114,5 +117,6 @@ struct CompareByNodeNTUPlaceCostFromLeftCPU
     const T* node_size_y; 
 }; 
 
+DREAMPLACE_END_NAMESPACE
 
 #endif

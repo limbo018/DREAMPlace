@@ -22,7 +22,7 @@
 #include <limbo/parsers/gdsii/stream/GdsWriter.h>
 
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 /// helper object of ObsWraper for drawing fixed cells 
 struct DrawFixedNodeHelper
@@ -58,7 +58,7 @@ PlaceDrawer::PlaceDrawer(AlgoDB const& db, PlaceDrawerExt* ext, int content)
 
 bool PlaceDrawer::run(std::string const& filename, PlaceDrawer::FileFormat ff) const
 {
-    gpfPrint(kINFO, "writing placement to %s\n", filename.c_str());
+    dreamplacePrint(kINFO, "writing placement to %s\n", filename.c_str());
     bool flag = false;
 
     //PlaceDB const& placeDB = m_db.placeDB();
@@ -75,7 +75,7 @@ bool PlaceDrawer::run(std::string const& filename, PlaceDrawer::FileFormat ff) c
             flag = writeGdsii(filename);
             break;
         default:
-            gpfPrint(kERROR, "unknown writing format at line %u\n", __LINE__);
+            dreamplacePrint(kERROR, "unknown writing format at line %u\n", __LINE__);
             break;
     }
 
@@ -195,7 +195,7 @@ void PlaceDrawer::paintCairo(cairo_surface_t* cs, double width, double height) c
 
 	cairo_destroy(c);
 #else 
-    gpfPrint(kWARN, "cs = %p, width = %g, height = %g are not used, as DRAWPLACE not enabled\n", cs, width, height);
+    dreamplacePrint(kWARN, "cs = %p, width = %g, height = %g are not used, as DRAWPLACE not enabled\n", cs, width, height);
 #endif
 }
 
@@ -225,7 +225,7 @@ bool PlaceDrawer::writeFig(const char *fname, double width, double height, Place
             cs=cairo_svg_surface_create(fname, width, height);
             break;
         default:
-            gpfPrint(kERROR, "unknown file format in %s\n", __func__);
+            dreamplacePrint(kERROR, "unknown file format in %s\n", __func__);
             return false;
     }
 
@@ -238,7 +238,7 @@ bool PlaceDrawer::writeFig(const char *fname, double width, double height, Place
 	cairo_surface_destroy(cs);
     return true;
 #else 
-    gpfPrint(kWARN, "filename = %s, width = %g, height = %g, file format = %d not used, as DRAWPLACE not enabled\n", fname, width, height, (int)ff);
+    dreamplacePrint(kWARN, "filename = %s, width = %g, height = %g, file format = %d not used, as DRAWPLACE not enabled\n", fname, width, height, (int)ff);
     return false;
 #endif 
 }
@@ -278,7 +278,7 @@ void PlaceDrawer::writeGdsiiContent(GdsParser::GdsWriter& gw) const
     const unsigned markedNodeLayer = getLayer(false); // together with netLayer 
     const unsigned netLayer = getLayer(false);
 
-    gpfPrint(kINFO, "Layer: dieArea:%u, row:%u, subRow:%u, binRow:%u, bin:%u, sbin:%u, movableCellBbox:%u, fixedCellBbox:%u, blockageBbox:%u, pin:%u, multiRowCellBbox:%u, movePathLayer:%u, markedNodeLayer:%u, net:from %u\n", 
+    dreamplacePrint(kINFO, "Layer: dieArea:%u, row:%u, subRow:%u, binRow:%u, bin:%u, sbin:%u, movableCellBbox:%u, fixedCellBbox:%u, blockageBbox:%u, pin:%u, multiRowCellBbox:%u, movePathLayer:%u, markedNodeLayer:%u, net:from %u\n", 
             dieAreaLayer, rowLayer, subRowLayer, binRowLayer, binLayer, sbinLayer, movableCellBboxLayer, fixedCellBboxLayer, blockageBboxLayer, pinLayer, multiRowCellBboxLayer, movePathLayer, markedNodeLayer, netLayer);
 
     PlaceDB const& placeDB = m_db.placeDB();
@@ -296,7 +296,7 @@ void PlaceDrawer::writeGdsiiContent(GdsParser::GdsWriter& gw) const
     {
         Row const& row = *it;
         gw.write_box(rowLayer, 0, row.xl(), row.yl(), row.xh(), row.yh());
-        gpfSPrint(kNONE, buf, "%u", row.id()); // write row index at left site 
+        dreamplaceSPrint(kNONE, buf, "%u", row.id()); // write row index at left site 
         gw.gds_create_text(buf, row.xl()-100, center(row, kY), rowLayer+1, 5);
     }
     // write subrows 
@@ -304,7 +304,7 @@ void PlaceDrawer::writeGdsiiContent(GdsParser::GdsWriter& gw) const
     {
         SubRow const& srow = *it;
         gw.write_box(subRowLayer, 0, srow.xl(), srow.yl(), srow.xh(), srow.yh());
-        gpfSPrint(kNONE, buf, "%u", srow.index1D());
+        dreamplaceSPrint(kNONE, buf, "%u", srow.index1D());
         gw.gds_create_text(buf, center(srow, kX), center(srow, kY), subRowLayer+1, 5);
     }
     // write binrows 
@@ -312,7 +312,7 @@ void PlaceDrawer::writeGdsiiContent(GdsParser::GdsWriter& gw) const
     {
         BinRow const& brow = *it;
         gw.write_box(binRowLayer, 0, brow.xl(), brow.yl(), brow.xh(), brow.yh());
-        gpfSPrint(kNONE, buf, "%u", brow.index1D());
+        dreamplaceSPrint(kNONE, buf, "%u", brow.index1D());
         gw.gds_create_text(buf, center(brow, kX), center(brow, kY), binRowLayer+1, 5);
     }
     // write bins 
@@ -320,7 +320,7 @@ void PlaceDrawer::writeGdsiiContent(GdsParser::GdsWriter& gw) const
     {
         Bin const& bin = *it;
         gw.write_box(binLayer, 0, bin.xl(), bin.yl(), bin.xh(), bin.yh());
-        gpfSPrint(kNONE, buf, "%u", bin.index1D());
+        dreamplaceSPrint(kNONE, buf, "%u", bin.index1D());
         gw.gds_create_text(buf, center(bin, kX), center(bin, kY), binLayer+1, 5);
     }
     // write bins 
@@ -328,7 +328,7 @@ void PlaceDrawer::writeGdsiiContent(GdsParser::GdsWriter& gw) const
     {
         Bin const& bin = *it;
         gw.write_box(sbinLayer, 0, bin.xl(), bin.yl(), bin.xh(), bin.yh());
-        gpfSPrint(kNONE, buf, "%u", bin.index1D());
+        dreamplaceSPrint(kNONE, buf, "%u", bin.index1D());
         gw.gds_create_text(buf, center(bin, kX), center(bin, kY), sbinLayer+1, 5);
     }
     // write cells 
@@ -343,13 +343,13 @@ void PlaceDrawer::writeGdsiiContent(GdsParser::GdsWriter& gw) const
             // draw fixed cell 
             dfnHelper(node);
 
-            gpfSPrint(kNONE, buf, "(%u)%s", node.id(), getTextOnNode(node).c_str());
+            dreamplaceSPrint(kNONE, buf, "(%u)%s", node.id(), getTextOnNode(node).c_str());
             gw.gds_create_text(buf, center(node, kX), center(node, kY), fixedCellBboxLayer+1, 5);
         }
         else if (m_sMarkNode.empty()) // do not write cells if there are marked cells 
         {
             gw.write_box(movableCellBboxLayer, 0, node.xl(), node.yl(), node.xh(), node.yh());
-            gpfSPrint(kNONE, buf, "(%u)%s", node.id(), getTextOnNode(node).c_str());
+            dreamplaceSPrint(kNONE, buf, "(%u)%s", node.id(), getTextOnNode(node).c_str());
             gw.gds_create_text(buf, center(node, kX), center(node, kY), movableCellBboxLayer+1, 5);
             if (placeDB.isMultiRowMovable(node)) // multi-row cell 
             {
@@ -373,7 +373,7 @@ void PlaceDrawer::writeGdsiiContent(GdsParser::GdsWriter& gw) const
         if (m_sMarkNode.count(node.id())) // highlight marked nodes 
         {
             gw.write_box(markedNodeLayer, 0, node.xl(), node.yl(), node.xh(), node.yh());
-            gpfSPrint(kNONE, buf, "(%u)%s", node.id(), getTextOnNode(node).c_str());
+            dreamplaceSPrint(kNONE, buf, "(%u)%s", node.id(), getTextOnNode(node).c_str());
             gw.gds_create_text(buf, center(node, kX), center(node, kY), markedNodeLayer+1, 5);
         }
     }
@@ -483,4 +483,4 @@ Box<PlaceDrawer::coordinate_type> PlaceDrawer::getPinBbox(Pin const& pin) const
     }
 }
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE

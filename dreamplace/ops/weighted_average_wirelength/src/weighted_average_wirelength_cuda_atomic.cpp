@@ -29,6 +29,15 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
 
 typedef int V; 
 
+/// @brief Compute weighted average wirelength and gradient. 
+/// WL = \sum_i x_i*exp(x_i/gamma) / \sum_i exp(x_i/gamma) - \sum_i x_i*exp(-x_i/gamma) / \sum_i x_i*exp(-x_i/gamma), 
+/// where x_i is pin location.
+/// 
+/// @param pos location of pins, x array followed by y array. 
+/// @param pin2net_map map pin to net 
+/// @param net_mask whether compute the wirelength for a net or not 
+/// @param gamma gamma coefficient in weighted average wirelength. 
+/// @return total wirelength cost.
 std::vector<at::Tensor> weighted_average_wirelength_atomic_forward(
         at::Tensor pos,
         at::Tensor pin2net_map, 
@@ -84,6 +93,18 @@ std::vector<at::Tensor> weighted_average_wirelength_atomic_forward(
     return {wl, exp_xy, exp_nxy, exp_xy_sum, exp_nxy_sum, xyexp_xy_sum, xyexp_nxy_sum}; 
 }
 
+/// @brief Compute gradient 
+/// @param grad_pos input gradient from backward propagation 
+/// @param pos locations of pins 
+/// @param exp_xy array of exp(x/gamma) and then exp(y/gamma)
+/// @param exp_nxy array of exp(-x/gamma) and then exp(-y/gamma)
+/// @param exp_xy_sum array of \sum(exp(x/gamma)) for each net and then \sum(exp(y/gamma))
+/// @param exp_nxy_sum array of \sum(exp(-x/gamma)) for each net and then \sum(exp(-y/gamma))
+/// @param xyexp_xy_sum array of \sum(x*exp(x/gamma)) for each net and then \sum(y*exp(y/gamma))
+/// @param xyexp_nxy_sum array of \sum(x*exp(-x/gamma)) for each net and then \sum(y*exp(-y/gamma))
+/// @param pin2net_map map pin to net 
+/// @param net_mask an array to record whether compute the where for a net or not 
+/// @param gamma a scalar tensor for the parameter in the equation 
 at::Tensor weighted_average_wirelength_atomic_backward(
         at::Tensor grad_pos, 
         at::Tensor pos,

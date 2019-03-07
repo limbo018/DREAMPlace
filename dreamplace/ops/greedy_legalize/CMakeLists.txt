@@ -3,6 +3,9 @@ cmake_minimum_required(VERSION 2.8.12)
 project(greedy_legalize)
 
 find_program(PYTHON "python")
+find_package(CUDA 9.0 REQUIRED)
+get_filename_component(OPS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/.. ABSOLUTE)
+get_filename_component(UTILITY_LIBRARY_DIRS ${CMAKE_CURRENT_BINARY_DIR}/../utility ABSOLUTE)
 
 if (PYTHON)
     set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/src/setup.py.in")

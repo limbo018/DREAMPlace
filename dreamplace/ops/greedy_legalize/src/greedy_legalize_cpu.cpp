@@ -13,6 +13,8 @@
 #include <numeric>
 #include "function_cpu.h"
 
+DREAMPLACE_BEGIN_NAMESPACE
+
 template <typename T>
 int greedyLegalizationCPU(
         const T* init_x, const T* init_y, 
@@ -28,49 +30,10 @@ int greedyLegalizationCPU(
 {
     float milliseconds = 0; 
 
-#if 0
-    // sort cells according to priority 
-    std::vector<int> ordered_nodes(num_movable_nodes); 
-    std::iota(ordered_nodes.begin(), ordered_nodes.end(), 0);
-    std::sort(ordered_nodes.begin(), ordered_nodes.end(), CompareByNodeNTUPlaceCostCPU<T>(init_x, init_y, node_size_x, node_size_y)); 
-
-    // assign cells to bins 
-    int ba_num_bins_x = 32; 
-    int ba_num_bins_y = int((yh-yl)/row_height); 
-    binAssignmentCPU(
-            ordered_nodes.data(), 
-            init_x, init_y, 
-            node_size_x, node_size_y, 
-            x, y, 
-            xl, yl, xh, yh, 
-            site_width, row_height, 
-            ba_num_bins_x, ba_num_bins_y, 
-            num_nodes, 
-            num_movable_nodes, 
-            num_filler_nodes
-            );
-
-    milliseconds = clock(); 
-    abacusLegalizationCPU(
-            init_x, init_y, 
-            node_size_x, node_size_y, 
-            x, y, 
-            xl, yl, xh, yh, 
-            site_width, row_height, 
-            1, num_bins_y, 
-            num_nodes, 
-            num_movable_nodes, 
-            num_filler_nodes
-            );
-    milliseconds = (clock()-milliseconds)/CLOCKS_PER_SEC*1000; 
-    printf("[I] %s abacusLegalization takes %.3f ms\n", __func__, milliseconds);
-#endif
-
     // first from right to left 
     // then from left to right 
     for (int i = 0; i < 2; ++i)
     {
-#if 1
         num_bins_x = 1; 
         num_bins_y = 1;
         // adjust bin sizes 
@@ -85,7 +48,7 @@ int greedyLegalizationCPU(
         // bin dimension in y direction for blanks is different from that for cells 
         T blank_bin_size_y = row_height; 
         int blank_num_bins_y = (yh-yl)/blank_bin_size_y; 
-        printf("[D] %s blank_num_bins_y = %d\n", __func__, blank_num_bins_y);
+        dreamplacePrint(kDEBUG, "%s blank_num_bins_y = %d\n", __func__, blank_num_bins_y);
 
         // allocate bin cells 
         std::vector<std::vector<int> > bin_cells (num_bins_x*num_bins_y); 
@@ -102,7 +65,6 @@ int greedyLegalizationCPU(
                 bin_cells
                 );
 
-        //CVector::print(bin_cells, "bin_cells");
 
         // allocate bin fixed cells 
         std::vector<std::vector<int> > bin_fixed_cells (num_bins_x*num_bins_y); 
@@ -134,19 +96,16 @@ int greedyLegalizationCPU(
                 bin_blanks
                 ); 
 
-        //CVector::printBinBlanks(bin_blanks, num_bins_x, num_bins_y, blank_num_bins_y, (int)round(bin_size_y/blank_bin_size_y), "initial bin_blanks");
-
         int num_unplaced_cells_host;
         // minimum width in sites 
         int min_unplaced_node_size_x_host;
         int num_iters = floor(log((T)std::min(num_bins_x, num_bins_y))/log(2.0))+1;
         for (int iter = 0; iter < num_iters; ++iter)
         {
-            printf("[D] %s iteration %d with %dx%d bins\n", __func__, iter, num_bins_x, num_bins_y);
+            dreamplacePrint(kDEBUG, "%s iteration %d with %dx%d bins\n", __func__, iter, num_bins_x, num_bins_y);
             num_unplaced_cells_host = 0; 
-            //printf("#bin_cells\n");
             //countBinObjects(bin_cells);
-            printf("[D] %s #bin_blanks\n", __func__);
+            dreamplacePrint(kDEBUG, "%s #bin_blanks\n", __func__);
             countBinObjects(bin_blanks);
 
             milliseconds = clock(); 
@@ -166,12 +125,9 @@ int greedyLegalizationCPU(
                     &num_unplaced_cells_host
                     );
             milliseconds = (clock()-milliseconds)/CLOCKS_PER_SEC*1000; 
-            printf("[I] %s legalizeBin takes %.3f ms\n", __func__, milliseconds);
+            dreamplacePrint(kINFO, "%s legalizeBin takes %.3f ms\n", __func__, milliseconds);
 
-            //CVector::print(bin_cells, "bin_cells");
-            //CVector::printBinBlanks(bin_blanks, num_bins_x, num_bins_y, blank_num_bins_y, (int)round(bin_size_y/blank_bin_size_y), "bin_blanks");
-
-            printf("[D] %s num_unplaced_cells = %d\n", __func__, num_unplaced_cells_host); 
+            dreamplacePrint(kDEBUG, "%s num_unplaced_cells = %d\n", __func__, num_unplaced_cells_host); 
             //countBinObjects(bin_cells);
             //countBinObjects(bin_blanks);
 
@@ -191,8 +147,8 @@ int greedyLegalizationCPU(
                     &min_unplaced_node_size_x_host
                     );
             milliseconds = (clock()-milliseconds)/CLOCKS_PER_SEC*1000; 
-            printf("[I] %s minNodeSize takes %.3f ms\n", __func__, milliseconds);
-            printf("[D] %s minimum unplaced node_size_x %d sites\n", __func__, min_unplaced_node_size_x_host);
+            dreamplacePrint(kINFO, "%s minNodeSize takes %.3f ms\n", __func__, milliseconds);
+            dreamplacePrint(kDEBUG, "%s minimum unplaced node_size_x %d sites\n", __func__, min_unplaced_node_size_x_host);
 
             // ceil(num_bins_x/2), ceil(num_bins_y/2)
             int dst_num_bins_x = (num_bins_x>>1)+(num_bins_x&1); 
@@ -213,7 +169,7 @@ int greedyLegalizationCPU(
                     scale_ratio_x, scale_ratio_y
                     );
             milliseconds = (clock()-milliseconds)/CLOCKS_PER_SEC*1000; 
-            printf("[D] %s mergeBinCells takes %.3f ms\n", __func__, milliseconds);
+            dreamplacePrint(kDEBUG, "%s mergeBinCells takes %.3f ms\n", __func__, milliseconds);
             milliseconds = clock(); 
             resizeBinObjectsCPU(
                     bin_blanks_copy, 
@@ -228,7 +184,7 @@ int greedyLegalizationCPU(
                     min_unplaced_node_size_x_host*site_width
                     );
             milliseconds = (clock()-milliseconds)/CLOCKS_PER_SEC*1000; 
-            printf("[D] %s mergeBinBlanks takes %.3f ms\n", __func__, milliseconds);
+            dreamplacePrint(kDEBUG, "%s mergeBinBlanks takes %.3f ms\n", __func__, milliseconds);
 
             // update bin dimensions
             num_bins_x = dst_num_bins_x; 
@@ -240,10 +196,8 @@ int greedyLegalizationCPU(
             std::swap(bin_cells, bin_cells_copy); 
             std::swap(bin_blanks, bin_blanks_copy); 
         }
-#endif 
     }
 
-#if 1
     milliseconds = clock(); 
     abacusLegalizationCPU(
             init_x, init_y, 
@@ -257,8 +211,7 @@ int greedyLegalizationCPU(
             num_filler_nodes
             );
     milliseconds = (clock()-milliseconds)/CLOCKS_PER_SEC*1000; 
-    printf("[D] %s abacusLegalization takes %.3f ms\n", __func__, milliseconds);
-#endif
+    dreamplacePrint(kDEBUG, "%s abacusLegalization takes %.3f ms\n", __func__, milliseconds);
 
     legalityCheckKernelCPU(
             init_x, init_y, 
@@ -323,3 +276,5 @@ int instantiateGreedyLegalizationCPU(
             num_filler_nodes
             );
 }
+
+DREAMPLACE_END_NAMESPACE

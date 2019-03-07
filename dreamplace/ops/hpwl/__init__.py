@@ -61,6 +61,8 @@ class HPWLOpTest(unittest.TestCase):
 
         # net degrees 
         net_degrees = np.array([len(net2pin) for net2pin in net2pin_map])
+        net_mask = (net_degrees <= np.amax(net_degrees)).astype(np.uint8)
+        print("net_mask = ", net_mask)
 
         golden_value = all_hpwl(pin_x, pin_y, net2pin_map)
         print("golden_value = ", golden_value)
@@ -73,9 +75,11 @@ class HPWLOpTest(unittest.TestCase):
         pin_pos_var = torch.t(pin_pos_var).contiguous()
         #pdb.set_trace()
         custom = hpwl.HPWL(
-                torch.from_numpy(flat_net2pin_map), 
-                torch.from_numpy(flat_net2pin_start_map),
-                torch.tensor(len(flat_net2pin_map))
+                flat_netpin=torch.from_numpy(flat_net2pin_map), 
+                netpin_start=torch.from_numpy(flat_net2pin_start_map),
+                pin2net_map=torch.from_numpy(pin2net_map), 
+                net_mask=torch.from_numpy(net_mask), 
+                algorithm='net-by-net'
                 )
         hpwl_value = custom.forward(pin_pos_var)
         print("hpwl_value = ", hpwl_value.data.numpy())
@@ -83,29 +87,35 @@ class HPWLOpTest(unittest.TestCase):
 
         # test gpu 
         custom_cuda = hpwl.HPWL(
-                torch.from_numpy(flat_net2pin_map).cuda(), 
-                torch.from_numpy(flat_net2pin_start_map).cuda(),
-                torch.tensor(len(flat_net2pin_map)).cuda()
+                flat_netpin=torch.from_numpy(flat_net2pin_map).cuda(), 
+                netpin_start=torch.from_numpy(flat_net2pin_start_map).cuda(),
+                pin2net_map=torch.from_numpy(pin2net_map).cuda(), 
+                net_mask=torch.from_numpy(net_mask).cuda(), 
+                algorithm='net-by-net'
                 )
         hpwl_value = custom_cuda.forward(pin_pos_var.cuda())
         print("hpwl_value cuda = ", hpwl_value.data.cpu().numpy())
         np.testing.assert_allclose(hpwl_value.data.cpu().numpy(), golden_value)
 
         # test atomic cpu 
-        net_mask = (net_degrees <= np.amax(net_degrees)).astype(np.uint8)
-        print("net_mask = ", net_mask)
-        custom_atomic = hpwl.HPWLAtomic(
-                torch.from_numpy(pin2net_map), 
-                torch.from_numpy(net_mask)
+        custom_atomic = hpwl.HPWL(
+                flat_netpin=torch.from_numpy(flat_net2pin_map), 
+                netpin_start=torch.from_numpy(flat_net2pin_start_map),
+                pin2net_map=torch.from_numpy(pin2net_map), 
+                net_mask=torch.from_numpy(net_mask), 
+                algorithm='atomic'
                 )
         hpwl_value = custom_atomic.forward(pin_pos_var)
         print("hpwl_value atomic = ", hpwl_value.data.numpy())
         np.testing.assert_allclose(hpwl_value.data.numpy(), golden_value)
 
         # test atomic gpu 
-        custom_cuda_atomic = hpwl.HPWLAtomic(
-                torch.from_numpy(pin2net_map).cuda(), 
-                torch.from_numpy(net_mask).cuda()
+        custom_cuda_atomic = hpwl.HPWL(
+                flat_netpin=torch.from_numpy(flat_net2pin_map).cuda(), 
+                netpin_start=torch.from_numpy(flat_net2pin_start_map).cuda(),
+                pin2net_map=torch.from_numpy(pin2net_map).cuda(), 
+                net_mask=torch.from_numpy(net_mask).cuda(), 
+                algorithm='atomic'
                 )
         hpwl_value = custom_cuda_atomic.forward(pin_pos_var.cuda())
         print("hpwl_value cuda atomic = ", hpwl_value.data.cpu().numpy())

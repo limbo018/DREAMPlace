@@ -11,6 +11,9 @@
 #include <vector>
 #include <algorithm>
 #include <cassert>
+#include "utility/src/Msg.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 /// compare nodes with x center 
 /// resolve ambiguity by index 
@@ -61,7 +64,7 @@ bool legalityCheckKernelCPU(
         T node_yh = node_yl+node_size_y[i];
         if (node_xl < xl || node_xh > xh || node_yl < yl || node_yh > yh)
         {
-            printf("[D] node %d (%g, %g, %g, %g) out of boundary\n", i, node_xl, node_yl, node_xh, node_yh);
+            dreamplacePrint(kDEBUG, "node %d (%g, %g, %g, %g) out of boundary\n", i, node_xl, node_yl, node_xh, node_yh);
             legal_flag = false; 
         }
     }
@@ -90,12 +93,12 @@ bool legalityCheckKernelCPU(
                 {
                     if (row_id == row_idxl && node_yl != row_yl) // row alignment failed 
                     {
-                        printf("[E] node %d (%g, %g) failed to align to row %d (%g, %g)\n", i, node_xl, node_yl, row_id, row_yl, row_yh);
+                        dreamplacePrint(kERROR, "node %d (%g, %g) failed to align to row %d (%g, %g)\n", i, node_xl, node_yl, row_id, row_yl, row_yh);
                         legal_flag = false;
                     }
                     if (floor((node_xl-xl)/site_width)*site_width != node_xl-xl) // site alignment failed
                     {
-                        printf("[E] node %d (%g, %g) failed to align to row %d (%g, %g) and site\n", i, node_xl, node_yl, row_id, row_yl, row_yh);
+                        dreamplacePrint(kERROR, "node %d (%g, %g) failed to align to row %d (%g, %g) and site\n", i, node_xl, node_yl, row_id, row_yl, row_yh);
                         legal_flag = false;
                     }
                 }
@@ -124,7 +127,7 @@ bool legalityCheckKernelCPU(
                 {
                     if (x[prev_node_id]+node_size_x[prev_node_id] > x[node_id]) // detect overlap 
                     {
-                        printf("[E] row %d, overlap node %d (%g, %g, %g, %g) with node %d (%g, %g, %g, %g)\n", 
+                        dreamplacePrint(kERROR, "row %d, overlap node %d (%g, %g, %g, %g) with node %d (%g, %g, %g, %g)\n", 
                                 i, 
                                 prev_node_id, x[prev_node_id], y[prev_node_id], x[prev_node_id]+node_size_x[prev_node_id], y[prev_node_id]+node_size_y[prev_node_id], 
                                 node_id, x[node_id], y[node_id], x[node_id]+node_size_x[node_id], y[node_id]+node_size_y[node_id]
@@ -222,7 +225,7 @@ bool legalityCheckSiteMapKernelCPU(
                 {
                     if (site_map[iy][ix])
                     {
-                        printf("[E] detect overlap at site (%g, %g, %g, %g) for node %d (%g, %g, %g, %g)\n", 
+                        dreamplacePrint(kERROR, "detect overlap at site (%g, %g, %g, %g) for node %d (%g, %g, %g, %g)\n", 
                                 site_xl, site_yl, site_xh, site_yh, 
                                 i, 
                                 node_xl, node_yl, node_xh, node_yh
@@ -237,5 +240,7 @@ bool legalityCheckSiteMapKernelCPU(
 
     return legal_flag; 
 }
+
+DREAMPLACE_END_NAMESPACE
 
 #endif

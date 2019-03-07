@@ -36,6 +36,7 @@ class Params:
         self.stop_overflow = 0.1 # stopping criteria, consider stop when the overflow reaches to a ratio 
         self.dtype = 'float32' # data type, float32/float64
         self.detailed_place_engine = "" # external detailed placement engine to be called after placement 
+        self.plot_flag = False # whether plot solution or not 
         self.RePlAce_ref_hpwl = 3.5e5
         self.RePlAce_LOWER_PCOF = 0.95
         self.RePlAce_UPPER_PCOF = 1.05
@@ -65,6 +66,7 @@ class Params:
         data['stop_overflow'] = self.stop_overflow
         data['dtype'] = self.dtype
         data['detailed_place_engine'] = self.detailed_place_engine
+        data['plot_flag'] = self.plot_flag
         data['RePlAce_ref_hpwl'] = self.RePlAce_ref_hpwl
         data['RePlAce_LOWER_PCOF'] = self.RePlAce_LOWER_PCOF
         data['RePlAce_UPPER_PCOF'] = self.RePlAce_UPPER_PCOF
@@ -94,6 +96,7 @@ class Params:
         if 'stop_overflow' in data: self.stop_overflow = data['stop_overflow']
         if 'dtype' in data: self.dtype = data['dtype']
         if 'detailed_place_engine' in data: self.detailed_place_engine = data['detailed_place_engine']
+        if 'plot_flag' in data: self.plot_flag = data['plot_flag']
         if 'RePlAce_ref_hpwl' in data: self.RePlAce_ref_hpwl = data['RePlAce_ref_hpwl']
         if 'RePlAce_LOWER_PCOF' in data: self.RePlAce_LOWER_PCOF = data['RePlAce_LOWER_PCOF']
         if 'RePlAce_UPPER_PCOF' in data: self.RePlAce_UPPER_PCOF = data['RePlAce_UPPER_PCOF']

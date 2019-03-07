@@ -20,40 +20,17 @@ class HPWLFunction(Function):
     @param pos pin location (x array, y array), not cell location 
     @param flat_netpin flat netpin map, length of #pins 
     @param netpin_start starting index in netpin map for each net, length of #nets+1, the last entry is #pins  
-    @param ignore_net_degree ignore nets with degree larger than some value 
+    @param net_mask a boolean mask containing whether a net should be computed 
     @param pin2net_map pin2net map, second set of options 
-    @param num_nets #nets, second set of options 
     """
     @staticmethod
-    def forward(ctx, pos, flat_netpin, netpin_start, ignore_net_degree, pin2net_map=None, num_nets=None):
+    def forward(ctx, pos, flat_netpin, netpin_start, net_mask):
         output = pos.new_empty(1)
         if pos.is_cuda:
-            if pin2net_map is None: 
-                output = hpwl_cuda.forward(pos.view(pos.numel()), flat_netpin, netpin_start, ignore_net_degree)
-            else:
-                output = hpwl_cuda_atomic.forward(pos.view(pos.numel()), pin2net_map, net_mask)
+            output = hpwl_cuda.forward(pos.view(pos.numel()), flat_netpin, netpin_start, net_mask)
         else:
-            if pin2net_map is None: 
-                output = hpwl_cpp.forward(pos.view(pos.numel()), flat_netpin, netpin_start, ignore_net_degree)
-            else:
-                output = hpwl_cpp_atomic.forward(pos.view(pos.numel()), pin2net_map, net_mask)
+            output = hpwl_cpp.forward(pos.view(pos.numel()), flat_netpin, netpin_start, net_mask)
         return output 
-
-class HPWL(nn.Module):
-    def __init__(self, flat_netpin, netpin_start, ignore_net_degree=None):
-        super(HPWL, self).__init__()
-        self.flat_netpin = flat_netpin 
-        self.netpin_start = netpin_start
-        if ignore_net_degree is None: 
-            self.ignore_net_degree = self.flat_netpin.numel()
-        else:
-            self.ignore_net_degree = ignore_net_degree
-    def forward(self, pos): 
-        return HPWLFunction.apply(pos, 
-                self.flat_netpin, 
-                self.netpin_start, 
-                self.ignore_net_degree
-                )
 
 class HPWLAtomicFunction(Function):
     """compute half-perimeter wirelength using atomic max/min.
@@ -70,14 +47,41 @@ class HPWLAtomicFunction(Function):
             output = hpwl_cpp_atomic.forward(pos.view(pos.numel()), pin2net_map, net_mask)
         return output 
 
-class HPWLAtomic(nn.Module):
-    def __init__(self, pin2net_map, net_mask):
-        super(HPWLAtomic, self).__init__()
+class HPWL(nn.Module):
+    """ 
+    @brief Compute half-perimeter wirelength. 
+    Support two algoriths: net-by-net and atomic. 
+    Different parameters are required for different algorithms. 
+    """
+    def __init__(self, flat_netpin=None, netpin_start=None, pin2net_map=None, net_mask=None, algorithm='atomic'):
+        """
+        @brief initialization 
+        @param flat_netpin flat netpin map, length of #pins 
+        @param netpin_start starting index in netpin map for each net, length of #nets+1, the last entry is #pins  
+        @param pin2net_map pin2net map 
+        @param net_mask whether to compute wirelength, 1 means to compute, 0 means to ignore  
+        @param algorithm must be net-by-net | atomic
+        """
+        super(HPWL, self).__init__()
+        assert net_mask is not None, "net_mask is a requried parameter"
+        if algorithm == 'net-by-net':
+            assert flat_netpin is not None and netpin_start is not None, "flat_netpin, netpin_start are requried parameters for algorithm net-by-net"
+        elif algorithm == 'atomic':
+            assert pin2net_map is not None, "pin2net_map is required for algorithm atomic"
+        self.flat_netpin = flat_netpin 
+        self.netpin_start = netpin_start
         self.pin2net_map = pin2net_map 
         self.net_mask = net_mask 
+        self.algorithm = algorithm
     def forward(self, pos): 
-        return HPWLAtomicFunction.apply(pos, 
-                self.pin2net_map, 
-                self.net_mask
-                )
-
+        if self.algorithm == 'net-by-net': 
+            return HPWLFunction.apply(pos, 
+                    self.flat_netpin, 
+                    self.netpin_start, 
+                    self.net_mask
+                    )
+        elif self.algorithm == 'atomic':
+            return HPWLAtomicFunction.apply(pos, 
+                    self.pin2net_map, 
+                    self.net_mask
+                    )

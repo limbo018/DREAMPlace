@@ -14,9 +14,12 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
+#include "utility/src/Msg.h"
 #include "compare_cpu.h"
 #include "abacus_place_row_cpu.h"
 #include "align2site_cpu.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T>
 void abacusLegalizationCPU(
@@ -69,13 +72,33 @@ void abacusLegalizationCPU(
             bin_clusters
             );
     // need to align nodes to sites 
-    align2SiteCPU(
-            node_size_x, 
-            x, 
-            xl, xh, 
-            site_width, 
-            num_movable_nodes 
-            );
+    // this also considers cell width which is not integral times of site_width 
+    for (auto const& cells : bin_cells)
+    {
+        T xxl = xl; 
+        for (auto node_id : cells)
+        {
+            if (node_id < num_movable_nodes)
+            {
+                x[node_id] = std::max(std::min(x[node_id], xh-node_size_x[node_id]), xxl);
+                x[node_id] = floor((x[node_id]-xxl)/site_width)*site_width+xxl; 
+                xxl += ceil(node_size_x[node_id]/site_width)*site_width; 
+            }
+            else if (node_id < num_nodes-num_filler_nodes)
+            {
+                xxl = ceil((x[node_id]+node_size_x[node_id]-xl)/site_width)*site_width+xl; 
+            }
+        }
+    }
+    //align2SiteCPU(
+    //        node_size_x, 
+    //        x, 
+    //        xl, xh, 
+    //        site_width, 
+    //        num_movable_nodes 
+    //        );
 }
+
+DREAMPLACE_END_NAMESPACE
 
 #endif

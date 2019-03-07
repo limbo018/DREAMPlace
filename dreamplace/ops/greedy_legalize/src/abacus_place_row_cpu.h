@@ -8,7 +8,10 @@
 #define GPUPLACE_LEGALIZE_PLACEROW_CPU_H
 
 #include <cassert>
+#include "utility/src/Msg.h"
 #include "abacus_cluster.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 /// @param row_nodes node indices in this row 
 /// @param clusters pre-allocated clusters in this row with the same length as that of row_nodes 
@@ -29,7 +32,7 @@ bool abacusPlaceRowCPU(
 {
     // a very large number 
     T M = pow(10, ceil(log((xh-xl)*num_row_nodes)/log(10))); 
-    //printf("[D] M = %g\n", M);
+    //dreamplacePrint(kDEBUG, "M = %g\n", M);
     bool ret_flag = true; 
 
     // merge two clusters 
@@ -103,54 +106,6 @@ bool abacusPlaceRowCPU(
 
     // sort row_nodes from left to right 
     std::sort(row_nodes, row_nodes+num_row_nodes, CompareByNodeCenterXCPU<T>(x, node_size_x));
-    //printf("sorted[%d]: ", num_row_nodes);
-    //for (int i = 0; i < num_row_nodes; ++i)
-    //{
-    //    printf("%d, ", row_nodes[i]); 
-    //}
-    //printf("\n");
-    //printf("size_x: ");
-    //for (int i = 0; i < num_row_nodes; ++i)
-    //{
-    //    printf("%g, ", node_size_x[row_nodes[i]]); 
-    //}
-    //printf("\n");
-    //printf("size_y: ");
-    //for (int i = 0; i < num_row_nodes; ++i)
-    //{
-    //    printf("%g, ", node_size_y[row_nodes[i]]); 
-    //}
-    //printf("\n");
-    //printf("init_x: ");
-    //for (int i = 0; i < num_row_nodes; ++i)
-    //{
-    //    printf("%g, ", init_x[row_nodes[i]]); 
-    //}
-    //printf("\n");
-    //printf("x: ");
-    //for (int i = 0; i < num_row_nodes; ++i)
-    //{
-    //    printf("%g, ", x[row_nodes[i]]); 
-    //}
-    //printf("\n");
-    //bool is_legal = true; 
-    //for (int i = 1; i < num_row_nodes; ++i)
-    //{
-    //    if (x[row_nodes[i-1]]+node_size_x[row_nodes[i-1]] > x[row_nodes[i]])
-    //    {
-    //        is_legal = false; 
-    //        break;
-    //    }
-    //}
-    //printf("is_legal = %d\n", (int)is_legal);
-    //{
-    //T displace = 0; 
-    //for (int i = 0; i < num_row_nodes; ++i)
-    //{
-    //    displace += fabs(x[row_nodes[i]]-init_x[row_nodes[i]]); 
-    //}
-    //printf("average displace = %g for %d nodes\n", displace/num_row_nodes, num_row_nodes);
-    //}
 
     // initial cluster has only one cell 
     for (int i = 0; i < num_row_nodes; ++i)
@@ -190,7 +145,6 @@ bool abacusPlaceRowCPU(
         if (cluster.e < M)
         {
             assert(node_size_y[row_nodes[i]] == row_height);
-            //printf("collapse cluster %d range (%g, %g)\n", i, range_xl, range_xh);
             collapse(i, range_xl, range_xh); 
         }
         else // set range xl/xh according to fixed nodes 
@@ -208,7 +162,7 @@ bool abacusPlaceRowCPU(
             }
         }
     }
-
+    
     // apply solution
     for (int i = 0; i < num_row_nodes; ++i)
     {
@@ -226,29 +180,15 @@ bool abacusPlaceRowCPU(
                 else if (xc != x[node_id])
                 {
                     if (node_id < num_movable_nodes)
-                        printf("[W] multi-row node %d tends to move from %.12f to %.12f, ignored\n", node_id, x[node_id], xc);
+                        dreamplacePrint(kWARN, "multi-row node %d tends to move from %.12f to %.12f, ignored\n", node_id, x[node_id], xc);
                     else
-                        printf("[W] fixed node %d tends to move from %.12f to %.12f, ignored\n", node_id, x[node_id], xc);
+                        dreamplacePrint(kWARN, "fixed node %d tends to move from %.12f to %.12f, ignored\n", node_id, x[node_id], xc);
                     ret_flag = false; 
                 }
                 xc += node_size_x[node_id]; 
             }
         }
     }
-    //printf("x sol: ");
-    //for (int i = 0; i < num_row_nodes; ++i)
-    //{
-    //    printf("%g, ", x[row_nodes[i]]); 
-    //}
-    //printf("\n");
-    //{
-    //    T displace = 0; 
-    //    for (int i = 0; i < num_row_nodes; ++i)
-    //    {
-    //        displace += fabs(x[row_nodes[i]]-init_x[row_nodes[i]]); 
-    //    }
-    //    printf("average displace = %g for %d nodes\n", displace/num_row_nodes, num_row_nodes);
-    //}
 
     return ret_flag; 
 }
@@ -280,7 +220,6 @@ void abacusLegalizeRowCPU(
         T bin_xl = xl+bin_size_x*bin_id_x;
         T bin_xh = std::min(bin_xl+bin_size_x, xh);
 
-        //printf("row %d\n", i);
         abacusPlaceRowCPU(
                 init_x, 
                 node_size_x, node_size_y, 
@@ -300,7 +239,9 @@ void abacusLegalizeRowCPU(
     {
         displace += fabs(x[i]-init_x[i]); 
     }
-    printf("[D] average displace = %g\n", displace/num_movable_nodes);
+    dreamplacePrint(kDEBUG, "average displace = %g\n", displace/num_movable_nodes);
 }
+
+DREAMPLACE_END_NAMESPACE
 
 #endif

@@ -5,14 +5,14 @@
     > Created Time: Wed 22 Jul 2015 11:13:39 PM CDT
  ************************************************************************/
 
-#ifndef GPF_LEFCBKHELPER_H
-#define GPF_LEFCBKHELPER_H
+#ifndef DREAMPLACE_LEFCBKHELPER_H
+#define DREAMPLACE_LEFCBKHELPER_H
 
 #include "Macro.h"
 #include "GeometryApi.h"
 #include <limbo/geometry/Polygon2Rectangle.h>
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T>
 struct LefCbkGeometryHelperTraits;
@@ -80,12 +80,12 @@ struct LefCbkGeometryHelper
                     }
                 case LefParser::lefiGeomPathE:
                     {
-                        gpfPrint(kWARN, "unsupported shape lefiGeomPathE in LEF file\n");
+                        dreamplacePrint(kWARN, "unsupported shape lefiGeomPathE in LEF file\n");
                         break;
                     }
                 case LefParser::lefiGeomPathIterE:
                     {
-                        gpfPrint(kWARN, "unsupported shape lefiGeomPathIterE in LEF file\n");
+                        dreamplacePrint(kWARN, "unsupported shape lefiGeomPathIterE in LEF file\n");
                         break;
                     }
                 case LefParser::lefiGeomRectE:
@@ -101,7 +101,7 @@ struct LefCbkGeometryHelper
                     }
                 case LefParser::lefiGeomRectIterE:
                     {
-                        gpfPrint(kWARN, "unsupported shape lefiGeomRectIterE in LEF file\n");
+                        dreamplacePrint(kWARN, "unsupported shape lefiGeomRectIterE in LEF file\n");
                         break;
                     }
                 case LefParser::lefiGeomPolygonE:
@@ -121,18 +121,18 @@ struct LefCbkGeometryHelper
                                 std::vector<Point<coordinate_type> >(), 
                                 vRect,
                                 limbo::geometry::HORIZONTAL_SLICING);
-                        gpfAssertMsg(success, "failed to convert polygon to rectangles");
+                        dreamplaceAssertMsg(success, "failed to convert polygon to rectangles");
                         traits_type::add(target, layerName, vRect.begin(), vRect.end());
                         break;
                     }
                 case LefParser::lefiGeomPolygonIterE:
                     {
-                        gpfPrint(kWARN, "unsupported shape lefiGeomPolygonIterE in LEF file\n");
+                        dreamplacePrint(kWARN, "unsupported shape lefiGeomPolygonIterE in LEF file\n");
                         break;
                     }
                 default: 
                     {
-                        gpfPrint(kWARN, "unsupported shape %d in LEF file\n", geos.itemType(k));
+                        dreamplacePrint(kWARN, "unsupported shape %d in LEF file\n", geos.itemType(k));
                         break;
                     }
             }
@@ -140,6 +140,6 @@ struct LefCbkGeometryHelper
     }
 };
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE
 
 #endif

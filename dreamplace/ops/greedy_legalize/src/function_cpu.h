@@ -6,6 +6,7 @@
 #ifndef GPUPLACE_LEGALIZE_FUNCTION_CPU_H
 #define GPUPLACE_LEGALIZE_FUNCTION_CPU_H
 
+#include "utility/src/Msg.h"
 #include "bin_assignment_cpu.h"
 #include "merge_bin_cpu.h"
 #include "legality_check_cpu.h"
@@ -13,6 +14,8 @@
 #include "compare_cpu.h"
 #include "abacus_legalize_cpu.h"
 #include "align2site_cpu.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T>
 void binAssignmentCPU(
@@ -83,5 +86,7 @@ int greedyLegalizationCPULauncher(
         const int num_movable_nodes, 
         const int num_filler_nodes
         );
+
+DREAMPLACE_END_NAMESPACE
 
 #endif

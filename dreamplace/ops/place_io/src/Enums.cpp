@@ -7,7 +7,7 @@
 
 #include "Enums.h"
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 #ifndef ENUM2STR
 #define ENUM2STR(map, var) \
@@ -389,4 +389,4 @@ GlobalMoveAlgo::enum_type GlobalMoveAlgo::str2Enum(std::string const& s) const
 
     return mStr2Enum.at(s);
 }
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE

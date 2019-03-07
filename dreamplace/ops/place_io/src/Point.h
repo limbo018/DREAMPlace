@@ -5,13 +5,13 @@
     > Created Time: Sun 14 Jun 2015 08:29:15 PM CDT
  ************************************************************************/
 
-#ifndef GPF_POINT_H
-#define GPF_POINT_H
+#ifndef DREAMPLACE_POINT_H
+#define DREAMPLACE_POINT_H
 
 #include "Util.h"
 #include <limbo/math/Math.h>
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T>
 class Point
@@ -184,6 +184,6 @@ inline Point<T> operator-(Point<T> const& rhs1, Point<T> const& rhs2)
     return (p -= rhs2);
 }
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE
 
 #endif

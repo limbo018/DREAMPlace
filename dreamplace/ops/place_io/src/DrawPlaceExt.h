@@ -5,8 +5,8 @@
     > Created Time: Sat Nov  5 16:35:08 2016
  ************************************************************************/
 
-#ifndef GPF_DRAWPLACEEXT_H
-#define GPF_DRAWPLACEEXT_H
+#ifndef DREAMPLACE_DRAWPLACEEXT_H
+#define DREAMPLACE_DRAWPLACEEXT_H
 
 #include <vector>
 #include "Object.h"
@@ -18,7 +18,7 @@ namespace GdsParser {
 struct GdsWriter; 
 } // namespace GdsParser 
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 class AlgoDB;
 struct ScoreBoardEntry; 
@@ -78,6 +78,6 @@ class RowDPDrawerExt : public PlaceDrawerExt
         Box<Object::coordinate_type> m_region; ///< drawing region 
 };
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE
 
 #endif

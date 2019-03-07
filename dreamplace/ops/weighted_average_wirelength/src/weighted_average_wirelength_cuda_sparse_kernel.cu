@@ -2,9 +2,9 @@
 #include <stdio.h>
 #include "assert.h"
 #include "cuda_runtime.h"
-#include "print.h"
-#include "functional_cuda.h"
-#include "csrmv.h"
+#include "utility/src/print.h"
+#include "weighted_average_wirelength/src/functional_cuda.h"
+#include "utility/src/csrmv.h"
 
 template <typename T>
 __global__ void multiply(const T* a, const T* b, int n, T* c)

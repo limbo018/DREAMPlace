@@ -5,12 +5,12 @@
     > Created Time: Sat 27 Jun 2015 04:31:39 PM CDT
  ************************************************************************/
 
-#ifndef GPF_INDEX_H
-#define GPF_INDEX_H
+#ifndef DREAMPLACE_INDEX_H
+#define DREAMPLACE_INDEX_H
 
-#include "Namespace.h"
+#include "utility/src/Namespace.h"
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 /// 2D index class in x and y direction 
 template <typename T>
@@ -64,6 +64,6 @@ class Index2D
         T m_index[2];
 };
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE
 
 #endif

@@ -4,6 +4,8 @@ PROJECT_ROOT_DIR = $(realpath ../../../)
 ENV_CONFIG = \
 		BOOST_DIR=$(BOOST_DIR) \
 		LIMBO_DIR=$(PROJECT_ROOT_DIR)/lib/Limbo \
+		UTILITY_DIR=$(PROJECT_ROOT_DIR)/lib \
+		OPS_DIR=$(PROJECT_ROOT_DIR)/dreamplace/ops 
 
 all:
 	@echo "site-package: $(SITE_PACKAGE)"

@@ -5,13 +5,13 @@
     > Created Time: Sun 14 Jun 2015 04:07:46 PM CDT
  ************************************************************************/
 
-#ifndef GPF_OBJECT_H
-#define GPF_OBJECT_H
+#ifndef DREAMPLACE_OBJECT_H
+#define DREAMPLACE_OBJECT_H
 
 #include <limits>
 #include "Util.h"
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 /// base class for all objects 
 class Object 
@@ -40,6 +40,6 @@ class Object
 		index_type m_id; ///< index of object 
 };
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE
 
 #endif

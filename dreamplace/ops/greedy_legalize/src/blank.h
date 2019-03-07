@@ -7,6 +7,10 @@
 #ifndef GPUPLACE_BLANK_H
 #define GPUPLACE_BLANK_H
 
+#include "utility/src/Msg.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
+
 template <typename T>
 struct Interval 
 {
@@ -42,5 +46,7 @@ struct Blank
         yh = std::min(yh, rhs.yh);
     }
 };
+
+DREAMPLACE_END_NAMESPACE
 
 #endif

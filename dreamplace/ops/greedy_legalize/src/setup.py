@@ -10,6 +10,13 @@ from torch.utils.cpp_extension import BuildExtension, CppExtension, CUDAExtensio
 import os 
 import sys
 
+utility_dir = os.environ['UTILITY_DIR']
+ops_dir = os.environ['OPS_DIR']
+
+include_dirs = [os.path.abspath(ops_dir)]
+lib_dirs = [utility_dir]
+libs = ['utility'] 
+
 setup(
         name='greedy_legalize',
         ext_modules=[
@@ -21,6 +28,9 @@ setup(
                     'merge_bin_cpu.cpp', 
                     'greedy_legalize_cpu.cpp' 
                     ], 
+                include_dirs=include_dirs, 
+                library_dirs=lib_dirs,
+                libraries=libs,
                 extra_compile_args={
                     #'cxx': ['-g', '-O0'], 
                     'cxx': ['-O2'], 

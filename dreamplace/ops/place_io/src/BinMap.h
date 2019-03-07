@@ -5,13 +5,13 @@
     > Created Time: Sun Jun 21 21:23:08 2015
  ************************************************************************/
 
-#ifndef GPF_BINMAP_H
-#define GPF_BINMAP_H
+#ifndef DREAMPLACE_BINMAP_H
+#define DREAMPLACE_BINMAP_H
 
 #include <vector>
 #include "Bin.h"
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 /// class BinMap holds all bins 
 class BinMap 
@@ -109,6 +109,6 @@ inline void BinMap::copy(BinMap const& rhs)
 typedef BinMap::BinMap1DIterator BinMap1DIterator;
 typedef BinMap::BinMap1DConstIterator BinMap1DConstIterator;
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE
 
 #endif

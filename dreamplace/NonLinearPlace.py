@@ -171,5 +171,6 @@ class NonLinearPlace (BasicPlace.BasicPlace):
         placedb.node_x[:placedb.num_movable_nodes] = cur_pos[0:placedb.num_movable_nodes]
         placedb.node_y[:placedb.num_movable_nodes] = cur_pos[placedb.num_nodes:placedb.num_nodes+placedb.num_movable_nodes]
         # plot placement 
-        #self.plot(params, placedb, iteration, cur_pos)
+        if params.plot_flag: 
+            self.plot(params, placedb, iteration, cur_pos)
         return metrics 

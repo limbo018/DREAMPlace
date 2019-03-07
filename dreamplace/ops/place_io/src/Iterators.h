@@ -5,14 +5,14 @@
     > Created Time: Sun 21 Jun 2015 01:27:50 PM CDT
  ************************************************************************/
 
-#ifndef GPF_ITERATORS_H
-#define GPF_ITERATORS_H
+#ifndef DREAMPLACE_ITERATORS_H
+#define DREAMPLACE_ITERATORS_H
 
 #include "PlaceDB.h"
 #include "Index.h"
 #include "RowMap.h"
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 /// whether T is a const type  
 template <typename T> struct is_constant {const static bool value = false;};
@@ -94,7 +94,7 @@ class DBIterator
         /// unsafe dereference 
         reference_type deref() const 
         {
-            gpfAssertMsg(inRange(), "index = %u out of range [%u, %u]\n", m_index, m_range.low(), m_range.high());
+            dreamplaceAssertMsg(inRange(), "index = %u out of range [%u, %u]\n", m_index, m_range.low(), m_range.high());
             return s_deref(*m_db, m_index);
         }
 
@@ -119,7 +119,7 @@ class DBIterator
             // only allow conversion iterator -> const_iterator
             // failed to use enable_if like specialization 
             // use static assertion instead 
-            gpfStaticAssert<is_constant<placedb_type>::value || !is_constant<SomePlaceDBType>::value>("do not allow conversion from const iterator to iterator");
+            dreamplaceStaticAssert<is_constant<placedb_type>::value || !is_constant<SomePlaceDBType>::value>("do not allow conversion from const iterator to iterator");
             m_index = rhs.index();
             m_range = rhs.range();
             m_db = &rhs.placeDB();
@@ -185,7 +185,7 @@ class DB2DIterator
         /// unsafe dereference 
         reference_type deref() const 
         {
-            gpfAssertMsg(inRange(), "index = [%u, %u] out of range [%u, %u]\n", m_index.x(), m_index.y());
+            dreamplaceAssertMsg(inRange(), "index = [%u, %u] out of range [%u, %u]\n", m_index.x(), m_index.y());
             return s_deref(*m_db, m_index);
         }
 
@@ -212,7 +212,7 @@ class DB2DIterator
             // only allow conversion iterator -> const_iterator
             // failed to use enable_if like specialization 
             // use static assertion instead 
-            gpfStaticAssert<is_constant<db_type>::value || !is_constant<SomeDBType>::value>("do not allow conversion from const iterator to iterator");
+            dreamplaceStaticAssert<is_constant<db_type>::value || !is_constant<SomeDBType>::value>("do not allow conversion from const iterator to iterator");
             m_index = rhs.index();
             m_db = &rhs.db();
         }
@@ -366,6 +366,6 @@ struct IteratorDimension<DBType, SubRowMap2DIteratorTag>
     }
 };
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE
 
 #endif

@@ -11,7 +11,7 @@ import place_io_cpp
 class PlaceIOFunction(Function):
     @staticmethod
     def forward(params):
-        args = "gpf -config NORMAL"
+        args = "DREAMPlace -config NORMAL"
         if "aux_file" in params.__dict__:
             args += " --bookshelf_aux_input %s" % (params.aux_file)
         if "lef_input" in params.__dict__:

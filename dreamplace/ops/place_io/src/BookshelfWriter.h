@@ -5,14 +5,14 @@
     > Created Time: Mon 20 Jul 2015 11:36:16 AM CDT
  ************************************************************************/
 
-#ifndef GPF_BOOKSHELFWRITER_H
-#define GPF_BOOKSHELFWRITER_H
+#ifndef DREAMPLACE_BOOKSHELFWRITER_H
+#define DREAMPLACE_BOOKSHELFWRITER_H
 
 #include <cstdio>
 #include <vector>
 #include "PlaceWriter.h"
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 class BookShelfWriter : public PlaceSolWriter
 {
@@ -46,6 +46,6 @@ class BookShelfWriter : public PlaceSolWriter
         void closeFile(FILE* os) const;
 };
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE
 
 #endif

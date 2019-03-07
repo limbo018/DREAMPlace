@@ -5,15 +5,15 @@
     > Created Time: Wed 22 Jul 2015 11:26:26 PM CDT
  ************************************************************************/
 
-#ifndef GPF_MACROOBS_H
-#define GPF_MACROOBS_H
+#ifndef DREAMPLACE_MACROOBS_H
+#define DREAMPLACE_MACROOBS_H
 
 #include <string>
 #include <vector>
 #include <map>
 #include "Box.h"
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 class MacroObs : public Object
 {
@@ -97,6 +97,6 @@ inline MacroObs& MacroObs::add(std::string const& layerName, Iterator first, Ite
 typedef MacroObs::ObsIterator ObsIterator;
 typedef MacroObs::ObsConstIterator ObsConstIterator;
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE
 
 #endif

@@ -2,6 +2,7 @@
  * @file   hpwl_atomic.cpp
  * @author Yibo Lin
  * @date   Mar 2019
+ * @brief  Compute half-perimeter wirelength to mimic a parallel atomic implementation
  */
 #include <torch/torch.h>
 #include <limits>
@@ -21,6 +22,10 @@ int computeHPWLAtomicLauncher(
 #define CHECK_EVEN(x) AT_ASSERTM((x.numel()&1) == 0, #x "must have even number of elements")
 #define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x "must be contiguous")
 
+/// @brief Compute half-perimeter wirelength 
+/// @param pos cell locations, array of x locations and then y locations 
+/// @param pin2net_map map pin to net 
+/// @param net_mask an array to record whether compute the where for a net or not 
 at::Tensor hpwl_atomic_forward(
         at::Tensor pos,
         at::Tensor pin2net_map, 

@@ -1,11 +1,13 @@
 /**
- * @file   src/move_boundary.cpp
+ * @file   move_boundary.cpp
  * @author Yibo Lin
  * @date   Jun 2018
  */
 #include <torch/torch.h>
 #include <limits>
 #include "function_cpu.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 /// @brief legalize layout with greedy legalization. 
 /// Only movable nodes will be moved. Fixed nodes and filler nodes are fixed. 
@@ -56,6 +58,23 @@ int greedyLegalizationLauncher(
 #define CHECK_EVEN(x) AT_ASSERTM((x.numel()&1) == 0, #x "must have even number of elements")
 #define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x "must be contiguous")
 
+/// @brief legalize layout with greedy legalization. 
+/// Only movable nodes will be moved. Fixed nodes and filler nodes are fixed. 
+/// 
+/// @param init_pos initial locations of nodes, including movable nodes, fixed nodes, and filler nodes, [0, num_movable_nodes) are movable nodes, [num_movable_nodes, num_nodes-num_filler_nodes) are fixed nodes, [num_nodes-num_filler_nodes, num_nodes) are filler nodes
+/// @param node_size_x width of nodes, including movable nodes, fixed nodes, and filler nodes, [0, num_movable_nodes) are movable nodes, [num_movable_nodes, num_nodes-num_filler_nodes) are fixed nodes, [num_nodes-num_filler_nodes, num_nodes) are filler nodes
+/// @param node_size_y height of nodes, including movable nodes, fixed nodes, and filler nodes, same as node_size_x
+/// @param xl left edge of bounding box of layout area 
+/// @param yl bottom edge of bounding box of layout area 
+/// @param xh right edge of bounding box of layout area 
+/// @param yh top edge of bounding box of layout area 
+/// @param site_width width of a placement site 
+/// @param row_height height of a placement row 
+/// @param num_bins_x number of bins in horizontal direction 
+/// @param num_bins_y number of bins in vertical direction 
+/// @param num_nodes total number of nodes, including movable nodes, fixed nodes, and filler nodes; fixed nodes are in the range of [num_movable_nodes, num_nodes-num_filler_nodes)
+/// @param num_movable_nodes number of movable nodes, movable nodes are in the range of [0, num_movable_nodes)
+/// @param number of filler nodes, filler nodes are in the range of [num_nodes-num_filler_nodes, num_nodes)
 at::Tensor greedy_legalization_forward(
         at::Tensor init_pos,
         at::Tensor node_size_x,
@@ -96,6 +115,8 @@ at::Tensor greedy_legalization_forward(
     return pos; 
 }
 
+DREAMPLACE_END_NAMESPACE
+
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-  m.def("forward", &greedy_legalization_forward, "Greedy legalization forward");
+  m.def("forward", &DREAMPLACE_NAMESPACE::greedy_legalization_forward, "Greedy legalization forward");
 }

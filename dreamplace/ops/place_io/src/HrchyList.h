@@ -5,15 +5,15 @@
   > Created Time: Mon 01 Feb 2016 02:17:29 PM CST
  ************************************************************************/
 
-#ifndef GPF_HRCHYLIST_H
-#define GPF_HRCHYLIST_H
+#ifndef DREAMPLACE_HRCHYLIST_H
+#define DREAMPLACE_HRCHYLIST_H
 
 #include <iostream>
 #include <vector>
 #include <limits>
 #include "Util.h"
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 /// HrchyList defines a hierarchical list for data storage. 
 /// Data is stored like a matrix with 2-dimension (row/column). 
@@ -257,6 +257,6 @@ class HrchyList
 template <typename T>
 const typename HrchyList<T>::index_type HrchyList<T>::s_largeIdx = std::numeric_limits<typename HrchyList<T>::index_type>::max()>>1;
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE
 
 #endif

@@ -6,6 +6,10 @@
 #ifndef GPUPLACE_LEGALIZE_ALIGN2SITE_CPU_H
 #define GPUPLACE_LEGALIZE_ALIGN2SITE_CPU_H
 
+#include "utility/src/Msg.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
+
 /// @brief align nodes to sites within the boundary 
 template <typename T>
 void align2SiteCPU(
@@ -23,5 +27,6 @@ void align2SiteCPU(
     }
 }
 
+DREAMPLACE_END_NAMESPACE
 
 #endif

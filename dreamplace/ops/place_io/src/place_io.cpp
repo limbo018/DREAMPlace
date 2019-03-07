@@ -11,7 +11,7 @@
 #include <torch/torch.h>
 #include <pybind11/stl.h>
 
-GPF_BEGIN_NAMESPACE
+DREAMPLACE_BEGIN_NAMESPACE
 
 bool readLef(PlaceDB& db);
 bool readDef(PlaceDB& db);
@@ -26,11 +26,11 @@ bool readLef(PlaceDB& db)
     for (std::vector<std::string>::const_iterator it = vLefInput.begin(), ite = vLefInput.end(); it != ite; ++it)
     {
         std::string const& filename = *it;
-        gpfPrint(kINFO, "reading %s\n", filename.c_str());
+        dreamplacePrint(kINFO, "reading %s\n", filename.c_str());
         bool flag = LefParser::read(db, filename);
         if (!flag) 
         {
-            gpfPrint(kERROR, "LEF file parsing failed: %s\n", filename.c_str());
+            dreamplacePrint(kERROR, "LEF file parsing failed: %s\n", filename.c_str());
             return false;
         }
     }
@@ -45,17 +45,17 @@ bool readDef(PlaceDB& db)
     if (!defInput.empty())
     {
         std::string const& filename = defInput;
-        gpfPrint(kINFO, "reading %s\n", filename.c_str());
+        dreamplacePrint(kINFO, "reading %s\n", filename.c_str());
         // a pre-reading phase to grep number of components, nets, and pins 
         prereadDef(db, filename);
         bool flag = DefParser::read(db, filename);
         if (!flag) 
         {
-            gpfPrint(kERROR, "DEF file parsing failed: %s\n", filename.c_str());
+            dreamplacePrint(kERROR, "DEF file parsing failed: %s\n", filename.c_str());
             return false;
         }
     }
-	else gpfPrint(kWARN, "no DEF file specified\n");
+	else dreamplacePrint(kWARN, "no DEF file specified\n");
 
 	return true;
 }
@@ -102,7 +102,7 @@ void prereadDef(PlaceDB& db, std::string const& filename)
         }
     }
 
-    gpfPrint(kINFO, "detect %u rows, %u components, %u IO pins, %u nets, %u blockages\n", numRows, numNodes, numIOPin, numNets, numBlockages);
+    dreamplacePrint(kINFO, "detect %u rows, %u components, %u IO pins, %u nets, %u blockages\n", numRows, numNodes, numIOPin, numNets, numBlockages);
     db.prepare(numRows, numNodes, numIOPin, numNets, numBlockages);
 
     inFile.close();
@@ -115,15 +115,15 @@ bool readVerilog(PlaceDB& db)
     if (!verilogInput.empty())
     {
         std::string const& filename = verilogInput;
-        gpfPrint(kINFO, "reading %s\n", filename.c_str());
+        dreamplacePrint(kINFO, "reading %s\n", filename.c_str());
         bool flag = VerilogParser::read(db, filename);
         if (!flag)
         {
-            gpfPrint(kERROR, "Verilog file parsing failed: %s\n", filename.c_str());
+            dreamplacePrint(kERROR, "Verilog file parsing failed: %s\n", filename.c_str());
             return false;
         }
     }
-    else gpfPrint(kWARN, "no Verilog file specified\n");
+    else dreamplacePrint(kWARN, "no Verilog file specified\n");
 
     return true;
 }
@@ -135,30 +135,30 @@ bool readBookshelf(PlaceDB& db)
     if (!bookshelfAuxInput.empty())
     {
         std::string const& filename = bookshelfAuxInput;
-        gpfPrint(kINFO, "reading %s\n", filename.c_str());
+        dreamplacePrint(kINFO, "reading %s\n", filename.c_str());
         bool flag = BookshelfParser::read(db, filename);
         if (!flag)
         {
-            gpfPrint(kERROR, "Bookshelf file parsing failed: %s\n", filename.c_str());
+            dreamplacePrint(kERROR, "Bookshelf file parsing failed: %s\n", filename.c_str());
             return false;
         }
     }
-    else gpfPrint(kWARN, "no Bookshelf file specified\n");
+    else dreamplacePrint(kWARN, "no Bookshelf file specified\n");
 
     // read additional .pl file 
     std::string const& bookshelfPlInput = db.userParam().bookshelfPlInput;
     if (!bookshelfPlInput.empty())
     {
         std::string const& filename = bookshelfPlInput;
-        gpfPrint(kINFO, "reading %s\n", filename.c_str());
+        dreamplacePrint(kINFO, "reading %s\n", filename.c_str());
         bool flag = BookshelfParser::readPl(db, filename);
         if (!flag)
         {
-            gpfPrint(kERROR, "Bookshelf additional .pl file parsing failed: %s\n", filename.c_str());
+            dreamplacePrint(kERROR, "Bookshelf additional .pl file parsing failed: %s\n", filename.c_str());
             return false;
         }
     }
-    else gpfPrint(kWARN, "no additional Bookshelf .pl file specified\n");
+    else dreamplacePrint(kWARN, "no additional Bookshelf .pl file specified\n");
 
     return true;
 }
@@ -309,15 +309,15 @@ struct PyPlaceDB
     }
 };
 
-GPF_END_NAMESPACE
+DREAMPLACE_END_NAMESPACE
 
-gpf::PyPlaceDB place_io_forward(std::vector<std::string> const& args)
+DREAMPLACE_NAMESPACE::PyPlaceDB place_io_forward(std::vector<std::string> const& args)
 {
     //char buf[256];
-    //gpf::gpfSPrint(gpf::kINFO, buf, "reading input files takes %%t seconds CPU, %%w seconds real\n");
+    //DREAMPLACE_NAMESPACE::dreamplaceSPrint(DREAMPLACE_NAMESPACE::kINFO, buf, "reading input files takes %%t seconds CPU, %%w seconds real\n");
 	//boost::timer::auto_cpu_timer timer (buf);
 
-    gpf::PlaceDB db; 
+    DREAMPLACE_NAMESPACE::PlaceDB db; 
 
     int argc = args.size(); 
     char** argv = new char* [argc]; 
@@ -341,65 +341,65 @@ gpf::PyPlaceDB place_io_forward(std::vector<std::string> const& args)
 	bool flag; 
 
 	// read lef 
-	flag = gpf::readLef(db);
-    gpfAssertMsg(flag, "failed to read input LEF files");
+	flag = DREAMPLACE_NAMESPACE::readLef(db);
+    dreamplaceAssertMsg(flag, "failed to read input LEF files");
 
 	// read def 
-	flag = gpf::readDef(db);
-    gpfAssertMsg(flag, "failed to read input DEF files");
+	flag = DREAMPLACE_NAMESPACE::readDef(db);
+    dreamplaceAssertMsg(flag, "failed to read input DEF files");
 
     // if netlist is not set by DEF, read verilog 
     if (db.nets().empty()) 
     {
         // read verilog 
-        flag = gpf::readVerilog(db);
-        gpfAssertMsg(flag, "failed to read input Verilog files");
+        flag = DREAMPLACE_NAMESPACE::readVerilog(db);
+        dreamplaceAssertMsg(flag, "failed to read input Verilog files");
     }
 
     // read bookshelf 
-    flag = gpf::readBookshelf(db);
-    gpfAssertMsg(flag, "failed to read input Bookshelf files");
+    flag = DREAMPLACE_NAMESPACE::readBookshelf(db);
+    dreamplaceAssertMsg(flag, "failed to read input Bookshelf files");
 
     // adjust input parameters 
     db.adjustParams();
 
-    return gpf::PyPlaceDB(db); 
+    return DREAMPLACE_NAMESPACE::PyPlaceDB(db); 
 }
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     m.def("forward", &place_io_forward, "PlaceDB IO Read");
-    pybind11::class_<gpf::PyPlaceDB>(m, "PyPlaceDB")
+    pybind11::class_<DREAMPLACE_NAMESPACE::PyPlaceDB>(m, "PyPlaceDB")
         .def(pybind11::init<>())
-        .def_readwrite("num_nodes", &gpf::PyPlaceDB::num_nodes)
-        .def_readwrite("num_terminals", &gpf::PyPlaceDB::num_terminals)
-        .def_readwrite("node_name2id_map", &gpf::PyPlaceDB::node_name2id_map)
-        .def_readwrite("node_names", &gpf::PyPlaceDB::node_names)
-        .def_readwrite("node_x", &gpf::PyPlaceDB::node_x)
-        .def_readwrite("node_y", &gpf::PyPlaceDB::node_y)
-        .def_readwrite("node_orient", &gpf::PyPlaceDB::node_orient)
-        .def_readwrite("node_size_x", &gpf::PyPlaceDB::node_size_x)
-        .def_readwrite("node_size_y", &gpf::PyPlaceDB::node_size_y)
-        .def_readwrite("pin_direct", &gpf::PyPlaceDB::pin_direct)
-        .def_readwrite("pin_offset_x", &gpf::PyPlaceDB::pin_offset_x)
-        .def_readwrite("pin_offset_y", &gpf::PyPlaceDB::pin_offset_y)
-        .def_readwrite("net_name2id_map", &gpf::PyPlaceDB::net_name2id_map)
-        .def_readwrite("net_names", &gpf::PyPlaceDB::net_names)
-        .def_readwrite("net2pin_map", &gpf::PyPlaceDB::net2pin_map)
-        .def_readwrite("flat_net2pin_map", &gpf::PyPlaceDB::flat_net2pin_map)
-        .def_readwrite("flat_net2pin_start_map", &gpf::PyPlaceDB::flat_net2pin_start_map)
-        .def_readwrite("node2pin_map", &gpf::PyPlaceDB::node2pin_map)
-        .def_readwrite("flat_node2pin_map", &gpf::PyPlaceDB::flat_node2pin_map)
-        .def_readwrite("flat_node2pin_start_map", &gpf::PyPlaceDB::flat_node2pin_start_map)
-        .def_readwrite("pin2node_map", &gpf::PyPlaceDB::pin2node_map)
-        .def_readwrite("pin2net_map", &gpf::PyPlaceDB::pin2net_map)
-        .def_readwrite("rows", &gpf::PyPlaceDB::rows)
-        .def_readwrite("xl", &gpf::PyPlaceDB::xl)
-        .def_readwrite("yl", &gpf::PyPlaceDB::yl)
-        .def_readwrite("xh", &gpf::PyPlaceDB::xh)
-        .def_readwrite("yh", &gpf::PyPlaceDB::yh)
-        .def_readwrite("row_height", &gpf::PyPlaceDB::row_height)
-        .def_readwrite("site_width", &gpf::PyPlaceDB::site_width)
-        .def_readwrite("num_movable_pins", &gpf::PyPlaceDB::num_movable_pins)
+        .def_readwrite("num_nodes", &DREAMPLACE_NAMESPACE::PyPlaceDB::num_nodes)
+        .def_readwrite("num_terminals", &DREAMPLACE_NAMESPACE::PyPlaceDB::num_terminals)
+        .def_readwrite("node_name2id_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::node_name2id_map)
+        .def_readwrite("node_names", &DREAMPLACE_NAMESPACE::PyPlaceDB::node_names)
+        .def_readwrite("node_x", &DREAMPLACE_NAMESPACE::PyPlaceDB::node_x)
+        .def_readwrite("node_y", &DREAMPLACE_NAMESPACE::PyPlaceDB::node_y)
+        .def_readwrite("node_orient", &DREAMPLACE_NAMESPACE::PyPlaceDB::node_orient)
+        .def_readwrite("node_size_x", &DREAMPLACE_NAMESPACE::PyPlaceDB::node_size_x)
+        .def_readwrite("node_size_y", &DREAMPLACE_NAMESPACE::PyPlaceDB::node_size_y)
+        .def_readwrite("pin_direct", &DREAMPLACE_NAMESPACE::PyPlaceDB::pin_direct)
+        .def_readwrite("pin_offset_x", &DREAMPLACE_NAMESPACE::PyPlaceDB::pin_offset_x)
+        .def_readwrite("pin_offset_y", &DREAMPLACE_NAMESPACE::PyPlaceDB::pin_offset_y)
+        .def_readwrite("net_name2id_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::net_name2id_map)
+        .def_readwrite("net_names", &DREAMPLACE_NAMESPACE::PyPlaceDB::net_names)
+        .def_readwrite("net2pin_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::net2pin_map)
+        .def_readwrite("flat_net2pin_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::flat_net2pin_map)
+        .def_readwrite("flat_net2pin_start_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::flat_net2pin_start_map)
+        .def_readwrite("node2pin_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::node2pin_map)
+        .def_readwrite("flat_node2pin_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::flat_node2pin_map)
+        .def_readwrite("flat_node2pin_start_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::flat_node2pin_start_map)
+        .def_readwrite("pin2node_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::pin2node_map)
+        .def_readwrite("pin2net_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::pin2net_map)
+        .def_readwrite("rows", &DREAMPLACE_NAMESPACE::PyPlaceDB::rows)
+        .def_readwrite("xl", &DREAMPLACE_NAMESPACE::PyPlaceDB::xl)
+        .def_readwrite("yl", &DREAMPLACE_NAMESPACE::PyPlaceDB::yl)
+        .def_readwrite("xh", &DREAMPLACE_NAMESPACE::PyPlaceDB::xh)
+        .def_readwrite("yh", &DREAMPLACE_NAMESPACE::PyPlaceDB::yh)
+        .def_readwrite("row_height", &DREAMPLACE_NAMESPACE::PyPlaceDB::row_height)
+        .def_readwrite("site_width", &DREAMPLACE_NAMESPACE::PyPlaceDB::site_width)
+        .def_readwrite("num_movable_pins", &DREAMPLACE_NAMESPACE::PyPlaceDB::num_movable_pins)
         ;
 }
 
