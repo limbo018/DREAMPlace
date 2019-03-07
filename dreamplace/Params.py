@@ -8,10 +8,10 @@
 import json 
 import math 
 
-"""
-Parameter class 
-"""
 class Params: 
+    """
+    @brief Parameter class 
+    """
     def __init__(self):
         """
         @brief initialization 

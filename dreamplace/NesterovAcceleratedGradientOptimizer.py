@@ -2,6 +2,7 @@
 # @file   NesterovAcceleratedGradientOptimizer.py
 # @author Yibo Lin
 # @date   Aug 2018
+# @brief  Nesterov's accelerated gradient method proposed by e-place.  
 #
 
 import os 
@@ -16,10 +17,17 @@ import pdb
 
 class NesterovAcceleratedGradientOptimizer(Optimizer):
     """
-    Follow the implementation of e-place algorithm 2
+    @brief Follow the Nesterov's implementation of e-place algorithm 2
     http://cseweb.ucsd.edu/~jlu/papers/eplace-todaes14/paper.pdf
     """
     def __init__(self, params, lr=required, obj_and_grad_fn=required, constraint_fn=None):
+        """
+        @brief initialization 
+        @param params variable to optimize 
+        @param lr learning rate 
+        @param obj_and_grad_fn a callable function to get objective and gradient 
+        @param constraint_fn a callable function to force variables to satisfy all the constraints 
+        """
         if lr is not required and lr < 0.0:
             raise ValueError("Invalid learning rate: {}".format(lr))
 
@@ -46,11 +54,9 @@ class NesterovAcceleratedGradientOptimizer(Optimizer):
         super(NesterovAcceleratedGradientOptimizer, self).__setstate__(state)
 
     def step(self, closure=None):
-        """Performs a single optimization step.
-
-        Arguments:
-            closure (callable, optional): A closure that reevaluates the model
-                and returns the loss.
+        """
+        @brief Performs a single optimization step.
+        @param closure A callable closure function that reevaluates the model and returns the loss.
         """
         loss = None
         if closure is not None:
@@ -126,18 +132,10 @@ class NesterovAcceleratedGradientOptimizer(Optimizer):
                 torch.cuda.synchronize()
                 #print("\tline search %.3f ms" % ((time.time()-ttt)*1000))
 
-                #print("v_k")
-                #print(v_k.view([2, -1]).t())
-                #print("v_k_1")
-                #print(v_k_1.view([2, -1]).t())
-                #print("v_kp1")
-                #print(v_kp1.view([2, -1]).t())
-                #pdb.set_trace()
                 v_k_1.data.copy_(v_k.data)
                 g_k_1.data.copy_(g_k.data)
 
                 u_k.data.copy_(u_kp1.data)
-                #print("|displace| = %g" % (torch.dist(v_k.data, v_kp1.data, p=1)))
                 v_k.data.copy_(v_kp1.data)
                 g_k.data.copy_(g_kp1.data)
                 a_k.data.copy_(a_kp1.data)

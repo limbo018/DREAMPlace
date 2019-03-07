@@ -2,24 +2,27 @@
 # @file   LineSearch.py
 # @author Yibo Lin
 # @date   Jul 2018
+# @brief  Linear search functions. 
 #
 
 import torch  
 import pdb 
 
-"""initialization
-@param obj_fn a callable function to evaluate the objective given input parameters 
-"""
 def build_line_search_fn_armijo(obj_fn):
-    """line search 
-    @param xk current point  
-    @param pk search direction 
-    @param gfk gradient of f at xk  
-    @param fk value of f at xk, will evaluate if None  
-    @param alpha0 initial step size 
-    @return step size 
+    """
+    @brief initialization
+    @param obj_fn a callable function to evaluate the objective given input parameters 
     """
     def line_search_fn(xk, pk, gfk, fk, alpha0, c1=1e-4):
+        """
+        @brief line search 
+        @param xk current point  
+        @param pk search direction 
+        @param gfk gradient of f at xk  
+        @param fk value of f at xk, will evaluate if None  
+        @param alpha0 initial step size 
+        @return step size 
+        """
         return line_search_armijo(f=obj_fn, xk=xk, pk=pk, gfk=gfk, old_fval=fk, alpha0=alpha0, c1=c1)
     return line_search_fn
 
@@ -29,34 +32,27 @@ def build_line_search_fn_armijo(obj_fn):
 #------------------------------------------------------------------------------
 
 def line_search_armijo(f, xk, pk, gfk, old_fval, c1=1e-4, alpha0=1, max_backtrack_count=100):
-    """Minimize over alpha, the function ``f(xk+alpha pk)``.
-    Parameters
-    ----------
-    f : callable
+    """
+    @brief Minimize over alpha, the function ``f(xk+alpha pk)``.
+        Uses the interpolation algorithm (Armijo backtracking) as suggested by
+        Wright and Nocedal in 'Numerical Optimization', 1999, pg. 56-57
+    @param f : callable
         Function to be minimized.
-    xk : array_like
+    @param xk : array_like
         Current point.
-    pk : array_like
+    @param pk : array_like
         Search direction.
-    gfk : array_like
+    @param gfk : array_like
         Gradient of `f` at point `xk`.
-    old_fval : float
+    @param old_fval : float
         Value of `f` at point `xk`.
-    c1 : float, optional
+    @param c1 : float, optional
         Value to control stopping criterion.
-    alpha0 : scalar, optional
+    @param alpha0 : scalar, optional
         Value of `alpha` at start of the optimization.
-    max_backtrack_count: scalar, optional 
+    @param max_backtrack_count: scalar, optional 
         maximum number of trials 
-    Returns
-    -------
-    alpha
-    f_count
-    f_val_at_alpha
-    Notes
-    -----
-    Uses the interpolation algorithm (Armijo backtracking) as suggested by
-    Wright and Nocedal in 'Numerical Optimization', 1999, pg. 56-57
+    @return alpha, f_count, f_val_at_alpha
     """
     fc = [0]
 
@@ -70,29 +66,26 @@ def line_search_armijo(f, xk, pk, gfk, old_fval, c1=1e-4, alpha0=1, max_backtrac
         phi0 = old_fval  # compute f(xk) -- done in past loop
 
     derphi0 = gfk.dot(pk)
-    #print("derphi0 = %g" % (derphi0))
     alpha, phi1, count = scalar_search_armijo(phi, phi0, derphi0, c1=c1,
                                        alpha0=alpha0, max_backtrack_count=max_backtrack_count)
-    if count >= max_backtrack_count:
-        print(phi(0.0))
-        pdb.set_trace()
-    else:
-        print("phi0-phi1 = %g" % (phi0-phi1))
-        if phi0 <= phi1:
-            pdb.set_trace()
 
     return alpha, fc[0], phi1
 
 
 def scalar_search_armijo(phi, phi0, derphi0, c1=1e-4, alpha0=1, amin=0, max_backtrack_count=10):
-    """Minimize over alpha, the function ``phi(alpha)``.
+    """
+    @brief Minimize over alpha, the function ``phi(alpha)``.
     Uses the interpolation algorithm (Armijo backtracking) as suggested by
     Wright and Nocedal in 'Numerical Optimization', 1999, pg. 56-57
     alpha > 0 is assumed to be a descent direction.
-    Returns
-    -------
-    alpha
-    phi1
+    @param phi 
+    @param phi0 
+    @param derphi0 
+    @param c1 
+    @param alpha0 
+    @param amin 
+    @param max_backtrack_count
+    @return alpha, phi1
     """
     count = 0
 

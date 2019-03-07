@@ -826,7 +826,8 @@ class PlaceDB (object):
             height = 800
             surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
             ctx = cairo.Context(surface)
-            ctx.scale(width, height)  # Normalizing the canvas
+            # Do not use scale function. 
+            # This is not compatible with show_text
 
             layout_xl = min(np.amin(self.node_x[self.num_movable_nodes:self.num_physical_nodes]), self.xl)
             layout_yl = min(np.amin(self.node_y[self.num_movable_nodes:self.num_physical_nodes]), self.yl)
@@ -834,9 +835,9 @@ class PlaceDB (object):
             layout_yh = max(np.amax(self.node_y[self.num_movable_nodes:self.num_physical_nodes]+self.node_size_y[self.num_movable_nodes:self.num_physical_nodes]), self.yh)
 
             def normalize_x(xx):
-                return (xx - (layout_xl-2*self.bin_size_x))/(layout_xh-layout_xl+4*self.bin_size_x)
+                return (xx - (layout_xl-2*self.bin_size_x))/(layout_xh-layout_xl+4*self.bin_size_x)*width 
             def normalize_y(xx):
-                return (xx - (layout_yl-2*self.bin_size_y))/(layout_yh-layout_yl+4*self.bin_size_y)
+                return (xx - (layout_yl-2*self.bin_size_y))/(layout_yh-layout_yl+4*self.bin_size_y)*height
             def draw_rect(x1, y1, x2, y2):
                 ctx.move_to(x1, y1)
                 ctx.line_to(x1, y2)
@@ -904,12 +905,12 @@ class PlaceDB (object):
             for i in range(self.num_movable_nodes):
                 draw_rect(xl[i], yl[i], xh[i], yh[i])
 
-            # show iteration, not working  
+            # show iteration
             ctx.set_source_rgb(0, 0, 0)
             ctx.set_line_width(0.1)
             ctx.select_font_face("monospace", cairo.FONT_SLANT_NORMAL, 
                     cairo.FONT_WEIGHT_NORMAL)
-            ctx.set_font_size(72)
+            ctx.set_font_size(32)
             ctx.move_to(normalize_x((self.xl+self.xh)/2), normalize_y((self.yl+self.yh)/2))
             ctx.show_text('{:04}'.format(iteration))
 

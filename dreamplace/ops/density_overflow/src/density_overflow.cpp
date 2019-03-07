@@ -1,11 +1,30 @@
 /**
- * @file   src/density_overflow.cpp
+ * @file   density_overflow.cpp
  * @author Yibo Lin
  * @date   Jun 2018
+ * @brief  Compute density overflow on CPU 
  */
 #include <torch/torch.h>
 #include <limits>
 
+/// @brief compute density overflow map 
+/// @param x_tensor cell x locations
+/// @param y_tensor cell y locations 
+/// @param node_size_x_tensor cell width array
+/// @param node_size_y_tensor cell height array 
+/// @param bin_center_x_tensor bin center x locations 
+/// @param bin_center_y_tensor bin center y locations 
+/// @param num_nodes number of cells 
+/// @param num_bins_x number of bins in horizontal bins 
+/// @param num_bins_y number of bins in vertical bins 
+/// @param xl left boundary 
+/// @param yl bottom boundary 
+/// @param xh right boundary 
+/// @param yh top boundary 
+/// @param bin_size_x bin width 
+/// @param bin_size_y bin height 
+/// @param density_map_tensor 2D density map in column-major to write 
+/// @param density_cost_tensor overall density overflow 
 template <typename T>
 int computeDensityOverflowMapLauncher(
         const T* x_tensor, const T* y_tensor, 
@@ -23,6 +42,23 @@ int computeDensityOverflowMapLauncher(
 #define CHECK_EVEN(x) AT_ASSERTM((x.numel()&1) == 0, #x "must have even number of elements")
 #define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x "must be contiguous")
 
+/// @brief Compute density overflow map. 
+/// @param pos cell locations, array of x locations and then y locations 
+/// @param node_size_x_tensor cell width array
+/// @param node_size_y_tensor cell height array 
+/// @param bin_center_x_tensor bin center x locations 
+/// @param bin_center_y_tensor bin center y locations 
+/// @param initial_density_map initial density map 
+/// @param target_density target density 
+/// @param xl left boundary 
+/// @param yl bottom boundary 
+/// @param xh right boundary 
+/// @param yh top boundary 
+/// @param bin_size_x bin width 
+/// @param bin_size_y bin height 
+/// @param num_movable_nodes number of movable cells 
+/// @param num_filler_nodes number of filler cells 
+/// @return density overflow map, total density overflow, maximum density 
 std::vector<at::Tensor> density_overflow_forward(
         at::Tensor pos,
         at::Tensor node_size_x,
@@ -51,7 +87,6 @@ std::vector<at::Tensor> density_overflow_forward(
     at::Tensor density_cost = at::zeros({1}, pos.options());
     double density_area = target_density*bin_size_x*bin_size_y;
 
-    // Call the cuda kernel launcher
     AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeDensityOverflowMapLauncher", [&] {
             computeDensityOverflowMapLauncher<scalar_t>(
                     pos.data<scalar_t>(), pos.data<scalar_t>()+pos.numel()/2, 
@@ -89,6 +124,22 @@ std::vector<at::Tensor> density_overflow_forward(
     return {density_cost, density_map, max_density};
 }
 
+/// @brief Compute the density overflow for fixed cells. 
+/// This map can be used as the initial density map since it only needs to be computed once.  
+/// @param pos cell locations, array of x locations and then y locations 
+/// @param node_size_x_tensor cell width array
+/// @param node_size_y_tensor cell height array 
+/// @param bin_center_x_tensor bin center x locations 
+/// @param bin_center_y_tensor bin center y locations 
+/// @param xl left boundary 
+/// @param yl bottom boundary 
+/// @param xh right boundary 
+/// @param yh top boundary 
+/// @param bin_size_x bin width 
+/// @param bin_size_y bin height 
+/// @param num_movable_nodes number of movable cells 
+/// @param num_terminals number of fixed cells 
+/// @return a density map for fixed cells 
 at::Tensor fixed_density_overflow_map(
         at::Tensor pos,
         at::Tensor node_size_x,
@@ -134,6 +185,7 @@ at::Tensor fixed_density_overflow_map(
 
     return density_map;
 }
+
 template <typename T>
 int computeDensityOverflowMapLauncher(
         const T* x_tensor, const T* y_tensor, 

@@ -2,6 +2,7 @@
 # @file   ConjugateGradientOptimizer.py
 # @author Yibo Lin
 # @date   Jul 2018
+# @brief  Conjugate gradient descent optimizer. 
 #
 
 import os 
@@ -14,6 +15,12 @@ from torch.optim.optimizer import Optimizer, required
 import pdb 
 
 class ConjugateGradientOptimizer(Optimizer):
+    """
+    @brief Implement conjugate gradient descent optimization algorithm. 
+    @param params variables 
+    @param lr learning rate  
+    @param line_search_fn a callable line search function 
+    """
     def __init__(self, params, lr=required, line_search_fn=None):
         if lr is not required and lr < 0.0:
             raise ValueError("Invalid learning rate: {}".format(lr))
@@ -31,11 +38,9 @@ class ConjugateGradientOptimizer(Optimizer):
         super(ConjugateGradientOptimizer, self).__setstate__(state)
 
     def step(self, closure=None):
-        """Performs a single optimization step.
-
-        Arguments:
-            closure (callable, optional): A closure that reevaluates the model
-                and returns the loss.
+        """
+        @brief Performs a single optimization step.
+        @param closure A callable closure function that reevaluates the model and returns the loss.
         """
         loss = None
         if closure is not None:

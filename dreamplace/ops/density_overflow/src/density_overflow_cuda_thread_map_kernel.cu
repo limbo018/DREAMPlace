@@ -1,3 +1,9 @@
+/**
+ * @file   density_overflow_cuda_thread_map_kernel.cu
+ * @author Yibo Lin
+ * @date   Jun 2018
+ * @brief  Compute density map on CUDA with cell2bin parallelization 
+ */
 #include <stdio.h>
 #include <math.h>
 #include <float.h>

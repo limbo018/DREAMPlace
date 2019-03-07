@@ -9,9 +9,12 @@ import time
 import pdb 
 
 class EvalMetrics (object):
+    """
+    @brief evaluation metrics at one step 
+    """
     def __init__(self, iteration=None):
         """
-        @brief evaluation metrics at one step 
+        @brief initialization
         @param iteration optimization step 
         """
         self.iteration = iteration 
