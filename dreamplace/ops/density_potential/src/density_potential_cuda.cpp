@@ -2,10 +2,41 @@
  * @file   hpwl_cuda.cpp
  * @author Yibo Lin
  * @date   Jun 2018
+ * @brief  Compute density potential on CUDA according to NTUPlace3 (https://doi.org/10.1109/TCAD.2008.923063)
  */
 #include <torch/torch.h>
 #include <limits>
 
+/// @brief compute density map, density cost, and gradient
+/// @param x_tensor cell x locations
+/// @param y_tensor cell y locations 
+/// @param node_size_x_tensor cell width array
+/// @param node_size_y_tensor cell height array 
+/// @param ax_tensor ax tensor according to NTUPlace3 paper, for x direction  
+/// @param bx_tensor bx tensor according to NTUPlace3 paper, for x direction   
+/// @param cx_tensor cx tensor according to NTUPlace3 paper, for x direction   
+/// @param ay_tensor ay tensor according to NTUPlace3 paper, for y direction  
+/// @param by_tensor by tensor according to NTUPlace3 paper, for y direction   
+/// @param cy_tensor cy tensor according to NTUPlace3 paper, for y direction   
+/// @param bin_center_x_tensor bin center x locations 
+/// @param bin_center_y_tensor bin center y locations 
+/// @param num_impacted_bins_x number of impacted bins for any cell in x direction 
+/// @param num_impacted_bins_y number of impacted bins for any cell in y direction 
+/// @param num_nodes number of cells 
+/// @param num_bins_x number of bins in horizontal bins 
+/// @param num_bins_y number of bins in vertical bins 
+/// @param xl left boundary 
+/// @param yl bottom boundary 
+/// @param xh right boundary 
+/// @param yh top boundary 
+/// @param bin_size_x bin width 
+/// @param bin_size_y bin height 
+/// @param target_area target area computed from target density 
+/// @param density_map_tensor 2D density map in column-major to write 
+/// @param density_cost_tensor overall density overflow 
+/// @param grad_tensor input gradient from backward propagation
+/// @param grad_x_tensor density gradient of cell in x direction 
+/// @param grad_y_tensor density gradient of cell in y direction 
 template <typename T>
 int computeDensityPotentialMapCudaLauncher(
         const T* x_tensor, const T* y_tensor, 
@@ -31,6 +62,33 @@ int computeDensityPotentialMapCudaLauncher(
 
 typedef double T; 
 
+/// @brief compute density map, density cost, and gradient
+/// @param pos cell locations. The array consists of all x locations and then y locations. 
+/// @param node_size_x cell width array
+/// @param node_size_y cell height array 
+/// @param ax ax tensor according to NTUPlace3 paper, for x direction  
+/// @param bx bx tensor according to NTUPlace3 paper, for x direction   
+/// @param cx cx tensor according to NTUPlace3 paper, for x direction   
+/// @param ay ay tensor according to NTUPlace3 paper, for y direction  
+/// @param by by tensor according to NTUPlace3 paper, for y direction   
+/// @param cy cy tensor according to NTUPlace3 paper, for y direction   
+/// @param bin_center_x bin center x locations 
+/// @param bin_center_y bin center y locations 
+/// @param target_density target density 
+/// @param xl left boundary 
+/// @param yl bottom boundary 
+/// @param xh right boundary 
+/// @param yh top boundary 
+/// @param bin_size_x bin width 
+/// @param bin_size_y bin height 
+/// @param num_movable_nodes number of movable cells 
+/// @param num_filler_nodes number of filler cells 
+/// @param padding bin padding to boundary of placement region 
+/// @param padding_mask padding mask with 0 and 1 to indicate padding bins with padding regions to be 1   
+/// @param num_bins_x number of bins in horizontal bins 
+/// @param num_bins_y number of bins in vertical bins 
+/// @param num_impacted_bins_x number of impacted bins for any cell in x direction 
+/// @param num_impacted_bins_y number of impacted bins for any cell in y direction 
 std::vector<at::Tensor> density_potential_forward(
         at::Tensor pos,
         at::Tensor node_size_x, at::Tensor node_size_y,
@@ -126,6 +184,34 @@ std::vector<at::Tensor> density_potential_forward(
     };
 }
 
+/// @brief Compute density potential gradient 
+/// @param grad_pos input gradient from backward propagation
+/// @param num_bins_x number of bins in horizontal bins 
+/// @param num_bins_y number of bins in vertical bins 
+/// @param num_impacted_bins_x number of impacted bins for any cell in x direction 
+/// @param num_impacted_bins_y number of impacted bins for any cell in y direction 
+/// @param density_map current density map 
+/// @param pos cell locations. The array consists of all x locations and then y locations. 
+/// @param node_size_x cell width array
+/// @param node_size_y cell height array 
+/// @param ax ax tensor according to NTUPlace3 paper, for x direction  
+/// @param bx bx tensor according to NTUPlace3 paper, for x direction   
+/// @param cx cx tensor according to NTUPlace3 paper, for x direction   
+/// @param ay ay tensor according to NTUPlace3 paper, for y direction  
+/// @param by by tensor according to NTUPlace3 paper, for y direction   
+/// @param cy cy tensor according to NTUPlace3 paper, for y direction   
+/// @param bin_center_x bin center x locations 
+/// @param bin_center_y bin center y locations 
+/// @param target_density target density 
+/// @param xl left boundary 
+/// @param yl bottom boundary 
+/// @param xh right boundary 
+/// @param yh top boundary 
+/// @param bin_size_x bin width 
+/// @param bin_size_y bin height 
+/// @param num_movable_nodes number of movable cells 
+/// @param num_filler_nodes number of filler cells 
+/// @param padding bin padding to boundary of placement region 
 at::Tensor density_potential_backward(
         at::Tensor grad_pos, 
         int num_bins_x, int num_bins_y, 
@@ -226,7 +312,7 @@ int computeGaussianFilterLauncher(
         T* gaussian_filter_tensor
         );
 
-// compute density map for fixed cells 
+/// @brief compute density map for fixed cells 
 at::Tensor fixed_density_potential_map(
         at::Tensor pos,
         at::Tensor node_size_x, at::Tensor node_size_y,

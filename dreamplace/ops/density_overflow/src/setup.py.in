@@ -10,8 +10,12 @@ from torch.utils.cpp_extension import BuildExtension, CppExtension, CUDAExtensio
 import os 
 import sys
 
+ops_dir = "${OPS_DIR}"
+
 cuda_arch = '${CMAKE_CUDA_FLAGS}'
 print("cuda_arch = %s" % (cuda_arch))
+
+include_dirs = [ops_dir]
 
 def add_prefix(filename):
     return os.path.join('${CMAKE_CURRENT_SOURCE_DIR}/src', filename)
@@ -33,6 +37,7 @@ if not "${CUDA_FOUND}" or "${CUDA_FOUND}".upper() == 'TRUE':
                     add_prefix('density_overflow_cuda_kernel.cu'), 
                     add_prefix('density_overflow_cuda_thread_map_kernel.cu')
                     ], 
+                include_dirs=include_dirs, 
                 libraries=['cusparse', 'culibos'],
                 extra_compile_args={
                     'cxx': ['-O2'], 
@@ -44,6 +49,7 @@ if not "${CUDA_FOUND}" or "${CUDA_FOUND}".upper() == 'TRUE':
                     add_prefix('density_overflow_cuda_by_node.cpp'),
                     add_prefix('density_overflow_cuda_by_node_kernel.cu')
                     ], 
+                include_dirs=include_dirs, 
                 libraries=['cusparse', 'culibos'],
                 extra_compile_args={
                     'cxx': ['-O2'], 

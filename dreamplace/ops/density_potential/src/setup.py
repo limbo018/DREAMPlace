@@ -10,8 +10,12 @@ from torch.utils.cpp_extension import BuildExtension, CppExtension, CUDAExtensio
 import os 
 import sys
 
+ops_dir = os.environ['OPS_DIR']
+
 cuda_flags = os.environ['CUDAFLAGS']
 print("cuda_flags = %s" % (cuda_flags))
+
+include_dirs = [os.path.abspath(ops_dir)]
 
 setup(
         name='density_potential',
@@ -26,6 +30,7 @@ setup(
                     'density_potential_cuda_kernel.cu',
                     'density_overflow_cuda_kernel.cu',
                     ], 
+                include_dirs=include_dirs, 
                 libraries=['cusparse', 'culibos'],
                 extra_compile_args={
                     'cxx': ['-O2'], 

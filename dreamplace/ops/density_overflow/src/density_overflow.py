@@ -123,8 +123,8 @@ class DensityOverflow(Function):
         @brief initialization 
         @param node_size_x cell width array consisting of movable cells, fixed cells, and filler cells in order  
         @param node_size_y cell height array consisting of movable cells, fixed cells, and filler cells in order   
-        @param bin_center_x_tensor bin center x locations 
-        @param bin_center_y_tensor bin center y locations 
+        @param bin_center_x bin center x locations 
+        @param bin_center_y bin center y locations 
         @param target_density target density 
         @param xl left boundary 
         @param yl bottom boundary 

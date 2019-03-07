@@ -8,7 +8,7 @@
 #include <math.h>
 #include <float.h>
 #include "cuda_runtime.h"
-#include "print.h"
+#include "utility/src/print.h"
 
 template <typename T>
 __global__ void computeDensityMapWithThreadMap(

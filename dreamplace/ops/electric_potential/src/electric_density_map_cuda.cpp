@@ -2,6 +2,7 @@
  * @file   density_map_cuda.cpp
  * @author Yibo Lin
  * @date   Aug 2018
+ * @brief  Compute density map according to e-place (http://cseweb.ucsd.edu/~jlu/papers/eplace-todaes14/paper.pdf)
  */
 #include <torch/torch.h>
 #include <limits>
@@ -42,7 +43,30 @@ int computeExactDensityMapCudaLauncher(
 #define CHECK_EVEN(x) AT_ASSERTM((x.numel()&1) == 0, #x "must have even number of elements")
 #define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x "must be contiguous")
 
-// compute density map for movable and filler cells 
+/// @brief compute density map for movable and filler cells 
+/// @param pos cell locations. The array consists of all x locations and then y locations. 
+/// @param node_size_x cell width array
+/// @param node_size_y cell height array 
+/// @param bin_center_x bin center x locations 
+/// @param bin_center_y bin center y locations 
+/// @param initial_density_map initial density map for fixed cells 
+/// @param target_density target density 
+/// @param xl left boundary 
+/// @param yl bottom boundary 
+/// @param xh right boundary 
+/// @param yh top boundary 
+/// @param bin_size_x bin width 
+/// @param bin_size_y bin height 
+/// @param num_movable_nodes number of movable cells 
+/// @param num_filler_nodes number of filler cells 
+/// @param padding bin padding to boundary of placement region 
+/// @param padding_mask padding mask with 0 and 1 to indicate padding bins with padding regions to be 1  
+/// @param num_bins_x number of bins in horizontal bins 
+/// @param num_bins_y number of bins in vertical bins 
+/// @param num_movable_impacted_bins_x number of impacted bins for any movable cell in x direction 
+/// @param num_movable_impacted_bins_y number of impacted bins for any movable cell in y direction 
+/// @param num_filler_impacted_bins_x number of impacted bins for any filler cell in x direction 
+/// @param num_filler_impacted_bins_y number of impacted bins for any filler cell in y direction 
 at::Tensor density_map(
         at::Tensor pos,
         at::Tensor node_size_x, at::Tensor node_size_y,
@@ -98,7 +122,7 @@ at::Tensor density_map(
     return density_map;
 }
 
-// compute density map for fixed cells 
+/// @brief compute density map for fixed cells 
 at::Tensor fixed_density_map(
         at::Tensor pos,
         at::Tensor node_size_x, at::Tensor node_size_y,
@@ -146,7 +170,29 @@ at::Tensor fixed_density_map(
     return density_map;
 }
 
-// compute electric force for movable and filler cells 
+/// @brief Compute electric force for movable and filler cells 
+/// @param grad_pos input gradient from backward propagation
+/// @param num_bins_x number of bins in horizontal bins 
+/// @param num_bins_y number of bins in vertical bins 
+/// @param num_movable_impacted_bins_x number of impacted bins for any movable cell in x direction 
+/// @param num_movable_impacted_bins_y number of impacted bins for any movable cell in y direction 
+/// @param num_filler_impacted_bins_x number of impacted bins for any filler cell in x direction 
+/// @param num_filler_impacted_bins_y number of impacted bins for any filler cell in y direction 
+/// @param field_map_x electric field map in x direction 
+/// @param field_map_y electric field map in y direction 
+/// @param pos cell locations. The array consists of all x locations and then y locations. 
+/// @param node_size_x cell width array
+/// @param node_size_y cell height array 
+/// @param bin_center_x bin center x locations 
+/// @param bin_center_y bin center y locations 
+/// @param xl left boundary 
+/// @param yl bottom boundary 
+/// @param xh right boundary 
+/// @param yh top boundary 
+/// @param bin_size_x bin width 
+/// @param bin_size_y bin height 
+/// @param num_movable_nodes number of movable cells 
+/// @param num_filler_nodes number of filler cells 
 at::Tensor electric_force(
         at::Tensor grad_pos,
         int num_bins_x, int num_bins_y, 

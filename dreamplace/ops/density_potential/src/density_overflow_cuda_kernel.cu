@@ -1,9 +1,16 @@
+/**
+ * @file   density_overflow_cuda_kernel.cu
+ * @author Yibo Lin
+ * @date   Jun 2018
+ * @brief  Compute density overflow according to NTUPlace3 (https://doi.org/10.1109/TCAD.2008.923063). 
+ *          This is for fixed cells. 
+ */
 #include <stdio.h>
 #include <math.h>
 #include <float.h>
 #include "cuda_runtime.h"
-#include "gemm.h"
-#include "print.h"
+#include "utility/src/gemm.h"
+#include "utility/src/print.h"
 
 template <typename T>
 __global__ void computeDensityMap(

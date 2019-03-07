@@ -602,7 +602,8 @@ def eval_runtime(design):
     print("custom_cuda takes %.3f ms" % ((time.time()-tt)/iters*1000))
 
 if __name__ == '__main__':
-    #unittest.main()
+    unittest.main()
+    exit()
 
     design = sys.argv[1]
     eval_runtime(design)

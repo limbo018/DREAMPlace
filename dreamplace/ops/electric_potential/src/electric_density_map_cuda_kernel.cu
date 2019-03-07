@@ -7,7 +7,7 @@
 #include <math.h>
 #include <float.h>
 #include "cuda_runtime.h"
-#include "print.h"
+#include "utility/src/print.h"
 
 #define SQRT2 1.4142135623730950488016887242096980785696718753769480731766797379907324784621
 

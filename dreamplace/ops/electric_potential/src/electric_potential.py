@@ -1,7 +1,8 @@
 ##
-# @file   density_potential.py
+# @file   electric_potential.py
 # @author Yibo Lin
 # @date   Jun 2018
+# @brief  electric potential according to e-place (http://cseweb.ucsd.edu/~jlu/papers/eplace-todaes14/paper.pdf) 
 #
 
 import math 
@@ -30,7 +31,8 @@ import matplotlib.pyplot as plt
 plot_count = 0
 
 class ElectricPotentialFunction(Function):
-    """compute density overflow.
+    """
+    @brief compute electric potential according to e-place.
     """
 
     @staticmethod
@@ -271,9 +273,8 @@ class ElectricPotentialFunction(Function):
                 None, None
 
 class ElectricPotential(nn.Module):
-    """ initialization 
-    Be aware that all scalars must be python type instead of tensors. 
-    Otherwise, GPU version can be weirdly slow. 
+    """
+    @brief Compute electric potential according to e-place 
     """
     def __init__(self, 
             node_size_x, node_size_y,
@@ -287,6 +288,27 @@ class ElectricPotential(nn.Module):
             padding, 
             fast_mode=False
             ):
+        """ 
+        @brief initialization 
+        Be aware that all scalars must be python type instead of tensors. 
+        Otherwise, GPU version can be weirdly slow. 
+        @param node_size_x cell width array consisting of movable cells, fixed cells, and filler cells in order  
+        @param node_size_y cell height array consisting of movable cells, fixed cells, and filler cells in order   
+        @param bin_center_x bin center x locations 
+        @param bin_center_y bin center y locations 
+        @param target_density target density 
+        @param xl left boundary 
+        @param yl bottom boundary 
+        @param xh right boundary 
+        @param yh top boundary 
+        @param bin_size_x bin width 
+        @param bin_size_y bin height 
+        @param num_movable_nodes number of movable cells 
+        @param num_terminals number of fixed cells 
+        @param num_filler_nodes number of filler cells 
+        @param padding bin padding to boundary of placement region 
+        @param fast_mode if true, only gradient is computed, while objective computation is skipped 
+        """
         super(ElectricPotential, self).__init__()
         self.node_size_x = node_size_x
         self.node_size_y = node_size_y

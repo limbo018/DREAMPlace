@@ -2,6 +2,7 @@
  * @file   electric_force_cuda.cpp
  * @author Yibo Lin
  * @date   Aug 2018
+ * @brief  Compute electric force according to e-place 
  */
 #include <torch/torch.h>
 #include <limits>
@@ -25,7 +26,29 @@ int computeElectricForceCudaLauncher(
 #define CHECK_EVEN(x) AT_ASSERTM((x.numel()&1) == 0, #x "must have even number of elements")
 #define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x "must be contiguous")
 
-// compute electric force for movable and filler cells 
+/// @brief compute electric force for movable and filler cells 
+/// @param grad_pos input gradient from backward propagation
+/// @param num_bins_x number of bins in horizontal bins 
+/// @param num_bins_y number of bins in vertical bins 
+/// @param num_movable_impacted_bins_x number of impacted bins for any movable cell in x direction 
+/// @param num_movable_impacted_bins_y number of impacted bins for any movable cell in y direction 
+/// @param num_filler_impacted_bins_x number of impacted bins for any filler cell in x direction 
+/// @param num_filler_impacted_bins_y number of impacted bins for any filler cell in y direction 
+/// @param field_map_x electric field map in x direction 
+/// @param field_map_y electric field map in y direction 
+/// @param pos cell locations. The array consists of all x locations and then y locations. 
+/// @param node_size_x cell width array
+/// @param node_size_y cell height array 
+/// @param bin_center_x bin center x locations 
+/// @param bin_center_y bin center y locations 
+/// @param xl left boundary 
+/// @param yl bottom boundary 
+/// @param xh right boundary 
+/// @param yh top boundary 
+/// @param bin_size_x bin width 
+/// @param bin_size_y bin height 
+/// @param num_movable_nodes number of movable cells 
+/// @param num_filler_nodes number of filler cells 
 at::Tensor electric_force(
         at::Tensor grad_pos,
         int num_bins_x, int num_bins_y, 

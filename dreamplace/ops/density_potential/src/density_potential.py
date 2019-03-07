@@ -2,6 +2,7 @@
 # @file   density_potential.py
 # @author Yibo Lin
 # @date   Jun 2018
+# @brief  Compute density potential according to NTUPlace3 (https://doi.org/10.1109/TCAD.2008.923063)
 #
 
 import math 
@@ -24,7 +25,8 @@ import matplotlib.pyplot as plt
 #plot_count = 0
 
 class DensityPotentialFunction(Function):
-    """compute density overflow.
+    """
+    @brief compute density potential.
     """
 
     @staticmethod
@@ -165,6 +167,9 @@ class DensityPotentialFunction(Function):
         return output, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None
 
 class DensityPotential(nn.Module):
+    """
+    @brief Compute density potential according to NTUPlace3 
+    """
     def __init__(self, 
             node_size_x, node_size_y,
             ax, bx, cx, 
@@ -180,6 +185,32 @@ class DensityPotential(nn.Module):
             sigma, 
             delta
             ):
+        """
+        @brief initialization 
+        @param node_size_x cell width array consisting of movable cells, fixed cells, and filler cells in order  
+        @param node_size_y cell height array consisting of movable cells, fixed cells, and filler cells in order   
+        @param ax 
+        @param bx 
+        @param cx 
+        @param ay 
+        @param by 
+        @param cy see the a, b, c defined in NTUPlace3 
+        @param bin_center_x bin center x locations 
+        @param bin_center_y bin center y locations 
+        @param target_density target density 
+        @param xl left boundary 
+        @param yl bottom boundary 
+        @param xh right boundary 
+        @param yh top boundary 
+        @param bin_size_x bin width 
+        @param bin_size_y bin height 
+        @param num_movable_nodes number of movable cells 
+        @param num_terminals number of fixed cells 
+        @param num_filler_nodes number of filler cells 
+        @param padding bin padding to boundary of placement region 
+        @param sigma parameter for density map of fixed cells according to NTUPlace3 
+        @param delta parameter for density map of fixed cells according to NTUPlace3  
+        """
         super(DensityPotential, self).__init__()
         self.node_size_x = node_size_x
         self.node_size_y = node_size_y
