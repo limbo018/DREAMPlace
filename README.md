@@ -7,7 +7,7 @@ Deep learning toolkit-enabled VLSI placement
 
 - Pytorch 0.4.1
 
-- Python 2.7
+- Python 2.7 or Python 3.5
 
 - [Boost](www.boost.org)
     - Need to install and visible for linking
