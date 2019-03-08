@@ -20,7 +20,7 @@ include_dirs = [os.path.join(os.path.abspath(boost_dir), 'include'), os.path.joi
 lib_dirs = [os.path.join(os.path.abspath(boost_dir), 'lib'), os.path.join(os.path.abspath(limbo_dir), 'lib'), utility_dir]
 libs = ['gdsparser', 'boost_iostreams', 'z', 'utility'] 
 
-if pkgconfig.exists('cairo'):
+if 0*pkgconfig.exists('cairo'):
     print("found cairo and enable")
     include_dirs.append(pkgconfig.cflags('cairo')[2:])
     libs.append(pkgconfig.libs('cairo')[2:])

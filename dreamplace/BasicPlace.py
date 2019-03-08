@@ -379,5 +379,4 @@ class BasicPlace (nn.Module):
         if isinstance(pos, np.ndarray):
             pos = torch.from_numpy(pos)
         self.op_collections.draw_place_op(pos, figname)
-        #placedb.plot(params, iteration, pos[:int(len(pos)/2)], pos[int(len(pos)/2):])
         print("[I] plotting to %s takes %.3f seconds" % (figname, time.time()-tt))

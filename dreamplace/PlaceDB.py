@@ -10,7 +10,6 @@ import os
 import re
 import time 
 import numpy as np 
-import cairocffi as cairo 
 import Params
 from ops import place_io
 import pdb 
@@ -811,117 +810,6 @@ class PlaceDB (object):
         with open(net_file, "w") as f:
             f.write(content)
         print("[I] write_nets takes %.3f seconds" % (time.time()-tt))
-
-    def plot(self, params, iteration, x, y): 
-        """
-        @brief plot layout
-        @param params parameters 
-        @param iteration optimization step 
-        @param x horizontal cell locations 
-        @param y vertical cell locations 
-        """
-        try: 
-            tt = time.time()
-            width = 800
-            height = 800
-            surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
-            ctx = cairo.Context(surface)
-            # Do not use scale function. 
-            # This is not compatible with show_text
-
-            layout_xl = min(np.amin(self.node_x[self.num_movable_nodes:self.num_physical_nodes]), self.xl)
-            layout_yl = min(np.amin(self.node_y[self.num_movable_nodes:self.num_physical_nodes]), self.yl)
-            layout_xh = max(np.amax(self.node_x[self.num_movable_nodes:self.num_physical_nodes]+self.node_size_x[self.num_movable_nodes:self.num_physical_nodes]), self.xh)
-            layout_yh = max(np.amax(self.node_y[self.num_movable_nodes:self.num_physical_nodes]+self.node_size_y[self.num_movable_nodes:self.num_physical_nodes]), self.yh)
-
-            def normalize_x(xx):
-                return (xx - (layout_xl-2*self.bin_size_x))/(layout_xh-layout_xl+4*self.bin_size_x)*width 
-            def normalize_y(xx):
-                return (xx - (layout_yl-2*self.bin_size_y))/(layout_yh-layout_yl+4*self.bin_size_y)*height
-            def draw_rect(x1, y1, x2, y2):
-                ctx.move_to(x1, y1)
-                ctx.line_to(x1, y2)
-                ctx.line_to(x2, y2)
-                ctx.line_to(x2, y1)
-                ctx.close_path()
-                ctx.stroke()
-
-            # draw layout region 
-            ctx.set_source_rgb(1, 1, 1)
-            draw_layout_xl = normalize_x(layout_xl-2*self.bin_size_x)
-            draw_layout_yl = normalize_y(layout_yl-2*self.bin_size_y)
-            draw_layout_xh = normalize_x(layout_xh+2*self.bin_size_x)
-            draw_layout_yh = normalize_y(layout_yh+2*self.bin_size_y)
-            ctx.rectangle(draw_layout_xl, draw_layout_yl, draw_layout_xh, draw_layout_yh)
-            ctx.fill()
-            ctx.set_line_width(0.001)
-            ctx.set_source_rgba(0.1, 0.1, 0.1, alpha=0.8)
-            #ctx.move_to(normalize_x(self.xl), normalize_y(self.yl))
-            #ctx.line_to(normalize_x(self.xl), normalize_y(self.yh))
-            #ctx.line_to(normalize_x(self.xh), normalize_y(self.yh))
-            #ctx.line_to(normalize_x(self.xh), normalize_y(self.yl))
-            #ctx.close_path()
-            #ctx.stroke()
-            # draw bins 
-            for i in range(1, self.num_bins_x):
-                ctx.move_to(normalize_x(self.bin_xl(i)), normalize_y(self.yl))
-                ctx.line_to(normalize_x(self.bin_xl(i)), normalize_y(self.yh))
-                ctx.close_path()
-                ctx.stroke()
-            for i in range(1, self.num_bins_y):
-                ctx.move_to(normalize_x(self.xl), normalize_y(self.bin_yl(i)))
-                ctx.line_to(normalize_x(self.xh), normalize_y(self.bin_yl(i)))
-                ctx.close_path()
-                ctx.stroke()
-
-            # draw cells
-            xl = x
-            yl = layout_yl+layout_yh-(y+self.node_size_y[0:len(y)]) # flip y 
-            xh = xl+self.node_size_x[0:len(x)]
-            yh = layout_yl+layout_yh-y # flip y 
-            xl = normalize_x(xl)
-            yl = normalize_y(yl)
-            xh = normalize_x(xh)
-            yh = normalize_y(yh)
-            ctx.set_line_width(0.001)
-            #print("plot layout")
-            # draw fixed macros
-            ctx.set_source_rgba(1, 0, 0, alpha=0.5)
-            for i in range(self.num_movable_nodes, self.num_physical_nodes):
-                ctx.rectangle(xl[i], yl[i], xh[i]-xl[i], yh[i]-yl[i])  # Rectangle(xl, yl, w, h)
-                ctx.fill()
-            ctx.set_source_rgba(0, 0, 0, alpha=1.0)  # Solid color
-            for i in range(self.num_movable_nodes, self.num_physical_nodes):
-                draw_rect(xl[i], yl[i], xh[i], yh[i])
-            # draw fillers
-            if len(xl) > self.num_physical_nodes: # filler is included 
-                ctx.set_line_width(0.001)
-                ctx.set_source_rgba(230/255.0, 230/255.0, 250/255.0, alpha=0.3)  # Solid color
-                for i in range(self.num_physical_nodes, self.num_nodes):
-                    draw_rect(xl[i], yl[i], xh[i], yh[i])
-            # draw cells 
-            ctx.set_line_width(0.002)
-            ctx.set_source_rgba(0, 0, 1, alpha=0.8)  # Solid color
-            for i in range(self.num_movable_nodes):
-                draw_rect(xl[i], yl[i], xh[i], yh[i])
-
-            # show iteration
-            ctx.set_source_rgb(0, 0, 0)
-            ctx.set_line_width(0.1)
-            ctx.select_font_face("monospace", cairo.FONT_SLANT_NORMAL, 
-                    cairo.FONT_WEIGHT_NORMAL)
-            ctx.set_font_size(32)
-            ctx.move_to(normalize_x((self.xl+self.xh)/2), normalize_y((self.yl+self.yh)/2))
-            ctx.show_text('{:04}'.format(iteration))
-
-            figname = "%s/plot/iter%s.png" % (params.result_dir, '{:04}'.format(iteration))
-            surface.write_to_png(figname)  # Output to PNG
-            print("[I] plotting to %s takes %.3f seconds" % (figname, time.time()-tt))
-            #print(self.session.run(self.grads))
-            #print(self.session.run(self.masked_grads))
-        except Exception as e:
-            print("[E] failed to plot")
-            print(str(e))
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:

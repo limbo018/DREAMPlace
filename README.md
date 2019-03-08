@@ -13,8 +13,6 @@ Over 30X speedup over CPU is achieved in global placement and legalization on IS
 
 # Dependency 
 
-- CUDA 9.1 or later
-
 - Pytorch 0.4.1
 
 - Python 2.7 or Python 3.5
@@ -28,7 +26,15 @@ Over 30X speedup over CPU is achieved in global placement and legalization on IS
 - [Flute](https://doi.org/10.1109/TCAD.2007.907068)
     - Integrated as a submodule
 
-- NTUPlace3 (Optional)
+- [CUDA 9.1 or later](https://developer.nvidia.com/cuda-toolkit) (Optional)
+    - If installed and found, GPU acceleration will be enabled. 
+    - Otherwise, only CPU implementation is enabled. 
+
+- [Cairo](https://github.com/freedesktop/cairo) (Optional)
+    - If installed and found, the plotting functions will be faster by using C/C++ implementation. 
+    - Otherwise, python implementation is used. 
+
+- [NTUPlace3](http://eda.ee.ntu.edu.tw/research.htm) (Optional)
     - If the binary is provided, it can be used to perform detailed placement 
 
 To pull git submodules in the root directory

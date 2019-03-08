@@ -1,9 +1,9 @@
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.0.2)
 
 project(draw_place)
 
 find_program(PYTHON "python")
-find_package(CUDA 9.0 REQUIRED)
+find_package(CUDA 9.0)
 find_package(Boost 1.55.0 COMPONENTS iostreams)
 find_package(ZLIB REQUIRED)
 find_package(Cairo)

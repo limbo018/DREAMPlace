@@ -1,9 +1,9 @@
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.0.2)
 
 project(hpwl)
 
 find_program(PYTHON "python")
-find_package(CUDA 9.0 REQUIRED)
+find_package(CUDA 9.0)
 
 if (NOT CMAKE_CUDA_FLAGS)
     set(CMAKE_CUDA_FLAGS "-gencode=arch=compute_60,code=sm_60")

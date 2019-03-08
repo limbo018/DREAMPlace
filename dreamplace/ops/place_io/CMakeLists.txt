@@ -1,12 +1,11 @@
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.0.2)
 
 project(place_io)
 
 find_program(PYTHON "python")
-find_package(CUDA 9.0 REQUIRED)
+find_package(CUDA 9.0)
 find_package(Boost 1.55.0 COMPONENTS iostreams timer chrono system)
 find_package(ZLIB REQUIRED)
-find_package(Cairo)
 get_filename_component(LIMBO_DIR ${CMAKE_CURRENT_BINARY_DIR}/../../../thirdparty/Limbo ABSOLUTE)
 get_filename_component(OPS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/.. ABSOLUTE)
 get_filename_component(UTILITY_LIBRARY_DIRS ${CMAKE_CURRENT_BINARY_DIR}/../utility ABSOLUTE)

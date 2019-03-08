@@ -9,10 +9,10 @@ import torch
 from torch.autograd import Function, Variable
 if sys.version_info[0] < 3: 
     import cPickle as pickle
-    import src.draw_place as draw_place
+    import src 
 else:
     import _pickle as pickle
-    from .src import draw_place
+    import src 
 
 class DrawPlaceOpTest(unittest.TestCase):
     def test_drawPlaceRandom(self):
@@ -42,7 +42,7 @@ class DrawPlaceOpTest(unittest.TestCase):
         num_filler_nodes = 0
 
         # test cpu 
-        custom = draw_place.DrawPlaceFunction.forward(
+        custom = src.draw_place.DrawPlaceFunction.forward(
                     torch.from_numpy(np.concatenate([xx, yy])), 
                     torch.from_numpy(node_size_x), torch.from_numpy(node_size_y), 
                     torch.from_numpy(pin_offset_x), torch.from_numpy(pin_offset_y), 
@@ -52,7 +52,7 @@ class DrawPlaceOpTest(unittest.TestCase):
                     bin_size_x, bin_size_y, 
                     num_movable_nodes, 
                     num_filler_nodes, 
-                    "test.gds"
+                    "test.gds" # png, jpg, eps, pdf, gds 
                     )
         print(custom)
 
