@@ -24,6 +24,13 @@ git submodule init
 git submodule update
 ```
 
+# How to Install Python Dependency 
+
+Go to the root directory. 
+```
+pip install -r requirements.txt 
+```
+
 # How to Build 
 
 ## User Mode 
@@ -73,7 +80,7 @@ python benchmarks/ispd2005.py
 
 # How to Run
 
-Before running, make sure the benchmarks have been downloaded. 
+Before running, make sure the benchmarks have been downloaded and the python dependency packages have been installed. 
 Run with JSON configuration file for full placement.  
 ```
 python dreamplace/Placer.py test/ispd2005/adaptec1.json

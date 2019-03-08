@@ -1,0 +1,7 @@
+matplotlib==2.2.2
+cairocffi==0.9.0
+pkgconfig==1.4.0
+setuptools==39.1.0
+scipy==1.1.0
+numpy==1.15.4
+torch==0.4.1
