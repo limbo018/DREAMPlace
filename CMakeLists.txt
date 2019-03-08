@@ -12,6 +12,12 @@ if(NOT CMAKE_BUILD_TYPE)
         FORCE)
 endif(NOT CMAKE_BUILD_TYPE)
 
+if (NOT CMAKE_SITE_PACKAGE)
+    set(CMAKE_SITE_PACKAGE "" CACHE STRING
+        "Choose the python site-package of build, options are empty --user."
+        FORCE)
+endif(NOT CMAKE_SITE_PACKAGE)
+
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 add_subdirectory(thirdparty)

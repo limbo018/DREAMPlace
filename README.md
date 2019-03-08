@@ -66,6 +66,11 @@ make clean
 ```
 Please note that simply removing the build folder will not completely clean the environment, because the python submodules have been installed to the python environment and need to be uninstalled. 
 
+Here are the available options for CMake. 
+- CMAKE_SITE_PACKAGE: empty or --user (default empty)
+    - Install ops to python user site-package or not. 
+    - Example ```cmake -DCMAKE_SITE_PACKAGE=--user ..```
+
 ## Developer Mode 
 
 Developers who prefer to have detailed control over the building process of each op may want to use the handwritten makefile system. 
@@ -83,6 +88,11 @@ To clean, run make clean in the root directory.
 ```
 make clean
 ```
+
+Here are the available options for make. 
+- SITE_PACKAGE: empty or --user (default empty)
+    - Install ops to python user site-package or not. 
+    - Example ```make SITE_PACKAGE=--user```
 
 # How to Get Benchmarks
 
