@@ -1,7 +1,8 @@
 ##
-# @file   setup.py
+# @file   setup.py.in
 # @author Yibo Lin
 # @date   Jun 2018
+# @brief  For CMake to generate setup.py file 
 #
 
 import os 
