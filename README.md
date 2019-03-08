@@ -1,5 +1,15 @@
 # DREAMPlace
-Deep learning toolkit-enabled VLSI placement
+
+Deep learning toolkit-enabled VLSI placement. 
+With the analogy between nonlinear VLSI placement and deep learning training problem, this tool is developed with deep learning toolkit for flexibility and efficiency. 
+The tool runs on both CPU and GPU. 
+Over 30X speedup over CPU is achieved in global placement and legalization on ISPD 2005 contest benchmarks with a Nvidia Tesla V100 GPU. 
+
+# Publications
+
+* [Yibo Lin](http://yibolin.com), Shounak Dhar, [Wuxi Li](http://wuxili.net), Haoxing Ren, Brucek Khailany and [David Z. Pan](http://users.ece.utexas.edu/~dpan), 
+  "**DREAMPlace: Deep Learning Toolkit-Enabled GPU Acceleration for Modern VLSI Placement**", 
+  ACM/IEEE Design Automation Conference (DAC), Las Vegas, NV, Jun 2-6, 2019
 
 # Dependency 
 
@@ -55,8 +65,8 @@ Please note that simply removing the build folder will not completely clean the 
 
 ## Developer Mode 
 
-Developers who prefer to have detailed control over the building process of each ops may want to use the handwritten makefile system. 
-It supports incremental building of each ops for development. 
+Developers who prefer to have detailed control over the building process of each op may want to use the handwritten makefile system. 
+It supports incremental building of each op for development. 
 To build, run make in the root directory. 
 ```
 make 
@@ -88,12 +98,16 @@ python dreamplace/Placer.py test/ispd2005/adaptec1.json
 
 Test individual pytorch op. 
 ```
-python dreamplace/ops/density_potential/__init__.py
+python dreamplace/ops/hpwl/__init__.py
 ```
 
 # Configurations
 
 Descriptions of options in JSON configuration file can be found by running the following command. 
 ```
-python dreamplace/Placer.py 
+python dreamplace/Placer.py --help
 ```
+
+# Authors
+
+* [Yibo Lin](http://yibolin.com), supervised by [David Z. Pan](http://users.ece.utexas.edu/~dpan), composed the initial release. 
