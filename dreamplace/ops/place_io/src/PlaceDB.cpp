@@ -1536,32 +1536,32 @@ void PlaceDB::sortNodeByPlaceStatus()
     }
 
     // check pins, nodes, and nets 
-    for (std::vector<Node>::const_iterator it = m_vNode.begin(), ite = m_vNode.end(); it != ite; ++it)
-    {
-        Node const& node = *it; 
-        for (std::vector<index_type>::const_iterator itp = node.pins().begin(), itpe = node.pins().end(); itp != itpe; ++itp)
-        {
-            Pin const& pin = m_vPin[*itp]; 
-            dreamplaceAssert(pin.nodeId() == node.id()); 
-        }
-    }
-    for (std::vector<Net>::const_iterator it = m_vNet.begin(), ite = m_vNet.end(); it != ite; ++it)
-    {
-        Net const& net = *it; 
-        for (std::vector<index_type>::const_iterator itp = net.pins().begin(), itpe = net.pins().end(); itp != itpe; ++itp)
-        {
-            Pin const& pin = m_vPin[*itp]; 
-            dreamplaceAssert(pin.netId() == net.id()); 
-        }
-    }
-    for (unsigned int i = 1; i < m_vMovableNodeIndex.size(); ++i)
-    {
-        dreamplaceAssert(m_vMovableNodeIndex[i-1]+1 == m_vMovableNodeIndex[i]);
-    }
-    for (unsigned int i = 1; i < m_vFixedNodeIndex.size(); ++i)
-    {
-        dreamplaceAssert(m_vFixedNodeIndex[i-1]+1 == m_vFixedNodeIndex[i]);
-    }
+    //for (std::vector<Node>::const_iterator it = m_vNode.begin(), ite = m_vNode.end(); it != ite; ++it)
+    //{
+    //    Node const& node = *it; 
+    //    for (std::vector<index_type>::const_iterator itp = node.pins().begin(), itpe = node.pins().end(); itp != itpe; ++itp)
+    //    {
+    //        Pin const& pin = m_vPin[*itp]; 
+    //        dreamplaceAssert(pin.nodeId() == node.id()); 
+    //    }
+    //}
+    //for (std::vector<Net>::const_iterator it = m_vNet.begin(), ite = m_vNet.end(); it != ite; ++it)
+    //{
+    //    Net const& net = *it; 
+    //    for (std::vector<index_type>::const_iterator itp = net.pins().begin(), itpe = net.pins().end(); itp != itpe; ++itp)
+    //    {
+    //        Pin const& pin = m_vPin[*itp]; 
+    //        dreamplaceAssert(pin.netId() == net.id()); 
+    //    }
+    //}
+    //for (unsigned int i = 1; i < m_vMovableNodeIndex.size(); ++i)
+    //{
+    //    dreamplaceAssert(m_vMovableNodeIndex[i-1]+1 == m_vMovableNodeIndex[i]);
+    //}
+    //for (unsigned int i = 1; i < m_vFixedNodeIndex.size(); ++i)
+    //{
+    //    dreamplaceAssert(m_vFixedNodeIndex[i-1]+1 == m_vFixedNodeIndex[i]);
+    //}
 }
 
 DREAMPLACE_END_NAMESPACE

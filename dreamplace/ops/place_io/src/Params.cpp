@@ -377,10 +377,6 @@ void UserParam::printParams() const
 
 void UserParam::printWelcome() const 
 {
-    dreamplacePrint(kNONE, "========================= Generic Placement Framework =========================\n");
-    dreamplacePrint(kNONE, "Authors: Yibo Lin, David Pan at UTDA\n");
-    dreamplacePrint(kNONE, "Email: yibolin@utexas.edu\n");
-    dreamplacePrint(kNONE, "===============================================================================\n\n");
 }
 
 DREAMPLACE_END_NAMESPACE
