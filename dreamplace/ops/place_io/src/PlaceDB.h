@@ -240,6 +240,9 @@ class PlaceDB : public DefParser::DefDataBase
         /// sort net from small degrees to large degrees 
         /// sort pins such that all pins belonging to the same net is adjacent 
         void sortNetByDegree();
+        /// sort nodes such that 
+        /// movable cells are followed by fixed cells 
+        void sortNodeByPlaceStatus();
 
         /// \return site width 
         coordinate_type siteWidth() const {return m_site.width();}

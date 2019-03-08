@@ -6,6 +6,8 @@
 
 import os 
 import sys
+import numpy as np 
+import unittest
 if sys.version_info[0] < 3: 
     import src.place_io as place_io
 else:
@@ -15,39 +17,51 @@ class Params (object):
     def __init__(self):
         self.aux_file = None
 
+class PlaceIOOpTest(unittest.TestCase):
+    def test_simple(self):
+        params = Params()
+        design = os.path.join(os.path.dirname(os.path.realpath(__file__)), "unitest")
+        params.aux_file = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.join(design, "simple/simple.aux")))
+
+        db = place_io.PlaceIOFunction.forward(params)
+
+        content = ""
+        content += "num_nodes = %s\n" % (db.num_nodes)
+        content += "num_terminals = %s\n" % (db.num_terminals)
+        content += "node_name2id_map = %s\n" % (db.node_name2id_map)
+        content += "node_names = %s\n" % (db.node_names)
+        content += "node_x = %s\n" % (db.node_x)
+        content += "node_y = %s\n" % (db.node_y)
+        content += "node_orient = %s\n" % (db.node_orient)
+        content += "node_size_x = %s\n" % (db.node_size_x)
+        content += "node_size_y = %s\n" % (db.node_size_y)
+        content += "pin_direct = %s\n" % (db.pin_direct)
+        content += "pin_offset_x = %s\n" % (db.pin_offset_x)
+        content += "pin_offset_y = %s\n" % (db.pin_offset_y)
+        content += "net_name2id_map = %s\n" % (db.net_name2id_map)
+        content += "net_names = %s\n" % (db.net_names)
+        content += "net2pin_map = %s\n" % (db.net2pin_map)
+        content += "flat_net2pin_map = %s\n" % (db.flat_net2pin_map)
+        content += "flat_net2pin_start_map = %s\n" % (db.flat_net2pin_start_map)
+        content += "node2pin_map = %s\n" % (db.node2pin_map)
+        content += "flat_node2pin_map = %s\n" % (db.flat_node2pin_map)
+        content += "flat_node2pin_start_map = %s\n" % (db.flat_node2pin_start_map)
+        content += "pin2node_map = %s\n" % (db.pin2node_map)
+        content += "pin2net_map = %s\n" % (db.pin2net_map)
+        content += "rows = %s\n" % (db.rows)
+        content += "xl = %s\n" % (db.xl)
+        content += "yl = %s\n" % (db.yl)
+        content += "xh = %s\n" % (db.xh)
+        content += "yh = %s\n" % (db.yh)
+        content += "row_height = %s\n" % (db.row_height)
+        content += "site_width = %s\n" % (db.site_width)
+        content += "num_movable_pins = %s\n" % (db.num_movable_pins)
+        print(content)
+
+        with open(os.path.join(design, "simple.golden"), "r") as f:
+            golden = f.read()
+
+        np.testing.assert_array_equal(content.strip(), golden.strip())
+
 if __name__ == "__main__":
-    params = Params()
-    params.aux_file = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../benchmarks/simple/simple.aux"))
-
-    db = place_io.PlaceIOFunction.forward(params)
-
-    print("num_nodes = ", db.num_nodes)
-    print("num_terminals = ", db.num_terminals)
-    print("node_name2id_map = ", db.node_name2id_map)
-    print("node_names = ", db.node_names)
-    print("node_x = ", db.node_x)
-    print("node_y = ", db.node_y)
-    print("node_orient = ", db.node_orient)
-    print("node_size_x = ", db.node_size_x)
-    print("node_size_y = ", db.node_size_y)
-    print("pin_direct = ", db.pin_direct)
-    print("pin_offset_x = ", db.pin_offset_x)
-    print("pin_offset_y = ", db.pin_offset_y)
-    print("net_name2id_map = ", db.net_name2id_map)
-    print("net_names = ", db.net_names)
-    print("net2pin_map = ", db.net2pin_map)
-    print("flat_net2pin_map = ", db.flat_net2pin_map)
-    print("flat_net2pin_start_map = ", db.flat_net2pin_start_map)
-    print("node2pin_map = ", db.node2pin_map)
-    print("flat_node2pin_map = ", db.flat_node2pin_map)
-    print("flat_node2pin_start_map = ", db.flat_node2pin_start_map)
-    print("pin2node_map = ", db.pin2node_map)
-    print("pin2net_map = ", db.pin2net_map)
-    print("rows = ", db.rows)
-    print("xl = ", db.xl)
-    print("yl = ", db.yl)
-    print("xh = ", db.xh)
-    print("yh = ", db.yh)
-    print("row_height = ", db.row_height)
-    print("site_width = ", db.site_width)
-    print("num_movable_pins = ", db.num_movable_pins)
+    unittest.main()

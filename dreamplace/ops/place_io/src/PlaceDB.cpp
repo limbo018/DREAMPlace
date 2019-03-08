@@ -1139,6 +1139,9 @@ void PlaceDB::adjustParams()
     dreamplacePrint(kWARN, "%lu nets with %lu pins from same nodes\n", m_numNetsWithDuplicatePins, m_numPinsDuplicatedInNets);
     dreamplacePrint(kWARN, "%lu nets should be ignored due to not enough pins\n", std::count(m_vNetIgnoreFlag.begin(), m_vNetIgnoreFlag.end(), true));
 
+    // sort nodes such that 
+    // movable cells are followed by fixed cells 
+    sortNodeByPlaceStatus();
     // sort nets and pins such that 
     // nets are ordered from small to large degrees 
     // pins are ordered to have bulk locations for each net 
@@ -1299,6 +1302,7 @@ struct ArgSortPinByNet
 
 void PlaceDB::sortNetByDegree()
 {
+    dreamplacePrint(kINFO, "sort nets from small degree to large degree and pins with neighboring pins belonging the to same net\n");
     // sort m_vNet, m_vNetProperty, m_mNetName2Index 
     // map order to net id 
     std::vector<index_type> vNetOrder (m_vNet.size()); 
@@ -1433,6 +1437,131 @@ void PlaceDB::sortNetByDegree()
     //        dreamplaceAssert(pin.netId() == net.id()); 
     //    }
     //}
+}
+
+struct ArgSortNodeByPlaceStatus
+{
+    std::vector<Node> const& vNode;
+
+    ArgSortNodeByPlaceStatus(std::vector<Node> const& v) : vNode(v)
+    {
+    }
+    /// @brief Sort cells the following order 
+    /// UNPLACED cells, PLACED cells, DUMMY_FIXED cells, FIXED cells 
+    bool operator()(PlaceDB::index_type i, PlaceDB::index_type j) const 
+    {
+        PlaceStatusEnum::PlaceStatusType status1 = vNode[i].status(); 
+        PlaceStatusEnum::PlaceStatusType status2 = vNode[j].status(); 
+        int order1 = statusOrder(status1); 
+        int order2 = statusOrder(status2); 
+        return order1 < order2 || (order1 == order2 && i < j);
+    }
+    static int statusOrder(int status) 
+    {
+        return (status == PlaceStatusEnum::UNPLACED) 
+            + (status == PlaceStatusEnum::PLACED)*8 
+            + (status == PlaceStatusEnum::DUMMY_FIXED)*64
+            + (status == PlaceStatusEnum::FIXED)*512;
+    }
+};
+
+void PlaceDB::sortNodeByPlaceStatus()
+{
+    dreamplacePrint(kINFO, "sort nodes in the order of movable and fixed\n");
+    // sort m_vNode, m_vNodeProperty, m_mNodeName2Index 
+    // map order to node id 
+    std::vector<index_type> vNodeOrder (m_vNode.size()); 
+    for (index_type i = 0, ie = vNodeOrder.size(); i != ie; ++i)
+        vNodeOrder[i] = i; 
+
+    std::sort(vNodeOrder.begin(), vNodeOrder.end(), ArgSortNodeByPlaceStatus(m_vNode));
+
+    // map node id to order 
+    std::vector<index_type> vNodeId2Order (m_vNode.size());
+    for (index_type i = 0, ie = vNodeOrder.size(); i != ie; ++i)
+        vNodeId2Order[vNodeOrder[i]] = i; 
+    // update m_mNodeName2Index
+    for (string2index_map_type::iterator it = m_mNodeName2Index.begin(), ite = m_mNodeName2Index.end(); it != ite; ++it)
+    {
+        it->second = vNodeId2Order[it->second];
+    }
+
+    // for all elements to put in place
+    for( index_type i = 0; i < m_vNode.size() - 1; ++i )
+    { 
+        // while the element i is not yet in place 
+        while( i != vNodeId2Order[i] )
+        {
+            // swap it with the element at its final place
+            index_type alt = vNodeId2Order[i];
+
+            std::swap( m_vNode[i], m_vNode[alt] );
+            std::swap( m_vNodeProperty[i], m_vNodeProperty[alt] );
+
+            std::swap( vNodeId2Order[i], vNodeId2Order[alt] );
+        }
+    }
+    for (index_type i = 1, ie = vNodeOrder.size(); i != ie; ++i)
+    {
+        dreamplaceAssert(m_vNode[i].id() == vNodeOrder[i]); 
+        dreamplaceAssertMsg(ArgSortNodeByPlaceStatus::statusOrder(m_vNode[i-1].status()) <= ArgSortNodeByPlaceStatus::statusOrder(m_vNode[i].status()), "permuting nodes error"); 
+    }
+    // update node id and pin to node id 
+    for (index_type i = 0, ie = m_vNode.size(); i != ie; ++i)
+    {
+        Node& node = m_vNode[i];
+        for (std::vector<index_type>::const_iterator it = node.pins().begin(), ite = node.pins().end(); it != ite; ++it)
+        {
+            // we have not update the node id yet 
+            // so it should be consistent 
+            dreamplaceAssert(m_vPin[*it].nodeId() == node.id()); 
+            m_vPin[*it].setNodeId(i); 
+        }
+        node.setId(i); 
+    }
+
+    m_vMovableNodeIndex.clear();
+    m_vFixedNodeIndex.clear();
+    for (std::vector<Node>::const_iterator it = m_vNode.begin(), ite = m_vNode.end(); it != ite; ++it)
+    {
+        Node const& node = *it; 
+        if (node.status() == PlaceStatusEnum::FIXED)
+        {
+            m_vFixedNodeIndex.push_back(node.id());
+        }
+        else 
+        {
+            m_vMovableNodeIndex.push_back(node.id());
+        }
+    }
+
+    // check pins, nodes, and nets 
+    for (std::vector<Node>::const_iterator it = m_vNode.begin(), ite = m_vNode.end(); it != ite; ++it)
+    {
+        Node const& node = *it; 
+        for (std::vector<index_type>::const_iterator itp = node.pins().begin(), itpe = node.pins().end(); itp != itpe; ++itp)
+        {
+            Pin const& pin = m_vPin[*itp]; 
+            dreamplaceAssert(pin.nodeId() == node.id()); 
+        }
+    }
+    for (std::vector<Net>::const_iterator it = m_vNet.begin(), ite = m_vNet.end(); it != ite; ++it)
+    {
+        Net const& net = *it; 
+        for (std::vector<index_type>::const_iterator itp = net.pins().begin(), itpe = net.pins().end(); itp != itpe; ++itp)
+        {
+            Pin const& pin = m_vPin[*itp]; 
+            dreamplaceAssert(pin.netId() == net.id()); 
+        }
+    }
+    for (unsigned int i = 1; i < m_vMovableNodeIndex.size(); ++i)
+    {
+        dreamplaceAssert(m_vMovableNodeIndex[i-1]+1 == m_vMovableNodeIndex[i]);
+    }
+    for (unsigned int i = 1; i < m_vFixedNodeIndex.size(); ++i)
+    {
+        dreamplaceAssert(m_vFixedNodeIndex[i-1]+1 == m_vFixedNodeIndex[i]);
+    }
 }
 
 DREAMPLACE_END_NAMESPACE
