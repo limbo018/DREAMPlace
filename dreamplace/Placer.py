@@ -84,11 +84,17 @@ if __name__ == "__main__":
     """
     @brief main function to invoke the entire placement flow. 
     """
-    if len(sys.argv) != 2:
+    params = Params.Params()
+    params.printWelcome()
+    if len(sys.argv) == 1 or '-h' in sys.argv[1:] or '--help' in sys.argv[1:]:
+        params.printHelp()
+        exit()
+    elif len(sys.argv) != 2:
         print("[E] One input parameters in json format in required")
+        params.printHelp()
+        exit()
 
     # load parameters 
-    params = Params.Params()
     params.load(sys.argv[1])
     print("[I] parameters = %s" % (params))
 

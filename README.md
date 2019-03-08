@@ -26,6 +26,30 @@ git submodule update
 
 # How to Build 
 
+## User Mode 
+
+[CMake](https://cmake.org) is adopted as the makefile system for end-uers. 
+To build, go to the root directory. 
+```
+mkdir build 
+cd build 
+cmake ..
+make 
+```
+
+Third party submodules are automatically built except for [Boost](www.boost.org).
+
+To clean, go to the root directory. 
+```
+cd build 
+make clean
+```
+Please note that simply removing the build folder will not completely clean the environment, because the python submodules have been installed to the python environment and need to be uninstalled. 
+
+## Developer Mode 
+
+Developers who prefer to have detailed control over the building process of each ops may want to use the handwritten makefile system. 
+It supports incremental building of each ops for development. 
 To build, run make in the root directory. 
 ```
 make 
@@ -49,24 +73,20 @@ python benchmarks/ispd2005.py
 
 # How to Run
 
-Run with JSON configuration file for full placement 
+Before running, make sure the benchmarks have been downloaded. 
+Run with JSON configuration file for full placement.  
 ```
-python src/Placer.py test/simple.json
+python dreamplace/Placer.py test/ispd2005/adaptec1.json
 ```
 
-Test individual pytorch op
+Test individual pytorch op. 
 ```
-python src/pytorch/ops/density_potential/__init__.py
+python dreamplace/ops/density_potential/__init__.py
 ```
 
 # Configurations
 
-Descriptions of options in JSON configuration file are as follows. 
-- opt_num_bins: one global optimization kernel with various settings, usually one is enough. 
-- x in opt_num_bins: number of bins in x direction for the optimizer. 
-- y in opt_num_bins: number of bins in y direction for the optimizer. 
-- optimizer: kernel optimization algorithm for gradient descent. 
-- target_density: target density for a design. 
-- density_weight: initial density weight (lambda) in the objective (wirelength + lambda * density). 
-- ignore_net_degree: only consider nets with degree smaller than a value in optimization. 
-- legalize_flag: whether call internal legalization engine to legalize design or rely on NTUPlace.  
+Descriptions of options in JSON configuration file can be found by running the following command. 
+```
+python dreamplace/Placer.py 
+```

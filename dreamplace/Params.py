@@ -41,6 +41,74 @@ class Params:
         self.RePlAce_LOWER_PCOF = 0.95
         self.RePlAce_UPPER_PCOF = 1.05
 
+    def printWelcome(self): 
+        """
+        @brief print welcome message 
+        """
+        content = """\
+========================================================
+                       DREAMPlace 
+            Yibo Lin (http://yibolin.com)
+   David Z. Pan (http://users.ece.utexas.edu/~dpan)
+========================================================"""
+        print(content)
+
+    def printHelp(self):
+        """
+        @brief print help message for JSON parameters 
+        """
+        content = """\
+                    JSON Parameters
+========================================================
+aux_file [required]                   | directory for .aux file 
+gpu [default %d]                       | enable gpu or not 
+num_bins_x [default %d]              | number of bins in horizontal direction 
+num_bins_y [default %d]              | number of bins in vertical direction 
+global_place_stages [required]        | global placement configurations of each stage, a dictionary of {"num_bins_x", "num_bins_y", "iteration", "learning_rate"}, learning_rate is relative to bin size
+target_density [default %g]          | target density 
+density_weight [default %.1f]          | weight of density cost
+gamma [default %g]                   | coefficient for log-sum-exp and weighted-average wirelength 
+random_seed [default %d]            | random seed 
+result_dir [default %s]          | result directory
+scale_factor [default %.1f]            | scale factor to avoid numerical overflow
+ignore_net_degree [default %d]       | ignore net degree larger than some value
+gp_noise_ratio [default %g]        | noise to initial positions for global placement 
+enable_fillers [default %d]            | enable filler cells 
+global_place_flag [default %d]         | whether use global placement 
+legalize_flag [default %d]             | whether use internal legalization
+detailed_place_flag [default %d]       | whether use internal detailed placement
+stop_overflow [default %g]           | stopping criteria, consider stop when the overflow reaches to a ratio 
+dtype [default %s]               | data type, float32 | float64
+detailed_place_engine [default %s]      | external detailed placement engine to be called after placement 
+plot_flag [default %d]                 | whether plot solution or not 
+RePlAce_ref_hpwl [default %g]     | reference HPWL used in RePlAce for updating density weight 
+RePlAce_LOWER_PCOF [default %g]     | lower bound ratio used in RePlAce for updating density weight 
+RePlAce_UPPER_PCOF [default %g]     | upper bound ratio used in RePlAce for updating density weight 
+        """ % (self.gpu, 
+                self.num_bins_x, 
+                self.num_bins_y, 
+                self.target_density, 
+                self.density_weight, 
+                self.gamma, 
+                self.random_seed, 
+                self.result_dir, 
+                self.scale_factor, 
+                self.ignore_net_degree, 
+                self.gp_noise_ratio, 
+                self.enable_fillers, 
+                self.global_place_flag, 
+                self.legalize_flag, 
+                self.detailed_place_flag, 
+                self.stop_overflow, 
+                self.dtype, 
+                self.detailed_place_engine, 
+                self.plot_flag, 
+                self.RePlAce_ref_hpwl, 
+                self.RePlAce_LOWER_PCOF, 
+                self.RePlAce_UPPER_PCOF
+                )
+        print(content)
+
     def toJson(self):
         """
         @brief convert to json  
