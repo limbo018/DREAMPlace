@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8.12)
 
-project(draw_place)
+project(place_io)
 
 find_program(PYTHON "python")
 find_package(CUDA 9.0 REQUIRED)
@@ -32,7 +32,7 @@ if (PYTHON)
         DEPENDS ${SOURCES}
         )
 
-    add_custom_target(extraclean
+    add_custom_target(clean_${PROJECT_NAME}
         COMMAND ${PYTHON} ${SETUP_PY} develop --uninstall
         COMMAND rm -rf ${OUTPUT} ${CMAKE_CURRENT_BINARY_DIR}/build ${CMAKE_CURRENT_BINARY_DIR}/dist ${CMAKE_CURRENT_BINARY_DIR}/*.egg-info
         )

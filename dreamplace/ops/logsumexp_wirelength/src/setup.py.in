@@ -29,24 +29,25 @@ modules.append(CppExtension('logsumexp_wirelength_cpp',
                 )
 
 if not "${CUDA_FOUND}" or "${CUDA_FOUND}".upper() == 'TRUE': 
-    modules.append(CUDAExtension('logsumexp_wirelength_cuda', 
-                    [
-                        add_prefix('logsumexp_wirelength_cuda.cpp'),
-                        add_prefix('logsumexp_wirelength_cuda_kernel.cu')
-                        ], 
-                    include_dirs=include_dirs, 
-                    )
-    modules.append(CUDAExtension('logsumexp_wirelength_cuda_atomic', 
-                    [
-                        add_prefix('logsumexp_wirelength_cuda_atomic.cpp'),
-                        add_prefix('logsumexp_wirelength_cuda_atomic_kernel.cu')
-                        ],
-                    include_dirs=include_dirs, 
-                    extra_compile_args={
-                        'cxx': ['-O2'], 
-                        'nvcc': [cuda_arch]
-                        })
-                    )
+    modules.extend([
+        CUDAExtension('logsumexp_wirelength_cuda', 
+            [
+                add_prefix('logsumexp_wirelength_cuda.cpp'),
+                add_prefix('logsumexp_wirelength_cuda_kernel.cu')
+                ], 
+            include_dirs=include_dirs, 
+            ), 
+        CUDAExtension('logsumexp_wirelength_cuda_atomic', 
+            [
+                add_prefix('logsumexp_wirelength_cuda_atomic.cpp'),
+                add_prefix('logsumexp_wirelength_cuda_atomic_kernel.cu')
+                ],
+            include_dirs=include_dirs, 
+            extra_compile_args={
+                'cxx': ['-O2'], 
+                'nvcc': [cuda_arch]
+                })
+            ])
 
 setup(
         name='logsumexp_wirelength',

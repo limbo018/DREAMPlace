@@ -14,5 +14,5 @@ endif(NOT CMAKE_BUILD_TYPE)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-#add_subdirectory(thirdparty)
+add_subdirectory(thirdparty)
 add_subdirectory(dreamplace)

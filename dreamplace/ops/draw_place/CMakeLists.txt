@@ -33,7 +33,7 @@ if (PYTHON)
         DEPENDS ${SOURCES}
         )
 
-    add_custom_target(extraclean
+    add_custom_target(clean_${PROJECT_NAME}
         COMMAND ${PYTHON} ${SETUP_PY} develop --uninstall
         COMMAND rm -rf ${OUTPUT} ${CMAKE_CURRENT_BINARY_DIR}/build ${CMAKE_CURRENT_BINARY_DIR}/dist ${CMAKE_CURRENT_BINARY_DIR}/*.egg-info
         )
