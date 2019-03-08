@@ -28,6 +28,9 @@ Over 30X speedup over CPU is achieved in global placement and legalization on IS
 - [Flute](https://doi.org/10.1109/TCAD.2007.907068)
     - Integrated as a submodule
 
+- NTUPlace3 (Optional)
+    - If the binary is provided, it can be used to perform detailed placement 
+
 To pull git submodules in the root directory
 ```
 git submodule init
