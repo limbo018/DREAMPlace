@@ -76,6 +76,8 @@ Here are the available options for CMake.
 - CMAKE_SITE_PACKAGE: empty or --user (default empty)
     - Install ops to python user site-package or not. 
     - Example ```cmake -DCMAKE_SITE_PACKAGE=--user ..```
+- CMAKE_CUDA_FLAGS: custom string for NVCC (default -gencode=arch=compute_60,code=sm_60)
+    - Example ```cmake -DCMAKE_CUDA_FLAGS=-gencode=arch=compute_60,code=sm_60```
 
 ## Developer Mode 
 
@@ -99,6 +101,8 @@ Here are the available options for make.
 - SITE_PACKAGE: empty or --user (default empty)
     - Install ops to python user site-package or not. 
     - Example ```make SITE_PACKAGE=--user```
+- CUDAFLAGS: custom string (default -gencode=arch=compute_60,code=sm_60)
+    - Example ```make CUDAFLAGS=-gencode=arch=compute_60,code=sm_60```
 
 # How to Get Benchmarks
 

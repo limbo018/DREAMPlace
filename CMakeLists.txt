@@ -11,12 +11,19 @@ if(NOT CMAKE_BUILD_TYPE)
         "Choose the type of build, options are: Debug Release."
         FORCE)
 endif(NOT CMAKE_BUILD_TYPE)
+message("-- CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 
 if (NOT CMAKE_SITE_PACKAGE)
     set(CMAKE_SITE_PACKAGE "" CACHE STRING
         "Choose the python site-package of build, options are empty --user."
         FORCE)
 endif(NOT CMAKE_SITE_PACKAGE)
+message("-- CMAKE_SITE_PACKAGE: ${CMAKE_SITE_PACKAGE}")
+
+if (NOT CMAKE_CUDA_FLAGS)
+    set(CMAKE_CUDA_FLAGS "-gencode=arch=compute_60,code=sm_60")
+endif()
+message("-- CMAKE_CUDA_FLAGS: ${CMAKE_CUDA_FLAGS}")
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
