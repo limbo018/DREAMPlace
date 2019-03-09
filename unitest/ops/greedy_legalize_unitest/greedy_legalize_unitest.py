@@ -14,7 +14,7 @@ import time
 import torch
 from torch.autograd import Function, Variable
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
 from dreamplace.ops.greedy_legalize.src import greedy_legalize
 sys.path.pop()
 
