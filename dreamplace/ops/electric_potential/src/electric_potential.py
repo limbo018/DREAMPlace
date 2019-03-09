@@ -15,11 +15,8 @@ from torch import nn
 from torch.autograd import Function
 from torch.nn import functional as F
 
-# this is a bad practice for importing, but I want to make it generic to python2 and python3 
-sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "dct/src"))
-import discrete_spectral_transform
-import dct
-sys.path.pop()
+import dreamplace.ops.dct.src.dct as dct 
+import dreamplace.ops.dct.src.discrete_spectral_transform as discrete_spectral_transform
 
 import electric_potential_cpp
 import electric_potential_cuda 

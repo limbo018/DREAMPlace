@@ -11,7 +11,8 @@ import re
 import time 
 import numpy as np 
 import Params
-from ops import place_io
+import dreamplace 
+import dreamplace.ops.place_io.src.place_io as place_io 
 import pdb 
 
 datatypes = {

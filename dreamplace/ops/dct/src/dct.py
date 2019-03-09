@@ -14,10 +14,7 @@ from torch import nn
 import dct_cpp
 import dct_cuda
 
-# this is a bad practice for importing, but I want to make it generic to python2 and python3 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-import discrete_spectral_transform
-sys.path.pop()
+import dreamplace.ops.dct.src.discrete_spectral_transform as discrete_spectral_transform
 
 def dct(x, expk, algorithm):
     """compute discrete cosine transformation, DCT II, using N-FFT or 2N-FFT 

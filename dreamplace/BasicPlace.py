@@ -17,7 +17,13 @@ import re
 import numpy as np 
 import torch 
 import torch.nn as nn
-import ops 
+import dreamplace.ops.move_boundary.src.move_boundary as move_boundary 
+import dreamplace.ops.hpwl.src.hpwl as hpwl 
+import dreamplace.ops.density_overflow.src.density_overflow as density_overflow 
+import dreamplace.ops.electric_potential.src.electric_overflow as electric_overflow 
+import dreamplace.ops.rmst_wl.src.rmst_wl as rmst_wl 
+import dreamplace.ops.greedy_legalize.src.greedy_legalize as greedy_legalize 
+import dreamplace.ops.draw_place.src.draw_place as draw_place 
 import pdb 
 
 class PlaceDataCollection (object):
@@ -221,7 +227,7 @@ class BasicPlace (nn.Module):
         @param data_collections a collection of all data and variables required for constructing the ops 
         @param device cpu or cuda 
         """
-        return ops.move_boundary.MoveBoundary(
+        return move_boundary.MoveBoundary(
                 data_collections.node_size_x, data_collections.node_size_y, 
                 xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
                 num_movable_nodes=placedb.num_movable_nodes, 
@@ -238,7 +244,7 @@ class BasicPlace (nn.Module):
         @param device cpu or cuda 
         """
 
-        wirelength_for_pin_op = ops.hpwl.HPWL(
+        wirelength_for_pin_op = hpwl.HPWL(
                 flat_netpin=data_collections.flat_net2pin_map, 
                 netpin_start=data_collections.flat_net2pin_start_map,
                 pin2net_map=data_collections.pin2net_map, 
@@ -266,7 +272,7 @@ class BasicPlace (nn.Module):
         POSTFILE = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../thirdparty/flute-3.1/POST9.dat"))
         print("POWVFILE = %s" % (POWVFILE))
         print("POSTFILE = %s" % (POSTFILE))
-        wirelength_for_pin_op = ops.rmst_wl.RMSTWL(
+        wirelength_for_pin_op = rmst_wl.RMSTWL(
                 flat_netpin=torch.from_numpy(placedb.flat_net2pin_map).to(device), 
                 netpin_start=torch.from_numpy(placedb.flat_net2pin_start_map).to(device),
                 ignore_net_degree=params.ignore_net_degree, 
@@ -291,7 +297,7 @@ class BasicPlace (nn.Module):
         @param data_collections a collection of all data and variables required for constructing the ops 
         @param device cpu or cuda 
         """
-        return ops.density_overflow.DensityOverflow(
+        return density_overflow.DensityOverflow(
                 data_collections.node_size_x, data_collections.node_size_x, 
                 data_collections.bin_center_x, data_collections.bin_center_y, 
                 target_density=params.target_density, 
@@ -311,7 +317,7 @@ class BasicPlace (nn.Module):
         @param data_collections a collection of all data and variables required for constructing the ops 
         @param device cpu or cuda 
         """
-        return ops.electric_overflow.ElectricOverflow(
+        return electric_overflow.ElectricOverflow(
                 data_collections.node_size_x, data_collections.node_size_y, 
                 data_collections.bin_center_x, data_collections.bin_center_y, 
                 target_density=params.target_density, 
@@ -331,7 +337,7 @@ class BasicPlace (nn.Module):
         @param data_collections a collection of all data and variables required for constructing the ops 
         @param device cpu or cuda 
         """
-        return ops.greedy_legalize.GreedyLegalize(
+        return greedy_legalize.GreedyLegalize(
                 node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
                 xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
                 site_width=placedb.site_width, row_height=placedb.row_height, 
@@ -347,7 +353,7 @@ class BasicPlace (nn.Module):
         @param params parameters 
         @param placedb placement database 
         """
-        return ops.draw_place.DrawPlace(placedb)
+        return draw_place.DrawPlace(placedb)
 
     def validate(self, placedb, pos, iteration):
         """

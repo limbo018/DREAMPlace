@@ -20,7 +20,10 @@ if sys.version_info[0] < 3:
     import cPickle as pickle
 else:
     import _pickle as pickle
-import ops
+import dreamplace.ops.weighted_average_wirelength.src.weighted_average_wirelength as weighted_average_wirelength 
+import dreamplace.ops.logsumexp_wirelength.src.logsumexp_wirelength as logsumexp_wirelength 
+import dreamplace.ops.electric_potential.src.electric_potential as electric_potential 
+import dreamplace.ops.density_potential.src.density_potential as density_potential 
 
 class PlaceObj(nn.Module):
     """
@@ -147,7 +150,7 @@ class PlaceObj(nn.Module):
         """
 
         # use WeightedAverageWirelength atomic 
-        wirelength_for_pin_op = ops.weighted_average_wirelength.WeightedAverageWirelength(
+        wirelength_for_pin_op = weighted_average_wirelength.WeightedAverageWirelength(
                 flat_netpin=data_collections.flat_net2pin_map, 
                 netpin_start=data_collections.flat_net2pin_start_map,
                 pin2net_map=data_collections.pin2net_map, 
@@ -180,7 +183,7 @@ class PlaceObj(nn.Module):
         gamma = 10*self.base_gamma(params, placedb)
         print("[I] gamma = %g" % (gamma))
 
-        wirelength_for_pin_op = ops.logsumexp_wirelength.LogSumExpWirelength(
+        wirelength_for_pin_op = logsumexp_wirelength.LogSumExpWirelength(
                 flat_netpin=data_collections.flat_net2pin_map, 
                 netpin_start=data_collections.flat_net2pin_start_map,
                 pin2net_map=data_collections.pin2net_map, 
@@ -260,7 +263,7 @@ class PlaceObj(nn.Module):
         integral_potential_y = npfy1(0) + 2*npfy1(bin_size_y) + 2*npfy2(2*bin_size_y)
         cy = (node_size_y.reshape([placedb.num_nodes, 1]) / integral_potential_y).reshape([placedb.num_nodes, 1])
 
-        return ops.density_potential.DensityPotential(
+        return density_potential.DensityPotential(
                 node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
                 ax=torch.tensor(ax.ravel(), dtype=data_collections.pos[0].dtype, device=data_collections.pos[0].device), bx=torch.tensor(bx.ravel(), dtype=data_collections.pos[0].dtype, device=data_collections.pos[0].device), cx=torch.tensor(cx.ravel(), dtype=data_collections.pos[0].dtype, device=data_collections.pos[0].device), 
                 ay=torch.tensor(ay.ravel(), dtype=data_collections.pos[0].dtype, device=data_collections.pos[0].device), by=torch.tensor(by.ravel(), dtype=data_collections.pos[0].dtype, device=data_collections.pos[0].device), cy=torch.tensor(cy.ravel(), dtype=data_collections.pos[0].dtype, device=data_collections.pos[0].device), 
@@ -306,7 +309,7 @@ class PlaceObj(nn.Module):
         if local_num_bins_y < max_num_bins:
             print("[W] local_num_bins_y (%d) < max_num_bins (%d)" % (local_num_bins_y, max_num_bins))
 
-        return ops.electric_potential.ElectricPotential(
+        return electric_potential.ElectricPotential(
                 node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
                 bin_center_x=data_collections.bin_center_x_padded(placedb, padding), bin_center_y=data_collections.bin_center_y_padded(placedb, padding), 
                 target_density=params.target_density, 

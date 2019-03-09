@@ -11,9 +11,7 @@ import torch
 from torch.autograd import Function
 
 import draw_place_cpp
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-import PlaceDrawer 
-sys.path.pop()
+import dreamplace.ops.draw_place.src.PlaceDrawer as PlaceDrawer 
 
 class DrawPlaceFunction(Function):
     @staticmethod
