@@ -1,3 +1,4 @@
+import os 
 import sys 
 import time 
 import numpy as np
@@ -9,10 +10,11 @@ import torch
 from torch.autograd import Function, Variable
 if sys.version_info[0] < 3: 
     import cPickle as pickle
-    import src.density_overflow as density_overflow
 else:
     import _pickle as pickle
-    from .src import density_overflow
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "src"))
+import density_overflow
+sys.path.pop()
 
 """
 return bin xl

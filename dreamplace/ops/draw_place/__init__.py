@@ -1,3 +1,4 @@
+import os 
 import sys 
 import time 
 import numpy as np
@@ -9,10 +10,11 @@ import torch
 from torch.autograd import Function, Variable
 if sys.version_info[0] < 3: 
     import cPickle as pickle
-    import src 
 else:
     import _pickle as pickle
-    import src 
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "src"))
+import draw_place
+sys.path.pop()
 
 class DrawPlaceOpTest(unittest.TestCase):
     def test_drawPlaceRandom(self):
@@ -42,7 +44,7 @@ class DrawPlaceOpTest(unittest.TestCase):
         num_filler_nodes = 0
 
         # test cpu 
-        custom = src.draw_place.DrawPlaceFunction.forward(
+        custom = draw_place.DrawPlaceFunction.forward(
                     torch.from_numpy(np.concatenate([xx, yy])), 
                     torch.from_numpy(node_size_x), torch.from_numpy(node_size_y), 
                     torch.from_numpy(pin_offset_x), torch.from_numpy(pin_offset_y), 

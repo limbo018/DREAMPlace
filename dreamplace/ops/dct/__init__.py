@@ -1,3 +1,4 @@
+import os 
 import sys
 import numpy as np
 import unittest
@@ -5,14 +6,11 @@ import unittest
 import torch
 from torch.autograd import Function, Variable
 from scipy import fftpack
-if sys.version_info[0] < 3: 
-    from src import dct
-    #from src import dct_lee as dct
-    from src import discrete_spectral_transform
-else:
-    from .src import dct
-    #from .src import dct_lee as dct
-    from .src import discrete_spectral_transform
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "src"))
+import dct 
+#import dct_lee as dct 
+import discrete_spectral_transform
+sys.path.pop()
 import pdb 
 
 dtype = torch.float32

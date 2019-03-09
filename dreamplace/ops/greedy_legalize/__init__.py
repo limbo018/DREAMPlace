@@ -1,3 +1,4 @@
+import os 
 import sys
 import numpy as np
 import unittest
@@ -6,10 +7,10 @@ import time
 
 import torch
 from torch.autograd import Function, Variable
-if sys.version_info[0] < 3: 
-    import src.greedy_legalize as greedy_legalize
-else:
-    from .src import greedy_legalize
+
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "src"))
+import greedy_legalize
+sys.path.pop()
 
 def plot(figname, 
         node_x, node_y, 

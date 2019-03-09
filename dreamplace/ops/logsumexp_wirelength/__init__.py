@@ -1,13 +1,14 @@
+import os
 import sys
 import numpy as np
 import unittest
 
 import torch
 from torch.autograd import Function, Variable
-if sys.version_info[0] < 3: 
-    import src.logsumexp_wirelength as logsumexp_wirelength
-else:
-    from .src import logsumexp_wirelength 
+
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "src"))
+import logsumexp_wirelength
+sys.path.pop()
 
 def unsorted_segment_max(pin_x, pin2net_map, num_nets):
     result = torch.zeros(num_nets, dtype=pin_x.dtype)
@@ -93,7 +94,7 @@ class LogSumExpWirelengthOpTest(unittest.TestCase):
         #pin_pos_var = torch.nn.Parameter(torch.from_numpy(np.transpose(pin_pos)).reshape([-1]))
         print(pin_pos_var)
 
-        golden = build_wirelength(pin_pos_var[:pin_pos_var.numel()/2], pin_pos_var[pin_pos_var.numel()/2:], pin2net_map, net2pin_map, gamma, ignore_net_degree)
+        golden = build_wirelength(pin_pos_var[:pin_pos_var.numel()//2], pin_pos_var[pin_pos_var.numel()//2:], pin2net_map, net2pin_map, gamma, ignore_net_degree)
         print("golden_value = ", golden.data)
         golden.backward()
         golden_grad = pin_pos_var.grad.clone()

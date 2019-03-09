@@ -4,6 +4,8 @@
 # @date   Jun 2018
 #
 
+import os 
+import sys 
 import numpy as np
 import torch
 from torch.autograd import Function
@@ -11,7 +13,11 @@ from torch import nn
 
 import dct_cpp
 import dct_cuda
-from . import discrete_spectral_transform
+
+# this is a bad practice for importing, but I want to make it generic to python2 and python3 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+import discrete_spectral_transform
+sys.path.pop()
 
 def dct(x, expk, algorithm):
     """compute discrete cosine transformation, DCT II, using N-FFT or 2N-FFT 

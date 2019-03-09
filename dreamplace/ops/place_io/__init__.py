@@ -8,14 +8,33 @@ import os
 import sys
 import numpy as np 
 import unittest
-if sys.version_info[0] < 3: 
-    import src.place_io as place_io
-else:
-    from .src import place_io
+
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "src"))
+import place_io
+sys.path.pop()
 
 class Params (object):
     def __init__(self):
         self.aux_file = None
+
+def name2id_map2str(m):
+    id2name_map = [None]*len(m)
+    for k in m.keys():
+        id2name_map[m[k]] = k
+    content = ""
+    for i in range(len(m)):
+        if i:
+            content += ", "
+        content += "%s : %d" % (id2name_map[i], i)
+    return "{%s}" % (content)
+
+def array2str(a):
+    content = ""
+    for v in a:
+        if content:
+            content += ", "
+        content += "%s" % (v)
+    return "[%s]" % (content)
 
 class PlaceIOOpTest(unittest.TestCase):
     def test_simple(self):
@@ -28,18 +47,18 @@ class PlaceIOOpTest(unittest.TestCase):
         content = ""
         content += "num_nodes = %s\n" % (db.num_nodes)
         content += "num_terminals = %s\n" % (db.num_terminals)
-        content += "node_name2id_map = %s\n" % (db.node_name2id_map)
-        content += "node_names = %s\n" % (db.node_names)
+        content += "node_name2id_map = %s\n" % (name2id_map2str(db.node_name2id_map))
+        content += "node_names = %s\n" % (array2str(db.node_names))
         content += "node_x = %s\n" % (db.node_x)
         content += "node_y = %s\n" % (db.node_y)
-        content += "node_orient = %s\n" % (db.node_orient)
+        content += "node_orient = %s\n" % (array2str(db.node_orient))
         content += "node_size_x = %s\n" % (db.node_size_x)
         content += "node_size_y = %s\n" % (db.node_size_y)
-        content += "pin_direct = %s\n" % (db.pin_direct)
+        content += "pin_direct = %s\n" % (array2str(db.pin_direct))
         content += "pin_offset_x = %s\n" % (db.pin_offset_x)
         content += "pin_offset_y = %s\n" % (db.pin_offset_y)
-        content += "net_name2id_map = %s\n" % (db.net_name2id_map)
-        content += "net_names = %s\n" % (db.net_names)
+        content += "net_name2id_map = %s\n" % (name2id_map2str(db.net_name2id_map))
+        content += "net_names = %s\n" % (array2str(db.net_names))
         content += "net2pin_map = %s\n" % (db.net2pin_map)
         content += "flat_net2pin_map = %s\n" % (db.flat_net2pin_map)
         content += "flat_net2pin_start_map = %s\n" % (db.flat_net2pin_start_map)

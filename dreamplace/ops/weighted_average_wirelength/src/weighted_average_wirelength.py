@@ -62,8 +62,8 @@ class WeightedAverageWirelengthFunction(Function):
                     ctx.net_mask, 
                     ctx.gamma
                     )
-        output[:output.numel()/2].masked_fill_(ctx.pin_mask, 0.0)
-        output[output.numel()/2:].masked_fill_(ctx.pin_mask, 0.0)
+        output[:output.numel()//2].masked_fill_(ctx.pin_mask, 0.0)
+        output[output.numel()//2:].masked_fill_(ctx.pin_mask, 0.0)
         return output, None, None, None, None, None
 
 class WeightedAverageWirelengthAtomicFunction(Function):
@@ -117,8 +117,8 @@ class WeightedAverageWirelengthAtomicFunction(Function):
                     )
         else:
             assert 0, "CPU version NOT IMPLEMENTED"
-        output[:int(output.numel()/2)].masked_fill_(ctx.pin_mask, 0.0)
-        output[int(output.numel()/2):].masked_fill_(ctx.pin_mask, 0.0)
+        output[:int(output.numel()//2)].masked_fill_(ctx.pin_mask, 0.0)
+        output[int(output.numel()//2):].masked_fill_(ctx.pin_mask, 0.0)
         #if torch.isnan(output).any():
         #    pdb.set_trace()
         torch.cuda.synchronize()
@@ -176,8 +176,8 @@ class WeightedAverageWirelengthSparseFunction(Function):
                     )
         else:
             assert 0, "CPU version NOT IMPLEMENTED"
-        output[:output.numel()/2].masked_fill_(ctx.pin_mask, 0.0)
-        output[output.numel()/2:].masked_fill_(ctx.pin_mask, 0.0)
+        output[:output.numel()//2].masked_fill_(ctx.pin_mask, 0.0)
+        output[output.numel()//2:].masked_fill_(ctx.pin_mask, 0.0)
         #if torch.isnan(output).any():
         #    pdb.set_trace()
         torch.cuda.synchronize()

@@ -5,10 +5,11 @@ import unittest
 
 import torch
 from torch.autograd import Function, Variable
-if sys.version_info[0] < 3: 
-    from src import rmst_wl 
-else:
-    from .src import rmst_wl 
+
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "src"))
+import rmst_wl 
+sys.path.pop()
+
 import pdb 
 
 class RMSTWLOpTest(unittest.TestCase):
@@ -42,8 +43,8 @@ class RMSTWLOpTest(unittest.TestCase):
         # clone is very important, because the custom op cannot deep copy the data 
         pin_pos_var = torch.t(pin_pos_var).contiguous()
         #pdb.set_trace()
-        POWVFILE = os.path.abspath("../../../../thirdparty/flute-3.1/POWV9.dat")
-        POSTFILE = os.path.abspath("../../../../thirdparty/flute-3.1/POST9.dat")
+        POWVFILE = os.path.abspath("../../../thirdparty/flute-3.1/POWV9.dat")
+        POSTFILE = os.path.abspath("../../../thirdparty/flute-3.1/POST9.dat")
         custom = rmst_wl.RMSTWL(
                 torch.from_numpy(flat_net2pin_map), 
                 torch.from_numpy(flat_net2pin_start_map),

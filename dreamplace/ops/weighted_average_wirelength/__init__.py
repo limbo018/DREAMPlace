@@ -1,3 +1,4 @@
+import os 
 import sys 
 import time 
 import numpy as np
@@ -6,10 +7,13 @@ import unittest
 import gzip 
 if sys.version_info[0] < 3: 
     import cPickle as pickle
-    from src import weighted_average_wirelength 
 else:
     import _pickle as pickle
-    from .src import weighted_average_wirelength 
+
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "src"))
+import weighted_average_wirelength 
+sys.path.pop()
+
 import pdb 
 
 import torch

@@ -1,13 +1,13 @@
+import os 
 import sys
 import numpy as np
 import unittest
 
 import torch
 from torch.autograd import Function, Variable
-if sys.version_info[0] < 3: 
-    import src.hpwl as hpwl
-else:
-    from .src import hpwl
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "src"))
+import hpwl 
+sys.path.pop()
 import pdb 
 
 """

@@ -4,17 +4,18 @@
 # @date   Jun 2018
 #
 
+import os 
 import sys
 import numpy as np 
 import torch
 import torch.nn.functional as F
 
-if sys.version_info[0] < 3: 
-    import dct 
-    import dct_lee
-else:
-    from . import dct
-    from . import dct_lee
+# this is a bad practice for importing, but I want to make it generic to python2 and python3 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+import dct 
+import dct_lee
+sys.path.pop()
+
 import pdb 
 
 """ Discrete spectral transformation leveraging fast fourier transform engine. 

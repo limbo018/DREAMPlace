@@ -5,11 +5,15 @@
 # @brief  Plot placement to an image 
 #
 
+import os 
+import sys 
 import torch 
 from torch.autograd import Function
 
 import draw_place_cpp
-from .PlaceDrawer import PlaceDrawer 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+import PlaceDrawer 
+sys.path.pop()
 
 class DrawPlaceFunction(Function):
     @staticmethod

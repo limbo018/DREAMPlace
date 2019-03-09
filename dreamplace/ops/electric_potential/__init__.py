@@ -5,17 +5,23 @@ import unittest
 import torch
 from torch.autograd import Function, Variable
 import os
+import imp 
 import sys
 import gzip 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from dct.src import discrete_spectral_transform
+
+# this is a bad practice for importing, but I want to make it generic to python2 and python3 
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dct/src"))
+import discrete_spectral_transform
+sys.path.pop()
+
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "src"))
+import electric_potential
+import electric_overflow
+sys.path.pop()
+
 if sys.version_info[0] < 3: 
-    import src.electric_potential as electric_potential
-    import src.electric_overflow as electric_overflow
     import cPickle as pickle
 else:
-    from .src import electric_potential
-    from .src import electric_overflow
     import _pickle as pickle
 import inspect
 import pdb 

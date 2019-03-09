@@ -5,6 +5,8 @@
 # @brief  electric potential according to e-place (http://cseweb.ucsd.edu/~jlu/papers/eplace-todaes14/paper.pdf) 
 #
 
+import os 
+import sys
 import math 
 import numpy as np 
 import time
@@ -12,11 +14,12 @@ import torch
 from torch import nn
 from torch.autograd import Function
 from torch.nn import functional as F
-import os 
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from dct.src import discrete_spectral_transform
-from dct.src import dct
+
+# this is a bad practice for importing, but I want to make it generic to python2 and python3 
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "dct/src"))
+import discrete_spectral_transform
+import dct
+sys.path.pop()
 
 import electric_potential_cpp
 import electric_potential_cuda 
