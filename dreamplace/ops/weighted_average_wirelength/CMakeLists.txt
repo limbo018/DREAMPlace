@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.8.12)
 project(weighted_average_wirelength)
 
 find_program(PYTHON "python")
-find_package(CUDA 9.0 REQUIRED)
+find_package(CUDA 9.0)
 get_filename_component(OPS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/.. ABSOLUTE)
 
 if (NOT CMAKE_CUDA_FLAGS)
