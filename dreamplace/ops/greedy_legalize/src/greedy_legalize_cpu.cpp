@@ -40,7 +40,7 @@ int greedyLegalizationCPU(
         T bin_size_x = (xh-xl)/num_bins_x; 
         //bin_size_x = std::max(floor(bin_size_x/site_width)*site_width, site_width); 
         T bin_size_y = (yh-yl)/num_bins_y; 
-        bin_size_y = std::max(ceil(bin_size_y/row_height)*row_height, (T)row_height);
+        bin_size_y = std::max((T)(ceil(bin_size_y/row_height)*row_height), (T)row_height);
 
         //num_bins_x = ceil((xh-xl)/bin_size_x);
         num_bins_y = ceil((yh-yl)/bin_size_y);
