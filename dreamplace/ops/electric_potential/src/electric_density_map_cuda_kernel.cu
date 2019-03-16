@@ -8,6 +8,9 @@
 #include <float.h>
 #include "cuda_runtime.h"
 #include "utility/src/print.h"
+#include "utility/src/Msg.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 #define SQRT2 1.4142135623730950488016887242096980785696718753769480731766797379907324784621
 
@@ -370,3 +373,4 @@ int computeExactDensityMapCudaLauncher(
 REGISTER_KERNEL_LAUNCHER(float);
 REGISTER_KERNEL_LAUNCHER(double);
 
+DREAMPLACE_END_NAMESPACE

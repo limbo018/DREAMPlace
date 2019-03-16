@@ -4,8 +4,10 @@
  * @date   Jun 2018
  * @brief  Compute density potential on CUDA according to NTUPlace3 (https://doi.org/10.1109/TCAD.2008.923063)
  */
-#include <torch/torch.h>
-#include <limits>
+#include "utility/src/torch.h"
+#include "utility/src/Msg.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 /// @brief compute density map, density cost, and gradient
 /// @param x_tensor cell x locations
@@ -410,9 +412,10 @@ at::Tensor fixed_density_potential_map(
     return density_map; 
 }
 
+DREAMPLACE_END_NAMESPACE
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-  m.def("forward", &density_potential_forward, "DensityPotential forward (CUDA)");
-  m.def("backward", &density_potential_backward, "DensityPotential backward (CUDA)");
-  m.def("fixed_density_map", &fixed_density_potential_map, "DensityPotential Map for Fixed Cells (CUDA)");
+  m.def("forward", &DREAMPLACE_NAMESPACE::density_potential_forward, "DensityPotential forward (CUDA)");
+  m.def("backward", &DREAMPLACE_NAMESPACE::density_potential_backward, "DensityPotential backward (CUDA)");
+  m.def("fixed_density_map", &DREAMPLACE_NAMESPACE::fixed_density_potential_map, "DensityPotential Map for Fixed Cells (CUDA)");
 }

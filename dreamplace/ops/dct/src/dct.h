@@ -3,10 +3,13 @@
  * @author Yibo Lin
  * @date   Sep 2018
  */
-#ifndef GPUPLACE_DCT_H
-#define GPUPLACE_DCT_H
+#ifndef DREAMPLACE_DCT_H
+#define DREAMPLACE_DCT_H
 
-#include <torch/torch.h>
+#include "utility/src/torch.h"
+#include "utility/src/Msg.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 #define CHECK_CPU(x) AT_ASSERTM(!x.is_cuda(), #x "must be a tensor on CPU")
 #define CHECK_FLAT(x) AT_ASSERTM(!x.is_cuda() && x.ndimension() == 1, #x "must be a flat tensor on GPU")
@@ -235,5 +238,7 @@ void computeTruncation(
         const int N, 
         T* z // M*N
         );
+
+DREAMPLACE_END_NAMESPACE
 
 #endif

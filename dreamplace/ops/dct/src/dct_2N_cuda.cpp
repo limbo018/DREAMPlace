@@ -5,6 +5,8 @@
  */
 #include "dct_cuda.h"
 
+DREAMPLACE_BEGIN_NAMESPACE
+
 at::Tensor dct_2N_forward(
         at::Tensor x,
         at::Tensor expk) 
@@ -235,3 +237,5 @@ at::Tensor idct2_2N_forward(
 
     return x_pad.contiguous(); 
 }
+
+DREAMPLACE_END_NAMESPACE

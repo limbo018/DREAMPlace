@@ -3,13 +3,15 @@
  * @author Yibo Lin
  * @date   Jun 2018
  */
-#include <torch/torch.h>
-#include <limits>
+#include "utility/src/torch.h"
+#include "utility/src/Msg.h"
 
 extern "C" 
 {
 #include <flute.h>
 }
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T>
 int computeRMSTWLLauncher(
@@ -113,7 +115,9 @@ int computeRMSTWLLauncher(
     return 0; 
 }
 
+DREAMPLACE_END_NAMESPACE
+
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-  m.def("forward", &rmst_wl_forward, "RMSTWL forward");
-  //m.def("backward", &rmst_wl_backward, "RMSTWL backward");
+  m.def("forward", &DREAMPLACE_NAMESPACE::rmst_wl_forward, "RMSTWL forward");
+  //m.def("backward", &DREAMPLACE_NAMESPACE::rmst_wl_backward, "RMSTWL backward");
 }

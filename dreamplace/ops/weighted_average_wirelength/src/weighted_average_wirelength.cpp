@@ -4,8 +4,10 @@
  * @date   Jun 2018
  * @brief  Compute weighted-average wirelength and gradient according to e-place
  */
-#include <torch/torch.h>
-#include <limits>
+#include "utility/src/torch.h"
+#include "utility/src/Msg.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T>
 int computeWeightedAverageWirelengthLauncher(
@@ -218,7 +220,9 @@ int computeWeightedAverageWirelengthLauncher(
     return 0; 
 }
 
+DREAMPLACE_END_NAMESPACE
+
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-  m.def("forward", &weighted_average_wirelength_forward, "WeightedAverageWirelength forward");
-  m.def("backward", &weighted_average_wirelength_backward, "WeightedAverageWirelength backward");
+  m.def("forward", &DREAMPLACE_NAMESPACE::weighted_average_wirelength_forward, "WeightedAverageWirelength forward");
+  m.def("backward", &DREAMPLACE_NAMESPACE::weighted_average_wirelength_backward, "WeightedAverageWirelength backward");
 }

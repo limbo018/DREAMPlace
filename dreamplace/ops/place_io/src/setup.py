@@ -7,6 +7,7 @@
 import os
 import sys 
 from setuptools import setup
+import torch 
 from torch.utils.cpp_extension import BuildExtension, CppExtension
 
 # I removed boost dependency by removing timers 
@@ -19,6 +20,10 @@ include_dirs = [os.path.join(os.path.abspath(boost_dir), 'include'), os.path.joi
 lib_dirs = [os.path.join(os.path.abspath(boost_dir), 'lib'), os.path.join(os.path.abspath(limbo_dir), 'lib'), utility_dir]
 libs = ['lefparseradapt', 'defparseradapt', 'verilogparser', 'gdsparser', 'bookshelfparser', 'programoptions', 
                     'boost_system', 'boost_timer', 'boost_chrono', 'boost_iostreams', 'z', 'utility'] 
+
+tokens = str(torch.__version__).split('.')
+torch_major_version = "-DTORCH_MAJOR_VERSION=%d" % (int(tokens[0]))
+torch_minor_version = "-DTORCH_MINOR_VERSION=%d" % (int(tokens[1]))
 
 setup(
         name='place_io',
@@ -40,7 +45,7 @@ setup(
                 library_dirs=lib_dirs,
                 libraries=libs,
                 extra_compile_args={
-                    'cxx': ['-fvisibility=hidden', '-D_GLIBCXX_USE_CXX11_ABI=0'], 
+                    'cxx': ['-fvisibility=hidden', '-D_GLIBCXX_USE_CXX11_ABI=0', torch_major_version, torch_minor_version], 
                     }
                 ),
             ],

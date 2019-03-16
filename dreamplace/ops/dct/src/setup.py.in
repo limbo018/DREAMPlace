@@ -7,7 +7,19 @@
 
 import os 
 from setuptools import setup
+import torch 
 from torch.utils.cpp_extension import BuildExtension, CppExtension, CUDAExtension
+
+utility_dir = "${UTILITY_LIBRARY_DIRS}"
+ops_dir = "${OPS_DIR}"
+
+include_dirs = [ops_dir]
+lib_dirs = [utility_dir]
+libs = ['utility'] 
+
+tokens = str(torch.__version__).split('.')
+torch_major_version = "-DTORCH_MAJOR_VERSION=%d" % (int(tokens[0]))
+torch_minor_version = "-DTORCH_MINOR_VERSION=%d" % (int(tokens[1]))
 
 def add_prefix(filename):
     return os.path.join('${CMAKE_CURRENT_SOURCE_DIR}/src', filename)
@@ -21,11 +33,23 @@ modules.extend([
             add_prefix('dst.cpp'),
             add_prefix('dxt.cpp'), 
             add_prefix('dct_2N.cpp')
-            ]), 
+            ], 
+        include_dirs=include_dirs, 
+        library_dirs=lib_dirs,
+        libraries=libs,
+        extra_compile_args={
+                    'cxx' : [torch_major_version, torch_minor_version]
+                    }), 
     CppExtension('dct_lee_cpp', 
         [
             add_prefix('dct_lee.cpp')
-            ]),
+            ], 
+        include_dirs=include_dirs, 
+        library_dirs=lib_dirs,
+        libraries=libs,
+        extra_compile_args={
+                    'cxx' : [torch_major_version, torch_minor_version]
+                    }),
             ])
 
 if not "${CUDA_FOUND}" or "${CUDA_FOUND}".upper() == 'TRUE': 
@@ -38,14 +62,28 @@ if not "${CUDA_FOUND}" or "${CUDA_FOUND}".upper() == 'TRUE':
                     add_prefix('dst_cuda_kernel.cu'),
                     add_prefix('dxt_cuda.cpp'), 
                     add_prefix('dct_2N_cuda.cpp')
-                    ]),
+                    ], 
+                include_dirs=include_dirs, 
+                library_dirs=lib_dirs,
+                libraries=libs,
+                extra_compile_args={
+                    'cxx' : [torch_major_version, torch_minor_version], 
+                    'nvcc': []
+                    }),
             CUDAExtension('dct_lee_cuda', 
                 [
                     add_prefix('dct_lee_cuda.cpp'),
                     add_prefix('dct_lee_cuda_kernel.cu'), 
                     add_prefix('dct_cuda_kernel.cu'),
                     add_prefix('dst_cuda_kernel.cu')
-                    ]),
+                    ], 
+                include_dirs=include_dirs, 
+                library_dirs=lib_dirs,
+                libraries=libs,
+                extra_compile_args={
+                    'cxx' : [torch_major_version, torch_minor_version], 
+                    'nvcc': []
+                    }),
         ])
 
 setup(

@@ -4,8 +4,10 @@
  * @date   Jun 2018
  * @brief  Compute half-perimeter wirelength 
  */
-#include <torch/torch.h>
-#include <limits>
+#include "utility/src/torch.h"
+#include "utility/src/Msg.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T>
 int computeHPWLLauncher(
@@ -89,7 +91,8 @@ int computeHPWLLauncher(
     return 0; 
 }
 
+DREAMPLACE_END_NAMESPACE
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-  m.def("forward", &hpwl_forward, "HPWL forward");
+  m.def("forward", &DREAMPLACE_NAMESPACE::hpwl_forward, "HPWL forward");
 }

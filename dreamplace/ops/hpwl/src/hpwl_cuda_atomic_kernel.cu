@@ -2,6 +2,9 @@
 #include <math.h>
 #include <float.h>
 #include "cuda_runtime.h"
+#include "utility/src/Msg.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T>
 __global__ void computeHPWLMax(
@@ -189,3 +192,5 @@ int computeHPWLCudaAtomicLauncher(
 
 REGISTER_KERNEL_LAUNCHER(int);
 REGISTER_KERNEL_LAUNCHER(long long int);
+
+DREAMPLACE_END_NAMESPACE

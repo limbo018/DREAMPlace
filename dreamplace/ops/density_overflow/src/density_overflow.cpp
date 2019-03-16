@@ -4,8 +4,10 @@
  * @date   Jun 2018
  * @brief  Compute density overflow on CPU 
  */
-#include <torch/torch.h>
-#include <limits>
+#include "utility/src/torch.h"
+#include "utility/src/Msg.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 /// @brief compute density overflow map 
 /// @param x_tensor cell x locations
@@ -250,8 +252,10 @@ int computeDensityOverflowMapLauncher(
     return 0; 
 }
 
+DREAMPLACE_END_NAMESPACE
+
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-  m.def("forward", &density_overflow_forward, "DensityOverflow forward");
-  //m.def("backward", &density_overflow_backward, "DensityOverflow backward");
-  m.def("fixed_density_map", &fixed_density_overflow_map, "DensityOverflow Map for Fixed Cells");
+  m.def("forward", &DREAMPLACE_NAMESPACE::density_overflow_forward, "DensityOverflow forward");
+  //m.def("backward", &DREAMPLACE_NAMESPACE::density_overflow_backward, "DensityOverflow backward");
+  m.def("fixed_density_map", &DREAMPLACE_NAMESPACE::fixed_density_overflow_map, "DensityOverflow Map for Fixed Cells");
 }

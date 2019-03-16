@@ -5,6 +5,8 @@
  */
 #include "dct.h"
 
+DREAMPLACE_BEGIN_NAMESPACE
+
 at::Tensor dst_forward(
         at::Tensor x,
         at::Tensor expk) 
@@ -70,3 +72,4 @@ at::Tensor idst_forward(
     return y; 
 }
 
+DREAMPLACE_END_NAMESPACE

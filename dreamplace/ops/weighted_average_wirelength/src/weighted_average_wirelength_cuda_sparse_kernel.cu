@@ -5,6 +5,9 @@
 #include "utility/src/print.h"
 #include "weighted_average_wirelength/src/functional_cuda.h"
 #include "utility/src/csrmv.h"
+#include "utility/src/Msg.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T>
 __global__ void multiply(const T* a, const T* b, int n, T* c)
@@ -464,3 +467,5 @@ int computeWeightedAverageWirelengthCudaSparseLauncher(
     }
 REGISTER_KERNEL_LAUNCHER(float, int);
 REGISTER_KERNEL_LAUNCHER(double, int);
+
+DREAMPLACE_END_NAMESPACE

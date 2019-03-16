@@ -9,6 +9,8 @@ get_filename_component(MATCH_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../../../ ABSOLUTE
 get_filename_component(REPLACE_PATH ${CMAKE_CURRENT_BINARY_DIR}/../../../ ABSOLUTE)
 string(REPLACE ${MATCH_PATH} ${REPLACE_PATH} FLUTE_LINK_DIRS ${FLUTE_INCLUDE_DIRS})
 message("-- FLUTE_LINK_DIRS ${FLUTE_LINK_DIRS}")
+get_filename_component(OPS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/.. ABSOLUTE)
+get_filename_component(UTILITY_LIBRARY_DIRS ${CMAKE_CURRENT_BINARY_DIR}/../utility ABSOLUTE)
 
 if (PYTHON)
     set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/src/setup.py.in")

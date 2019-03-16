@@ -4,8 +4,12 @@
  * @date   Oct 2018
  */
 
-#ifndef GPUPLACE_DCT_LEE_CUDA_H
-#define GPUPLACE_DCT_LEE_CUDA_H
+#ifndef DREAMPLACE_DCT_LEE_CUDA_H
+#define DREAMPLACE_DCT_LEE_CUDA_H
+
+#include "utility/src/Msg.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 namespace lee
 {
@@ -23,5 +27,7 @@ template <typename TValue>
 void idct(const TValue *vec, TValue *curr, TValue *next, const TValue *cos, int M, int N);
 
 } // End of namespace lee
+
+DREAMPLACE_END_NAMESPACE
 
 #endif

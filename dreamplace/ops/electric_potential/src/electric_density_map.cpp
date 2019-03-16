@@ -4,8 +4,10 @@
  * @date   Aug 2018
  * @brief  Compute density map according to e-place (http://cseweb.ucsd.edu/~jlu/papers/eplace-todaes14/paper.pdf)
  */
-#include <torch/torch.h>
-#include <limits>
+#include "utility/src/torch.h"
+#include "utility/src/Msg.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 #define SQRT2 1.414213562
 
@@ -346,8 +348,10 @@ int computeExactDensityMapLauncher(
     return 0; 
 }
 
+DREAMPLACE_END_NAMESPACE
+
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-  m.def("density_map", &density_map, "ElectricPotential Density Map");
-  m.def("fixed_density_map", &fixed_density_map, "ElectricPotential Density Map for Fixed Cells");
-  m.def("electric_force", &electric_force, "ElectricPotential Electric Force");
+  m.def("density_map", &DREAMPLACE_NAMESPACE::density_map, "ElectricPotential Density Map");
+  m.def("fixed_density_map", &DREAMPLACE_NAMESPACE::fixed_density_map, "ElectricPotential Density Map for Fixed Cells");
+  m.def("electric_force", &DREAMPLACE_NAMESPACE::electric_force, "ElectricPotential Electric Force");
 }

@@ -9,6 +9,9 @@
 #include <float.h>
 #include "cuda_runtime.h"
 #include "utility/src/print.h"
+#include "utility/src/Msg.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T>
 __global__ void computeDensityMapWithThreadMap(
@@ -119,3 +122,5 @@ int computeDensityOverflowMapCudaThreadMapLauncher(
     }
 REGISTER_KERNEL_LAUNCHER(float);
 REGISTER_KERNEL_LAUNCHER(double);
+
+DREAMPLACE_END_NAMESPACE

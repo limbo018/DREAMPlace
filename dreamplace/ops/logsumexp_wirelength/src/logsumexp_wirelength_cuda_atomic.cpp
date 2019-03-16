@@ -4,8 +4,10 @@
  * @date   Jul 2018
  * @brief  Compute log-sum-exp wirelength and gradient according to NTUPlace3 
  */
-#include <torch/torch.h>
-#include <limits>
+#include "utility/src/torch.h"
+#include "utility/src/Msg.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T, typename V>
 int computeLogSumExpWirelengthCudaAtomicLauncher(
@@ -151,8 +153,9 @@ at::Tensor logsumexp_wirelength_atomic_backward(
     return grad_out; 
 }
 
+DREAMPLACE_END_NAMESPACE
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-  m.def("forward", &logsumexp_wirelength_atomic_forward, "LogSumExpWirelength forward (CUDA)");
-  m.def("backward", &logsumexp_wirelength_atomic_backward, "LogSumExpWirelength backward (CUDA)");
+  m.def("forward", &DREAMPLACE_NAMESPACE::logsumexp_wirelength_atomic_forward, "LogSumExpWirelength forward (CUDA)");
+  m.def("backward", &DREAMPLACE_NAMESPACE::logsumexp_wirelength_atomic_backward, "LogSumExpWirelength backward (CUDA)");
 }

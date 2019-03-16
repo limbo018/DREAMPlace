@@ -4,8 +4,10 @@
  * @date   Jun 2018
  * @brief  Move out-of-bound cells back to inside placement region 
  */
-#include <torch/torch.h>
-#include <limits>
+#include "utility/src/torch.h"
+#include "utility/src/Msg.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T>
 int computeMoveBoundaryMapCudaLauncher(
@@ -52,7 +54,9 @@ at::Tensor move_boundary_forward(
     return pos; 
 }
 
+DREAMPLACE_END_NAMESPACE
+
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-  m.def("forward", &move_boundary_forward, "MoveBoundary forward (CUDA)");
-  //m.def("backward", &move_boundary_backward, "MoveBoundary backward (CUDA)");
+  m.def("forward", &DREAMPLACE_NAMESPACE::move_boundary_forward, "MoveBoundary forward (CUDA)");
+  //m.def("backward", &DREAMPLACE_NAMESPACE::move_boundary_backward, "MoveBoundary backward (CUDA)");
 }

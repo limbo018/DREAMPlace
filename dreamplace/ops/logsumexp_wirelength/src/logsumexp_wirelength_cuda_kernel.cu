@@ -4,6 +4,9 @@
 #include "cuda_runtime.h"
 #include "utility/src/csrmv.h"
 #include "utility/src/print.h"
+#include "utility/src/Msg.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T>
 __global__ void fillArray(T* x, const int n, const T v)
@@ -628,3 +631,5 @@ int computeLogSumExpWirelengthCudaLauncher(
     }
 REGISTER_KERNEL_LAUNCHER(float);
 REGISTER_KERNEL_LAUNCHER(double);
+
+DREAMPLACE_END_NAMESPACE

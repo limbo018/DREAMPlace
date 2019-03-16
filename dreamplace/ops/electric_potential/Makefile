@@ -4,6 +4,7 @@ PROJECT_ROOT_DIR = $(realpath ../../../)
 CUDAFLAGS = -gencode=arch=compute_60,code=sm_60
 ENV_CONFIG = \
 		OPS_DIR=$(PROJECT_ROOT_DIR)/dreamplace/ops \
+		UTILITY_DIR=$(PROJECT_ROOT_DIR)/lib \
 		CUDAFLAGS=$(CUDAFLAGS)
 
 all:

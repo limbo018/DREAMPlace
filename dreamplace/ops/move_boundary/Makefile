@@ -2,7 +2,8 @@ SITE_PACKAGE = # --user or empty
 PROJECT_ROOT_DIR = $(realpath ../../../)
 
 ENV_CONFIG = \
-		OPS_DIR=$(PROJECT_ROOT_DIR)/dreamplace/ops 
+		OPS_DIR=$(PROJECT_ROOT_DIR)/dreamplace/ops \
+		UTILITY_DIR=$(PROJECT_ROOT_DIR)/lib 
 
 all:
 	@echo "site-package: $(SITE_PACKAGE)"

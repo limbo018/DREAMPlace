@@ -107,13 +107,13 @@ class DensityOverflowOpTest(unittest.TestCase):
                     num_movable_nodes=num_movable_nodes, 
                     num_terminals=num_terminals, 
                     num_filler_nodes=num_filler_nodes, 
-                    algorithm='threadmap'
+                    algorithm='by-node'
                     )
 
         pos = Variable(torch.from_numpy(np.concatenate([xx, yy]))).cuda()
         result_cuda, max_density_cuda = custom_cuda.forward(pos)
-        print("threadmap custom_result = ", result_cuda.data.cpu())
-        print("threadmap custom_max_density_cuda = ", max_density_cuda.data.cpu())
+        print("by-node custom_result = ", result_cuda.data.cpu())
+        print("by-node custom_max_density_cuda = ", max_density_cuda.data.cpu())
 
         np.testing.assert_allclose(result, result_cuda.data.cpu())
         np.testing.assert_allclose(max_density, max_density_cuda.data.cpu())
@@ -128,13 +128,13 @@ class DensityOverflowOpTest(unittest.TestCase):
                     num_movable_nodes=num_movable_nodes, 
                     num_terminals=num_terminals, 
                     num_filler_nodes=num_filler_nodes, 
-                    algorithm='by-node'
+                    algorithm='threadmap'
                     )
 
         pos = Variable(torch.from_numpy(np.concatenate([xx, yy]))).cuda()
         result_cuda, max_density_cuda = custom_cuda.forward(pos)
-        print("by-node custom_result = ", result_cuda.data.cpu())
-        print("by-node custom_max_density_cuda = ", max_density_cuda.data.cpu())
+        print("threadmap custom_result = ", result_cuda.data.cpu())
+        print("threadmap custom_max_density_cuda = ", max_density_cuda.data.cpu())
 
         np.testing.assert_allclose(result, result_cuda.data.cpu())
         np.testing.assert_allclose(max_density, max_density_cuda.data.cpu())

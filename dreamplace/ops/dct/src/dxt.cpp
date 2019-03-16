@@ -5,6 +5,8 @@
  */
 #include "dct.h"
 
+DREAMPLACE_BEGIN_NAMESPACE
+
 at::Tensor idxct_forward(
         at::Tensor x,
         at::Tensor expk) 
@@ -380,3 +382,5 @@ at::Tensor idcst2_forward(
 
     return z.contiguous(); 
 }
+
+DREAMPLACE_END_NAMESPACE

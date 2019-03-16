@@ -14,6 +14,9 @@
 
 #include "dct_lee_cuda.h"
 #include "dct_lee_cuda_kernel.h"
+#include "utility/src/Msg.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 namespace lee
 {
@@ -320,3 +323,5 @@ REGISTER_DCT_KERNEL_LAUNCHER(double);
 
 REGISTER_IDCT_KERNEL_LAUNCHER(float);
 REGISTER_IDCT_KERNEL_LAUNCHER(double);
+
+DREAMPLACE_END_NAMESPACE

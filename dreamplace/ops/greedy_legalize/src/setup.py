@@ -5,6 +5,7 @@
 #
 
 from setuptools import setup
+import torch 
 from torch.utils.cpp_extension import BuildExtension, CppExtension, CUDAExtension
 
 import os 
@@ -16,6 +17,10 @@ ops_dir = os.environ['OPS_DIR']
 include_dirs = [os.path.abspath(ops_dir)]
 lib_dirs = [utility_dir]
 libs = ['utility'] 
+
+tokens = str(torch.__version__).split('.')
+torch_major_version = "-DTORCH_MAJOR_VERSION=%d" % (int(tokens[0]))
+torch_minor_version = "-DTORCH_MINOR_VERSION=%d" % (int(tokens[1]))
 
 setup(
         name='greedy_legalize',
@@ -33,7 +38,7 @@ setup(
                 libraries=libs,
                 extra_compile_args={
                     #'cxx': ['-g', '-O0'], 
-                    'cxx': ['-O2'], 
+                    'cxx': ['-O2', torch_major_version, torch_minor_version], 
                     }
                 ),
             ],

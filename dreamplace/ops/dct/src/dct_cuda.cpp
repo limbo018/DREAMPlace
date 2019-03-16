@@ -5,6 +5,8 @@
  */
 #include "dct_cuda.h"
 
+DREAMPLACE_BEGIN_NAMESPACE
+
 at::Tensor dct_forward(
         at::Tensor x,
         at::Tensor expk) 
@@ -273,24 +275,26 @@ at::Tensor idct2_forward(
     return v.contiguous(); 
 }
 
+DREAMPLACE_END_NAMESPACE
+
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-  m.def("dct", &dct_forward, "DCT forward (CUDA)");
-  m.def("idct", &idct_forward, "IDCT forward (CUDA)");
-  m.def("dct2", &dct2_forward, "DCT2 forward (CUDA)");
-  m.def("idct2", &idct2_forward, "IDCT2 forward (CUDA)");
+  m.def("dct", &DREAMPLACE_NAMESPACE::dct_forward, "DCT forward (CUDA)");
+  m.def("idct", &DREAMPLACE_NAMESPACE::idct_forward, "IDCT forward (CUDA)");
+  m.def("dct2", &DREAMPLACE_NAMESPACE::dct2_forward, "DCT2 forward (CUDA)");
+  m.def("idct2", &DREAMPLACE_NAMESPACE::idct2_forward, "IDCT2 forward (CUDA)");
 
-  m.def("dst", &dst_forward, "DST forward (CUDA)");
-  m.def("idst", &idst_forward, "IDST forward (CUDA)");
+  m.def("dst", &DREAMPLACE_NAMESPACE::dst_forward, "DST forward (CUDA)");
+  m.def("idst", &DREAMPLACE_NAMESPACE::idst_forward, "IDST forward (CUDA)");
 
-  m.def("idxct", &idxct_forward, "IDXCT forward (CUDA)");
-  m.def("idxst", &idxst_forward, "IDXST forward (CUDA)");
-  m.def("idcct2", &idcct2_forward, "IDCCT2 forward (CUDA)");
-  m.def("idcst2", &idcst2_forward, "IDCST2 forward (CUDA)");
-  m.def("idsct2", &idsct2_forward, "IDSCT2 forward (CUDA)");
+  m.def("idxct", &DREAMPLACE_NAMESPACE::idxct_forward, "IDXCT forward (CUDA)");
+  m.def("idxst", &DREAMPLACE_NAMESPACE::idxst_forward, "IDXST forward (CUDA)");
+  m.def("idcct2", &DREAMPLACE_NAMESPACE::idcct2_forward, "IDCCT2 forward (CUDA)");
+  m.def("idcst2", &DREAMPLACE_NAMESPACE::idcst2_forward, "IDCST2 forward (CUDA)");
+  m.def("idsct2", &DREAMPLACE_NAMESPACE::idsct2_forward, "IDSCT2 forward (CUDA)");
 
-  m.def("dct_2N", &dct_2N_forward, "DCT forward (CUDA)");
-  m.def("idct_2N", &idct_2N_forward, "IDCT forward (CUDA)");
-  m.def("dct2_2N", &dct2_2N_forward, "DCT2 forward (CUDA)");
-  m.def("idct2_2N", &idct2_2N_forward, "IDCT2 forward (CUDA)");
+  m.def("dct_2N", &DREAMPLACE_NAMESPACE::dct_2N_forward, "DCT forward (CUDA)");
+  m.def("idct_2N", &DREAMPLACE_NAMESPACE::idct_2N_forward, "IDCT forward (CUDA)");
+  m.def("dct2_2N", &DREAMPLACE_NAMESPACE::dct2_2N_forward, "DCT2 forward (CUDA)");
+  m.def("idct2_2N", &DREAMPLACE_NAMESPACE::idct2_2N_forward, "IDCT2 forward (CUDA)");
 }
 

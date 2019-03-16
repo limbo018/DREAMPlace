@@ -4,8 +4,10 @@
  * @date   Mar 2019
  * @brief  Compute half-perimeter wirelength to mimic a parallel atomic implementation
  */
-#include <torch/torch.h>
-#include <limits>
+#include "utility/src/torch.h"
+#include "utility/src/Msg.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T>
 int computeHPWLAtomicLauncher(
@@ -97,6 +99,8 @@ int computeHPWLAtomicLauncher(
     return 0; 
 }
 
+DREAMPLACE_END_NAMESPACE
+
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-  m.def("forward", &hpwl_atomic_forward, "HPWL forward");
+  m.def("forward", &DREAMPLACE_NAMESPACE::hpwl_atomic_forward, "HPWL forward");
 }

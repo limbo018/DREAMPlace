@@ -5,9 +5,7 @@
  * @brief  Plot placement to an image 
  */
 #include <sstream>
-#include <pybind11/stl.h>
-#include <torch/torch.h>
-#include <limits>
+#include "utility/src/torch.h"
 #include "draw_place/src/draw_place.h"
 
 DREAMPLACE_BEGIN_NAMESPACE

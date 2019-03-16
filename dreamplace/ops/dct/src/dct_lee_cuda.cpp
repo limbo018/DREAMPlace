@@ -7,11 +7,15 @@
 #include "dct_cuda.h"
 #include "dct_lee_cuda.h"
 
+DREAMPLACE_BEGIN_NAMESPACE
+
 at::Tensor dct_lee_precompute_dct_cos(int N)
 {
     typedef double T; 
 
-    auto out = at::empty(N, torch::CUDA(at::kDouble));
+    at::TensorOptions options (at::Backend::CUDA); 
+    options.dtype(at::kDouble);
+    auto out = at::empty(N, options);
 
     lee::precompute_dct_cos(out.data<T>(), N);
 
@@ -22,7 +26,9 @@ at::Tensor dct_lee_precompute_idct_cos(int N)
 {
     typedef double T; 
 
-    auto out = at::empty(N, torch::CUDA(at::kDouble));
+    at::TensorOptions options (at::Backend::CUDA); 
+    options.dtype(at::kDouble);
+    auto out = at::empty(N, options);
 
     lee::precompute_idct_cos(out.data<T>(), N);
 
@@ -395,21 +401,22 @@ void idsct2_lee_forward(
     out.copy_(buf1.transpose(-2, -1));
 }
 
+DREAMPLACE_END_NAMESPACE
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-  m.def("precompute_dct_cos", &dct_lee_precompute_dct_cos, "Precompute DCT cosine");
-  m.def("precompute_idct_cos", &dct_lee_precompute_idct_cos, "Precompute IDCT cosine");
-  m.def("dct", &dct_lee_forward, "DCT forward");
-  m.def("idct", &idct_lee_forward, "IDCT forward");
-  m.def("idxct", &idxct_lee_forward, "IDXCT forward");
-  m.def("idxst", &idxst_lee_forward, "IDXST forward");
+  m.def("precompute_dct_cos", &DREAMPLACE_NAMESPACE::dct_lee_precompute_dct_cos, "Precompute DCT cosine");
+  m.def("precompute_idct_cos", &DREAMPLACE_NAMESPACE::dct_lee_precompute_idct_cos, "Precompute IDCT cosine");
+  m.def("dct", &DREAMPLACE_NAMESPACE::dct_lee_forward, "DCT forward");
+  m.def("idct", &DREAMPLACE_NAMESPACE::idct_lee_forward, "IDCT forward");
+  m.def("idxct", &DREAMPLACE_NAMESPACE::idxct_lee_forward, "IDXCT forward");
+  m.def("idxst", &DREAMPLACE_NAMESPACE::idxst_lee_forward, "IDXST forward");
 
-  m.def("dst", &dst_lee_forward, "DST forward");
-  m.def("idst", &idst_lee_forward, "IDST forward");
+  m.def("dst", &DREAMPLACE_NAMESPACE::dst_lee_forward, "DST forward");
+  m.def("idst", &DREAMPLACE_NAMESPACE::idst_lee_forward, "IDST forward");
 
-  m.def("dct2", &dct2_lee_forward, "DCT2 forward");
-  m.def("idct2", &idct2_lee_forward, "IDCT2 forward");
-  m.def("idcct2", &idcct2_lee_forward, "IDCCT2 forward");
-  m.def("idcst2", &idcst2_lee_forward, "IDCST2 forward");
-  m.def("idsct2", &idsct2_lee_forward, "IDSCT2 forward");
+  m.def("dct2", &DREAMPLACE_NAMESPACE::dct2_lee_forward, "DCT2 forward");
+  m.def("idct2", &DREAMPLACE_NAMESPACE::idct2_lee_forward, "IDCT2 forward");
+  m.def("idcct2", &DREAMPLACE_NAMESPACE::idcct2_lee_forward, "IDCCT2 forward");
+  m.def("idcst2", &DREAMPLACE_NAMESPACE::idcst2_lee_forward, "IDCST2 forward");
+  m.def("idsct2", &DREAMPLACE_NAMESPACE::idsct2_lee_forward, "IDSCT2 forward");
 }

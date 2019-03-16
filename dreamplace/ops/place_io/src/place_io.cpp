@@ -8,8 +8,8 @@
 #include "PlaceDB.h"
 #include <sstream>
 //#include <boost/timer/timer.hpp>
-#include <torch/torch.h>
 #include <pybind11/stl.h>
+#include "utility/src/torch.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
 

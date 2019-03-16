@@ -227,8 +227,8 @@ class DensityPotential(nn.Module):
         self.yl = yl
         self.xh = xh 
         self.yh = yh 
-        self.bin_size_x = torch.tensor(bin_size_x, dtype=node_size_x.dtype, device=node_size_x.device)
-        self.bin_size_y = torch.tensor(bin_size_y, dtype=node_size_y.dtype, device=node_size_y.device)
+        self.bin_size_x = bin_size_x
+        self.bin_size_y = bin_size_y
         self.num_movable_nodes = num_movable_nodes
         self.num_terminals = num_terminals
         self.num_filler_nodes = num_filler_nodes

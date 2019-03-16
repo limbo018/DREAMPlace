@@ -4,8 +4,10 @@
  * @date   Aug 2018
  * @brief  Compute density map according to e-place (http://cseweb.ucsd.edu/~jlu/papers/eplace-todaes14/paper.pdf)
  */
-#include <torch/torch.h>
-#include <limits>
+#include "utility/src/torch.h"
+#include "utility/src/Msg.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 // The triangular density model from e-place 
 // The impact of a cell to bins is extended to two neighboring bins 
@@ -208,8 +210,10 @@ at::Tensor electric_force(
         int num_filler_nodes
         );
 
+DREAMPLACE_END_NAMESPACE
+
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-    m.def("density_map", &density_map, "ElectricPotential Density Map (CUDA)");
-    m.def("fixed_density_map", &fixed_density_map, "ElectricPotential Density Map for Fixed Cells (CUDA)");
-    m.def("electric_force", &electric_force, "ElectricPotential Electric Force (CUDA)");
+    m.def("density_map", &DREAMPLACE_NAMESPACE::density_map, "ElectricPotential Density Map (CUDA)");
+    m.def("fixed_density_map", &DREAMPLACE_NAMESPACE::fixed_density_map, "ElectricPotential Density Map for Fixed Cells (CUDA)");
+    m.def("electric_force", &DREAMPLACE_NAMESPACE::electric_force, "ElectricPotential Electric Force (CUDA)");
 }

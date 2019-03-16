@@ -5,6 +5,7 @@
 #
 
 from setuptools import setup
+import torch 
 from torch.utils.cpp_extension import BuildExtension, CppExtension, CUDAExtension
 
 import os 
@@ -29,6 +30,10 @@ else:
     print("not found cairo and disable")
     cairo_compile_args = '-DDRAWPLACE=0'
 
+tokens = str(torch.__version__).split('.')
+torch_major_version = "-DTORCH_MAJOR_VERSION=%d" % (int(tokens[0]))
+torch_minor_version = "-DTORCH_MINOR_VERSION=%d" % (int(tokens[1]))
+
 setup(
         name='draw_place',
         ext_modules=[
@@ -40,7 +45,7 @@ setup(
                 library_dirs=lib_dirs,
                 libraries=libs,
                 extra_compile_args={
-                    'cxx': ['-fvisibility=hidden', '-D_GLIBCXX_USE_CXX11_ABI=0', cairo_compile_args], 
+                    'cxx': ['-fvisibility=hidden', '-D_GLIBCXX_USE_CXX11_ABI=0', cairo_compile_args, torch_major_version, torch_minor_version], 
                     }
                 ),
             ],

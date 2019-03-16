@@ -4,8 +4,10 @@
  * @date   Aug 2018
  * @brief  Compute electric force according to e-place 
  */
-#include <torch/torch.h>
-#include <limits>
+#include "utility/src/torch.h"
+#include "utility/src/Msg.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T>
 int computeElectricForceCudaLauncher(
@@ -93,3 +95,5 @@ at::Tensor electric_force(
 
     return grad_out.mul_(grad_pos); 
 }
+
+DREAMPLACE_END_NAMESPACE

@@ -3,7 +3,10 @@
 #include "assert.h"
 #include "cuda_runtime.h"
 #include "utility/src/print.h"
+#include "utility/src/Msg.h"
 #include "weighted_average_wirelength/src/functional_cuda.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T>
 __global__ void computeExpSum(
@@ -400,3 +403,5 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
     }
 REGISTER_KERNEL_LAUNCHER(float, int);
 REGISTER_KERNEL_LAUNCHER(double, int);
+
+DREAMPLACE_END_NAMESPACE

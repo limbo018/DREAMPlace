@@ -4,8 +4,10 @@
  * @date   Jul 2018
  * @brief  Compute half-perimeter wirelength to mimic a parallel atomic implementation
  */
-#include <torch/torch.h>
-#include <limits>
+#include "utility/src/torch.h"
+#include "utility/src/Msg.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T>
 int computeHPWLCudaAtomicLauncher(
@@ -41,7 +43,7 @@ at::Tensor hpwl_atomic_forward(
 
     int num_nets = net_mask.numel();
     // x then y 
-    at::Tensor scaled_pos = pos.mul(1000)._cast_Int();
+    at::Tensor scaled_pos = at::_cast_Int(pos.mul(1000), false);
     at::Tensor partial_hpwl_max = at::zeros({2, num_nets}, scaled_pos.type()); 
     at::Tensor partial_hpwl_min = at::zeros({2, num_nets}, scaled_pos.type()); 
     partial_hpwl_max[0].masked_fill_(net_mask, std::numeric_limits<T>::min());
@@ -63,15 +65,15 @@ at::Tensor hpwl_atomic_forward(
     //std::cout << "partial_hpwl_min = " << partial_hpwl_min << "\n";
     //std::cout << "partial_hpwl = \n" << (partial_hpwl_max-partial_hpwl_min)._cast_double().mul(1.0/1000) << "\n";
 
-    auto hpwl = (partial_hpwl_max-partial_hpwl_min)._cast_Long().sum()._cast_Double().mul(1.0/1000);
+    auto hpwl = at::_cast_Long(partial_hpwl_max-partial_hpwl_min, false).sum();
 
     const at::Type& the_type = pos.type();
     switch (the_type.scalarType())
     {
         case at::ScalarType::Double:
-            return hpwl; 
+            return at::_cast_Double(hpwl).mul(1.0/1000); 
         case at::ScalarType::Float:
-            return hpwl._cast_Float(); 
+            return at::_cast_Float(hpwl).mul(1.0/1000); 
         default:
             AT_ERROR("hpwl_atomic_forward", " not implemented for '", the_type.toString(), "'"); 
     }
@@ -79,6 +81,8 @@ at::Tensor hpwl_atomic_forward(
     return hpwl; 
 }
 
+DREAMPLACE_END_NAMESPACE
+
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-  m.def("forward", &hpwl_atomic_forward, "HPWL forward (CUDA)");
+  m.def("forward", &DREAMPLACE_NAMESPACE::hpwl_atomic_forward, "HPWL forward (CUDA)");
 }

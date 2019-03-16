@@ -4,8 +4,12 @@
  * @date   Oct 2018
  */
 
-#ifndef GPUPLACE_DCT_LEE_CUDA_KERNEL_H
-#define GPUPLACE_DCT_LEE_CUDA_KERNEL_H
+#ifndef DREAMPLACE_DCT_LEE_CUDA_KERNEL_H
+#define DREAMPLACE_DCT_LEE_CUDA_KERNEL_H
+
+#include "utility/src/Msg.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 namespace lee
 {
@@ -146,5 +150,7 @@ __global__ void ComputeIdctBackward(const TValue* curr, TValue* next, const TVal
 }
 
 } // End of namespace lee
+
+DREAMPLACE_END_NAMESPACE
 
 #endif 

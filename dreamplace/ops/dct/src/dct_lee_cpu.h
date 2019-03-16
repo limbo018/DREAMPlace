@@ -4,12 +4,15 @@
  * @date   Oct 2018
  */
 
-#ifndef GPUPLACE_DCT_LEE_CPU_H
-#define GPUPLACE_DCT_LEE_CPU_H
+#ifndef DREAMPLACE_DCT_LEE_CPU_H
+#define DREAMPLACE_DCT_LEE_CPU_H
 
 #include <vector>
 #include <cmath>
 #include <stdexcept>
+#include "utility/src/Msg.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 namespace lee
 {
@@ -315,5 +318,7 @@ inline void idct(TValue *mtx, TValue *out, TValue* buf, const TValue *cos, TInde
 }
 
 } // End of namespace lee
+
+DREAMPLACE_END_NAMESPACE
 
 #endif 

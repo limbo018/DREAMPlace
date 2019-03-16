@@ -9,7 +9,7 @@ import sys
 import numpy as np 
 import unittest
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
 from dreamplace.ops.place_io.src import place_io
 sys.path.pop()
 
@@ -39,7 +39,7 @@ def array2str(a):
 class PlaceIOOpTest(unittest.TestCase):
     def test_simple(self):
         params = Params()
-        design = os.path.join(os.path.dirname(os.path.realpath(__file__)), "place_io_unitest")
+        design = os.path.dirname(os.path.realpath(__file__))
         params.aux_file = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.join(design, "simple/simple.aux")))
 
         db = place_io.PlaceIOFunction.forward(params)

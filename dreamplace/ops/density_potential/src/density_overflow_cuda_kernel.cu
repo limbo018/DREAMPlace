@@ -11,6 +11,9 @@
 #include "cuda_runtime.h"
 #include "utility/src/gemm.h"
 #include "utility/src/print.h"
+#include "utility/src/Msg.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T>
 __global__ void computeDensityMap(
@@ -168,3 +171,5 @@ int computeGaussianFilterLauncher(
     }
 REGISTER_GAUSSIAN_FILTER_LAUNCHER(float);
 REGISTER_GAUSSIAN_FILTER_LAUNCHER(double);
+
+DREAMPLACE_END_NAMESPACE

@@ -4,6 +4,8 @@ project(dct)
 
 find_program(PYTHON "python")
 find_package(CUDA 9.0)
+get_filename_component(OPS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/.. ABSOLUTE)
+get_filename_component(UTILITY_LIBRARY_DIRS ${CMAKE_CURRENT_BINARY_DIR}/../utility ABSOLUTE)
 
 if (NOT CMAKE_CUDA_FLAGS)
     set(CMAKE_CUDA_FLAGS "-gencode=arch=compute_60,code=sm_60")

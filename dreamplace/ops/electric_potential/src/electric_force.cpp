@@ -4,8 +4,10 @@
  * @date   Aug 2018
  * @brief  Compute electric force according to e-place 
  */
-#include <torch/torch.h>
-#include <limits>
+#include "utility/src/torch.h"
+#include "utility/src/Msg.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T>
 int computeElectricForceLauncher(
@@ -175,3 +177,4 @@ int computeElectricForceLauncher(
     return 0; 
 }
 
+DREAMPLACE_END_NAMESPACE

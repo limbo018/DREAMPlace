@@ -155,16 +155,22 @@ class DensityOverflow(Function):
         self.algorithm = algorithm 
         # compute maximum impacted bins 
         if algorithm == 'threadmap' and node_size_x.is_cuda: 
-            thread_map = density_overflow_cuda_thread_map.thread_map(
+            thread2node_map = torch.empty(1, dtype=torch.int32)
+            thread2bin_x_map = torch.empty(1, dtype=torch.int32)
+            thread2bin_y_map = torch.empty(1, dtype=torch.int32)
+            density_overflow_cuda_thread_map.thread_map(
                     self.node_size_x.cpu(), 
                     self.node_size_y.cpu(), 
                     self.xl, self.yl, self.xh, self.yh, 
                     self.bin_size_x, self.bin_size_y, 
-                    self.num_movable_nodes, self.num_filler_nodes
+                    self.num_movable_nodes, self.num_filler_nodes, 
+                    thread2node_map, 
+                    thread2bin_x_map, 
+                    thread2bin_y_map
                     )
-            self.thread2node_map = thread_map[0].cuda()
-            self.thread2bin_x_map = thread_map[1].cuda()
-            self.thread2bin_y_map = thread_map[2].cuda()
+            self.thread2node_map = thread2node_map.cuda()
+            self.thread2bin_x_map = thread2bin_x_map.cuda()
+            self.thread2bin_y_map = thread2bin_y_map.cuda()
         else:
             self.thread2node_map = None
             self.thread2bin_x_map = None

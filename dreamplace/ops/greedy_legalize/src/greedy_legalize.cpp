@@ -1,11 +1,10 @@
 /**
- * @file   move_boundary.cpp
+ * @file   greedy_legalize.cpp
  * @author Yibo Lin
  * @date   Jun 2018
  */
-#include <torch/torch.h>
-#include <limits>
-#include "function_cpu.h"
+#include "utility/src/torch.h"
+#include "greedy_legalize/src/function_cpu.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
 

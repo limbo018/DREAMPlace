@@ -5,6 +5,8 @@
  */
 #include "dct.h"
 
+DREAMPLACE_BEGIN_NAMESPACE
+
 template <typename T>
 void computePad(
         const T* x, // M*N
@@ -309,3 +311,5 @@ at::Tensor idct2_2N_forward(
 
     return x_pad.contiguous(); 
 }
+
+DREAMPLACE_END_NAMESPACE

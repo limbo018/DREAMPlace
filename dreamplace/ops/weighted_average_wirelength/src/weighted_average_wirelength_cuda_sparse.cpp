@@ -3,8 +3,10 @@
  * @author Yibo Lin
  * @date   Nov 2018
  */
-#include <torch/torch.h>
-#include <limits>
+#include "utility/src/torch.h"
+#include "utility/src/Msg.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T, typename V>
 int computeWeightedAverageWirelengthCudaSparseLauncher(
@@ -170,8 +172,9 @@ at::Tensor weighted_average_wirelength_sparse_backward(
     return grad_out; 
 }
 
+DREAMPLACE_END_NAMESPACE
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-  m.def("forward", &weighted_average_wirelength_sparse_forward, "WeightedAverageWirelength forward (CUDA)");
-  m.def("backward", &weighted_average_wirelength_sparse_backward, "WeightedAverageWirelength backward (CUDA)");
+  m.def("forward", &DREAMPLACE_NAMESPACE::weighted_average_wirelength_sparse_forward, "WeightedAverageWirelength forward (CUDA)");
+  m.def("backward", &DREAMPLACE_NAMESPACE::weighted_average_wirelength_sparse_backward, "WeightedAverageWirelength backward (CUDA)");
 }

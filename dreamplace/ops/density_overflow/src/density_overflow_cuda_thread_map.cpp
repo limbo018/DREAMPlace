@@ -4,8 +4,10 @@
  * @date   Jun 2018
  * @brief  Compute density overflow with cell2bin parallelization on CUDA 
  */
-#include <torch/torch.h>
-#include <limits>
+#include "utility/src/torch.h"
+#include "utility/src/Msg.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 /// @brief compute density overflow map 
 /// @param x_tensor cell x locations
@@ -229,7 +231,7 @@ at::Tensor fixed_density_overflow_map(
 /// @param num_movable_nodes number of movable cells 
 /// @param num_filler_nodes number of filler cells 
 /// @return {thread2node_map, thread2bin_x_map, thread2bin_y_map} on CPU 
-std::vector<at::Tensor> thread_map(
+void thread_map(
         at::Tensor node_size_x, 
         at::Tensor node_size_y, 
         double xl, 
@@ -239,7 +241,10 @@ std::vector<at::Tensor> thread_map(
         double bin_size_x, 
         double bin_size_y, 
         int num_movable_nodes, 
-        int num_filler_nodes
+        int num_filler_nodes, 
+        at::Tensor thread2node_map, 
+        at::Tensor thread2bin_x_map, 
+        at::Tensor thread2bin_y_map
         )
 {
     CHECK_CPU(node_size_x); 
@@ -273,9 +278,9 @@ std::vector<at::Tensor> thread_map(
     });
 
     // allocate memory for thread map on CPU 
-    auto thread2node_map = at::zeros(thread_count, torch::CPU(at::kInt));
-    auto thread2bin_x_map = at::zeros(thread_count, torch::CPU(at::kInt));
-    auto thread2bin_y_map = at::zeros(thread_count, torch::CPU(at::kInt));
+    thread2node_map.resize_(thread_count);
+    thread2bin_x_map.resize_(thread_count);
+    thread2bin_y_map.resize_(thread_count);
 
     AT_DISPATCH_FLOATING_TYPES(node_size_x.type(), "thread_map", [&] {
             auto node_size_x_accessor = node_size_x.accessor<scalar_t, 1>(); 
@@ -306,12 +311,13 @@ std::vector<at::Tensor> thread_map(
                 }
             }
     });
-    return {thread2node_map, thread2bin_x_map, thread2bin_y_map}; 
 }
 
+DREAMPLACE_END_NAMESPACE
+
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-  m.def("forward", &density_overflow_forward, "DensityOverflow forward (CUDA)");
-  //m.def("backward", &density_overflow_backward, "DensityOverflow backward (CUDA)");
-  m.def("fixed_density_map", &fixed_density_overflow_map, "DensityOverflow Map for Fixed Cells (CUDA)");
-  m.def("thread_map", &thread_map, "Thread Map to Cell and Bin offset for DensityOverflow (CUDA)");
+  m.def("forward", &DREAMPLACE_NAMESPACE::density_overflow_forward, "DensityOverflow forward (CUDA)");
+  //m.def("backward", &DREAMPLACE_NAMESPACE::density_overflow_backward, "DensityOverflow backward (CUDA)");
+  m.def("fixed_density_map", &DREAMPLACE_NAMESPACE::fixed_density_overflow_map, "DensityOverflow Map for Fixed Cells (CUDA)");
+  m.def("thread_map", &DREAMPLACE_NAMESPACE::thread_map, "Thread Map to Cell and Bin offset for DensityOverflow (CUDA)");
 }

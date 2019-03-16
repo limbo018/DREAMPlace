@@ -4,8 +4,10 @@
  * @date   Nov 2018
  * @brief  Compute density overflow with cell-by-cell parallelization on CUDA 
  */
-#include <torch/torch.h>
-#include <limits>
+#include "utility/src/torch.h"
+#include "utility/src/Msg.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 /// @brief compute density overflow map 
 /// @param x_tensor cell x locations
@@ -123,7 +125,9 @@ std::vector<at::Tensor> density_overflow_forward(
     return {density_cost, density_map, max_density}; 
 }
 
+DREAMPLACE_END_NAMESPACE
+
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-  m.def("forward", &density_overflow_forward, "DensityOverflow forward (CUDA)");
-  //m.def("backward", &density_overflow_backward, "DensityOverflow backward (CUDA)");
+  m.def("forward", &DREAMPLACE_NAMESPACE::density_overflow_forward, "DensityOverflow forward (CUDA)");
+  //m.def("backward", &DREAMPLACE_NAMESPACE::density_overflow_backward, "DensityOverflow backward (CUDA)");
 }
