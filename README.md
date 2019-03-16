@@ -13,7 +13,7 @@ Over 30X speedup over CPU is achieved in global placement and legalization on IS
 
 # Dependency 
 
-- Pytorch 0.4.1
+- Pytorch 0.4.1 or 1.0.0
 
 - Python 2.7 or Python 3.5
 
