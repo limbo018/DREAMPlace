@@ -36,9 +36,11 @@ if (PYTHON)
     add_custom_target(${PROJECT_NAME} ALL DEPENDS ${OUTPUT})
 
     install(
-        DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/ DESTINATION lib/dreamplace/ops/${PROJECT_NAME}
+        DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/ DESTINATION dreamplace/ops/${PROJECT_NAME}
         )
+    file(GLOB INSTALL_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/*.py")
+    list(FILTER INSTALL_SRCS EXCLUDE REGEX ".*setup.py$")
     install(
-        CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_INSTALL_PREFIX}/lib/dreamplace/ops/${PROJECT_NAME}/__init__.py)"
+        FILES ${INSTALL_SRCS} DESTINATION dreamplace/ops/${PROJECT_NAME}
         )
 endif()

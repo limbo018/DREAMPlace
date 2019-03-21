@@ -10,9 +10,9 @@ import torch
 from torch import nn
 from torch.autograd import Function
 
-import lib.dreamplace.ops.density_overflow.density_overflow_cpp as density_overflow_cpp
-import lib.dreamplace.ops.density_overflow.density_overflow_cuda_thread_map as density_overflow_cuda_thread_map
-import lib.dreamplace.ops.density_overflow.density_overflow_cuda_by_node as density_overflow_cuda_by_node
+import dreamplace.ops.density_overflow.density_overflow_cpp as density_overflow_cpp
+import dreamplace.ops.density_overflow.density_overflow_cuda_thread_map as density_overflow_cuda_thread_map
+import dreamplace.ops.density_overflow.density_overflow_cuda_by_node as density_overflow_cuda_by_node
 
 import numpy as np 
 import matplotlib

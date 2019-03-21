@@ -9,9 +9,9 @@ import torch
 from torch import nn
 from torch.autograd import Function
 
-import lib.dreamplace.ops.logsumexp_wirelength.logsumexp_wirelength_cpp as logsumexp_wirelength_cpp
-import lib.dreamplace.ops.logsumexp_wirelength.logsumexp_wirelength_cuda as logsumexp_wirelength_cuda
-import lib.dreamplace.ops.logsumexp_wirelength.logsumexp_wirelength_cuda_atomic as logsumexp_wirelength_cuda_atomic
+import dreamplace.ops.logsumexp_wirelength.logsumexp_wirelength_cpp as logsumexp_wirelength_cpp
+import dreamplace.ops.logsumexp_wirelength.logsumexp_wirelength_cuda as logsumexp_wirelength_cuda
+import dreamplace.ops.logsumexp_wirelength.logsumexp_wirelength_cuda_atomic as logsumexp_wirelength_cuda_atomic
 import pdb 
 
 class LogSumExpWirelengthFunction(Function):

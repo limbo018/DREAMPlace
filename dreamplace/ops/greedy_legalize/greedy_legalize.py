@@ -9,7 +9,7 @@ import torch
 from torch import nn
 from torch.autograd import Function
 
-import lib.dreamplace.ops.greedy_legalize.greedy_legalize_cpp as greedy_legalize_cpp
+import dreamplace.ops.greedy_legalize.greedy_legalize_cpp as greedy_legalize_cpp
 
 class GreedyLegalizeFunction(Function):
     """ Legalize cells with greedy approach 

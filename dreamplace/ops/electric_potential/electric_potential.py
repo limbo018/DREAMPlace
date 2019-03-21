@@ -18,8 +18,8 @@ from torch.nn import functional as F
 import dreamplace.ops.dct.dct as dct 
 import dreamplace.ops.dct.discrete_spectral_transform as discrete_spectral_transform
 
-import lib.dreamplace.ops.electric_potential.electric_potential_cpp as electric_potential_cpp
-import lib.dreamplace.ops.electric_potential.electric_potential_cuda as electric_potential_cuda 
+import dreamplace.ops.electric_potential.electric_potential_cpp as electric_potential_cpp
+import dreamplace.ops.electric_potential.electric_potential_cuda as electric_potential_cuda 
 
 import pdb 
 import matplotlib

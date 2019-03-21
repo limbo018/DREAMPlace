@@ -8,8 +8,8 @@ import torch
 from torch.autograd import Function
 from torch import nn
 
-import lib.dreamplace.ops.rmst_wl.rmst_wl_cpp as rmst_wl_cpp
-#import lib.dreamplace.ops.rmst_wl.rmst_wl_cuda as rmst_wl_cuda
+import dreamplace.ops.rmst_wl.rmst_wl_cpp as rmst_wl_cpp
+#import dreamplace.ops.rmst_wl.rmst_wl_cuda as rmst_wl_cuda
 
 class RMSTWLFunction(Function):
   """compute half-perimeter wirelength.

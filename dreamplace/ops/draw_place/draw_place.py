@@ -10,7 +10,7 @@ import sys
 import torch 
 from torch.autograd import Function
 
-import lib.dreamplace.ops.draw_place.draw_place_cpp as draw_place_cpp
+import dreamplace.ops.draw_place.draw_place_cpp as draw_place_cpp
 import dreamplace.ops.draw_place.PlaceDrawer as PlaceDrawer 
 
 class DrawPlaceFunction(Function):

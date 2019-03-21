@@ -10,10 +10,10 @@ from torch import nn
 import numpy as np 
 import pdb 
 
-import lib.dreamplace.ops.hpwl.hpwl_cpp as hpwl_cpp
-import lib.dreamplace.ops.hpwl.hpwl_cuda as hpwl_cuda
-import lib.dreamplace.ops.hpwl.hpwl_cpp_atomic as hpwl_cpp_atomic
-import lib.dreamplace.ops.hpwl.hpwl_cuda_atomic as hpwl_cuda_atomic
+import dreamplace.ops.hpwl.hpwl_cpp as hpwl_cpp
+import dreamplace.ops.hpwl.hpwl_cuda as hpwl_cuda
+import dreamplace.ops.hpwl.hpwl_cpp_atomic as hpwl_cpp_atomic
+import dreamplace.ops.hpwl.hpwl_cuda_atomic as hpwl_cuda_atomic
 
 class HPWLFunction(Function):
     """compute half-perimeter wirelength.

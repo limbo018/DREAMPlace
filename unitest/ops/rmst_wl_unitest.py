@@ -49,8 +49,9 @@ class RMSTWLOpTest(unittest.TestCase):
         # clone is very important, because the custom op cannot deep copy the data 
         pin_pos_var = torch.t(pin_pos_var).contiguous()
         #pdb.set_trace()
-        POWVFILE = os.path.abspath("../../thirdparty/flute-3.1/POWV9.dat")
-        POSTFILE = os.path.abspath("../../thirdparty/flute-3.1/POST9.dat")
+        project_path = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+        POWVFILE = os.path.join(project_path, "thirdparty/flute/POWV9.dat")
+        POSTFILE = os.path.join(project_path, "thirdparty/flute/POST9.dat")
         custom = rmst_wl.RMSTWL(
                 torch.from_numpy(flat_net2pin_map), 
                 torch.from_numpy(flat_net2pin_start_map),
