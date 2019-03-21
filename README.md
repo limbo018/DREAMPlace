@@ -52,9 +52,7 @@ pip install -r requirements.txt
 
 # How to Build 
 
-## User Mode 
-
-[CMake](https://cmake.org) is adopted as the makefile system for end-uers. 
+[CMake](https://cmake.org) is adopted as the makefile system. 
 To build, go to the root directory. 
 ```
 mkdir build 
@@ -68,34 +66,14 @@ Third party submodules are automatically built except for [Boost](www.boost.org)
 
 To clean, go to the root directory. 
 ```
-rm -r build lib
+rm -r build
 ```
 
 Here are the available options for CMake. 
+- CMAKE_INSTALL_PREFIX: installation directory
+    - Example ```cmake -DCMAKE_INSTALL_PREFIX=path/to/your/directory```
 - CMAKE_CUDA_FLAGS: custom string for NVCC (default -gencode=arch=compute_60,code=sm_60)
     - Example ```cmake -DCMAKE_CUDA_FLAGS=-gencode=arch=compute_60,code=sm_60```
-
-## Developer Mode 
-
-Developers who prefer to have detailed control over the building process of each op may want to use the handwritten makefile system. 
-It supports incremental building of each op for development. 
-To build, run make in the root directory. 
-```
-make 
-```
-GCC 4.8 or later is preferred. 
-Export CC and CXX environment variables for custom gcc and g++ path, respectively. 
-
-Third party submodules are automatically built except for [Boost](www.boost.org).
-
-To clean, run make clean in the root directory. 
-```
-make clean
-```
-
-Here are the available options for make. 
-- CUDAFLAGS: custom string (default -gencode=arch=compute_60,code=sm_60)
-    - Example ```make CUDAFLAGS=-gencode=arch=compute_60,code=sm_60```
 
 # How to Get Benchmarks
 
