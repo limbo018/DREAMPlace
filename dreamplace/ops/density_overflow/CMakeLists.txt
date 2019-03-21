@@ -38,4 +38,7 @@ if (PYTHON)
     install(
         DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/ DESTINATION lib/dreamplace/ops/${PROJECT_NAME}
         )
+    install(
+        CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_INSTALL_PREFIX}/lib/dreamplace/ops/${PROJECT_NAME}/__init__.py)"
+        )
 endif()
