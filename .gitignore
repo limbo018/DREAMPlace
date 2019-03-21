@@ -10,3 +10,6 @@ dreamplace/version.py
 dist
 dreamplace.egg-info
 install
+*.so
+thirdparty/flute
+__init__.py
