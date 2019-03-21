@@ -1,4 +1,3 @@
-SITE_PACKAGE = # --user or empty 
 CUDAFLAGS = -gencode=arch=compute_60,code=sm_60
 
 .PHONY: dreamplace thirdparty

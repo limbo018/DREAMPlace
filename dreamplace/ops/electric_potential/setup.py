@@ -29,8 +29,8 @@ setup(
         ext_modules=[
             CppExtension('electric_potential_cpp', 
                 [
-                    'electric_density_map.cpp', 
-                    'electric_force.cpp'
+                    'src/electric_density_map.cpp', 
+                    'src/electric_force.cpp'
                     ], 
                 include_dirs=include_dirs, 
                 library_dirs=lib_dirs,
@@ -40,10 +40,10 @@ setup(
                     }),
             CUDAExtension('electric_potential_cuda', 
                 [
-                    'electric_density_map_cuda.cpp',
-                    'electric_density_map_cuda_kernel.cu',
-                    'electric_force_cuda.cpp', 
-                    'electric_force_cuda_kernel.cu',
+                    'src/electric_density_map_cuda.cpp',
+                    'src/electric_density_map_cuda_kernel.cu',
+                    'src/electric_force_cuda.cpp', 
+                    'src/electric_force_cuda_kernel.cu',
                     ], 
                 include_dirs=include_dirs, 
                 library_dirs=lib_dirs,

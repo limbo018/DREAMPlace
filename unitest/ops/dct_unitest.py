@@ -15,9 +15,9 @@ import time
 import scipy
 from scipy import fftpack
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from dreamplace.ops.dct.src import dct 
-#from dreamplace.ops.dct.src import dct_lee as dct  
-from dreamplace.ops.dct.src import discrete_spectral_transform
+from dreamplace.ops.dct import dct 
+from dreamplace.ops.dct import dct_lee 
+from dreamplace.ops.dct import discrete_spectral_transform
 sys.path.pop()
 import pdb 
 
@@ -51,6 +51,15 @@ class DCTOpTest(unittest.TestCase):
 
         np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
 
+        # test cpu using dct_lee
+        #pdb.set_trace()
+        custom = dct_lee.DCT()
+        dct_value = custom.forward(x)
+        print("dct_value")
+        print(dct_value.data.numpy())
+
+        np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
+
         # test gpu 
         custom = dct.DCT(algorithm='N')
         dct_value = custom.forward(x.cuda()).cpu()
@@ -61,6 +70,14 @@ class DCTOpTest(unittest.TestCase):
 
         # test gpu 
         custom = dct.DCT(algorithm='2N')
+        dct_value = custom.forward(x.cuda()).cpu()
+        print("dct_value cuda")
+        print(dct_value.data.numpy())
+
+        np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
+
+        # test gpu 
+        custom = dct_lee.DCT()
         dct_value = custom.forward(x.cuda()).cpu()
         print("dct_value cuda")
         print(dct_value.data.numpy())
@@ -112,6 +129,15 @@ class DCTOpTest(unittest.TestCase):
 
         np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-5)
 
+        # test cpu use dct_lee 
+        #pdb.set_trace()
+        custom = dct_lee.IDCT()
+        dct_value = custom.forward(y)
+        print("idct_value")
+        print(dct_value.data.numpy())
+
+        np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-5)
+
         # test gpu 
         custom = dct.IDCT(algorithm='N')
         dct_value = custom.forward(y.cuda()).cpu()
@@ -122,6 +148,14 @@ class DCTOpTest(unittest.TestCase):
 
         # test gpu 
         custom = dct.IDCT(algorithm='2N')
+        dct_value = custom.forward(y.cuda()).cpu()
+        print("idct_value cuda")
+        print(dct_value.data.numpy())
+
+        np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-5)
+
+        # test gpu 
+        custom = dct_lee.IDCT()
         dct_value = custom.forward(y.cuda()).cpu()
         print("idct_value cuda")
         print(dct_value.data.numpy())
@@ -156,6 +190,15 @@ class DCTOpTest(unittest.TestCase):
 
         np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
 
+        # test cpu using dct_lee
+        #pdb.set_trace()
+        custom = dct_lee.DCT2()
+        dct_value = custom.forward(x)
+        print("2D dct_value")
+        print(dct_value.data.numpy())
+
+        np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
+
         # test gpu 
         custom = dct.DCT2(algorithm='N')
         dct_value = custom.forward(x.cuda()).cpu()
@@ -166,6 +209,14 @@ class DCTOpTest(unittest.TestCase):
 
         # test gpu 
         custom = dct.DCT2(algorithm='2N')
+        dct_value = custom.forward(x.cuda()).cpu()
+        print("2D dct_value cuda")
+        print(dct_value.data.numpy())
+
+        np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
+
+        # test gpu 
+        custom = dct_lee.DCT2()
         dct_value = custom.forward(x.cuda()).cpu()
         print("2D dct_value cuda")
         print(dct_value.data.numpy())
@@ -204,6 +255,15 @@ class DCTOpTest(unittest.TestCase):
 
         np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
 
+        # test cpu using dct_lee
+        #pdb.set_trace()
+        custom = dct_lee.IDCT2()
+        dct_value = custom.forward(y)
+        print("2D dct_value")
+        print(dct_value.data.numpy())
+
+        np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
+
         # test gpu 
         custom = dct.IDCT2(algorithm='N')
         dct_value = custom.forward(y.cuda()).cpu()
@@ -214,6 +274,14 @@ class DCTOpTest(unittest.TestCase):
 
         # test gpu 
         custom = dct.IDCT2(algorithm='2N')
+        dct_value = custom.forward(y.cuda()).cpu()
+        print("2D dct_value cuda")
+        print(dct_value.data.numpy())
+
+        np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
+
+        # test gpu 
+        custom = dct_lee.IDCT2()
         dct_value = custom.forward(y.cuda()).cpu()
         print("2D dct_value cuda")
         print(dct_value.data.numpy())
@@ -241,8 +309,25 @@ class DCTOpTest(unittest.TestCase):
 
         np.testing.assert_allclose(dct_value.data.numpy(), golden_value, atol=1e-14)
 
+        # test cpu 
+        #pdb.set_trace()
+        custom = dct_lee.IDXCT()
+        dct_value = custom.forward(x)
+        print("dxt_value")
+        print(dct_value.data.numpy())
+
+        np.testing.assert_allclose(dct_value.data.numpy(), golden_value, atol=1e-14)
+
         # test gpu 
         custom = dct.IDXCT()
+        dct_value = custom.forward(x.cuda()).cpu()
+        print("dxt_value cuda")
+        print(dct_value.data.numpy())
+
+        np.testing.assert_allclose(dct_value.data.numpy(), golden_value, atol=1e-14)
+
+        # test gpu 
+        custom = dct_lee.IDXCT()
         dct_value = custom.forward(x.cuda()).cpu()
         print("dxt_value cuda")
         print(dct_value.data.numpy())
@@ -271,8 +356,25 @@ class DSTOpTest(unittest.TestCase):
 
         np.testing.assert_allclose(dst_value.data.numpy(), golden_value, rtol=1e-5)
 
+        # test cpu 
+        #pdb.set_trace()
+        custom = dct_lee.DST()
+        dst_value = custom.forward(x)
+        print("dst_value")
+        print(dst_value.data.numpy())
+
+        np.testing.assert_allclose(dst_value.data.numpy(), golden_value, rtol=1e-5)
+
         # test gpu 
         custom = dct.DST()
+        dst_value = custom.forward(x.cuda()).cpu()
+        print("dst_value cuda")
+        print(dst_value.data.numpy())
+
+        np.testing.assert_allclose(dst_value.data.numpy(), golden_value, rtol=1e-5)
+
+        # test gpu 
+        custom = dct_lee.DST()
         dst_value = custom.forward(x.cuda()).cpu()
         print("dst_value cuda")
         print(dst_value.data.numpy())
@@ -307,8 +409,25 @@ class DSTOpTest(unittest.TestCase):
 
         np.testing.assert_allclose(dst_value.data.numpy(), golden_value, rtol=1e-5)
 
+        # test cpu 
+        #pdb.set_trace()
+        custom = dct_lee.IDST()
+        dst_value = custom.forward(y)
+        print("idst_value")
+        print(dst_value.data.numpy())
+
+        np.testing.assert_allclose(dst_value.data.numpy(), golden_value, rtol=1e-5)
+
         # test gpu 
         custom = dct.IDST()
+        dst_value = custom.forward(y.cuda()).cpu()
+        print("idst_value cuda")
+        print(dst_value.data.numpy())
+
+        np.testing.assert_allclose(dst_value.data.numpy(), golden_value, rtol=1e-5)
+
+        # test gpu 
+        custom = dct_lee.IDST()
         dst_value = custom.forward(y.cuda()).cpu()
         print("idst_value cuda")
         print(dst_value.data.numpy())
@@ -336,8 +455,25 @@ class DSTOpTest(unittest.TestCase):
 
         np.testing.assert_allclose(dst_value.data.numpy(), golden_value, atol=1e-14)
 
+        # test cpu 
+        #pdb.set_trace()
+        custom = dct_lee.IDXST()
+        dst_value = custom.forward(x)
+        print("dxt_value")
+        print(dst_value.data.numpy())
+
+        np.testing.assert_allclose(dst_value.data.numpy(), golden_value, atol=1e-14)
+
         # test gpu 
         custom = dct.IDXST()
+        dst_value = custom.forward(x.cuda()).cpu()
+        print("dxt_value cuda")
+        print(dst_value.data.numpy())
+
+        np.testing.assert_allclose(dst_value.data.numpy(), golden_value, atol=1e-14)
+
+        # test gpu 
+        custom = dct_lee.IDXST()
         dst_value = custom.forward(x.cuda()).cpu()
         print("dxt_value cuda")
         print(dst_value.data.numpy())
@@ -366,8 +502,25 @@ class DXTOpTest(unittest.TestCase):
 
         np.testing.assert_allclose(dst_value.data.numpy(), golden_value, atol=1e-14)
 
+        # test cpu 
+        #pdb.set_trace()
+        custom = dct_lee.IDCCT2()
+        dst_value = custom.forward(x)
+        print("dxt_value")
+        print(dst_value.data.numpy())
+
+        np.testing.assert_allclose(dst_value.data.numpy(), golden_value, atol=1e-14)
+
         # test gpu 
         custom = dct.IDCCT2()
+        dst_value = custom.forward(x.cuda()).cpu()
+        print("dxt_value cuda")
+        print(dst_value.data.numpy())
+
+        np.testing.assert_allclose(dst_value.data.numpy(), golden_value, atol=1e-14)
+
+        # test gpu 
+        custom = dct_lee.IDCCT2()
         dst_value = custom.forward(x.cuda()).cpu()
         print("dxt_value cuda")
         print(dst_value.data.numpy())
@@ -395,8 +548,25 @@ class DXTOpTest(unittest.TestCase):
 
         np.testing.assert_allclose(dst_value.data.numpy(), golden_value, atol=1e-14)
 
+        # test cpu 
+        #pdb.set_trace()
+        custom = dct_lee.IDCST2()
+        dst_value = custom.forward(x)
+        print("dxt_value")
+        print(dst_value.data.numpy())
+
+        np.testing.assert_allclose(dst_value.data.numpy(), golden_value, atol=1e-14)
+
         # test gpu 
         custom = dct.IDCST2()
+        dst_value = custom.forward(x.cuda()).cpu()
+        print("dxt_value cuda")
+        print(dst_value.data.numpy())
+
+        np.testing.assert_allclose(dst_value.data.numpy(), golden_value, atol=1e-14)
+
+        # test gpu 
+        custom = dct_lee.IDCST2()
         dst_value = custom.forward(x.cuda()).cpu()
         print("dxt_value cuda")
         print(dst_value.data.numpy())
@@ -424,8 +594,25 @@ class DXTOpTest(unittest.TestCase):
 
         np.testing.assert_allclose(dst_value.data.numpy(), golden_value, atol=1e-14)
 
+        # test cpu 
+        #pdb.set_trace()
+        custom = dct_lee.IDSCT2()
+        dst_value = custom.forward(x)
+        print("dxt_value")
+        print(dst_value.data.numpy())
+
+        np.testing.assert_allclose(dst_value.data.numpy(), golden_value, atol=1e-14)
+
         # test gpu 
         custom = dct.IDSCT2()
+        dst_value = custom.forward(x.cuda()).cpu()
+        print("dxt_value cuda")
+        print(dst_value.data.numpy())
+
+        np.testing.assert_allclose(dst_value.data.numpy(), golden_value, atol=1e-14)
+
+        # test gpu 
+        custom = dct_lee.IDSCT2()
         dst_value = custom.forward(x.cuda()).cpu()
         print("dxt_value cuda")
         print(dst_value.data.numpy())

@@ -16,9 +16,9 @@ import sys
 import gzip 
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from dreamplace.ops.dct.src import dct 
-from dreamplace.ops.dct.src import discrete_spectral_transform
-from dreamplace.ops.electric_potential.src import electric_potential, electric_overflow
+from dreamplace.ops.dct import dct 
+from dreamplace.ops.dct import discrete_spectral_transform
+from dreamplace.ops.electric_potential import electric_potential, electric_overflow
 sys.path.pop()
 
 if sys.version_info[0] < 3: 

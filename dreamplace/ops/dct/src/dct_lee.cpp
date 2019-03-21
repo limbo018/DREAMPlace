@@ -9,30 +9,28 @@
 
 DREAMPLACE_BEGIN_NAMESPACE
 
-at::Tensor dct_lee_precompute_dct_cos(int N)
+void dct_lee_precompute_dct_cos(int N, at::Tensor out)
 {
-    typedef double T; 
+    out.resize_(N);
 
-    at::TensorOptions options (at::Backend::CPU); 
-    options.dtype(at::kDouble);
-    auto out = at::empty(N, options);
-
-    lee::precompute_dct_cos(out.data<T>(), N);
-
-    return out; 
+    AT_DISPATCH_FLOATING_TYPES(out.type(), "dct_lee_precompute_dct_cos", [&] {
+            lee::precompute_dct_cos<scalar_t>(
+                    out.data<scalar_t>(), 
+                    N
+                    );
+            });
 }
 
-at::Tensor dct_lee_precompute_idct_cos(int N)
+void dct_lee_precompute_idct_cos(int N, at::Tensor out)
 {
-    typedef double T; 
+    out.resize_(N);
 
-    at::TensorOptions options (at::Backend::CPU); 
-    options.dtype(at::kDouble);
-    auto out = at::empty(N, options);
-
-    lee::precompute_idct_cos(out.data<T>(), N);
-
-    return out; 
+    AT_DISPATCH_FLOATING_TYPES(out.type(), "dct_lee_precompute_idct_cos", [&] {
+            lee::precompute_idct_cos<scalar_t>(
+                    out.data<scalar_t>(), 
+                    N
+                    );
+            });
 }
 
 void dct_lee_forward(

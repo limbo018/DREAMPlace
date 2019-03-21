@@ -26,37 +26,23 @@ torch_major_version = "-DTORCH_MAJOR_VERSION=%d" % (int(tokens[0]))
 torch_minor_version = "-DTORCH_MINOR_VERSION=%d" % (int(tokens[1]))
 
 setup(
-        name='density_overflow',
+        name='density_potential',
         ext_modules=[
-            CppExtension('density_overflow_cpp', 
+            CppExtension('density_potential_cpp', 
                 [
-                    'density_overflow.cpp'
+                    'src/density_potential.cpp'
                     ], 
                 include_dirs=include_dirs, 
                 library_dirs=lib_dirs,
                 libraries=libs,
                 extra_compile_args={
                     'cxx' : [torch_major_version, torch_minor_version]
-                    }
-                ),
-            CUDAExtension('density_overflow_cuda_thread_map', 
+                    }),
+            CUDAExtension('density_potential_cuda', 
                 [
-                    'density_overflow_cuda_thread_map.cpp',
-                    'density_overflow_cuda_kernel.cu', 
-                    'density_overflow_cuda_thread_map_kernel.cu'
-                    ], 
-                include_dirs=include_dirs, 
-                library_dirs=lib_dirs,
-                libraries=['cusparse', 'culibos'] + libs,
-                extra_compile_args={
-                    'cxx': ['-O2', torch_major_version, torch_minor_version], 
-                    'nvcc': [cuda_flags]
-                    }
-                ),
-            CUDAExtension('density_overflow_cuda_by_node', 
-                [
-                    'density_overflow_cuda_by_node.cpp',
-                    'density_overflow_cuda_by_node_kernel.cu'
+                    'src/density_potential_cuda.cpp',
+                    'src/density_potential_cuda_kernel.cu',
+                    'src/density_overflow_cuda_kernel.cu',
                     ], 
                 include_dirs=include_dirs, 
                 library_dirs=lib_dirs,

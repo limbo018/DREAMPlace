@@ -4,41 +4,31 @@
 # @date   Jun 2018
 #
 
+import os
 from setuptools import setup
 import torch 
 from torch.utils.cpp_extension import BuildExtension, CppExtension, CUDAExtension
 
-import os 
-import sys
-
 utility_dir = os.environ['UTILITY_DIR']
 ops_dir = os.environ['OPS_DIR']
-
-include_dirs = [os.path.abspath(ops_dir)]
-lib_dirs = [utility_dir]
-libs = ['utility'] 
+flute_dir = os.environ['FLUTE_DIR']
 
 tokens = str(torch.__version__).split('.')
 torch_major_version = "-DTORCH_MAJOR_VERSION=%d" % (int(tokens[0]))
 torch_minor_version = "-DTORCH_MINOR_VERSION=%d" % (int(tokens[1]))
 
 setup(
-        name='greedy_legalize',
+        name='rmst_wl',
         ext_modules=[
-            CppExtension('greedy_legalize_cpp', 
+            CppExtension('rmst_wl_cpp', 
                 [
-                    'greedy_legalize.cpp',
-                    'legalize_bin_cpu.cpp', 
-                    'bin_assignment_cpu.cpp', 
-                    'merge_bin_cpu.cpp', 
-                    'greedy_legalize_cpu.cpp' 
+                    'src/rmst_wl.cpp'
                     ], 
-                include_dirs=include_dirs, 
-                library_dirs=lib_dirs,
-                libraries=libs,
+                include_dirs=[os.path.abspath("%s/include" % (flute_dir)), ops_dir], 
+                library_dirs=[os.path.abspath("%s/lib" % (flute_dir)), utility_dir], 
+                libraries=['flute', 'utility'], 
                 extra_compile_args={
-                    #'cxx': ['-g', '-O0'], 
-                    'cxx': ['-O2', torch_major_version, torch_minor_version], 
+                    'cxx' : [torch_major_version, torch_minor_version]
                     }
                 ),
             ],

@@ -17,13 +17,13 @@ import re
 import numpy as np 
 import torch 
 import torch.nn as nn
-import dreamplace.ops.move_boundary.src.move_boundary as move_boundary 
-import dreamplace.ops.hpwl.src.hpwl as hpwl 
-import dreamplace.ops.density_overflow.src.density_overflow as density_overflow 
-import dreamplace.ops.electric_potential.src.electric_overflow as electric_overflow 
-import dreamplace.ops.rmst_wl.src.rmst_wl as rmst_wl 
-import dreamplace.ops.greedy_legalize.src.greedy_legalize as greedy_legalize 
-import dreamplace.ops.draw_place.src.draw_place as draw_place 
+import dreamplace.ops.move_boundary.move_boundary as move_boundary 
+import dreamplace.ops.hpwl.hpwl as hpwl 
+import dreamplace.ops.density_overflow.density_overflow as density_overflow 
+import dreamplace.ops.electric_potential.electric_overflow as electric_overflow 
+import dreamplace.ops.rmst_wl.rmst_wl as rmst_wl 
+import dreamplace.ops.greedy_legalize.greedy_legalize as greedy_legalize 
+import dreamplace.ops.draw_place.draw_place as draw_place 
 import pdb 
 
 class PlaceDataCollection (object):

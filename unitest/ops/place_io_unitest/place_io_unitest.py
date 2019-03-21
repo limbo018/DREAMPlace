@@ -10,7 +10,7 @@ import numpy as np
 import unittest
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
-from dreamplace.ops.place_io.src import place_io
+from dreamplace.ops.place_io import place_io
 sys.path.pop()
 
 class Params (object):

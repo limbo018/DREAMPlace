@@ -1,5 +1,3 @@
-SITE_PACKAGE = # --user or empty 
-
 .PHONY: utility dct hpwl rmst_wl logsumexp_wirelength weighted_average_wirelength density_overflow density_potential electric_potential place_io move_boundary greedy_legalize draw_place
 all: utility dct hpwl rmst_wl logsumexp_wirelength weighted_average_wirelength density_overflow density_potential electric_potential place_io move_boundary greedy_legalize draw_place 
 

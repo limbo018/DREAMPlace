@@ -4,10 +4,12 @@
 # @date   Jun 2018
 #
 
-import os 
 from setuptools import setup
 import torch 
 from torch.utils.cpp_extension import BuildExtension, CppExtension, CUDAExtension
+
+import os 
+import sys
 
 utility_dir = os.environ['UTILITY_DIR']
 ops_dir = os.environ['OPS_DIR']
@@ -21,29 +23,22 @@ torch_major_version = "-DTORCH_MAJOR_VERSION=%d" % (int(tokens[0]))
 torch_minor_version = "-DTORCH_MINOR_VERSION=%d" % (int(tokens[1]))
 
 setup(
-        name='move_boundary',
+        name='greedy_legalize',
         ext_modules=[
-            CppExtension('move_boundary_cpp', 
+            CppExtension('greedy_legalize_cpp', 
                 [
-                    'move_boundary.cpp'
+                    'src/greedy_legalize.cpp',
+                    'src/legalize_bin_cpu.cpp', 
+                    'src/bin_assignment_cpu.cpp', 
+                    'src/merge_bin_cpu.cpp', 
+                    'src/greedy_legalize_cpu.cpp' 
                     ], 
                 include_dirs=include_dirs, 
                 library_dirs=lib_dirs,
                 libraries=libs,
                 extra_compile_args={
-                    'cxx' : [torch_major_version, torch_minor_version]
-                    }),
-            CUDAExtension('move_boundary_cuda', 
-                [
-                    'move_boundary_cuda.cpp',
-                    'move_boundary_cuda_kernel.cu'
-                    ], 
-                include_dirs=include_dirs, 
-                library_dirs=lib_dirs,
-                libraries=['cusparse', 'culibos'] + libs, 
-                extra_compile_args={
+                    #'cxx': ['-g', '-O0'], 
                     'cxx': ['-O2', torch_major_version, torch_minor_version], 
-                    'nvcc': []
                     }
                 ),
             ],

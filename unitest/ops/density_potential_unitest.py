@@ -12,7 +12,7 @@ import unittest
 import torch
 from torch.autograd import Function, Variable
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from dreamplace.ops.density_potential.src import density_potential
+from dreamplace.ops.density_potential import density_potential
 sys.path.pop()
 import inspect
 import pdb 

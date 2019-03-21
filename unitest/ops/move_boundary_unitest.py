@@ -13,7 +13,7 @@ import torch
 from torch.autograd import Function, Variable
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from dreamplace.ops.move_boundary.src import move_boundary
+from dreamplace.ops.move_boundary import move_boundary
 sys.path.pop()
 
 class MoveBoundaryOpTest(unittest.TestCase):

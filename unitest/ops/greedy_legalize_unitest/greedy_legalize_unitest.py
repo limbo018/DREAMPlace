@@ -15,7 +15,7 @@ import torch
 from torch.autograd import Function, Variable
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
-from dreamplace.ops.greedy_legalize.src import greedy_legalize
+from dreamplace.ops.greedy_legalize import greedy_legalize
 sys.path.pop()
 
 def plot(figname, 

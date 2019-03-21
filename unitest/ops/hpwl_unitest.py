@@ -12,7 +12,7 @@ import unittest
 import torch
 from torch.autograd import Function, Variable
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from dreamplace.ops.hpwl.src import hpwl
+from dreamplace.ops.hpwl import hpwl
 sys.path.pop()
 import pdb 
 

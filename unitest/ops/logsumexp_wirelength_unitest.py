@@ -13,7 +13,7 @@ import torch
 from torch.autograd import Function, Variable
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from dreamplace.ops.logsumexp_wirelength.src import logsumexp_wirelength
+from dreamplace.ops.logsumexp_wirelength import logsumexp_wirelength
 sys.path.pop()
 
 def unsorted_segment_max(pin_x, pin2net_map, num_nets):

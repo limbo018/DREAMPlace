@@ -6,7 +6,7 @@
 
 from torch.autograd import Function
 
-import place_io_cpp
+import lib.dreamplace.ops.place_io.place_io_cpp as place_io_cpp
 
 class PlaceIOFunction(Function):
     @staticmethod

@@ -17,7 +17,7 @@ else:
     import _pickle as pickle
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from dreamplace.ops.weighted_average_wirelength.src import weighted_average_wirelength
+from dreamplace.ops.weighted_average_wirelength import weighted_average_wirelength
 sys.path.pop()
 
 import pdb 

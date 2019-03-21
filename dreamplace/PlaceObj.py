@@ -20,10 +20,10 @@ if sys.version_info[0] < 3:
     import cPickle as pickle
 else:
     import _pickle as pickle
-import dreamplace.ops.weighted_average_wirelength.src.weighted_average_wirelength as weighted_average_wirelength 
-import dreamplace.ops.logsumexp_wirelength.src.logsumexp_wirelength as logsumexp_wirelength 
-import dreamplace.ops.electric_potential.src.electric_potential as electric_potential 
-import dreamplace.ops.density_potential.src.density_potential as density_potential 
+import dreamplace.ops.weighted_average_wirelength.weighted_average_wirelength as weighted_average_wirelength 
+import dreamplace.ops.logsumexp_wirelength.logsumexp_wirelength as logsumexp_wirelength 
+import dreamplace.ops.electric_potential.electric_potential as electric_potential 
+import dreamplace.ops.density_potential.density_potential as density_potential 
 
 class PlaceObj(nn.Module):
     """

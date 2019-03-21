@@ -39,7 +39,7 @@ setup(
         ext_modules=[
             CppExtension('draw_place_cpp', 
                 [
-                    'draw_place.cpp', 
+                    'src/draw_place.cpp', 
                     ], 
                 include_dirs=include_dirs, 
                 library_dirs=lib_dirs,

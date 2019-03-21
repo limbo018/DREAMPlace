@@ -26,47 +26,47 @@ torch_major_version = "-DTORCH_MAJOR_VERSION=%d" % (int(tokens[0]))
 torch_minor_version = "-DTORCH_MINOR_VERSION=%d" % (int(tokens[1]))
 
 setup(
-        name='hpwl',
+        name='weighted_average_wirelength',
         ext_modules=[
-            CppExtension('hpwl_cpp', 
+            CppExtension('weighted_average_wirelength_cpp', 
                 [
-                    'hpwl.cpp'
+                    'src/weighted_average_wirelength.cpp'
                     ], 
                 include_dirs=include_dirs, 
                 library_dirs=lib_dirs,
                 libraries=libs,
                 extra_compile_args={
                     'cxx' : [torch_major_version, torch_minor_version]
-                    }
-                ),
-            CUDAExtension('hpwl_cuda', 
+                    }),
+            CUDAExtension('weighted_average_wirelength_cuda', 
                 [
-                    'hpwl_cuda.cpp',
-                    'hpwl_cuda_kernel.cu'
+                    'src/weighted_average_wirelength_cuda.cpp',
+                    'src/weighted_average_wirelength_cuda_kernel.cu'
                     ], 
                 include_dirs=include_dirs, 
                 library_dirs=lib_dirs,
                 libraries=libs,
                 extra_compile_args={
-                    'cxx' : [torch_major_version, torch_minor_version], 
+                    'cxx': ['-O2', torch_major_version, torch_minor_version], 
                     'nvcc': [cuda_flags]
                     }
                 ),
-            CppExtension('hpwl_cpp_atomic', 
+            CUDAExtension('weighted_average_wirelength_cuda_atomic', 
                 [
-                    'hpwl_atomic.cpp'
-                    ], 
+                    'src/weighted_average_wirelength_cuda_atomic.cpp',
+                    'src/weighted_average_wirelength_cuda_atomic_kernel.cu'
+                    ],
                 include_dirs=include_dirs, 
                 library_dirs=lib_dirs,
                 libraries=libs,
                 extra_compile_args={
-                    'cxx' : [torch_major_version, torch_minor_version]
-                    }
-                ),
-            CUDAExtension('hpwl_cuda_atomic', 
+                    'cxx': ['-O2', torch_major_version, torch_minor_version], 
+                    'nvcc': [cuda_flags]
+                    }),
+            CUDAExtension('weighted_average_wirelength_cuda_sparse', 
                 [
-                    'hpwl_cuda_atomic.cpp',
-                    'hpwl_cuda_atomic_kernel.cu'
+                    'src/weighted_average_wirelength_cuda_sparse.cpp',
+                    'src/weighted_average_wirelength_cuda_sparse_kernel.cu'
                     ],
                 include_dirs=include_dirs, 
                 library_dirs=lib_dirs,

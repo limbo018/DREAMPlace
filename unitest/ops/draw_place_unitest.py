@@ -19,7 +19,7 @@ if sys.version_info[0] < 3:
 else:
     import _pickle as pickle
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from dreamplace.ops.draw_place.src import draw_place
+from dreamplace.ops.draw_place import draw_place
 sys.path.pop()
 
 class DrawPlaceOpTest(unittest.TestCase):

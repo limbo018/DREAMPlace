@@ -13,7 +13,7 @@ import torch
 from torch.autograd import Function, Variable
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from dreamplace.ops.rmst_wl.src import rmst_wl
+from dreamplace.ops.rmst_wl import rmst_wl
 sys.path.pop()
 
 import pdb 

@@ -19,7 +19,7 @@ if sys.version_info[0] < 3:
 else:
     import _pickle as pickle
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from dreamplace.ops.density_overflow.src import density_overflow
+from dreamplace.ops.density_overflow import density_overflow
 sys.path.pop()
 
 """

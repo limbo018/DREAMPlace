@@ -30,7 +30,7 @@ setup(
         ext_modules=[
             CppExtension('logsumexp_wirelength_cpp', 
                 [
-                    'logsumexp_wirelength.cpp'
+                    'src/logsumexp_wirelength.cpp'
                     ], 
                 include_dirs=include_dirs, 
                 library_dirs=lib_dirs,
@@ -40,8 +40,8 @@ setup(
                     }),
             CUDAExtension('logsumexp_wirelength_cuda', 
                 [
-                    'logsumexp_wirelength_cuda.cpp',
-                    'logsumexp_wirelength_cuda_kernel.cu'
+                    'src/logsumexp_wirelength_cuda.cpp',
+                    'src/logsumexp_wirelength_cuda_kernel.cu'
                     ], 
                 include_dirs=include_dirs, 
                 library_dirs=lib_dirs,
@@ -53,8 +53,8 @@ setup(
                 ),
             CUDAExtension('logsumexp_wirelength_cuda_atomic', 
                 [
-                    'logsumexp_wirelength_cuda_atomic.cpp',
-                    'logsumexp_wirelength_cuda_atomic_kernel.cu'
+                    'src/logsumexp_wirelength_cuda_atomic.cpp',
+                    'src/logsumexp_wirelength_cuda_atomic_kernel.cu'
                     ],
                 include_dirs=include_dirs, 
                 library_dirs=lib_dirs,

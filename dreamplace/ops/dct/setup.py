@@ -25,10 +25,10 @@ setup(
         ext_modules=[
             CppExtension('dct_cpp', 
                 [
-                    'dct.cpp',
-                    'dst.cpp',
-                    'dxt.cpp', 
-                    'dct_2N.cpp'
+                    'src/dct.cpp',
+                    'src/dst.cpp',
+                    'src/dxt.cpp', 
+                    'src/dct_2N.cpp'
                     ], 
                 include_dirs=include_dirs, 
                 library_dirs=lib_dirs,
@@ -38,12 +38,12 @@ setup(
                     }),
             CUDAExtension('dct_cuda', 
                 [
-                    'dct_cuda.cpp',
-                    'dct_cuda_kernel.cu',
-                    'dst_cuda.cpp',
-                    'dst_cuda_kernel.cu',
-                    'dxt_cuda.cpp', 
-                    'dct_2N_cuda.cpp'
+                    'src/dct_cuda.cpp',
+                    'src/dct_cuda_kernel.cu',
+                    'src/dst_cuda.cpp',
+                    'src/dst_cuda_kernel.cu',
+                    'src/dxt_cuda.cpp', 
+                    'src/dct_2N_cuda.cpp'
                     ], 
                 include_dirs=include_dirs, 
                 library_dirs=lib_dirs,
@@ -54,7 +54,7 @@ setup(
                     }),
             CppExtension('dct_lee_cpp', 
                 [
-                    'dct_lee.cpp'
+                    'src/dct_lee.cpp'
                     ], 
                 include_dirs=include_dirs, 
                 library_dirs=lib_dirs,
@@ -64,10 +64,10 @@ setup(
                     }),
             CUDAExtension('dct_lee_cuda', 
                 [
-                    'dct_lee_cuda.cpp',
-                    'dct_lee_cuda_kernel.cu', 
-                    'dct_cuda_kernel.cu',
-                    'dst_cuda_kernel.cu'
+                    'src/dct_lee_cuda.cpp',
+                    'src/dct_lee_cuda_kernel.cu', 
+                    'src/dct_cuda_kernel.cu',
+                    'src/dst_cuda_kernel.cu'
                     ], 
                 include_dirs=include_dirs, 
                 library_dirs=lib_dirs,

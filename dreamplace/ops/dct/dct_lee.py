@@ -10,8 +10,8 @@ from torch.autograd import Function
 from torch import nn
 import pdb
 
-import dct_lee_cpp as dct_cpp
-import dct_lee_cuda as dct_cuda
+import lib.dreamplace.ops.dct.dct_lee_cpp as dct_cpp
+import lib.dreamplace.ops.dct.dct_lee_cuda as dct_cuda
 
 def dct(x, expk, buf, out):
     """compute discrete cosine transformation, DCT II 
@@ -36,10 +36,11 @@ class DCT(nn.Module):
         self.out = None
     def forward(self, x): 
         if self.expk is None or self.expk.size(-1) != x.size(-1):
+            self.expk = torch.empty(x.size(-1), dtype=x.dtype, device=x.device)
             if x.is_cuda: 
-                self.expk = dct_cuda.precompute_dct_cos(x.size(-1))
+                dct_cuda.precompute_dct_cos(x.size(-1), self.expk)
             else:
-                self.expk = dct_cpp.precompute_dct_cos(x.size(-1))
+                dct_cpp.precompute_dct_cos(x.size(-1), self.expk)
         if self.out is None or self.out.size() != x.size():
             self.buf = torch.empty_like(x)
             self.out = torch.empty_like(x)
@@ -69,10 +70,11 @@ class IDCT(nn.Module):
         self.out = None
     def forward(self, x): 
         if self.expk is None or self.expk.size(-1) != x.size(-1):
+            self.expk = torch.empty(x.size(-1), dtype=x.dtype, device=x.device)
             if x.is_cuda: 
-                self.expk = dct_cuda.precompute_idct_cos(x.size(-1))
+                dct_cuda.precompute_idct_cos(x.size(-1), self.expk)
             else:
-                self.expk = dct_cpp.precompute_idct_cos(x.size(-1))
+                dct_cpp.precompute_idct_cos(x.size(-1), self.expk)
         if self.out is None or self.out.size() != x.size():
             self.buf = torch.empty_like(x)
             self.out = torch.empty_like(x)
@@ -101,15 +103,17 @@ class DCT2(nn.Module):
         self.out = None
     def forward(self, x): 
         if self.expk0 is None or self.expk0.size(-1) != x.size(-2):
+            self.expk0 = torch.empty(x.size(-2), dtype=x.dtype, device=x.device)
             if x.is_cuda: 
-                self.expk0 = dct_cuda.precompute_dct_cos(x.size(-2))
+                dct_cuda.precompute_dct_cos(x.size(-2), self.expk0)
             else:
-                self.expk0 = dct_cpp.precompute_dct_cos(x.size(-2))
+                dct_cpp.precompute_dct_cos(x.size(-2), self.expk0)
         if self.expk1 is None or self.expk1.size(-1) != x.size(-1):
+            self.expk1 = torch.empty(x.size(-1), dtype=x.dtype, device=x.device)
             if x.is_cuda: 
-                self.expk1 = dct_cuda.precompute_dct_cos(x.size(-1))
+                dct_cuda.precompute_dct_cos(x.size(-1), self.expk1)
             else:
-                self.expk1 = dct_cpp.precompute_dct_cos(x.size(-1))
+                dct_cpp.precompute_dct_cos(x.size(-1), self.expk1)
         if self.out is None or self.out.size() != x.size():
             self.buf = torch.empty_like(x)
             self.out = torch.empty_like(x)
@@ -138,15 +142,17 @@ class IDCT2(nn.Module):
         self.out = None
     def forward(self, x): 
         if self.expk0 is None or self.expk0.size(-1) != x.size(-2):
+            self.expk0 = torch.empty(x.size(-2), dtype=x.dtype, device=x.device)
             if x.is_cuda: 
-                self.expk0 = dct_cuda.precompute_idct_cos(x.size(-2))
+                dct_cuda.precompute_idct_cos(x.size(-2), self.expk0)
             else:
-                self.expk0 = dct_cpp.precompute_idct_cos(x.size(-2))
+                dct_cpp.precompute_idct_cos(x.size(-2), self.expk0)
         if self.expk1 is None or self.expk1.size(-1) != x.size(-1):
+            self.expk1 = torch.empty(x.size(-2), dtype=x.dtype, device=x.device)
             if x.is_cuda: 
-                self.expk1 = dct_cuda.precompute_idct_cos(x.size(-1))
+                dct_cuda.precompute_idct_cos(x.size(-1), self.expk1)
             else:
-                self.expk1 = dct_cpp.precompute_idct_cos(x.size(-1))
+                dct_cpp.precompute_idct_cos(x.size(-1), self.expk1)
         if self.out is None or self.out.size() != x.size():
             self.buf = torch.empty_like(x)
             self.out = torch.empty_like(x)
@@ -175,10 +181,11 @@ class DST(nn.Module):
         self.out = None
     def forward(self, x): 
         if self.expk is None or self.expk.size(-1) != x.size(-1):
+            self.expk = torch.empty(x.size(-1), dtype=x.dtype, device=x.device)
             if x.is_cuda: 
-                self.expk = dct_cuda.precompute_dct_cos(x.size(-1))
+                dct_cuda.precompute_dct_cos(x.size(-1), self.expk)
             else:
-                self.expk = dct_cpp.precompute_dct_cos(x.size(-1))
+                dct_cpp.precompute_dct_cos(x.size(-1), self.expk)
         if self.out is None or self.out.size() != x.size():
             self.buf = torch.empty_like(x)
             self.out = torch.empty_like(x)
@@ -208,10 +215,11 @@ class IDST(nn.Module):
         self.out = None
     def forward(self, x): 
         if self.expk is None or self.expk.size(-1) != x.size(-1):
+            self.expk = torch.empty(x.size(-1), dtype=x.dtype, device=x.device)
             if x.is_cuda: 
-                self.expk = dct_cuda.precompute_idct_cos(x.size(-1))
+                dct_cuda.precompute_idct_cos(x.size(-1), self.expk)
             else:
-                self.expk = dct_cpp.precompute_idct_cos(x.size(-1))
+                dct_cpp.precompute_idct_cos(x.size(-1), self.expk)
         if self.out is None or self.out.size() != x.size():
             self.buf = torch.empty_like(x)
             self.out = torch.empty_like(x)
@@ -244,10 +252,11 @@ class IDXCT(nn.Module):
         self.out = None
     def forward(self, x): 
         if self.expk is None or self.expk.size(-1) != x.size(-1):
+            self.expk = torch.empty(x.size(-1), dtype=x.dtype, device=x.device)
             if x.is_cuda: 
-                self.expk = dct_cuda.precompute_idct_cos(x.size(-1))
+                dct_cuda.precompute_idct_cos(x.size(-1), self.expk)
             else:
-                self.expk = dct_cpp.precompute_idct_cos(x.size(-1))
+                dct_cpp.precompute_idct_cos(x.size(-1), self.expk)
         if self.out is None or self.out.size() != x.size():
             self.buf = torch.empty_like(x)
             self.out = torch.empty_like(x)
@@ -277,10 +286,11 @@ class IDXST(nn.Module):
         self.out = None
     def forward(self, x): 
         if self.expk is None or self.expk.size(-1) != x.size(-1):
+            self.expk = torch.empty(x.size(-1), dtype=x.dtype, device=x.device)
             if x.is_cuda: 
-                self.expk = dct_cuda.precompute_idct_cos(x.size(-1))
+                dct_cuda.precompute_idct_cos(x.size(-1), self.expk)
             else:
-                self.expk = dct_cpp.precompute_idct_cos(x.size(-1))
+                dct_cpp.precompute_idct_cos(x.size(-1), self.expk)
         if self.out is None or self.out.size() != x.size():
             self.buf = torch.empty_like(x)
             self.out = torch.empty_like(x)
@@ -311,15 +321,17 @@ class IDCCT2(nn.Module):
         self.out = None
     def forward(self, x): 
         if self.expk0 is None or self.expk0.size(-1) != x.size(-2):
+            self.expk0 = torch.empty(x.size(-2), dtype=x.dtype, device=x.device)
             if x.is_cuda: 
-                self.expk0 = dct_cuda.precompute_idct_cos(x.size(-2))
+                dct_cuda.precompute_idct_cos(x.size(-2), self.expk0)
             else:
-                self.expk0 = dct_cpp.precompute_idct_cos(x.size(-2))
+                dct_cpp.precompute_idct_cos(x.size(-2), self.expk0)
         if self.expk1 is None or self.expk1.size(-1) != x.size(-1):
+            self.expk1 = torch.empty(x.size(-2), dtype=x.dtype, device=x.device)
             if x.is_cuda: 
-                self.expk1 = dct_cuda.precompute_idct_cos(x.size(-1))
+                dct_cuda.precompute_idct_cos(x.size(-1), self.expk1)
             else:
-                self.expk1 = dct_cpp.precompute_idct_cos(x.size(-1))
+                dct_cpp.precompute_idct_cos(x.size(-1), self.expk1)
         if self.out is None or self.out.size() != x.size():
             self.buf0 = torch.empty_like(x)
             self.buf1 = torch.empty_like(x)
@@ -351,15 +363,17 @@ class IDCST2(nn.Module):
         self.out = None
     def forward(self, x): 
         if self.expk0 is None or self.expk0.size(-1) != x.size(-2):
+            self.expk0 = torch.empty(x.size(-2), dtype=x.dtype, device=x.device)
             if x.is_cuda: 
-                self.expk0 = dct_cuda.precompute_idct_cos(x.size(-2))
+                dct_cuda.precompute_idct_cos(x.size(-2), self.expk0)
             else:
-                self.expk0 = dct_cpp.precompute_idct_cos(x.size(-2))
+                dct_cpp.precompute_idct_cos(x.size(-2), self.expk0)
         if self.expk1 is None or self.expk1.size(-1) != x.size(-1):
+            self.expk1 = torch.empty(x.size(-2), dtype=x.dtype, device=x.device)
             if x.is_cuda: 
-                self.expk1 = dct_cuda.precompute_idct_cos(x.size(-1))
+                dct_cuda.precompute_idct_cos(x.size(-1), self.expk1)
             else:
-                self.expk1 = dct_cpp.precompute_idct_cos(x.size(-1))
+                dct_cpp.precompute_idct_cos(x.size(-1), self.expk1)
         if self.out is None or self.out.size() != x.size():
             self.buf0 = torch.empty_like(x)
             self.buf1 = torch.empty_like(x)
@@ -391,15 +405,17 @@ class IDSCT2(nn.Module):
         self.out = None
     def forward(self, x): 
         if self.expk0 is None or self.expk0.size(-1) != x.size(-2):
+            self.expk0 = torch.empty(x.size(-2), dtype=x.dtype, device=x.device)
             if x.is_cuda: 
-                self.expk0 = dct_cuda.precompute_idct_cos(x.size(-2))
+                dct_cuda.precompute_idct_cos(x.size(-2), self.expk0)
             else:
-                self.expk0 = dct_cpp.precompute_idct_cos(x.size(-2))
+                dct_cpp.precompute_idct_cos(x.size(-2), self.expk0)
         if self.expk1 is None or self.expk1.size(-1) != x.size(-1):
+            self.expk1 = torch.empty(x.size(-2), dtype=x.dtype, device=x.device)
             if x.is_cuda: 
-                self.expk1 = dct_cuda.precompute_idct_cos(x.size(-1))
+                dct_cuda.precompute_idct_cos(x.size(-1), self.expk1)
             else:
-                self.expk1 = dct_cpp.precompute_idct_cos(x.size(-1))
+                dct_cpp.precompute_idct_cos(x.size(-1), self.expk1)
         if self.out is None or self.out.size() != x.size():
             self.buf0 = torch.empty_like(x)
             self.buf1 = torch.empty_like(x)

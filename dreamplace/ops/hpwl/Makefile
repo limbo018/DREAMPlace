@@ -1,6 +1,8 @@
-SITE_PACKAGE = # --user or empty 
 CUDAFLAGS = -gencode=arch=compute_60,code=sm_60
 PROJECT_ROOT_DIR = $(realpath ../../../)
+OP_NAME = hpwl
+LIB_DIR = $(PROJECT_ROOT_DIR)/lib/dreamplace/ops/$(OP_NAME)
+BUILD_DIR = $(PROJECT_ROOT_DIR)/build/dreamplace/ops/$(OP_NAME)
 
 ENV_CONFIG = \
 		OPS_DIR=$(PROJECT_ROOT_DIR)/dreamplace/ops \
@@ -8,11 +10,9 @@ ENV_CONFIG = \
 		CUDAFLAGS=$(CUDAFLAGS)
 
 all:
-	@echo "site-package: $(SITE_PACKAGE)"
-	cd src; $(ENV_CONFIG) python setup.py install $(SITE_PACKAGE); cd ..
+	$(ENV_CONFIG) python setup.py build --build-temp=$(BUILD_DIR) --build-lib=$(LIB_DIR)
 
 clean:
-	cd src; $(ENV_CONFIG) python setup.py develop --uninstall; cd ..
-	rm -rf src/build/ src/dist src/hpwl.egg-info/
+	rm -rf $(BUILD_DIR) $(LIB_DIR)
 	rm -f *.pyc
 	rm -f src/*.pyc

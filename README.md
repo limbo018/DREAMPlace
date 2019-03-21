@@ -61,21 +61,17 @@ mkdir build
 cd build 
 cmake ..
 make 
+make install
 ```
 
 Third party submodules are automatically built except for [Boost](www.boost.org).
 
 To clean, go to the root directory. 
 ```
-cd build 
-make clean
+rm -r build lib
 ```
-Please note that simply removing the build folder will not completely clean the environment, because the python submodules have been installed to the python environment and need to be uninstalled. 
 
 Here are the available options for CMake. 
-- CMAKE_SITE_PACKAGE: empty or --user (default empty)
-    - Install ops to python user site-package or not. 
-    - Example ```cmake -DCMAKE_SITE_PACKAGE=--user ..```
 - CMAKE_CUDA_FLAGS: custom string for NVCC (default -gencode=arch=compute_60,code=sm_60)
     - Example ```cmake -DCMAKE_CUDA_FLAGS=-gencode=arch=compute_60,code=sm_60```
 
@@ -98,9 +94,6 @@ make clean
 ```
 
 Here are the available options for make. 
-- SITE_PACKAGE: empty or --user (default empty)
-    - Install ops to python user site-package or not. 
-    - Example ```make SITE_PACKAGE=--user```
 - CUDAFLAGS: custom string (default -gencode=arch=compute_60,code=sm_60)
     - Example ```make CUDAFLAGS=-gencode=arch=compute_60,code=sm_60```
 

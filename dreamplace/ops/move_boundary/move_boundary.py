@@ -1,5 +1,5 @@
 ##
-# @file   greedy_legalize.py
+# @file   move_boundary.py
 # @author Yibo Lin
 # @date   Jun 2018
 #
@@ -9,10 +9,12 @@ import torch
 from torch import nn
 from torch.autograd import Function
 
-import greedy_legalize_cpp
+import lib.dreamplace.ops.move_boundary.move_boundary_cpp as move_boundary_cpp
+import lib.dreamplace.ops.move_boundary.move_boundary_cuda as move_boundary_cuda
 
-class GreedyLegalizeFunction(Function):
-    """ Legalize cells with greedy approach 
+class MoveBoundaryFunction(Function):
+    """ 
+    @brief Bound cells into layout boundary, perform in-place update 
     """
     @staticmethod
     def forward(
@@ -23,31 +25,11 @@ class GreedyLegalizeFunction(Function):
           yl, 
           xh, 
           yh, 
-          site_width, 
-          row_height, 
-          num_bins_x, 
-          num_bins_y, 
           num_movable_nodes, 
           num_filler_nodes
           ):
         if pos.is_cuda:
-            output = greedy_legalize_cpp.forward(
-                    pos.view(pos.numel()).cpu(), 
-                    node_size_x.cpu(),
-                    node_size_y.cpu(),
-                    xl, 
-                    yl, 
-                    xh, 
-                    yh, 
-                    site_width, 
-                    row_height, 
-                    num_bins_x, 
-                    num_bins_y, 
-                    num_movable_nodes, 
-                    num_filler_nodes
-                    )
-        else:
-            output = greedy_legalize_cpp.forward(
+            output = move_boundary_cuda.forward(
                     pos.view(pos.numel()), 
                     node_size_x,
                     node_size_y,
@@ -55,34 +37,39 @@ class GreedyLegalizeFunction(Function):
                     yl, 
                     xh, 
                     yh, 
-                    site_width, 
-                    row_height, 
-                    num_bins_x, 
-                    num_bins_y, 
+                    num_movable_nodes, 
+                    num_filler_nodes
+                    )
+        else:
+            output = move_boundary_cpp.forward(
+                    pos.view(pos.numel()), 
+                    node_size_x,
+                    node_size_y,
+                    xl, 
+                    yl, 
+                    xh, 
+                    yh, 
                     num_movable_nodes, 
                     num_filler_nodes
                     )
         return output
 
-class GreedyLegalize(Function):
-    """ Legalize cells with greedy approach 
+class MoveBoundary(Function):
+    """ 
+    @brief Bound cells into layout boundary, perform in-place update 
     """
-    def __init__(self, node_size_x, node_size_y, xl, yl, xh, yh, site_width, row_height, num_bins_x, num_bins_y, num_movable_nodes, num_filler_nodes):
-        super(GreedyLegalize, self).__init__()
+    def __init__(self, node_size_x, node_size_y, xl, yl, xh, yh, num_movable_nodes, num_filler_nodes):
+        super(MoveBoundary, self).__init__()
         self.node_size_x = node_size_x
         self.node_size_y = node_size_y
         self.xl = xl 
         self.yl = yl
         self.xh = xh 
         self.yh = yh 
-        self.site_width = site_width 
-        self.row_height = row_height 
-        self.num_bins_x = num_bins_x 
-        self.num_bins_y = num_bins_y
         self.num_movable_nodes = num_movable_nodes
         self.num_filler_nodes = num_filler_nodes
     def forward(self, pos): 
-        return GreedyLegalizeFunction.forward(
+        return MoveBoundaryFunction.forward(
                 pos,
                 node_size_x=self.node_size_x,
                 node_size_y=self.node_size_y,
@@ -90,10 +77,6 @@ class GreedyLegalize(Function):
                 yl=self.yl, 
                 xh=self.xh, 
                 yh=self.yh, 
-                site_width=self.site_width, 
-                row_height=self.row_height, 
-                num_bins_x=self.num_bins_x, 
-                num_bins_y=self.num_bins_y,
                 num_movable_nodes=self.num_movable_nodes, 
                 num_filler_nodes=self.num_filler_nodes, 
                 )

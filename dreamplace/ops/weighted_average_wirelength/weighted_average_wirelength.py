@@ -10,10 +10,10 @@ import torch
 from torch import nn
 from torch.autograd import Function
 
-import weighted_average_wirelength_cpp
-import weighted_average_wirelength_cuda
-import weighted_average_wirelength_cuda_atomic
-import weighted_average_wirelength_cuda_sparse
+import lib.dreamplace.ops.weighted_average_wirelength.weighted_average_wirelength_cpp as weighted_average_wirelength_cpp
+import lib.dreamplace.ops.weighted_average_wirelength.weighted_average_wirelength_cuda as weighted_average_wirelength_cuda
+import lib.dreamplace.ops.weighted_average_wirelength.weighted_average_wirelength_cuda_atomic as weighted_average_wirelength_cuda_atomic
+import lib.dreamplace.ops.weighted_average_wirelength.weighted_average_wirelength_cuda_sparse as weighted_average_wirelength_cuda_sparse
 import pdb 
 
 class WeightedAverageWirelengthFunction(Function):

@@ -13,8 +13,8 @@ get_filename_component(OPS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/.. ABSOLUTE)
 get_filename_component(UTILITY_LIBRARY_DIRS ${CMAKE_CURRENT_BINARY_DIR}/../utility ABSOLUTE)
 
 if (PYTHON)
-    set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/src/setup.py.in")
-    set(SETUP_PY    "${CMAKE_CURRENT_BINARY_DIR}/src/setup.py")
+    set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")
+    set(SETUP_PY    "${CMAKE_CURRENT_BINARY_DIR}/setup.py")
     file(GLOB SOURCES 
         "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c"
@@ -24,17 +24,18 @@ if (PYTHON)
     configure_file(${SETUP_PY_IN} ${SETUP_PY})
 
     add_custom_command(OUTPUT ${OUTPUT}
-        COMMAND ${PYTHON} ${SETUP_PY} install ${CMAKE_SITE_PACKAGE}
+        COMMAND ${PYTHON} ${SETUP_PY} build --build-temp=${CMAKE_CURRENT_BINARY_DIR}/build --build-lib=${CMAKE_CURRENT_BINARY_DIR}/lib
         COMMAND ${CMAKE_COMMAND} -E touch ${OUTPUT}
         DEPENDS ${SOURCES} flute
         )
 
     add_custom_target(clean_${PROJECT_NAME}
-        COMMAND ${PYTHON} ${SETUP_PY} develop --uninstall
-        COMMAND rm -rf ${OUTPUT} ${CMAKE_CURRENT_BINARY_DIR}/build ${CMAKE_CURRENT_BINARY_DIR}/dist ${CMAKE_CURRENT_BINARY_DIR}/*.egg-info
+        COMMAND rm -rf ${OUTPUT} ${CMAKE_CURRENT_BINARY_DIR}/build ${CMAKE_CURRENT_BINARY_DIR}/lib
         )
 
     add_custom_target(${PROJECT_NAME} ALL DEPENDS ${OUTPUT})
 
-    #install(CODE "execute_process(COMMAND ${PYTHON} ${SETUP_PY} install)")
+    install(
+        DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/ DESTINATION lib/dreamplace/ops/${PROJECT_NAME}
+        )
 endif()

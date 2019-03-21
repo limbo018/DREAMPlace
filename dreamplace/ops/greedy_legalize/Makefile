@@ -1,16 +1,16 @@
-SITE_PACKAGE = # --user or empty 
 PROJECT_ROOT_DIR = $(realpath ../../../)
+OP_NAME = greedy_legalize
+LIB_DIR = $(PROJECT_ROOT_DIR)/lib/dreamplace/ops/$(OP_NAME)
+BUILD_DIR = $(PROJECT_ROOT_DIR)/build/dreamplace/ops/$(OP_NAME)
 
 ENV_CONFIG = \
 		UTILITY_DIR=$(PROJECT_ROOT_DIR)/lib \
 		OPS_DIR=$(PROJECT_ROOT_DIR)/dreamplace/ops 
 
 all:
-	@echo "site-package: $(SITE_PACKAGE)"
-	cd src; $(ENV_CONFIG) python setup.py install $(SITE_PACKAGE); cd ..
+	$(ENV_CONFIG) python setup.py build --build-temp=$(BUILD_DIR) --build-lib=$(LIB_DIR)
 
 clean:
-	cd src; $(ENV_CONFIG) python setup.py develop --uninstall; cd ..
-	rm -rf src/build/ src/dist src/greedy_legalize.egg-info/
+	rm -rf $(BUILD_DIR) $(LIB_DIR)
 	rm -f *.pyc
 	rm -f src/*.pyc

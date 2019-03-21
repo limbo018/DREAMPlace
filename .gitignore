@@ -6,3 +6,6 @@ obj
 *.pyc
 results
 log
+dreamplace/version.py
+dist
+dreamplace.egg-info

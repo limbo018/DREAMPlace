@@ -12,7 +12,7 @@ import time
 import numpy as np 
 import Params
 import dreamplace 
-import dreamplace.ops.place_io.src.place_io as place_io 
+import dreamplace.ops.place_io.place_io as place_io 
 import pdb 
 
 datatypes = {
