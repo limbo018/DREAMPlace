@@ -43,6 +43,11 @@ git submodule init
 git submodule update
 ```
 
+Or alternatively, pull all the submodules when cloning the repository. 
+```
+git clone --recursive https://github.com/limbo018/DREAMPlace.git
+```
+
 # How to Install Python Dependency 
 
 Go to the root directory. 
