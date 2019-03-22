@@ -1,0 +1,17 @@
+UCLA nodes 1.0
+# Created	:	Jan  6 2005
+# User   	:	Gi-Joon Nam & Mehmet Yildiz at IBM Austin Research({gnam, mcan}@us.ibm.com)
+
+NumNodes : 10
+NumTerminals : 2
+
+	o0	16	24
+	o1	16	24
+	o2	16	24
+	o8	40	40	terminal
+	o3	8	24
+	o4	8	12
+	o9	48	24	terminal
+	o5	8	12
+	o6	8	12
+	o7	8	12

@@ -1,0 +1,40 @@
+Version 1.0 [Apr. 2004]
+ * Wirelength estimation based on the idea of ICCAD 04 paper.
+
+Version 2.0 [Feb. 16, 2005]
+ * RSMT construction and Wirelength estimation based on the idea of ISPD
+   05 paper.
+
+Version 2.1 [Mar. 18, 2005]
+ * The program flute-ckt and associated files are added to compute the
+   FLUTE wirelength for a circuit in bookshelf format.
+
+Version 2.2 [Oct. 16, 2005]  
+ * The net breaking technique is improved by incorporating the HPWL based
+   estimation in ICCAD 04 paper.
+ * The option to remove duplicated pins is added.
+ * The code is reorganized.
+
+Version 2.3 [Sep. 23, 2006]  
+ * PORT is renamed to POST (Potentially Optimal Steiner Tree)
+ * The function readLUT() is rewritten to significantly cut the POWV 
+   and POST reading time.
+
+Version 2.4 [Jan. 16, 2007]  
+ * Internal parameters of flutes_wl_MD() and flutes_MD() are tuned to
+   improve runtime-quality tradeoff.
+ * The file size of POST9.dat is reduced by improved encoding.
+ * The function readLUT() is improved to speed up the reading of POST9.dat.
+ * Bookshelf files for ibm01 is included to demonstrate program flute-ckt.
+
+Version 2.5 [Jun. 20, 2007] 
+ * Local refinement technique is added to improve runtime-accuracy
+   tradeoff for high accuracy.
+
+Version 3.0 [Apr. 10, 2008]
+ * Implemented the net breaking and merging ideas of VLSIDAT 08 paper to
+   achieve much better scalability and accuracy for high-degree nets.
+
+Version 3.1 [Feb. 28, 2011]
+ * Functions in bookshelf_IO.c and memAlloc.c used by flute-ckt are
+   improved to speed up the reading of GSRC Bookshelf format circuits.

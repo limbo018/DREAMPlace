@@ -1,0 +1,6 @@
+*.pkl
+*.dat
+*.png
+*.pklz
+*.gds
+__pycache__

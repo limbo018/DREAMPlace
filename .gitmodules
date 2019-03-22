@@ -1,0 +1,3 @@
+[submodule "thirdparty/Limbo"]
+	path = thirdparty/Limbo
+	url = https://github.com/limbo018/Limbo.git

@@ -1,0 +1,78 @@
+UCLA scl 1.0
+# Created	:	Jan  6 2005
+# User   	:	Gi-Joon Nam & Mehmet Yildiz at IBM Austin Research({gnam, mcan}@us.ibm.com)
+
+NumRows : 8
+
+CoreRow Horizontal
+  Coordinate    :   459
+  Height        :   12
+  Sitewidth     :    1
+  Sitespacing   :    1
+  Siteorient    :    1
+  Sitesymmetry  :    1
+  SubrowOrigin  :    459	NumSites  :  96
+End
+CoreRow Horizontal
+  Coordinate    :   471
+  Height        :   12
+  Sitewidth     :    1
+  Sitespacing   :    1
+  Siteorient    :    1
+  Sitesymmetry  :    1
+  SubrowOrigin  :    459	NumSites  :  96
+End
+CoreRow Horizontal
+  Coordinate    :   483
+  Height        :   12
+  Sitewidth     :    1
+  Sitespacing   :    1
+  Siteorient    :    1
+  Sitesymmetry  :    1
+  SubrowOrigin  :    459	NumSites  :  96
+End
+CoreRow Horizontal
+  Coordinate    :   495
+  Height        :   12
+  Sitewidth     :    1
+  Sitespacing   :    1
+  Siteorient    :    1
+  Sitesymmetry  :    1
+  SubrowOrigin  :    459	NumSites  :  96
+End
+CoreRow Horizontal
+  Coordinate    :   507
+  Height        :   12
+  Sitewidth     :    1
+  Sitespacing   :    1
+  Siteorient    :    1
+  Sitesymmetry  :    1
+  SubrowOrigin  :    459	NumSites  :  96
+End
+CoreRow Horizontal
+  Coordinate    :   519
+  Height        :   12
+  Sitewidth     :    1
+  Sitespacing   :    1
+  Siteorient    :    1
+  Sitesymmetry  :    1
+  SubrowOrigin  :    459	NumSites  :  96
+End
+CoreRow Horizontal
+  Coordinate    :   531
+  Height        :   12
+  Sitewidth     :    1
+  Sitespacing   :    1
+  Siteorient    :    1
+  Sitesymmetry  :    1
+  SubrowOrigin  :    459	NumSites  :  96
+End
+CoreRow Horizontal
+  Coordinate    :   543
+  Height        :   12
+  Sitewidth     :    1
+  Sitespacing   :    1
+  Siteorient    :    1
+  Sitesymmetry  :    1
+  SubrowOrigin  :    459	NumSites  :  96
+End
