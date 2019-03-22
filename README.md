@@ -3,7 +3,7 @@
 Deep learning toolkit-enabled VLSI placement. 
 With the analogy between nonlinear VLSI placement and deep learning training problem, this tool is developed with deep learning toolkit for flexibility and efficiency. 
 The tool runs on both CPU and GPU. 
-Over 30X speedup over CPU is achieved in global placement and legalization on ISPD 2005 contest benchmarks with a Nvidia Tesla V100 GPU. 
+Over 30X speedup over the CPU implementation is achieved in global placement and legalization on ISPD 2005 contest benchmarks with a Nvidia Tesla V100 GPU. 
 
 # Publications
 
