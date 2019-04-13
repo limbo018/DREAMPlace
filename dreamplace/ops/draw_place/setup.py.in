@@ -47,7 +47,7 @@ setup(
                 library_dirs=lib_dirs,
                 libraries=libs,
                 extra_compile_args={
-                    'cxx': ['-fvisibility=hidden', '-D_GLIBCXX_USE_CXX11_ABI=0', cairo_compile_args, torch_major_version, torch_minor_version], 
+                    'cxx': ['-fvisibility=hidden', cairo_compile_args, torch_major_version, torch_minor_version], 
                     }
                 ),
             ],

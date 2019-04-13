@@ -19,7 +19,10 @@ import dreamplace.ops.dct.dct as dct
 import dreamplace.ops.dct.discrete_spectral_transform as discrete_spectral_transform
 
 import dreamplace.ops.electric_potential.electric_potential_cpp as electric_potential_cpp
-import dreamplace.ops.electric_potential.electric_potential_cuda as electric_potential_cuda 
+try: 
+    import dreamplace.ops.electric_potential.electric_potential_cuda as electric_potential_cuda 
+except:
+    pass 
 
 import pdb 
 import matplotlib
@@ -208,7 +211,8 @@ class ElectricPotentialFunction(Function):
         #    plot(plot_count, ctx.field_map_y.clone().cpu().numpy(), padding, "summary/%d.field_map_y" % (plot_count))
         #plot_count += 1
 
-        torch.cuda.synchronize()
+        if pos.is_cuda: 
+            torch.cuda.synchronize()
         return energy 
 
     @staticmethod
@@ -260,7 +264,8 @@ class ElectricPotentialFunction(Function):
         #pgrad = np.concatenate([np.array(pgradx), np.array(pgrady)])
 
         #output = torch.empty_like(ctx.pos).uniform_(0.0, 0.1)
-        torch.cuda.synchronize()
+        if grad_pos.is_cuda: 
+            torch.cuda.synchronize()
         #print("\t\tdensity backward %.3f ms" % ((time.time()-tt)*1000))
         return output, \
                 None, None, None, None, \

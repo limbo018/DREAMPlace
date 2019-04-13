@@ -13,7 +13,10 @@ from torch.autograd import Function
 from torch.nn import functional as F
 
 import dreamplace.ops.density_potential.density_potential_cpp as density_potential_cpp
-import dreamplace.ops.density_potential.density_potential_cuda as density_potential_cuda
+try: 
+    import dreamplace.ops.density_potential.density_potential_cuda as density_potential_cuda
+except:
+    pass 
 
 import pdb 
 import matplotlib

@@ -11,9 +11,12 @@ import numpy as np
 import pdb 
 
 import dreamplace.ops.hpwl.hpwl_cpp as hpwl_cpp
-import dreamplace.ops.hpwl.hpwl_cuda as hpwl_cuda
 import dreamplace.ops.hpwl.hpwl_cpp_atomic as hpwl_cpp_atomic
-import dreamplace.ops.hpwl.hpwl_cuda_atomic as hpwl_cuda_atomic
+try: 
+    import dreamplace.ops.hpwl.hpwl_cuda as hpwl_cuda
+    import dreamplace.ops.hpwl.hpwl_cuda_atomic as hpwl_cuda_atomic
+except:
+    pass 
 
 class HPWLFunction(Function):
     """compute half-perimeter wirelength.

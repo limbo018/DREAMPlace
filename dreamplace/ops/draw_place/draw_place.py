@@ -39,7 +39,7 @@ class DrawPlaceFunction(Function):
                 )
         # if C/C++ API failed, try with python implementation 
         if not filename.endswith(".gds") and not ret:
-            ret = PlaceDrawer.forward(
+            ret = PlaceDrawer.PlaceDrawer.forward(
                     pos, 
                     node_size_x, node_size_y, 
                     pin_offset_x, pin_offset_y, 
