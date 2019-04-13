@@ -12,7 +12,10 @@ from torch.autograd import Function
 from torch.nn import functional as F
 
 import dreamplace.ops.electric_potential.electric_potential_cpp as electric_potential_cpp
-import dreamplace.ops.electric_potential.electric_potential_cuda as electric_potential_cuda 
+try: 
+    import dreamplace.ops.electric_potential.electric_potential_cuda as electric_potential_cuda 
+except:
+    pass
 
 import pdb 
 import matplotlib

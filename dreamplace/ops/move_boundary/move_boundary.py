@@ -10,7 +10,10 @@ from torch import nn
 from torch.autograd import Function
 
 import dreamplace.ops.move_boundary.move_boundary_cpp as move_boundary_cpp
-import dreamplace.ops.move_boundary.move_boundary_cuda as move_boundary_cuda
+try: 
+    import dreamplace.ops.move_boundary.move_boundary_cuda as move_boundary_cuda
+except:
+    pass 
 
 class MoveBoundaryFunction(Function):
     """ 
