@@ -56,7 +56,7 @@ modules.extend([
         ),
     ])
 
-if not "${CUDA_FOUND}" or "${CUDA_FOUND}".upper() == 'TRUE': 
+if "${CUDA_FOUND}".upper() == 'TRUE': 
     modules.extend([
             CUDAExtension('hpwl_cuda', 
                 [
