@@ -10,6 +10,7 @@ Over 30X speedup over the CPU implementation is achieved in global placement and
 * [Yibo Lin](http://yibolin.com), Shounak Dhar, [Wuxi Li](http://wuxili.net), Haoxing Ren, Brucek Khailany and [David Z. Pan](http://users.ece.utexas.edu/~dpan), 
   "**DREAMPlace: Deep Learning Toolkit-Enabled GPU Acceleration for Modern VLSI Placement**", 
   ACM/IEEE Design Automation Conference (DAC), Las Vegas, NV, Jun 2-6, 2019
+  ([preprint](http://yibolin.com/publications/papers/PLACE_DAC2019_Lin.pdf))
 
 # Dependency 
 
