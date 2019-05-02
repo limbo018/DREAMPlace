@@ -138,7 +138,7 @@ void dct2dPostprocessCudaLauncher(const T *x, T *y, const int M, const int N,
 {
     dim3 gridSize((N / 2 + TPB - 1) / TPB, (M / 2 + TPB - 1) / TPB, 1);
     dim3 blockSize(TPB, TPB, 1);
-    dct2dPostprocess<T, ComplexType<T>><<<gridSize, blockSize>>>(x, y, M, N, M / 2, N / 2, (T)(2. / (M * N)), (T)(4. / (M * N)), expkM, expkN);
+    dct2dPostprocess<T, ComplexType<T>><<<gridSize, blockSize>>>((ComplexType<T>*)x, y, M, N, M / 2, N / 2, (T)(2. / (M * N)), (T)(4. / (M * N)), (ComplexType<T>*)expkM, (ComplexType<T>*)expkN);
 }
 
 // idct2_fft2

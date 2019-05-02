@@ -107,4 +107,6 @@ void idxst_idctPostprocessCudaLauncher(
     const int M,
     const int N);
 
+DREAMPLACE_END_NAMESPACE
+
 #endif
