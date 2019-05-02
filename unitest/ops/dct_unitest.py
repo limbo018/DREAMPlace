@@ -5,10 +5,6 @@
 #
 
 import pdb
-from dreamplace.ops.dct import dct2_fft2
-from dreamplace.ops.dct import discrete_spectral_transform
-from dreamplace.ops.dct import dct_lee
-from dreamplace.ops.dct import dct
 import os
 import sys
 import numpy as np
@@ -19,7 +15,12 @@ from torch.autograd import Function, Variable
 import time
 import scipy
 from scipy import fftpack
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from dreamplace.ops.dct import dct2_fft2
+from dreamplace.ops.dct import discrete_spectral_transform
+from dreamplace.ops.dct import dct_lee
+from dreamplace.ops.dct import dct
 sys.path.pop()
 
 dtype = torch.float32
