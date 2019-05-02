@@ -1,5 +1,5 @@
-#ifndef DREAMPLACE_DCT_CUDA_H
-#define DREAMPLACE_DCT_CUDA_H
+#ifndef DREAMPLACE_DCT2_FFT2_CUDA_H
+#define DREAMPLACE_DCT2_FFT2_CUDA_H
 
 #include "utility/src/torch.h"
 #include "utility/src/Msg.h"

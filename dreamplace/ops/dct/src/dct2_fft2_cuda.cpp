@@ -1,5 +1,7 @@
 #include "dct2_fft2_cuda.h"
 
+DREAMPLACE_BEGIN_NAMESPACE
+
 void dct2_fft2_forward(
     at::Tensor x,
     at::Tensor expkM,
@@ -164,10 +166,11 @@ void idxst_idct_forward(
     });
 }
 
-PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)
-{
-    m.def("dct2_fft2", &dct2_fft2_forward, "DCT2 FFT2D");
-    m.def("idct2_fft2", &idct2_fft2_forward, "IDCT2 FFT2D");
-    m.def("idct_idxst", &idct_idxst_forward, "IDCT IDXST FFT2D");
-    m.def("idxst_idct", &idxst_idct_forward, "IDXST IDCT FFT2D");
+DREAMPLACE_END_NAMESPACE
+
+PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
+    m.def("dct2_fft2", &DREAMPLACE_NAMESPACE::dct2_fft2_forward, "DCT2 FFT2D (CUDA)");
+    m.def("idct2_fft2", &DREAMPLACE_NAMESPACE::idct2_fft2_forward, "IDCT2 FFT2D (CUDA)");
+    m.def("idct_idxst", &DREAMPLACE_NAMESPACE::idct_idxst_forward, "IDCT IDXST FFT2D (CUDA)");
+    m.def("idxst_idct", &DREAMPLACE_NAMESPACE::idxst_idct_forward, "IDXST IDCT FFT2D (CUDA)");
 }
