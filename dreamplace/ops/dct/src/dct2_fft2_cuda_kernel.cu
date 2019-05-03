@@ -9,9 +9,9 @@
 DREAMPLACE_BEGIN_NAMESPACE
 
 inline __device__ int INDEX(const int hid, const int wid, const int N)
- {
-     return (hid * N + wid);
- }
+{
+    return (hid * N + wid);
+}
 
 // dct2_fft2
 template <typename T>
@@ -138,7 +138,7 @@ void dct2dPostprocessCudaLauncher(const T *x, T *y, const int M, const int N,
 {
     dim3 gridSize((N / 2 + TPB - 1) / TPB, (M / 2 + TPB - 1) / TPB, 1);
     dim3 blockSize(TPB, TPB, 1);
-    dct2dPostprocess<T, ComplexType<T>><<<gridSize, blockSize>>>((ComplexType<T>*)x, y, M, N, M / 2, N / 2, (T)(2. / (M * N)), (T)(4. / (M * N)), (ComplexType<T>*)expkM, (ComplexType<T>*)expkN);
+    dct2dPostprocess<T, ComplexType<T>><<<gridSize, blockSize>>>((ComplexType<T> *)x, y, M, N, M / 2, N / 2, (T)(2. / (M * N)), (T)(4. / (M * N)), (ComplexType<T> *)expkM, (ComplexType<T> *)expkN);
 }
 
 // idct2_fft2
@@ -286,7 +286,7 @@ __global__ void idct2_fft2Postprocess(const T *x, T *y, const int M, const int N
             assert(0);
             break;
         }
-        y[index] = x[INDEX(hid, wid, N)] / 4;
+        y[index] = x[INDEX(hid, wid, N)];
     }
 }
 
@@ -417,19 +417,19 @@ __global__ void idct_idxstPostprocess(const T *x, T *y, const int M, const int N
         {
         case 0:
             index = INDEX(((M - hid) << 1) - 1, ((N - wid) << 1) - 1, N);
-            y[index] = -0.5 * x[INDEX(hid, wid, N)];
+            y[index] = -1 * x[INDEX(hid, wid, N)];
             break;
         case 1:
             index = INDEX(((M - hid) << 1) - 1, wid << 1, N);
-            y[index] = 0.5 * x[INDEX(hid, wid, N)];
+            y[index] = x[INDEX(hid, wid, N)];
             break;
         case 2:
             index = INDEX(hid << 1, ((N - wid) << 1) - 1, N);
-            y[index] = -0.5 * x[INDEX(hid, wid, N)];
+            y[index] = -1 * x[INDEX(hid, wid, N)];
             break;
         case 3:
             index = INDEX(hid << 1, wid << 1, N);
-            y[index] = 0.5 * x[INDEX(hid, wid, N)];
+            y[index] = x[INDEX(hid, wid, N)];
             break;
         default:
             assert(0);
@@ -574,19 +574,19 @@ __global__ void idxst_idctPostprocess(const T *x, T *y, const int M, const int N
         {
         case 0:
             index = INDEX(((M - hid) << 1) - 1, ((N - wid) << 1) - 1, N);
-            y[index] = -0.5 * x[INDEX(hid, wid, N)];
+            y[index] = -1 * x[INDEX(hid, wid, N)];
             break;
         case 1:
             index = INDEX(((M - hid) << 1) - 1, wid << 1, N);
-            y[index] = -0.5 * x[INDEX(hid, wid, N)];
+            y[index] = -1 * x[INDEX(hid, wid, N)];
             break;
         case 2:
             index = INDEX(hid << 1, ((N - wid) << 1) - 1, N);
-            y[index] = 0.5 * x[INDEX(hid, wid, N)];
+            y[index] = x[INDEX(hid, wid, N)];
             break;
         case 3:
             index = INDEX(hid << 1, wid << 1, N);
-            y[index] = 0.5 * x[INDEX(hid, wid, N)];
+            y[index] = x[INDEX(hid, wid, N)];
             break;
         default:
             assert(0);
@@ -603,45 +603,40 @@ void idxst_idctPostprocessCudaLauncher(const T *x, T *y, const int M, const int 
     idxst_idctPostprocess<T><<<gridSize, blockSize>>>(x, y, M, N, N / 2);
 }
 
-
 // dct2_fft2
 #define REGISTER_DCT2DPREPROCESS_KERNEL_LAUNCHER(type) \
-    void instantiatedct2dPreprocessCudaLauncher(\
-        const type* x,\
-        type* y, \
-        const int M, \
-        const int N \
-        ) \
-    { \
-        return dct2dPreprocessCudaLauncher<type>( \
-                x, \
-                y, \
-                M, \
-                N \
-                ); \
+    void instantiatedct2dPreprocessCudaLauncher(       \
+        const type *x,                                 \
+        type *y,                                       \
+        const int M,                                   \
+        const int N)                                   \
+    {                                                  \
+        return dct2dPreprocessCudaLauncher<type>(      \
+            x,                                         \
+            y,                                         \
+            M,                                         \
+            N);                                        \
     }
 
 REGISTER_DCT2DPREPROCESS_KERNEL_LAUNCHER(float);
 REGISTER_DCT2DPREPROCESS_KERNEL_LAUNCHER(double);
 
 #define REGISTER_DCT2DPOSTPROCESS_KERNEL_LAUNCHER(type) \
-    void instantiatedct2dPostprocessCudaLauncher(\
-                const type *x, \
-                type *y, \
-                const int M, \
-                const int N, \
-                const type * __restrict__ expkM, \
-                const type * __restrict__ expkN \
-        ) \
-    { \
-        return dct2dPostprocessCudaLauncher<type>( \
-                x, \
-                y, \
-                M, \
-                N, \
-                expkM, \
-                expkN \
-                ); \
+    void instantiatedct2dPostprocessCudaLauncher(       \
+        const type *x,                                  \
+        type *y,                                        \
+        const int M,                                    \
+        const int N,                                    \
+        const type *__restrict__ expkM,                 \
+        const type *__restrict__ expkN)                 \
+    {                                                   \
+        return dct2dPostprocessCudaLauncher<type>(      \
+            x,                                          \
+            y,                                          \
+            M,                                          \
+            N,                                          \
+            expkM,                                      \
+            expkN);                                     \
     }
 
 REGISTER_DCT2DPOSTPROCESS_KERNEL_LAUNCHER(float);
@@ -649,132 +644,117 @@ REGISTER_DCT2DPOSTPROCESS_KERNEL_LAUNCHER(double);
 
 //idct_idxst
 #define REGISTER_IDCT_IDXSTPREPROCESS_KERNEL_LAUNCHER(type) \
-    void instantiateidct_idxstPreprocessCudaLauncher(\
-        const type *x, \
-        type *y, \
-        const int M, \
-        const int N, \
-        const type * __restrict__ expkM, \
-        const type * __restrict__ expkN \
-    ) \
-    { \
-    return idct_idxstPreprocessCudaLauncher<type>( \
-        x, \
-        y, \
-        M, \
-        N, \
-        expkM, \
-        expkN \
-        ); \
+    void instantiateidct_idxstPreprocessCudaLauncher(       \
+        const type *x,                                      \
+        type *y,                                            \
+        const int M,                                        \
+        const int N,                                        \
+        const type *__restrict__ expkM,                     \
+        const type *__restrict__ expkN)                     \
+    {                                                       \
+        return idct_idxstPreprocessCudaLauncher<type>(      \
+            x,                                              \
+            y,                                              \
+            M,                                              \
+            N,                                              \
+            expkM,                                          \
+            expkN);                                         \
     }
 
 REGISTER_IDCT_IDXSTPREPROCESS_KERNEL_LAUNCHER(float);
 REGISTER_IDCT_IDXSTPREPROCESS_KERNEL_LAUNCHER(double);
 
 #define REGISTER_IDCT_IDXSTPOSTPROCESS_KERNEL_LAUNCHER(type) \
-    void instantiateidct_idxstPostprocessCudaLauncher(\
-        const type* x,\
-        type* y, \
-        const int M, \
-        const int N \
-        ) \
-    { \
-        return idct_idxstPostprocessCudaLauncher<type>( \
-                x, \
-                y, \
-                M, \
-                N \
-                ); \
+    void instantiateidct_idxstPostprocessCudaLauncher(       \
+        const type *x,                                       \
+        type *y,                                             \
+        const int M,                                         \
+        const int N)                                         \
+    {                                                        \
+        return idct_idxstPostprocessCudaLauncher<type>(      \
+            x,                                               \
+            y,                                               \
+            M,                                               \
+            N);                                              \
     }
-
 
 REGISTER_IDCT_IDXSTPOSTPROCESS_KERNEL_LAUNCHER(float);
 REGISTER_IDCT_IDXSTPOSTPROCESS_KERNEL_LAUNCHER(double);
 
 //idxst_idct
 #define REGISTER_IDXST_IDCTPREPROCESS_KERNEL_LAUNCHER(type) \
-    void instantiateidxst_idctPreprocessCudaLauncher(\
-        const type *x, \
-        type *y, \
-        const int M, \
-        const int N, \
-        const type * __restrict__ expkM, \
-        const type * __restrict__ expkN \
-    ) \
-    { \
-    return idxst_idctPreprocessCudaLauncher<type>( \
-        x, \
-        y, \
-        M, \
-        N, \
-        expkM, \
-        expkN \
-        ); \
+    void instantiateidxst_idctPreprocessCudaLauncher(       \
+        const type *x,                                      \
+        type *y,                                            \
+        const int M,                                        \
+        const int N,                                        \
+        const type *__restrict__ expkM,                     \
+        const type *__restrict__ expkN)                     \
+    {                                                       \
+        return idxst_idctPreprocessCudaLauncher<type>(      \
+            x,                                              \
+            y,                                              \
+            M,                                              \
+            N,                                              \
+            expkM,                                          \
+            expkN);                                         \
     }
 
 REGISTER_IDXST_IDCTPREPROCESS_KERNEL_LAUNCHER(float);
 REGISTER_IDXST_IDCTPREPROCESS_KERNEL_LAUNCHER(double);
 
 #define REGISTER_IDXST_IDCTPOSTPROCESS_KERNEL_LAUNCHER(type) \
-    void instantiateidxst_idctPostprocessCudaLauncher(\
-        const type* x,\
-        type* y, \
-        const int M, \
-        const int N \
-        ) \
-    { \
-        return idxst_idctPostprocessCudaLauncher<type>( \
-                x, \
-                y, \
-                M, \
-                N \
-                ); \
+    void instantiateidxst_idctPostprocessCudaLauncher(       \
+        const type *x,                                       \
+        type *y,                                             \
+        const int M,                                         \
+        const int N)                                         \
+    {                                                        \
+        return idxst_idctPostprocessCudaLauncher<type>(      \
+            x,                                               \
+            y,                                               \
+            M,                                               \
+            N);                                              \
     }
-
 
 REGISTER_IDXST_IDCTPOSTPROCESS_KERNEL_LAUNCHER(float);
 REGISTER_IDXST_IDCTPOSTPROCESS_KERNEL_LAUNCHER(double);
 
 //idct2_fft2
 #define REGISTER_IDCT2_FFT2PREPROCESS_KERNEL_LAUNCHER(type) \
-    void instantiateidct2_fft2PreprocessCudaLauncher(\
-        const type *x, \
-        type *y, \
-        const int M, \
-        const int N, \
-        const type * __restrict__ expkM, \
-        const type * __restrict__ expkN \
-    ) \
-    { \
-    return idct2_fft2PreprocessCudaLauncher<type>( \
-        x, \
-        y, \
-        M, \
-        N, \
-        expkM, \
-        expkN \
-        ); \
+    void instantiateidct2_fft2PreprocessCudaLauncher(       \
+        const type *x,                                      \
+        type *y,                                            \
+        const int M,                                        \
+        const int N,                                        \
+        const type *__restrict__ expkM,                     \
+        const type *__restrict__ expkN)                     \
+    {                                                       \
+        return idct2_fft2PreprocessCudaLauncher<type>(      \
+            x,                                              \
+            y,                                              \
+            M,                                              \
+            N,                                              \
+            expkM,                                          \
+            expkN);                                         \
     }
 
 REGISTER_IDCT2_FFT2PREPROCESS_KERNEL_LAUNCHER(float);
 REGISTER_IDCT2_FFT2PREPROCESS_KERNEL_LAUNCHER(double);
 
 #define REGISTER_IDCT2_FFT2POSTPROCESS_KERNEL_LAUNCHER(type) \
-    void instantiateidct2_fft2PostprocessCudaLauncher(\
-        const type* x,\
-        type* y, \
-        const int M, \
-        const int N \
-        ) \
-    { \
-        return idct2_fft2PostprocessCudaLauncher<type>( \
-                x, \
-                y, \
-                M, \
-                N \
-                ); \
+    void instantiateidct2_fft2PostprocessCudaLauncher(       \
+        const type *x,                                       \
+        type *y,                                             \
+        const int M,                                         \
+        const int N)                                         \
+    {                                                        \
+        return idct2_fft2PostprocessCudaLauncher<type>(      \
+            x,                                               \
+            y,                                               \
+            M,                                               \
+            N);                                              \
     }
-
 
 REGISTER_IDCT2_FFT2POSTPROCESS_KERNEL_LAUNCHER(float);
 REGISTER_IDCT2_FFT2POSTPROCESS_KERNEL_LAUNCHER(double);

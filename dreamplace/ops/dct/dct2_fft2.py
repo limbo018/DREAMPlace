@@ -4,7 +4,7 @@ import torch
 from torch.autograd import Function
 from torch import nn
 
-import dreamplace.ops.dct.discrete_spectral_transform.get_exact_expk as precompute_expk
+from dreamplace.ops.dct.discrete_spectral_transform import get_exact_expk as precompute_expk
 
 try:
     import dreamplace.ops.dct.dct2_fft2_cuda as dct2_fft2

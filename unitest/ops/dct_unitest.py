@@ -229,18 +229,19 @@ class DCTOpTest(unittest.TestCase):
         np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
 
         # test gpu using fft2
+        x = x.cuda()
         custom = dct2_fft2.DCT2(x.size(-2), x.size(-1), x.dtype, x.device, expkM, expkN)
-        dct_value = custom.forward(x.cuda()).cpu()
+        dct_value = custom.forward(x).cpu()
         print("2D dct_value cuda")
         print(dct_value.data.numpy())
 
-        np.testing.assert_allclose(dct_value.data.numpy(), golden_value/M/N/4, rtol=1e-6, atol=1e-5)
+        np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
 
     def test_idct2Random(self):
         torch.manual_seed(10)
         M = 4
         N = 8
-        x = torch.tensor(torch.empty(M, N, dtype=torch.int32).random_(0, 10), dtype=dtype)
+        x = torch.empty(M, N, dtype=torch.int32).random_(0, 10).double()
         print("2D x")
         print(x)
 
@@ -257,7 +258,7 @@ class DCTOpTest(unittest.TestCase):
         # pdb.set_trace()
         custom = dct.IDCT2(algorithm='N')
         dct_value = custom.forward(y)
-        print("2D dct_value")
+        print("2D idct_value")
         print(dct_value.data.numpy())
 
         np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
@@ -266,7 +267,7 @@ class DCTOpTest(unittest.TestCase):
         # pdb.set_trace()
         custom = dct.IDCT2(algorithm='2N')
         dct_value = custom.forward(y)
-        print("2D dct_value")
+        print("2D idct_value")
         print(dct_value.data.numpy())
 
         np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
@@ -275,7 +276,7 @@ class DCTOpTest(unittest.TestCase):
         # pdb.set_trace()
         custom = dct_lee.IDCT2()
         dct_value = custom.forward(y)
-        print("2D dct_value")
+        print("2D idct_value")
         print(dct_value.data.numpy())
 
         np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
@@ -283,7 +284,7 @@ class DCTOpTest(unittest.TestCase):
         # test gpu
         custom = dct.IDCT2(algorithm='N')
         dct_value = custom.forward(y.cuda()).cpu()
-        print("2D dct_value cuda")
+        print("2D idct_value cuda")
         print(dct_value.data.numpy())
 
         np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
@@ -291,7 +292,7 @@ class DCTOpTest(unittest.TestCase):
         # test gpu
         custom = dct.IDCT2(algorithm='2N')
         dct_value = custom.forward(y.cuda()).cpu()
-        print("2D dct_value cuda")
+        print("2D idct_value cuda")
         print(dct_value.data.numpy())
 
         np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
@@ -299,18 +300,20 @@ class DCTOpTest(unittest.TestCase):
         # test gpu
         custom = dct_lee.IDCT2()
         dct_value = custom.forward(y.cuda()).cpu()
-        print("2D dct_value cuda")
+        print("2D idct_value cuda")
         print(dct_value.data.numpy())
 
         np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
 
         # test gpu using ifft2
-        custom = dct2_fft2.IDCT2(x.size(-2), x.size(-1), x.dtype, x.device, expkM, expkN)
-        dct_value = custom.forward(x.cuda()).cpu()
-        print("2D dct_value cuda")
+        y = y.cuda()
+        custom = dct2_fft2.IDCT2(y.size(-2), y.size(-1), y.dtype, y.device, expkM, expkN)
+        dct_value = custom.forward(y).cpu()
+        print("2D idct_value cuda")
         print(dct_value.data.numpy())
 
-        np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
+        # note the scale factor
+        np.testing.assert_allclose(dct_value.data.numpy(), golden_value / M / N, rtol=1e-6, atol=1e-5)
 
     def test_idxct2Random(self):
         torch.manual_seed(10)
@@ -661,12 +664,14 @@ class DXTOpTest(unittest.TestCase):
         print(golden_value)
 
         # test gpu
+        x = x.cuda()
         custom = dct2_fft2.IDCT_IDXST(x.size(-2), x.size(-1), x.dtype, x.device, expkM, expkN)
-        idct_idxst_value = custom.forward(x.cuda()).cpu()
+        idct_idxst_value = custom.forward(x).cpu()
         print("2D idct_idxst_value cuda")
         print(idct_idxst_value.data.numpy())
 
-        np.testing.assert_allclose(idct_idxst_value.data.numpy(), golden_value/M/N, atol=1e-14)
+        # note the scale factor
+        np.testing.assert_allclose(idct_idxst_value.data.numpy(), golden_value / M / N * 2, atol=1e-14)
 
     def test_idxst_idctRandom(self):
         torch.manual_seed(10)
@@ -684,12 +689,14 @@ class DXTOpTest(unittest.TestCase):
         print(golden_value)
 
         # test gpu
+        x = x.cuda()
         custom = dct2_fft2.IDXST_IDCT(x.size(-2), x.size(-1), x.dtype, x.device, expkM, expkN)
-        idxst_idct_value = custom.forward(x.cuda()).cpu()
+        idxst_idct_value = custom.forward(x).cpu()
         print("2D idxst_idct_value cuda")
         print(idxst_idct_value.data.numpy())
 
-        np.testing.assert_allclose(idxst_idct_value.data.numpy(), golden_value / M / N, atol=1e-14)
+        # note the scale factor
+        np.testing.assert_allclose(idxst_idct_value.data.numpy(), golden_value / M / N * 2, atol=1e-14)
 
 
 def eval_torch_rfft2d(x, runs):
@@ -947,8 +954,8 @@ def eval_runtime():
     expk0 = discrete_spectral_transform.get_expk(M, dtype=x.dtype, device=x.device)
     expk1 = discrete_spectral_transform.get_expk(N, dtype=x.dtype, device=x.device)
     # cos(), -sin()
-    expkM = dct2_fft2.precompute_expk(M, dtype=x.dtype, device=x.device)
-    expkN = dct2_fft2.precompute_expk(N, dtype=x.dtype, device=x.device)
+    expkM = discrete_spectral_transform.get_exact_expk(M, dtype=x.dtype, device=x.device)
+    expkN = discrete_spectral_transform.get_exact_expk(N, dtype=x.dtype, device=x.device)
 
     eval_torch_rfft2d(x, runs)
     eval_dct2d(x, expk0, expk1, expkM, expkN, runs)
@@ -961,3 +968,4 @@ if __name__ == '__main__':
     torch.manual_seed(10)
     np.random.seed(10)
     unittest.main()
+    eval_runtime()
