@@ -56,8 +56,8 @@ def compare_two_different_methods(M=1024, N=1024, dtype=torch.float64):
 
     inv_wu2_plus_wv2 = 1.0 / wu2_plus_wv2
     inv_wu2_plus_wv2[0, 0] = 0.0
-    wu_by_wu2_plus_wv2_half = wu.mul(inv_wu2_plus_wv2)
-    wv_by_wu2_plus_wv2_half = wv.mul(inv_wu2_plus_wv2)
+    wu_by_wu2_plus_wv2_half = wu.mul(inv_wu2_plus_wv2).mul_(0.5)
+    wv_by_wu2_plus_wv2_half = wv.mul(inv_wu2_plus_wv2).mul_(0.5)
 
     buv = dct2.forward(density_map)
 

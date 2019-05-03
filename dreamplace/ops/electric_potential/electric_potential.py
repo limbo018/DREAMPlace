@@ -17,7 +17,6 @@ from torch import nn
 from torch.autograd import Function
 from torch.nn import functional as F
 
-import dreamplace.ops.dct.dct as dct
 import dreamplace.ops.dct.dct2_fft2 as dct2_fft2
 import dreamplace.ops.dct.discrete_spectral_transform as discrete_spectral_transform
 
@@ -60,16 +59,16 @@ class ElectricPotentialFunction(Function):
         num_movable_impacted_bins_y,
         num_filler_impacted_bins_x,
         num_filler_impacted_bins_y,
-        expk_M=None,  # exp(-j*pi*k/M)
-        expk_N=None,  # exp(-j*pi*k/N)
+        exact_expkM=None,  # exp(-j*pi*k/M)
+        exact_expkN=None,  # exp(-j*pi*k/N)
         inv_wu2_plus_wv2=None,  # 1.0/(wu^2 + wv^2)
         wu_by_wu2_plus_wv2_half=None,  # wu/(wu^2 + wv^2)/2
         wv_by_wu2_plus_wv2_half=None,  # wv/(wu^2 + wv^2)/2
         fast_mode=True,  # fast mode will discard some computation
-        dct2,
-        idct2,
-        idct_idxst,
-        idxst_idct
+        dct2=None,
+        idct2=None,
+        idct_idxst=None,
+        idxst_idct=None
     ):
 
         if pos.is_cuda:
@@ -159,16 +158,16 @@ class ElectricPotentialFunction(Function):
         # compute auv
         density_map.mul_(1.0 / (ctx.bin_size_x * ctx.bin_size_y))
 
-        #auv = discrete_spectral_transform.dct2_2N(density_map, expk0=expk_M, expk1=expk_N)
+        #auv = discrete_spectral_transform.dct2_2N(density_map, expk0=exact_expkM, expk1=exact_expkN)
         auv = dct2.forward(density_map)
 
         # compute field xi
         auv_by_wu2_plus_wv2_wu = auv.mul(wu_by_wu2_plus_wv2_half)
         auv_by_wu2_plus_wv2_wv = auv.mul(wv_by_wu2_plus_wv2_half)
 
-        #ctx.field_map_x = discrete_spectral_transform.idsct2(auv_by_wu2_plus_wv2_wu, expk_M, expk_N).contiguous()
+        #ctx.field_map_x = discrete_spectral_transform.idsct2(auv_by_wu2_plus_wv2_wu, exact_expkM, exact_expkN).contiguous()
         ctx.field_map_x = idxst_idct.forward(auv_by_wu2_plus_wv2_wu)
-        #ctx.field_map_y = discrete_spectral_transform.idcst2(auv_by_wu2_plus_wv2_wv, expk_M, expk_N).contiguous()
+        #ctx.field_map_y = discrete_spectral_transform.idcst2(auv_by_wu2_plus_wv2_wv, exact_expkM, exact_expkN).contiguous()
         ctx.field_map_y = idct_idxst.forward(auv_by_wu2_plus_wv2_wv)
 
         # energy = \sum q*phi
@@ -180,7 +179,7 @@ class ElectricPotentialFunction(Function):
             # compute potential phi
             # auv / (wu**2 + wv**2)
             auv_by_wu2_plus_wv2 = auv.mul(inv_wu2_plus_wv2)
-            #potential_map = discrete_spectral_transform.idcct2(auv_by_wu2_plus_wv2, expk_M, expk_N)
+            #potential_map = discrete_spectral_transform.idcct2(auv_by_wu2_plus_wv2, exact_expkM, exact_expkN)
             potential_map = idct2.forward(auv_by_wu2_plus_wv2)
             # compute energy
             energy = potential_map.mul_(density_map).sum()
@@ -275,7 +274,7 @@ class ElectricPotentialFunction(Function):
             None, None, None, None, \
             None, None, None, None, \
             None, None, None, None, \
-            None, None
+            None, None, None, None
 
 
 class ElectricPotential(nn.Module):
@@ -359,8 +358,8 @@ class ElectricPotential(nn.Module):
 
         # initial density_map due to fixed cells
         self.initial_density_map = None
-        self.expk_M = None
-        self.expk_N = None
+        self.exact_expkM = None
+        self.exact_expkN = None
         self.inv_wu2_plus_wv2 = None
         self.wu_by_wu2_plus_wv2_half = None
         self.wv_by_wu2_plus_wv2_half = None
@@ -421,15 +420,15 @@ class ElectricPotential(nn.Module):
             # expk
             M = self.num_bins_x
             N = self.num_bins_y
-            self.expk_M = discrete_spectral_transform.get_exact_expk(M, dtype=pos.dtype, device=pos.device)
-            self.expk_N = discrete_spectral_transform.get_exact_expk(N, dtype=pos.dtype, device=pos.device)
+            self.exact_expkM = discrete_spectral_transform.get_exact_expk(M, dtype=pos.dtype, device=pos.device)
+            self.exact_expkN = discrete_spectral_transform.get_exact_expk(N, dtype=pos.dtype, device=pos.device)
 
             # init dct2, idct2, idct_idxst, idxst_idct with expkM and expkN
-            self.dct2 = dct2_fft2.DCT2(M, N, pos.dtype, pos.device, self.expkM, self.expkN)
+            self.dct2 = dct2_fft2.DCT2(M, N, pos.dtype, pos.device, self.exact_expkM, self.exact_expkN)
             if self.fast_mode:
-                self.idct2 = dct2_fft2.IDCT2(M, N, pos.dtype, pos.device, self.expkM, self.expkN)
-            self.idct_idxst = dct2_fft2.IDCT_IDXST(M, N, pos.dtype, pos.device, self.expkM, self.expkN)
-            self.idxst_idct = dct2_fft2.IDXST_IDCT(M, N, pos.dtype, pos.device, self.expkM, self.expkN)
+                self.idct2 = dct2_fft2.IDCT2(M, N, pos.dtype, pos.device, self.exact_expkM, self.exact_expkN)
+            self.idct_idxst = dct2_fft2.IDCT_IDXST(M, N, pos.dtype, pos.device, self.exact_expkM, self.exact_expkN)
+            self.idxst_idct = dct2_fft2.IDXST_IDCT(M, N, pos.dtype, pos.device, self.exact_expkM, self.exact_expkN)
 
             # wu and wv
             wu = torch.arange(M, dtype=pos.dtype, device=pos.device).mul(2 * np.pi / M).view([M, 1])
@@ -459,7 +458,7 @@ class ElectricPotential(nn.Module):
             self.num_movable_impacted_bins_y,
             self.num_filler_impacted_bins_x,
             self.num_filler_impacted_bins_y,
-            self.expk_M, self.expk_N,
+            self.exact_expkM, self.exact_expkN,
             self.inv_wu2_plus_wv2,
             self.wu_by_wu2_plus_wv2_half, self.wv_by_wu2_plus_wv2_half,
             self.fast_mode,
