@@ -1,3 +1,11 @@
+// Refernece: Byeong Lee, "A new algorithm to compute the discrete cosine Transform,"
+// in IEEE Transactions on Acoustics, Speech, and Signal Processing,
+// vol. 32, no. 6, pp. 1243-1245, December 1984.
+
+// The preprocess and postprocess of 2d dct and 2d idct are discussed in the original paper.
+// idct(idxst(x)) and idxst(idct(x)) are similar to the idct2d(x),
+// except tiny modifications on preprocessing and postprocessing
+
 #include <math.h>
 #include <float.h>
 #include "cuda_runtime.h"
@@ -299,6 +307,11 @@ void idct2_fft2PostprocessCudaLauncher(const T *x, T *y, const int M, const int 
 }
 
 // idct_idxst
+// Adpated from idct2d_preprocess(). The only change is the reordered input
+// if (wid != 0)
+//     new_input[hid][wid] = input[hid][N - wid];
+// else
+//     new_input[hid][0] = 0
 template <typename T, typename TComplex>
 __global__ __launch_bounds__(TPB * TPB, 10) void idct_idxstPreprocess(const T *input, TComplex *output, const int M, const int N,
                                                                      const int halfM, const int halfN,
@@ -404,6 +417,11 @@ void idct_idxstPreprocessCudaLauncher(const T *x, T *y, const int M, const int N
     idct_idxstPreprocess<T, ComplexType<T>><<<gridSize, blockSize>>>(x, (ComplexType<T> *)y, M, N, M / 2, N / 2, (ComplexType<T> *)expkM, (ComplexType<T> *)expkN);
 }
 
+// Adpated from idct2d_postprocess() with changes on sign and scale
+// if (wid % 2 == 1)
+//     new_output[hid][wid] = -1 * output[hid][wid];
+// else
+//     new_output[hid][wid] = output[hid][wid];
 template <typename T>
 __global__ void idct_idxstPostprocess(const T *x, T *y, const int M, const int N, const int halfN, const int MN)
 {
@@ -447,6 +465,11 @@ void idct_idxstPostprocessCudaLauncher(const T *x, T *y, const int M, const int 
 }
 
 // idxst_idct
+// Adpated from idct2d_preprocess(). The only change is the reordered input
+// if (hid != 0)
+//     new_input[hid][wid] = input[M - hid][wid];
+// else
+//     new_input[0][wid] = 0
 template <typename T, typename TComplex>
 __global__ __launch_bounds__(TPB *TPB, 10) void idxst_idctPreprocess(const T *input, TComplex *output, const int M, const int N,
                                                                      const int halfM, const int halfN,
@@ -561,6 +584,11 @@ void idxst_idctPreprocessCudaLauncher(
     idxst_idctPreprocess<T, ComplexType<T>><<<gridSize, blockSize>>>(x, (ComplexType<T> *)y, M, N, M / 2, N / 2, (ComplexType<T> *)expkM, (ComplexType<T> *)expkN);
 }
 
+// Adpated from idct2d_postprocess() with changes on sign and scale
+// if (hid % 2 == 1)
+//     new_output[hid][wid] = -1 * output[hid][wid];
+// else
+//     new_output[hid][wid] = output[hid][wid];
 template <typename T>
 __global__ void idxst_idctPostprocess(const T *x, T *y, const int M, const int N, const int halfN, const int MN)
 {

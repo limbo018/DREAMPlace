@@ -1,3 +1,6 @@
+// All the transforms in this file are implemented based on 2D FFT.
+// Each transfrom has three steps, 1) preprocess, 2) 2d fft or 2d ifft, 3) postprocess.
+
 #include "dct2_fft2_cuda.h"
 
 DREAMPLACE_BEGIN_NAMESPACE

@@ -1,6 +1,6 @@
-# compare two different methods to calculate the electric potential
-# The fitst apporach is used in the electric_potential_backup.py
-# The second approach is used in the electric_potential.py
+# compare two different transforms to calculate the electric potential
+# The fitst apporach is used in electric_potential_backup.py
+# The second approach is used in electric_potential.py
 
 import torch
 import os
@@ -14,10 +14,10 @@ sys.path.pop()
 
 def compare_two_different_methods(M=1024, N=1024, dtype=torch.float64):
     density_map = torch.empty(M, N, dtype=dtype).uniform_(0, 10.0).cuda()
-    expk_M = discrete_spectral_transform.get_expk(M, dtype, density_map.device)
-    expk_N = discrete_spectral_transform.get_expk(N, dtype, density_map.device)
-    expkM = discrete_spectral_transform.get_exact_expk(M, dtype, density_map.device)
-    expkN = discrete_spectral_transform.get_exact_expk(N, dtype, density_map.device)
+    expkM = discrete_spectral_transform.get_expk(M, dtype, density_map.device)
+    expkN = discrete_spectral_transform.get_expk(N, dtype, density_map.device)
+    exact_expkM = discrete_spectral_transform.get_exact_expk(M, dtype, density_map.device)
+    exact_expkN = discrete_spectral_transform.get_exact_expk(N, dtype, density_map.device)
     print("M = {}, N = {}".format(M, N))
 
     wu = torch.arange(M, dtype=density_map.dtype, device=density_map.device).mul(2 * np.pi / M).view([M, 1])
@@ -30,29 +30,31 @@ def compare_two_different_methods(M=1024, N=1024, dtype=torch.float64):
     wu_by_wu2_plus_wv2_2X = wu.mul(inv_wu2_plus_wv2_2X)
     wv_by_wu2_plus_wv2_2X = wv.mul(inv_wu2_plus_wv2_2X)
 
-    auv_golden = dct.dct2(density_map, expk0=expk_M, expk1=expk_N)
+    # the first approach is used as the ground truth
+    auv_golden = dct.dct2(density_map, expk0=expkM, expk1=expkN)
     auv = auv_golden.clone()
     auv[0, :].mul_(0.5)
     auv[:, 0].mul_(0.5)
     auv_by_wu2_plus_wv2_wu = auv.mul(wu_by_wu2_plus_wv2_2X)
     auv_by_wu2_plus_wv2_wv = auv.mul(wv_by_wu2_plus_wv2_2X)
-    field_map_x_golden = dct.idsct2(auv_by_wu2_plus_wv2_wu, expk_M, expk_N)
-    field_map_y_golden = dct.idcst2(auv_by_wu2_plus_wv2_wv, expk_M, expk_N)
+    field_map_x_golden = dct.idsct2(auv_by_wu2_plus_wv2_wu, expkM, expkN)
+    field_map_y_golden = dct.idcst2(auv_by_wu2_plus_wv2_wv, expkM, expkN)
     # compute potential phi
     # auv / (wu**2 + wv**2)
     auv_by_wu2_plus_wv2 = auv.mul(inv_wu2_plus_wv2_2X).mul_(2)
-    #potential_map = discrete_spectral_transform.idcct2(auv_by_wu2_plus_wv2, expk_M, expk_N)
-    potential_map_golden = dct.idcct2(auv_by_wu2_plus_wv2, expk_M, expk_N)
+    #potential_map = discrete_spectral_transform.idcct2(auv_by_wu2_plus_wv2, expkM, expkN)
+    potential_map_golden = dct.idcct2(auv_by_wu2_plus_wv2, expkM, expkN)
     # compute energy
     energy_golden = potential_map_golden.mul_(density_map).sum()
 
     if density_map.is_cuda:
         torch.cuda.synchronize()
 
-    dct2 = dct2_fft2.DCT2(M, N, density_map.dtype, density_map.device, expkM, expkN)
-    idct2 = dct2_fft2.IDCT2(M, N, density_map.dtype, density_map.device, expkM, expkN)
-    idct_idxst = dct2_fft2.IDCT_IDXST(M, N, density_map.dtype, density_map.device, expkM, expkN)
-    idxst_idct = dct2_fft2.IDXST_IDCT(M, N, density_map.dtype, density_map.device, expkM, expkN)
+    # the second approach uses the idxst_idct and idct_idxst
+    dct2 = dct2_fft2.DCT2(M, N, density_map.dtype, density_map.device, exact_expkM, exact_expkN)
+    idct2 = dct2_fft2.IDCT2(M, N, density_map.dtype, density_map.device, exact_expkM, exact_expkN)
+    idct_idxst = dct2_fft2.IDCT_IDXST(M, N, density_map.dtype, density_map.device, exact_expkM, exact_expkN)
+    idxst_idct = dct2_fft2.IDXST_IDCT(M, N, density_map.dtype, density_map.device, exact_expkM, exact_expkN)
 
     inv_wu2_plus_wv2 = 1.0 / wu2_plus_wv2
     inv_wu2_plus_wv2[0, 0] = 0.0
@@ -72,6 +74,7 @@ def compare_two_different_methods(M=1024, N=1024, dtype=torch.float64):
     if density_map.is_cuda:
         torch.cuda.synchronize()
 
+    # compare results
     np.testing.assert_allclose(buv.data.cpu().numpy(), auv_golden.data.cpu().numpy(), rtol=1e-6, atol=1e-5)
     np.testing.assert_allclose(field_map_x.data.cpu().numpy(), field_map_x_golden.data.cpu().numpy(), rtol=1e-6, atol=1e-5)
     np.testing.assert_allclose(field_map_y.data.cpu().numpy(), field_map_y_golden.data.cpu().numpy(), rtol=1e-6, atol=1e-5)

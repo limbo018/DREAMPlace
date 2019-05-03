@@ -174,7 +174,7 @@ class DCTOpTest(unittest.TestCase):
         expkN = discrete_spectral_transform.get_exact_expk(N, dtype=x.dtype, device=x.device)
 
         golden_value = discrete_spectral_transform.dct2_N(x).data.numpy()
-        print("2D golden_value")
+        print("2D DCT golden_value")
         print(golden_value)
 
         # test cpu using N-FFT
@@ -251,7 +251,7 @@ class DCTOpTest(unittest.TestCase):
         y = discrete_spectral_transform.dct2_2N(x)
 
         golden_value = discrete_spectral_transform.idct2_2N(y).data.numpy()
-        print("2D golden_value")
+        print("2D idct golden_value")
         print(golden_value)
 
         # test cpu using N-FFT
@@ -312,7 +312,6 @@ class DCTOpTest(unittest.TestCase):
         print("2D idct_value cuda")
         print(dct_value.data.numpy())
 
-        # note the scale factor
         np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
 
     def test_idxct2Random(self):
