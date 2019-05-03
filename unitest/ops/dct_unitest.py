@@ -313,7 +313,7 @@ class DCTOpTest(unittest.TestCase):
         print(dct_value.data.numpy())
 
         # note the scale factor
-        np.testing.assert_allclose(dct_value.data.numpy(), golden_value / M / N, rtol=1e-6, atol=1e-5)
+        np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
 
     def test_idxct2Random(self):
         torch.manual_seed(10)
@@ -671,7 +671,7 @@ class DXTOpTest(unittest.TestCase):
         print(idct_idxst_value.data.numpy())
 
         # note the scale factor
-        np.testing.assert_allclose(idct_idxst_value.data.numpy(), golden_value / M / N * 2, atol=1e-14)
+        np.testing.assert_allclose(idct_idxst_value.data.numpy(), golden_value * 2, atol=1e-14)
 
     def test_idxst_idctRandom(self):
         torch.manual_seed(10)
@@ -696,7 +696,7 @@ class DXTOpTest(unittest.TestCase):
         print(idxst_idct_value.data.numpy())
 
         # note the scale factor
-        np.testing.assert_allclose(idxst_idct_value.data.numpy(), golden_value / M / N * 2, atol=1e-14)
+        np.testing.assert_allclose(idxst_idct_value.data.numpy(), golden_value* 2, atol=1e-14)
 
 
 def eval_torch_rfft2d(x, runs):

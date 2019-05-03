@@ -260,7 +260,7 @@ void idct2_fft2PreprocessCudaLauncher(
 }
 
 template <typename T>
-__global__ void idct2_fft2Postprocess(const T *x, T *y, const int M, const int N, const int halfN)
+__global__ void idct2_fft2Postprocess(const T *x, T *y, const int M, const int N, const int halfN, const int MN)
 {
     const int wid = blockDim.x * blockIdx.x + threadIdx.x;
     const int hid = blockDim.y * blockIdx.y + threadIdx.y;
@@ -286,7 +286,7 @@ __global__ void idct2_fft2Postprocess(const T *x, T *y, const int M, const int N
             assert(0);
             break;
         }
-        y[index] = x[INDEX(hid, wid, N)];
+        y[index] = x[INDEX(hid, wid, N)] * MN;
     }
 }
 
@@ -295,12 +295,12 @@ void idct2_fft2PostprocessCudaLauncher(const T *x, T *y, const int M, const int 
 {
     dim3 gridSize((N + TPB - 1) / TPB, (M + TPB - 1) / TPB, 1);
     dim3 blockSize(TPB, TPB, 1);
-    idct2_fft2Postprocess<T><<<gridSize, blockSize>>>(x, y, M, N, N / 2);
+    idct2_fft2Postprocess<T><<<gridSize, blockSize>>>(x, y, M, N, N / 2, M * N);
 }
 
 // idct_idxst
 template <typename T, typename TComplex>
-__global__ __launch_bounds__(TPB *TPB, 10) void idct_idxstPreprocess(const T *input, TComplex *output, const int M, const int N,
+__global__ __launch_bounds__(TPB * TPB, 10) void idct_idxstPreprocess(const T *input, TComplex *output, const int M, const int N,
                                                                      const int halfM, const int halfN,
                                                                      const TComplex *__restrict__ expkM, const TComplex *__restrict__ expkN)
 {
@@ -405,7 +405,7 @@ void idct_idxstPreprocessCudaLauncher(const T *x, T *y, const int M, const int N
 }
 
 template <typename T>
-__global__ void idct_idxstPostprocess(const T *x, T *y, const int M, const int N, const int halfN)
+__global__ void idct_idxstPostprocess(const T *x, T *y, const int M, const int N, const int halfN, const int MN)
 {
     const int wid = blockDim.x * blockIdx.x + threadIdx.x;
     const int hid = blockDim.y * blockIdx.y + threadIdx.y;
@@ -417,19 +417,19 @@ __global__ void idct_idxstPostprocess(const T *x, T *y, const int M, const int N
         {
         case 0:
             index = INDEX(((M - hid) << 1) - 1, ((N - wid) << 1) - 1, N);
-            y[index] = -1 * x[INDEX(hid, wid, N)];
+            y[index] = -1 * x[INDEX(hid, wid, N)] * MN;
             break;
         case 1:
             index = INDEX(((M - hid) << 1) - 1, wid << 1, N);
-            y[index] = x[INDEX(hid, wid, N)];
+            y[index] = x[INDEX(hid, wid, N)] * MN;
             break;
         case 2:
             index = INDEX(hid << 1, ((N - wid) << 1) - 1, N);
-            y[index] = -1 * x[INDEX(hid, wid, N)];
+            y[index] = -1 * x[INDEX(hid, wid, N)] * MN;
             break;
         case 3:
             index = INDEX(hid << 1, wid << 1, N);
-            y[index] = x[INDEX(hid, wid, N)];
+            y[index] = x[INDEX(hid, wid, N)] * MN;
             break;
         default:
             assert(0);
@@ -443,7 +443,7 @@ void idct_idxstPostprocessCudaLauncher(const T *x, T *y, const int M, const int 
 {
     dim3 gridSize((N + TPB - 1) / TPB, (M + TPB - 1) / TPB, 1);
     dim3 blockSize(TPB, TPB, 1);
-    idct_idxstPostprocess<T><<<gridSize, blockSize>>>(x, y, M, N, N / 2);
+    idct_idxstPostprocess<T><<<gridSize, blockSize>>>(x, y, M, N, N / 2, M * N);
 }
 
 // idxst_idct
@@ -562,7 +562,7 @@ void idxst_idctPreprocessCudaLauncher(
 }
 
 template <typename T>
-__global__ void idxst_idctPostprocess(const T *x, T *y, const int M, const int N, const int halfN)
+__global__ void idxst_idctPostprocess(const T *x, T *y, const int M, const int N, const int halfN, const int MN)
 {
     const int wid = blockDim.x * blockIdx.x + threadIdx.x;
     const int hid = blockDim.y * blockIdx.y + threadIdx.y;
@@ -574,19 +574,19 @@ __global__ void idxst_idctPostprocess(const T *x, T *y, const int M, const int N
         {
         case 0:
             index = INDEX(((M - hid) << 1) - 1, ((N - wid) << 1) - 1, N);
-            y[index] = -1 * x[INDEX(hid, wid, N)];
+            y[index] = -1 * x[INDEX(hid, wid, N)] * MN;
             break;
         case 1:
             index = INDEX(((M - hid) << 1) - 1, wid << 1, N);
-            y[index] = -1 * x[INDEX(hid, wid, N)];
+            y[index] = -1 * x[INDEX(hid, wid, N)] * MN;
             break;
         case 2:
             index = INDEX(hid << 1, ((N - wid) << 1) - 1, N);
-            y[index] = x[INDEX(hid, wid, N)];
+            y[index] = x[INDEX(hid, wid, N)] * MN;
             break;
         case 3:
             index = INDEX(hid << 1, wid << 1, N);
-            y[index] = x[INDEX(hid, wid, N)];
+            y[index] = x[INDEX(hid, wid, N)] * MN;
             break;
         default:
             assert(0);
@@ -600,7 +600,7 @@ void idxst_idctPostprocessCudaLauncher(const T *x, T *y, const int M, const int 
 {
     dim3 gridSize((N + TPB - 1) / TPB, (M + TPB - 1) / TPB, 1);
     dim3 blockSize(TPB, TPB, 1);
-    idxst_idctPostprocess<T><<<gridSize, blockSize>>>(x, y, M, N, N / 2);
+    idxst_idctPostprocess<T><<<gridSize, blockSize>>>(x, y, M, N, N / 2, M * N);
 }
 
 // dct2_fft2
