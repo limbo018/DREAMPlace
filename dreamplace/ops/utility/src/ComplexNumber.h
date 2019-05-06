@@ -65,7 +65,7 @@ inline __device__ ComplexType<T> complexConj(const ComplexType<T> &x)
 {
     ComplexType<T> res;
     res.x = x.x;
-    res.y = -1 * x.y;
+    res.y = -x.y;
     return res;
 }
 
@@ -74,7 +74,7 @@ inline __device__ ComplexType<T> complexMulConj(const ComplexType<T> &x, const C
 {
     ComplexType<T> res;
     res.x = x.x * y.x - x.y * y.y;
-    res.y = -1 * (x.x * y.y + x.y * y.x);
+    res.y = -(x.x * y.y + x.y * y.x);
     return res;
 }
 

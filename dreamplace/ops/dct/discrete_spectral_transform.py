@@ -65,7 +65,7 @@ def get_exact_expk(N, dtype, device):
     pik_by_2N = torch.arange(N, dtype=dtype, device=device)
     pik_by_2N.mul_(np.pi/(2*N))
     # cos, -sin
-    expk = torch.stack([pik_by_2N.cos(), -1 * pik_by_2N.sin()], dim=-1)
+    expk = torch.stack([pik_by_2N.cos(), -pik_by_2N.sin()], dim=-1)
     return expk.contiguous()
 
 

@@ -88,11 +88,11 @@ __global__ __launch_bounds__(1024, 10) void dct2dPostprocess(const TComplex *V, 
 
             tmp = V[wid];
             y[wid] = RealPartOfMul(expkN[wid], tmp) * four_over_MN;
-            y[N - wid] = -1 * ImaginaryPartOfMul(expkN[wid], tmp) * four_over_MN;
+            y[N - wid] = -ImaginaryPartOfMul(expkN[wid], tmp) * four_over_MN;
 
             tmp = V[INDEX(halfM, wid, halfN + 1)];
             y[INDEX(halfM, wid, N)] = expkM[halfM].x * RealPartOfMul(expkN[wid], tmp) * four_over_MN;
-            y[INDEX(halfM, N - wid, N)] = -1 * expkM[halfM].x * ImaginaryPartOfMul(expkN[wid], tmp) * four_over_MN;
+            y[INDEX(halfM, N - wid, N)] = -expkM[halfM].x * ImaginaryPartOfMul(expkN[wid], tmp) * four_over_MN;
             break;
         }
 
@@ -102,7 +102,7 @@ __global__ __launch_bounds__(1024, 10) void dct2dPostprocess(const TComplex *V, 
             tmp1 = V[INDEX(hid, 0, halfN + 1)];
             tmp2 = V[INDEX(M - hid, 0, halfN + 1)];
             tmp_up.x = expkM[hid].x * (tmp1.x + tmp2.x) + expkM[hid].y * (tmp2.y - tmp1.y);
-            tmp_down.x = -1 * expkM[hid].y * (tmp1.x + tmp2.x) + expkM[hid].x * (tmp2.y - tmp1.y);
+            tmp_down.x = -expkM[hid].y * (tmp1.x + tmp2.x) + expkM[hid].x * (tmp2.y - tmp1.y);
             y[INDEX(hid, 0, N)] = tmp_up.x * two_over_MN;
             y[INDEX(M - hid, 0, N)] = tmp_down.x * two_over_MN;
 
@@ -110,8 +110,8 @@ __global__ __launch_bounds__(1024, 10) void dct2dPostprocess(const TComplex *V, 
             tmp2 = complexSubtract(V[INDEX(hid, halfN, halfN + 1)], V[INDEX(M - hid, halfN, halfN + 1)]);
             tmp_up.x = expkM[hid].x * tmp1.x - expkM[hid].y * tmp2.y;
             tmp_up.y = expkM[hid].x * tmp1.y + expkM[hid].y * tmp2.x;
-            tmp_down.x = -1 * expkM[hid].y * tmp1.x - expkM[hid].x * tmp2.y;
-            tmp_down.y = -1 * expkM[hid].y * tmp1.y + expkM[hid].x * tmp2.x;
+            tmp_down.x = -expkM[hid].y * tmp1.x - expkM[hid].x * tmp2.y;
+            tmp_down.y = -expkM[hid].y * tmp1.y + expkM[hid].x * tmp2.x;
             y[INDEX(hid, halfN, N)] = RealPartOfMul(expkN[halfN], tmp_up) * two_over_MN;
             y[INDEX(M - hid, halfN, N)] = RealPartOfMul(expkN[halfN], tmp_down) * two_over_MN;
             break;
@@ -124,12 +124,12 @@ __global__ __launch_bounds__(1024, 10) void dct2dPostprocess(const TComplex *V, 
             tmp2 = complexSubtract(V[INDEX(hid, wid, halfN + 1)], V[INDEX(M - hid, wid, halfN + 1)]);
             tmp_up.x = expkM[hid].x * tmp1.x - expkM[hid].y * tmp2.y;
             tmp_up.y = expkM[hid].x * tmp1.y + expkM[hid].y * tmp2.x;
-            tmp_down.x = -1 * expkM[hid].y * tmp1.x - expkM[hid].x * tmp2.y;
-            tmp_down.y = -1 * expkM[hid].y * tmp1.y + expkM[hid].x * tmp2.x;
+            tmp_down.x = -expkM[hid].y * tmp1.x - expkM[hid].x * tmp2.y;
+            tmp_down.y = -expkM[hid].y * tmp1.y + expkM[hid].x * tmp2.x;
             y[INDEX(hid, wid, N)] = RealPartOfMul(expkN[wid], tmp_up) * two_over_MN;
             y[INDEX(M - hid, wid, N)] = RealPartOfMul(expkN[wid], tmp_down) * two_over_MN;
-            y[INDEX(hid, N - wid, N)] = -1 * ImaginaryPartOfMul(expkN[wid], tmp_up) * two_over_MN;
-            y[INDEX(M - hid, N - wid, N)] = -1 * ImaginaryPartOfMul(expkN[wid], tmp_down) * two_over_MN;
+            y[INDEX(hid, N - wid, N)] = -ImaginaryPartOfMul(expkN[wid], tmp_up) * two_over_MN;
+            y[INDEX(M - hid, N - wid, N)] = -ImaginaryPartOfMul(expkN[wid], tmp_down) * two_over_MN;
             break;
         }
 
@@ -419,7 +419,7 @@ void idct_idxstPreprocessCudaLauncher(const T *x, T *y, const int M, const int N
 
 // Adpated from idct2d_postprocess() with changes on sign and scale
 // if (wid % 2 == 1)
-//     new_output[hid][wid] = -1 * output[hid][wid];
+//     new_output[hid][wid] = -output[hid][wid];
 // else
 //     new_output[hid][wid] = output[hid][wid];
 template <typename T>
@@ -435,7 +435,7 @@ __global__ void idct_idxstPostprocess(const T *x, T *y, const int M, const int N
         {
         case 0:
             index = INDEX(((M - hid) << 1) - 1, ((N - wid) << 1) - 1, N);
-            y[index] = -1 * x[INDEX(hid, wid, N)] * MN;
+            y[index] = -x[INDEX(hid, wid, N)] * MN;
             break;
         case 1:
             index = INDEX(((M - hid) << 1) - 1, wid << 1, N);
@@ -443,7 +443,7 @@ __global__ void idct_idxstPostprocess(const T *x, T *y, const int M, const int N
             break;
         case 2:
             index = INDEX(hid << 1, ((N - wid) << 1) - 1, N);
-            y[index] = -1 * x[INDEX(hid, wid, N)] * MN;
+            y[index] = -x[INDEX(hid, wid, N)] * MN;
             break;
         case 3:
             index = INDEX(hid << 1, wid << 1, N);
@@ -586,7 +586,7 @@ void idxst_idctPreprocessCudaLauncher(
 
 // Adpated from idct2d_postprocess() with changes on sign and scale
 // if (hid % 2 == 1)
-//     new_output[hid][wid] = -1 * output[hid][wid];
+//     new_output[hid][wid] = -output[hid][wid];
 // else
 //     new_output[hid][wid] = output[hid][wid];
 template <typename T>
@@ -602,11 +602,11 @@ __global__ void idxst_idctPostprocess(const T *x, T *y, const int M, const int N
         {
         case 0:
             index = INDEX(((M - hid) << 1) - 1, ((N - wid) << 1) - 1, N);
-            y[index] = -1 * x[INDEX(hid, wid, N)] * MN;
+            y[index] = -x[INDEX(hid, wid, N)] * MN;
             break;
         case 1:
             index = INDEX(((M - hid) << 1) - 1, wid << 1, N);
-            y[index] = -1 * x[INDEX(hid, wid, N)] * MN;
+            y[index] = -x[INDEX(hid, wid, N)] * MN;
             break;
         case 2:
             index = INDEX(hid << 1, ((N - wid) << 1) - 1, N);
