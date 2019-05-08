@@ -1,8 +1,3 @@
-/*
- * @Author      : undefined
- * @Date: 2019-05-07 20:14:28
- * @LastEditTime: 2019-05-07 20:21:23
- */
 /**
  * @file   functional_cuda.h
  * @author Yibo Lin
