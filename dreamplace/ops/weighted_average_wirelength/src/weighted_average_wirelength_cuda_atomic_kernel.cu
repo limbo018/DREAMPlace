@@ -25,8 +25,9 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
     T *grad_x_tensor, T *grad_y_tensor // the gradient is partial total wirelength to partial pin position
 )
 {
-    int thread_count = 1024;
-    int block_count = 32; // separate x and y
+    int thread_count = 256;
+    int block_count_pins = (num_pins - 1 + thread_count) / thread_count; // separate x and y
+    int block_count_nets = (num_nets - 1 + thread_count) / thread_count;
 
     cudaError_t status;
     cudaStream_t stream_x_exp;
@@ -48,7 +49,7 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
 
     if (grad_tensor)
     {
-        computeWeightedAverageWirelengthGrad<<<block_count, thread_count, 0, stream_x_exp>>>(
+        computeWeightedAverageWirelengthGrad<<<block_count_pins, thread_count, 0, stream_x_exp>>>(
             x,
             exp_xy, exp_nxy,
             exp_xy_sum, exp_nxy_sum,
@@ -60,7 +61,7 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
             gamma,
             grad_tensor,
             grad_x_tensor);
-        computeWeightedAverageWirelengthGrad<<<block_count, thread_count, 0, stream_y_exp>>>(
+        computeWeightedAverageWirelengthGrad<<<block_count_pins, thread_count, 0, stream_y_exp>>>(
             y,
             exp_xy + num_pins, exp_nxy + num_pins,
             exp_xy_sum + num_nets, exp_nxy_sum + num_nets,
@@ -76,25 +77,23 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
     else
     {
         // compute max and min in one kernel
-        computeMaxMin<<<block_count, thread_count, 0, stream_x_exp>>>(
+        computeMaxMin<<<block_count_pins, thread_count, 0, stream_x_exp>>>(
             x,
             pin2net_map,
             net_mask,
-            num_nets,
             num_pins,
             xy_max,
             xy_min);
-        computeMaxMin<<<block_count, thread_count, 0, stream_y_exp>>>(
+        computeMaxMin<<<block_count_pins, thread_count, 0, stream_y_exp>>>(
             y,
             pin2net_map,
             net_mask,
-            num_nets,
             num_pins,
             xy_max + num_nets,
             xy_min + num_nets);
         // compute plus-minus exp, sum of plus-minus exp, sum of x*exp in one CUDA kernels
         // corresponding to the plus and minus a b c kernels in the DREAMPlace paper
-        computeABCKernels<<<block_count, thread_count, 0, stream_x_exp>>>(
+        computeABCKernels<<<block_count_pins, thread_count, 0, stream_x_exp>>>(
             x,
             pin2net_map,
             net_mask,
@@ -105,7 +104,7 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
             exp_xy, exp_nxy,
             exp_xy_sum, exp_nxy_sum,
             xyexp_xy_sum, xyexp_nxy_sum);
-        computeABCKernels<<<block_count, thread_count, 0, stream_y_exp>>>(
+        computeABCKernels<<<block_count_pins, thread_count, 0, stream_y_exp>>>(
             y,
             pin2net_map,
             net_mask,
@@ -117,7 +116,7 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
             exp_xy_sum + num_nets, exp_nxy_sum + num_nets,
             xyexp_xy_sum + num_nets, xyexp_nxy_sum + num_nets);
         // compute log sum exp
-        computeXExpSumByExpSum<<<block_count, thread_count, 0, stream_x_exp>>>(
+        computeXExpSumByExpSum<<<block_count_nets, thread_count, 0, stream_x_exp>>>(
             xyexp_xy_sum, xyexp_nxy_sum,
             exp_xy_sum, exp_nxy_sum,
             pin2net_map,
@@ -125,7 +124,7 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
             num_nets,
             gamma,
             partial_wl);
-        computeXExpSumByExpSum<<<block_count, thread_count, 0, stream_y_exp>>>(
+        computeXExpSumByExpSum<<<block_count_nets, thread_count, 0, stream_y_exp>>>(
             xyexp_xy_sum + num_nets, xyexp_nxy_sum + num_nets,
             exp_xy_sum + num_nets, exp_nxy_sum + num_nets,
             pin2net_map,

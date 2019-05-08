@@ -16,7 +16,8 @@ __global__ void computeMax(
     int num_pins,
     V *x_max)
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_pins; i += blockDim.x * gridDim.x)
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_pins)
     {
         int net_id = pin2net_map[i];
         if (net_id >= 0 || net_mask[net_id])
@@ -35,7 +36,8 @@ __global__ void computeMin(
     int num_pins,
     V *x_min)
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_pins; i += blockDim.x * gridDim.x)
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_pins)
     {
         int net_id = pin2net_map[i];
         if (net_id >= 0 || net_mask[net_id])
@@ -55,7 +57,8 @@ __global__ void computeMaxMin(
     V *x_max,
     V *x_min)
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_pins; i += blockDim.x * gridDim.x)
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_pins)
     {
         int net_id = pin2net_map[i];
         if (net_id >= 0 || net_mask[net_id])
@@ -77,7 +80,8 @@ __global__ void computeExp(
     V *x_max,
     T *exp_x)
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_pins; i += blockDim.x * gridDim.x)
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_pins)
     {
         int net_id = pin2net_map[i];
         if (net_id >= 0 || net_mask[net_id])
@@ -98,7 +102,8 @@ __global__ void computeNegExp(
     V *x_min,
     T *exp_nx)
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_pins; i += blockDim.x * gridDim.x)
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_pins)
     {
         int net_id = pin2net_map[i];
         if (net_id >= 0 || net_mask[net_id])
@@ -117,7 +122,8 @@ __global__ void computeExpSum(
     int num_pins,
     T *exp_x_sum)
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_pins; i += blockDim.x * gridDim.x)
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_pins)
     {
         int net_id = pin2net_map[i];
         if (net_id >= 0 || net_mask[net_id])
@@ -137,7 +143,8 @@ __global__ void computeXExpSum(
     int num_pins,
     T *xexp_x_sum)
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_pins; i += blockDim.x * gridDim.x)
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_pins)
     {
         int net_id = pin2net_map[i];
         if (net_id >= 0 || net_mask[net_id])
@@ -160,7 +167,8 @@ __global__ void computeABCKernels(
     T *exp_x_sum, T *exp_nx_sum,
     T *xexp_x_sum, T *xexp_nx_sum)
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_pins; i += blockDim.x * gridDim.x)
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_pins)
     {
         int net_id = pin2net_map[i];
         if (net_id >= 0 || net_mask[net_id])
@@ -186,7 +194,8 @@ __global__ void computeXExpSumByExpSum(
     const T *gamma,
     T *partial_wl)
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_nets; i += blockDim.x * gridDim.x)
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_nets)
     {
         if (net_mask[i])
         {
@@ -205,7 +214,8 @@ __global__ void computeXNegExpSumByNegExpSum(
     const T *gamma,
     T *partial_wl)
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_nets; i += blockDim.x * gridDim.x)
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_nets)
     {
         if (net_mask[i])
         {
@@ -224,7 +234,8 @@ __global__ void computeXExpSumByExpSum(
     const T *gamma,
     T *partial_wl)
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_nets; i += blockDim.x * gridDim.x)
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_nets)
     {
         if (net_mask[i])
         {
@@ -248,7 +259,8 @@ __global__ void computeWeightedAverageWirelengthGrad(
     const T *grad_tensor,
     T *grad_x_tensor)
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_pins; i += blockDim.x * gridDim.x)
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_pins)
     {
         int net_id = pin2net_map[i];
         if (net_id >= 0 || net_mask[net_id])
