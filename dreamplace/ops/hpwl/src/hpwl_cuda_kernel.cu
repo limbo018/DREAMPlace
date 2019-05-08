@@ -63,7 +63,8 @@ __global__ void computeHPWL(
         T* partial_hpwl 
         )
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_nets; i += blockDim.x * gridDim.x)
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_nets)
     {
         T max_x = -FLT_MAX;
         T min_x = FLT_MAX;
@@ -94,8 +95,8 @@ int computeHPWLCudaLauncher(
         T* partial_hpwl
         )
 {
-    const int thread_count = 1024; 
-    const int block_count = 32; 
+    const int thread_count = 512; 
+    const int block_count_nets = (num_nets + thread_count - 1) / thread_count; 
 
     cudaError_t status; 
     cudaStream_t stream_x; 
@@ -115,7 +116,7 @@ int computeHPWLCudaLauncher(
         return 1; 
     }
 
-    computeHPWL<<<block_count, thread_count, 0, stream_x>>>(
+    computeHPWL<<<block_count_nets, thread_count, 0, stream_x>>>(
             x, 
             flat_netpin, 
             netpin_start, 
@@ -124,7 +125,7 @@ int computeHPWLCudaLauncher(
             partial_hpwl
             );
 
-    computeHPWL<<<block_count, thread_count, 0, stream_y>>>(
+    computeHPWL<<<block_count_nets, thread_count, 0, stream_y>>>(
             y, 
             flat_netpin, 
             netpin_start, 

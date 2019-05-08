@@ -38,7 +38,7 @@ int computeMoveBoundaryMapCudaLauncher(
         )
 {
     int block_count = 32; 
-    int thread_count = 1024; 
+    int thread_count = 512; 
 
     cudaError_t status; 
     cudaStream_t stream_x; 

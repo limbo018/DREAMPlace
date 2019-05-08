@@ -15,7 +15,8 @@ __global__ void computeHPWLMax(
         T* partial_hpwl_x_max 
         )
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_pins; i += blockDim.x * gridDim.x)
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_pins)
     {
         int net_id = pin2net_map[i];
         if (net_mask[net_id])
@@ -35,7 +36,8 @@ __global__ void computeHPWLMin(
         T* partial_hpwl_x_min 
         )
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_pins; i += blockDim.x * gridDim.x)
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_pins)
     {
         int net_id = pin2net_map[i];
         if (net_mask[net_id])
@@ -57,8 +59,8 @@ int computeHPWLCudaAtomicLauncher(
         T* partial_hpwl_min
         )
 {
-    const int thread_count = 1024; 
-    const int block_count = 32; 
+    const int thread_count = 512; 
+    const int block_count_pins = (num_pins + thread_count - 1) / thread_count; 
 
     cudaError_t status; 
     cudaStream_t stream_x_max; 
@@ -94,7 +96,7 @@ int computeHPWLCudaAtomicLauncher(
         return 1; 
     }
 
-    computeHPWLMax<<<block_count, thread_count, 0, stream_x_max>>>(
+    computeHPWLMax<<<block_count_pins, thread_count, 0, stream_x_max>>>(
             x, 
             pin2net_map, 
             net_mask, 
@@ -102,7 +104,7 @@ int computeHPWLCudaAtomicLauncher(
             partial_hpwl_max
             );
 
-    computeHPWLMin<<<block_count, thread_count, 0, stream_x_min>>>(
+    computeHPWLMin<<<block_count_pins, thread_count, 0, stream_x_min>>>(
             x, 
             pin2net_map, 
             net_mask, 
@@ -110,7 +112,7 @@ int computeHPWLCudaAtomicLauncher(
             partial_hpwl_min
             );
 
-    computeHPWLMax<<<block_count, thread_count, 0, stream_y_max>>>(
+    computeHPWLMax<<<block_count_pins, thread_count, 0, stream_y_max>>>(
             y, 
             pin2net_map, 
             net_mask, 
@@ -118,7 +120,7 @@ int computeHPWLCudaAtomicLauncher(
             partial_hpwl_max+num_nets
             );
 
-    computeHPWLMin<<<block_count, thread_count, 0, stream_y_min>>>(
+    computeHPWLMin<<<block_count_pins, thread_count, 0, stream_y_min>>>(
             y, 
             pin2net_map, 
             net_mask, 

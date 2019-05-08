@@ -47,8 +47,9 @@ __global__ void computeDensityMap(
         const int num_impacted_bins_x, const int num_impacted_bins_y, 
         T* density_map_tensor) 
 {
+    int i = blockIdx.x * blockDim.x + threadIdx.x; 
     // rank-one update density map 
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_nodes*num_impacted_bins_x*num_impacted_bins_y; i += blockDim.x * gridDim.x) 
+    if (i < num_nodes*num_impacted_bins_x*num_impacted_bins_y) 
     {
         // density potential function 
         auto computeDensityPotentialFunc = [](T x, T node_size, T bin_center, T bin_size, T a, T b, T c){
@@ -120,8 +121,9 @@ __global__ void computeDensityGradient(
         T* grad_x_tensor, T* grad_y_tensor
         ) 
 {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
     // rank-one update density map 
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_nodes; i += blockDim.x * gridDim.x) 
+    if (i < num_nodes) 
     {
         // density potential function 
         auto computeDensityPotentialFunc = [](T x, T node_size, T bin_center, T bin_size, T a, T b, T c){
@@ -234,14 +236,13 @@ int computeDensityPotentialMapCudaLauncher(
         T* grad_x_tensor, T* grad_y_tensor 
         )
 {
-    int block_count = 1; 
-    int thread_count = 1; 
+    int block_count;
+    int thread_count = 512; 
 
     // compute gradient 
     if (grad_tensor)
-    {
-        thread_count = 1024; 
-        block_count = 32; 
+    { 
+        block_count = (num_nodes - 1 + thread_count) / thread_count; 
 
         computeDensityGradient<<<block_count, thread_count>>>(
                 x_tensor, y_tensor, 
@@ -264,9 +265,8 @@ int computeDensityPotentialMapCudaLauncher(
         //printArray(grad_y_tensor, 10, "grad_y_tensor");
     }
     else 
-    {
-        thread_count = 1024; 
-        block_count = 32; 
+    { 
+        block_count = (num_nodes*num_impacted_bins_x*num_impacted_bins_y - 1 + thread_count) / thread_count; 
 
         computeDensityMap<<<block_count, thread_count>>>(
                 x_tensor, y_tensor, 

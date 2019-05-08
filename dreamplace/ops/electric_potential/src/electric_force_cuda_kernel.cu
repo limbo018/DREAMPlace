@@ -28,7 +28,8 @@ __global__ void computeElectricForceAtomic(
         T* grad_x_tensor, T* grad_y_tensor
         ) 
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_nodes*num_impacted_bins_x*num_impacted_bins_y; i += blockDim.x * gridDim.x) 
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_nodes*num_impacted_bins_x*num_impacted_bins_y) 
     {
         // density overflow function 
         auto computeDensityFunc = [](T x, T node_size, T bin_center, T bin_size){
@@ -93,7 +94,8 @@ __global__ void computeElectricForce(
         T* grad_x_tensor, T* grad_y_tensor
         ) 
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_nodes; i += blockDim.x * gridDim.x) 
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_nodes) 
     {
         auto computeDensityFunc = [](T x, T node_size, T bin_center, T bin_size){
             //return max(T(0.0), min(x+node_size, bin_center+bin_size/2) - max(x, bin_center-bin_size/2));
@@ -171,10 +173,10 @@ int computeElectricForceCudaLauncher(
         int num_nodes, int num_movable_nodes, int num_filler_nodes, 
         T* grad_x_tensor, T* grad_y_tensor
         )
-{
-    int block_count = 32; 
-    int thread_count = 1024; 
-
+{ 
+    int thread_count = 512; 
+    int block_count_nodes = (num_nodes + thread_count - 1) / thread_count;
+    
     cudaError_t status; 
     cudaStream_t stream_movable; 
     cudaStream_t stream_filler; 
@@ -186,7 +188,7 @@ int computeElectricForceCudaLauncher(
         return 1; 
     }
 
-    computeElectricForce<<<block_count, thread_count, 0, stream_movable>>>(
+    computeElectricForce<<<block_count_nodes, thread_count, 0, stream_movable>>>(
             num_bins_x, num_bins_y, 
             num_movable_impacted_bins_x, num_movable_impacted_bins_y, 
             field_map_x_tensor, field_map_y_tensor, 
@@ -209,7 +211,7 @@ int computeElectricForceCudaLauncher(
             return 1; 
         }
 
-        computeElectricForce<<<block_count, thread_count, 0, stream_filler>>>(
+        computeElectricForce<<<block_count_nodes, thread_count, 0, stream_filler>>>(
                 num_bins_x, num_bins_y, 
                 num_filler_impacted_bins_x, num_filler_impacted_bins_y, 
                 field_map_x_tensor, field_map_y_tensor, 

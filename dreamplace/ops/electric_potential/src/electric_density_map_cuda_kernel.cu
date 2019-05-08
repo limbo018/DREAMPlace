@@ -26,8 +26,9 @@ __global__ void computeTriangleDensityMapAtomic(
         const int num_impacted_bins_x, const int num_impacted_bins_y, 
         T* density_map_tensor) 
 {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
     // rank-one update density map 
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_nodes*num_impacted_bins_x*num_impacted_bins_y; i += blockDim.x * gridDim.x) 
+    if (i < num_nodes*num_impacted_bins_x*num_impacted_bins_y) 
     {
         // density overflow function 
         auto computeDensityFunc = [](T x, T node_size, T bin_center, T bin_size){
@@ -99,7 +100,8 @@ __global__ void computeTriangleDensityMap(
         const int num_impacted_bins_x, const int num_impacted_bins_y, 
         T* density_map_tensor) 
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_nodes; i += blockDim.x * gridDim.x) 
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_nodes) 
     {
         auto computeDensityFunc = [](T x, T node_size, T bin_center, T bin_size){
             return max(T(0.0), min(x+node_size, bin_center+bin_size/2) - max(x, bin_center-bin_size/2));
@@ -152,8 +154,9 @@ __global__ void computeExactDensityMap(
         bool fixed_node_flag, 
         T* density_map_tensor) 
 {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
     // rank-one update density map 
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_nodes*num_impacted_bins_x*num_impacted_bins_y; i += blockDim.x * gridDim.x) 
+    if (i < num_nodes*num_impacted_bins_x*num_impacted_bins_y) 
     {
         // density overflow function 
         auto computeDensityFunc = [](T x, T node_size, T bin_center, T bin_size, T l, T h, bool flag){
@@ -215,8 +218,8 @@ int computeTriangleDensityMapCudaLauncher(
         T* density_map_tensor
         )
 {
-    int block_count = 32; 
-    int thread_count = 1024; 
+    int block_count; 
+    int thread_count = 512; 
 
     cudaError_t status; 
     cudaStream_t stream_movable; 
@@ -229,6 +232,7 @@ int computeTriangleDensityMapCudaLauncher(
         return 1; 
     }
 
+    block_count = (num_nodes*num_impacted_bins_x*num_impacted_bins_y - 1 + thread_count) / thread_count;
     computeTriangleDensityMap<<<block_count, thread_count, 0, stream_movable>>>(
             x_tensor, y_tensor, 
             node_size_x_tensor, node_size_y_tensor, 
@@ -297,8 +301,8 @@ int computeExactDensityMapCudaLauncher(
         T* density_map_tensor
         )
 {
-    int block_count = 32; 
-    int thread_count = 1024; 
+    int thread_count = 512; 
+    int block_count = (num_nodes*num_impacted_bins_x*num_impacted_bins_y - 1 + thread_count) / thread_count;
 
     computeExactDensityMap<<<block_count, thread_count>>>(
             x_tensor, y_tensor, 

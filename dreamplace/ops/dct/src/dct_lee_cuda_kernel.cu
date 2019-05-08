@@ -133,7 +133,7 @@ template <typename TValue>
 void dct(const TValue *vec, TValue *out, TValue* buf, const TValue *cos, int M, int N)
 {
     int block_count = 2048; 
-    int thread_count = 1024; 
+    int thread_count = 512; 
 
     // The input length must be power of 2
     if (! isPowerOf2<int>(N))

@@ -15,7 +15,8 @@ __global__ void computeMulExpk(
         T* z
         )
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < M*N; i += blockDim.x * gridDim.x) 
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < M*N) 
     {
         int row = i/N; // row
         int col = i-row*N; // column
@@ -48,7 +49,7 @@ void computeMulExpkCudaLauncher(
         )
 {
     const int thread_count = 1024; 
-    const int block_count = 32; 
+    const int block_count = (M * N - 1 + thread_count) / thread_count; 
 
     computeMulExpk<<<block_count, thread_count>>>(
             x, 
@@ -67,7 +68,8 @@ __global__ void computeReorder(
         T* y
         )
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < M*N; i += blockDim.x * gridDim.x) 
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < M*N;) 
     {
         int ii = i%N; 
 
@@ -95,7 +97,7 @@ void computeReorderCudaLauncher(
         )
 {
     const int thread_count = 1024; 
-    const int block_count = 32; 
+    const int block_count = (M * N - 1 / thread_count) / thread_count; 
 
     computeReorder<<<block_count, thread_count>>>(
             x, 
@@ -114,7 +116,8 @@ __global__ void computeVk(
         T* v
         )
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < M*(N/2+1); i += blockDim.x * gridDim.x) 
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < M*(N/2+1)) 
     {
         int ncol = N/2+1; 
         int row = i/ncol; // row
@@ -141,8 +144,8 @@ void computeVkCudaLauncher(
         T* v
         )
 {
-    const int thread_count = 1024; 
-    const int block_count = 32; 
+    const int thread_count = 512; 
+    const int block_count = (M*(N/2+1) - 1 + thread_count) / thread_count; 
 
     computeVk<<<block_count, thread_count>>>(
             x, 
@@ -162,7 +165,8 @@ __global__ void computeReorderReverse(
         T* z
         )
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < M*N; i += blockDim.x * gridDim.x) 
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < M*N) 
     {
         int row = i/N; // row
         int col = i-row*N; // column
@@ -183,8 +187,8 @@ void computeReorderReverseCudaLauncher(
         T* z
         )
 {
-    const int thread_count = 1024; 
-    const int block_count = 32; 
+    const int thread_count = 512; 
+    const int block_count = (M * N - 1 + thread_count) / thread_count; 
 
     computeReorderReverse<<<block_count, thread_count>>>(
             y, 

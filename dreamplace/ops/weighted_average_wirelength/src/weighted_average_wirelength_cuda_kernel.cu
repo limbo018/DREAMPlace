@@ -27,7 +27,8 @@ __global__ void computeWeightedAverageWirelength(
         T* partial_wl 
         )
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < 2*num_nets; i += blockDim.x * gridDim.x) 
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < 2*num_nets) 
     {
         int ii = i>>1; 
         const T* values = (i&1)? y : x;
@@ -77,7 +78,8 @@ __global__ void computeWeightedAverageWirelengthGrad(
         T* grad_x_tensor, T* grad_y_tensor 
         )
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < 2*num_nets; i += blockDim.x * gridDim.x) 
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < 2*num_nets) 
     {
         int ii = i/2; 
         const T* values = (i&1)? y : x;
@@ -146,12 +148,12 @@ int computeWeightedAverageWirelengthCudaLauncher(
         T* grad_x_tensor, T* grad_y_tensor  
         )
 {
-    int thread_count = 1024; 
-    int block_count = 32; // separate x and y
+    int thread_count = 512; 
+    int block_count_2_nets = (2 * num_nets + thread_count - 1) / thread_count; // separate x and y
 
     if (grad_tensor)
     {
-        computeWeightedAverageWirelengthGrad<<<block_count, thread_count>>>(
+        computeWeightedAverageWirelengthGrad<<<block_count_2_nets, thread_count>>>(
                 x, y, 
                 flat_netpin, 
                 netpin_start, 
@@ -164,7 +166,7 @@ int computeWeightedAverageWirelengthCudaLauncher(
     }
     else
     {
-        computeWeightedAverageWirelength<<<block_count, thread_count>>>(
+        computeWeightedAverageWirelength<<<block_count_2_nets, thread_count>>>(
                 x, y, 
                 flat_netpin, 
                 netpin_start, 
