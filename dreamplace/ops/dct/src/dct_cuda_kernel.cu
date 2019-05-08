@@ -8,15 +8,15 @@ DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T>
 __global__ void computeMulExpk(
-        const T* x, 
-        const T* expk, 
-        const int M, 
-        const int N, 
+        const T* x,
+        const T* expk,
+        const int M,
+        const int N,
         T* z
         )
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i < M*N) 
+    if (i < M*N)
     {
         int row = i/N; // row
         int col = i-row*N; // column
@@ -30,7 +30,7 @@ __global__ void computeMulExpk(
             //printf("x[%d]*expk[%d] + x[%d]*expk[%d] = z[%d]\n", j, col_2x, j+1, col_2x+1, i);
             z[i] = x[j]*expk[col_2x] + x[j+1]*expk[col_2x+1];
         }
-        else 
+        else
         {
             int j = row*fft_onesided_size_2x + (N<<1) - col_2x;
             //printf("x[%d]*expk[%d] + x[%d]*expk[%d] = z[%d]\n", j, col_2x, j+1, col_2x+1, i);
@@ -41,37 +41,37 @@ __global__ void computeMulExpk(
 
 template <typename T>
 void computeMulExpkCudaLauncher(
-        const T* x, 
-        const T* expk, 
-        const int M, 
-        const int N, 
+        const T* x,
+        const T* expk,
+        const int M,
+        const int N,
         T* z
         )
 {
-    const int thread_count = 1024; 
-    const int block_count = (M * N - 1 + thread_count) / thread_count; 
+    const int thread_count = 1024;
+    const int block_count = (M * N - 1 + thread_count) / thread_count;
 
     computeMulExpk<<<block_count, thread_count>>>(
-            x, 
-            expk, 
-            M, 
-            N, 
+            x,
+            expk,
+            M,
+            N,
             z
             );
 }
 
 template <typename T>
 __global__ void computeReorder(
-        const T* x, 
-        const int M, 
-        const int N, 
+        const T* x,
+        const int M,
+        const int N,
         T* y
         )
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i < M*N;) 
+    if (i < M*N)
     {
-        int ii = i%N; 
+        int ii = i%N;
 
         if (ii < (N>>1))
         {
@@ -79,7 +79,7 @@ __global__ void computeReorder(
             //printf("x[%d] = y[%d]\n", i+ii, i);
             y[i] = x[i+ii];
         }
-        else 
+        else
         {
             // (N-i)*2-1
             //printf("x[%d] = y[%d]\n", i+N*2-ii*3-1, i);
@@ -90,68 +90,68 @@ __global__ void computeReorder(
 
 template <typename T>
 void computeReorderCudaLauncher(
-        const T* x, 
-        const int M, 
-        const int N, 
+        const T* x,
+        const int M,
+        const int N,
         T* y
         )
 {
-    const int thread_count = 1024; 
-    const int block_count = (M * N - 1 / thread_count) / thread_count; 
+    const int thread_count = 1024;
+    const int block_count = (M * N - 1 / thread_count) / thread_count;
 
     computeReorder<<<block_count, thread_count>>>(
-            x, 
-            M, 
-            N, 
+            x,
+            M,
+            N,
             y
             );
 }
 
 template <typename T>
 __global__ void computeVk(
-        const T* x, 
-        const T* expk, 
-        const int M, 
-        const int N, 
+        const T* x,
+        const T* expk,
+        const int M,
+        const int N,
         T* v
         )
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i < M*(N/2+1)) 
+    if (i < M*(N/2+1))
     {
-        int ncol = N/2+1; 
+        int ncol = N/2+1;
         int row = i/ncol; // row
         int col = i-row*ncol; // column
         int col_2x = (col<<1);
 
-        // real 
+        // real
         T real = x[row*N+col];
         T imag = (col == 0)? 0 : -x[row*N+N-col];
 
         v[2*i] = real*expk[col_2x] - imag*expk[col_2x+1];
         // imag, x[N-i]
-        v[2*i+1] = real*expk[col_2x+1] + imag*expk[col_2x]; 
+        v[2*i+1] = real*expk[col_2x+1] + imag*expk[col_2x];
     }
 
 }
 
 template <typename T>
 void computeVkCudaLauncher(
-        const T* x, 
-        const T* expk, 
-        const int M, 
-        const int N, 
+        const T* x,
+        const T* expk,
+        const int M,
+        const int N,
         T* v
         )
 {
-    const int thread_count = 512; 
-    const int block_count = (M*(N/2+1) - 1 + thread_count) / thread_count; 
+    const int thread_count = 512;
+    const int block_count = (M*(N/2+1) - 1 + thread_count) / thread_count;
 
     computeVk<<<block_count, thread_count>>>(
-            x, 
-            expk, 
-            M, 
-            N, 
+            x,
+            expk,
+            M,
+            N,
             v
             );
 }
@@ -159,41 +159,41 @@ void computeVkCudaLauncher(
 
 template <typename T>
 __global__ void computeReorderReverse(
-        const T* y, 
-        const int M, 
-        const int N, 
+        const T* y,
+        const int M,
+        const int N,
         T* z
         )
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i < M*N) 
+    if (i < M*N)
     {
         int row = i/N; // row
         int col = i-row*N; // column
 
         //printf("z[%d] = y[%d]\n", i, (col&1)? (i-col*3/2+N-1) : (i-col/2));
         //z[i] = (col&1)? y[(i-col*3/2+N-1)] : y[(i-col/2)];
-        // according to the paper, it should be N - (col+1)/2 for col is odd 
-        // but it seems previous implementation accidentally matches this as well 
+        // according to the paper, it should be N - (col+1)/2 for col is odd
+        // but it seems previous implementation accidentally matches this as well
         z[i] = (col&1)? y[(i-col) + N - (col+1)/2] : y[(i-col/2)];
     }
 }
 
 template <typename T>
 void computeReorderReverseCudaLauncher(
-        const T* y, 
-        const int M, 
-        const int N, 
+        const T* y,
+        const int M,
+        const int N,
         T* z
         )
 {
-    const int thread_count = 512; 
-    const int block_count = (M * N - 1 + thread_count) / thread_count; 
+    const int thread_count = 512;
+    const int block_count = (M * N - 1 + thread_count) / thread_count;
 
     computeReorderReverse<<<block_count, thread_count>>>(
-            y, 
-            M, 
-            N, 
+            y,
+            M,
+            N,
             z
             );
 }
@@ -201,14 +201,14 @@ void computeReorderReverseCudaLauncher(
 template <typename T>
 __global__ void addX0AndScale(
         const T* x,
-        const int M, 
-        const int N, 
+        const int M,
+        const int N,
         T* y
         )
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < M*N; i += blockDim.x * gridDim.x) 
+    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < M*N; i += blockDim.x * gridDim.x)
     {
-        int i0 = int(i/N)*N; 
+        int i0 = int(i/N)*N;
         y[i] = (y[i]+x[i0])*0.5;
     }
 }
@@ -216,49 +216,49 @@ __global__ void addX0AndScale(
 template <typename T>
 void addX0AndScaleCudaLauncher(
         const T* x,
-        const int M, 
-        const int N, 
+        const int M,
+        const int N,
         T* y
         )
 {
     addX0AndScale<<<32, 1024>>>(
-            x, 
-            M, 
-            N, 
+            x,
+            M,
+            N,
             y
             );
 }
 
-/// extends from addX0AndScale to merge scaling 
+/// extends from addX0AndScale to merge scaling
 template <typename T>
 __global__ void addX0AndScaleN(
         const T* x,
-        const int M, 
-        const int N, 
+        const int M,
+        const int N,
         T* y
         )
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < M*N; i += blockDim.x * gridDim.x) 
+    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < M*N; i += blockDim.x * gridDim.x)
     {
-        int i0 = int(i/N)*N; 
-        // this is to match python implementation 
+        int i0 = int(i/N)*N;
+        // this is to match python implementation
         // normal way should be multiply by 0.25*N
-        y[i] = y[i]*0.25*N+x[i0]*0.5; 
+        y[i] = y[i]*0.25*N+x[i0]*0.5;
     }
 }
 
 template <typename T>
 void addX0AndScaleNCudaLauncher(
         const T* x,
-        const int M, 
-        const int N, 
+        const int M,
+        const int N,
         T* y
         )
 {
     addX0AndScaleN<<<32, 1024>>>(
-            x, 
-            M, 
-            N, 
+            x,
+            M,
+            N,
             y
             );
 }
@@ -266,32 +266,32 @@ void addX0AndScaleNCudaLauncher(
 template <typename T>
 __global__ void computePad(
         const T* x, // M*N
-        const int M, 
-        const int N, 
+        const int M,
+        const int N,
         T* z // M*2N
         )
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < M*N; i += blockDim.x * gridDim.x) 
+    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < M*N; i += blockDim.x * gridDim.x)
     {
         int row = i/N; // row
         int col = i-row*N; // column
-        int j = row*(N<<1) + col; 
-        z[j] = x[i]; 
+        int j = row*(N<<1) + col;
+        z[j] = x[i];
     }
 }
 
 template <typename T>
 void computePadCudaLauncher(
         const T* x, // M*N
-        const int M, 
-        const int N, 
+        const int M,
+        const int N,
         T* z // M*2N
         )
 {
     computePad<<<32, 1024>>>(
-            x, 
-            M, 
-            N, 
+            x,
+            M,
+            N,
             z
             );
 }
@@ -299,18 +299,18 @@ void computePadCudaLauncher(
 template <typename T>
 __global__ void computeMulExpk_2N(
         const T* x, // M*(N+1)*2
-        const T* expk, 
-        const int M, 
-        const int N, 
+        const T* expk,
+        const int M,
+        const int N,
         T* z // M*N
         )
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < M*N; i += blockDim.x * gridDim.x) 
+    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < M*N; i += blockDim.x * gridDim.x)
     {
         int row = i/N; // row
         int col = i-row*N; // column
         int col_2x = (col<<1);
-        int j = row*((N+1)<<1) + col_2x; 
+        int j = row*((N+1)<<1) + col_2x;
         z[i] = x[j]*expk[col_2x] + x[j+1]*expk[col_2x+1];
     }
 }
@@ -318,17 +318,17 @@ __global__ void computeMulExpk_2N(
 template <typename T>
 void computeMulExpk_2N_CudaLauncher(
         const T* x, // M*(N+1)*2
-        const T* expk, 
-        const int M, 
-        const int N, 
+        const T* expk,
+        const int M,
+        const int N,
         T* z // M*N
         )
 {
     computeMulExpk_2N<<<32, 1024>>>(
-            x, 
-            expk, 
-            M, 
-            N, 
+            x,
+            expk,
+            M,
+            N,
             z
             );
 }
@@ -336,19 +336,19 @@ void computeMulExpk_2N_CudaLauncher(
 template <typename T>
 __global__ void computeMulExpkAndPad_2N(
         const T* x, // M*N
-        const T* expk, 
-        const int M, 
-        const int N, 
+        const T* expk,
+        const int M,
+        const int N,
         T* z // M*2N*2
         )
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < M*N; i += blockDim.x * gridDim.x) 
+    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < M*N; i += blockDim.x * gridDim.x)
     {
         int row = i/N; // row
         int col = i-row*N; // column
         int col_2x = (col<<1);
-        int j = row*(N<<2) + col_2x; 
-        z[j] = x[i]*expk[col_2x]; 
+        int j = row*(N<<2) + col_2x;
+        z[j] = x[i]*expk[col_2x];
         z[j+1] = x[i]*expk[col_2x+1];
     }
 }
@@ -356,56 +356,56 @@ __global__ void computeMulExpkAndPad_2N(
 template <typename T>
 void computeMulExpkAndPad_2N_CudaLauncher(
         const T* x, // M*N
-        const T* expk, 
-        const int M, 
-        const int N, 
+        const T* expk,
+        const int M,
+        const int N,
         T* z // M*2N*2
         )
 {
     computeMulExpkAndPad_2N<<<32, 1024>>>(
-            x, 
-            expk, 
-            M, 
-            N, 
+            x,
+            expk,
+            M,
+            N,
             z
             );
 }
 
-/// remove last N entries in each column 
+/// remove last N entries in each column
 template <typename T>
 __global__ void computeTruncation(
         const T* x, // M*2N
-        const int M, 
-        const int N, 
+        const int M,
+        const int N,
         T* z // M*N
         )
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < M*N; i += blockDim.x * gridDim.x) 
+    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < M*N; i += blockDim.x * gridDim.x)
     {
         int row = i/N; // row
         int col = i-row*N; // column
-        int j = row*(N<<1) + col; 
-        z[i] = x[j]; 
+        int j = row*(N<<1) + col;
+        z[i] = x[j];
     }
 }
 
 template <typename T>
 void computeTruncationCudaLauncher(
         const T* x, // M*2N
-        const int M, 
-        const int N, 
+        const int M,
+        const int N,
         T* z // M*N
         )
 {
     computeTruncation<<<32, 1024>>>(
-            x, 
-            M, 
-            N, 
+            x,
+            M,
+            N,
             z
             );
 }
 
-// manually instantiate the template function 
+// manually instantiate the template function
 #define REGISTER_MULPEXPK_KERNEL_LAUNCHER(type) \
     void instantiateComputeMulExpkLauncher(\
         const type* x, \
