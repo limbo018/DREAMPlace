@@ -45,7 +45,7 @@ def compare_two_different_methods(M=1024, N=1024, dtype=torch.float64):
     #potential_map = discrete_spectral_transform.idcct2(auv_by_wu2_plus_wv2, expkM, expkN)
     potential_map_golden = dct.idcct2(auv_by_wu2_plus_wv2, expkM, expkN)
     # compute energy
-    energy_golden = potential_map_golden.mul_(density_map).sum()
+    energy_golden = potential_map_golden.mul(density_map).sum()
 
     if density_map.is_cuda:
         torch.cuda.synchronize()
@@ -69,7 +69,7 @@ def compare_two_different_methods(M=1024, N=1024, dtype=torch.float64):
     field_map_y = idct_idxst.forward(buv_by_wu2_plus_wv2_wv)
     buv_by_wu2_plus_wv2 = buv.mul(inv_wu2_plus_wv2)
     potential_map = idct2.forward(buv_by_wu2_plus_wv2)
-    energy = potential_map.mul_(density_map).sum()
+    energy = potential_map.mul(density_map).sum()
 
     if density_map.is_cuda:
         torch.cuda.synchronize()
