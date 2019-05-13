@@ -45,7 +45,7 @@ UserParam::UserParam()
     targetPinUtil = 0;
     targetPPR = 0;
     maxDisplace = 0;
-    binSize[0] = binSize[1] = 10; 
+    binSize[0] = binSize[1] = 10;
     binSize[2] = binSize[3] = 5;
     binSpaceThreshold = 0.2;
 
@@ -53,12 +53,13 @@ UserParam::UserParam()
     enableLegalize = true;
     evaluateOverlap = false;
     moveMultiRowCell = true;
-    alignPowerLine = true; 
-    clusterCell = false; 
+    alignPowerLine = true;
+    clusterCell = false;
+    sortNetsByDegree = false;
 
     drawPlaceInit = false;
     drawPlaceFinal = false;
-    drawPlaceAnime = false; 
+    drawPlaceAnime = false;
     drawRegion[0] = std::numeric_limits<int>::min();
     drawRegion[1] = std::numeric_limits<int>::min();
     drawRegion[2] = std::numeric_limits<int>::max();
@@ -78,7 +79,7 @@ bool UserParam::read(int argc, char** argv)
                 placeConfig = NORMAL;
             else if (limbo::iequals(argv[i+1], "ICCAD"))
                 placeConfig = ICCAD;
-            else 
+            else
                 dreamplaceAssertMsg(0, "unknown placeConfig %s", argv[i+1]);
         }
     }
@@ -96,27 +97,27 @@ bool UserParam::read(int argc, char** argv)
 bool UserParam::readNormal(int argc, char** argv, UserParamExtHelper const& helper)
 {
     printWelcome();
-    // not all arguments can be initialized by defaultParam 
-    UserParam defaultParam; // default parameters from default constructor 
+    // not all arguments can be initialized by defaultParam
+    UserParam defaultParam; // default parameters from default constructor
     char buf[64];
-    // some default vectors 
-    // program_options does not support passing a pair of values, so add comma to make it a std::string and convert to pairs later 
+    // some default vectors
+    // program_options does not support passing a pair of values, so add comma to make it a std::string and convert to pairs later
     std::string defaultAbuPercStr[4] = {"2,10", "5,5", "10,2", "20,1"};
     dreamplaceSPrint(kNONE, buf, "%d,%d,%d,%d", defaultParam.drawRegion[0], defaultParam.drawRegion[1], defaultParam.drawRegion[2], defaultParam.drawRegion[3]);
-    std::string defaultDrawRegionStr = buf; 
+    std::string defaultDrawRegionStr = buf;
     std::vector<std::string> vAbuPercStr;
     std::vector<std::string> vDefIgnoreCellType;
     bool help = false;
-    std::string placeConfigStr; // dummy to skip place config argument because it is pre-handled 
+    std::string placeConfigStr; // dummy to skip place config argument because it is pre-handled
     std::string fileFormatStr;
-    std::string drawRegionStr; 
-    // append options here 
+    std::string drawRegionStr;
+    // append options here
     typedef limbo::programoptions::ProgramOptions po_type;
     using limbo::programoptions::Value;
     po_type desc (std::string("Available options"));
     desc.add_option(Value<bool>("--help", &help, "print help message").default_value(help).help(true))
         .add_option(Value<std::string>("-config", &placeConfigStr, "configuration to placement context <NORMAL | ICCAD>").default_value(toString(defaultParam.placeConfig)))
-        .add_option(Value<std::vector<std::string> >("--lef_input", &vLefInput, "input LEF files")) 
+        .add_option(Value<std::vector<std::string> >("--lef_input", &vLefInput, "input LEF files"))
         .add_option(Value<std::string>("--def_input", &defInput, "input DEF file"))
         .add_option(Value<std::string>("--verilog_input", &verilogInput, "input Verilog file"))
         .add_option(Value<std::string>("--bookshelf_aux_input", &bookshelfAuxInput, "input Bookshelf aux file"))
@@ -132,9 +133,9 @@ bool UserParam::readNormal(int argc, char** argv, UserParamExtHelper const& help
         .add_option(Value<unsigned>("--bin_height", &binSize[kY], "bin height (#rows) in vertical direction").default_value(defaultParam.binSize[1]))
         .add_option(Value<unsigned>("--sbin_width", &binSize[2+kX], "sbin width (#rows) in horizontal direction").default_value(defaultParam.binSize[2]))
         .add_option(Value<unsigned>("--sbin_height", &binSize[2+kY], "sbin height (#rows) in vertical direction").default_value(defaultParam.binSize[3]))
-        .add_option(Value<double>("--bin_space_threshold", &binSpaceThreshold, 
+        .add_option(Value<double>("--bin_space_threshold", &binSpaceThreshold,
          "when the capacity of a bin (exclude fixed macros) is smaller than a specific percentage of the bin area, do not take into the calculation for abu density").default_value(defaultParam.binSpaceThreshold))
-        .add_option(Value<std::vector<std::string> >("--abu", &vAbuPercStr, 
+        .add_option(Value<std::vector<std::string> >("--abu", &vAbuPercStr,
          "top percentage and weight pairs of bins for abu calculation").default_value(std::vector<std::string>(defaultAbuPercStr, defaultAbuPercStr+4), "2,10 5,5 10,2 20,1"))
         .add_option(Value<std::set<std::string> >("--def_ignore_cells", &sDefIgnoreCellType, "cells ignored in input DEF file"))
         .add_option(Value<std::set<std::string> >("--macro_obs_aware_layers", &sMacroObsAwareLayer, "layers of macro obstruction that are considered during placement"))
@@ -144,6 +145,7 @@ bool UserParam::readNormal(int argc, char** argv, UserParamExtHelper const& help
         .add_option(Value<bool>("--move_multi_row_cell", &moveMultiRowCell, "enable multi-row cell movement").default_value(defaultParam.moveMultiRowCell))
         .add_option(Value<bool>("--align_power_line", &alignPowerLine, "enable power line alignment for multi-row cell").default_value(defaultParam.alignPowerLine))
         .add_option(Value<bool>("--cluster_cell", &clusterCell, "enable cell clustering in chain global move").default_value(defaultParam.clusterCell))
+        .add_option(Value<bool>("--sort_nets_by_degree", &sortNetsByDegree, "sort nets by degree").default_value(defaultParam.sortNetsByDegree))
         .add_option(Value<bool>("--draw_place_init", &drawPlaceInit, "draw initial placement").default_value(defaultParam.drawPlaceInit))
         .add_option(Value<bool>("--draw_place_final", &drawPlaceFinal, "draw final placement").default_value(defaultParam.drawPlaceFinal))
         .add_option(Value<bool>("--draw_place_anime", &drawPlaceAnime, "draw placement for animation").default_value(defaultParam.drawPlaceAnime))
@@ -157,23 +159,23 @@ bool UserParam::readNormal(int argc, char** argv, UserParamExtHelper const& help
     {
         desc.parse(argc, argv);
 
-        // print help message 
+        // print help message
         if (help)
         {
             std::cout << desc << "\n";
             exit(1);
         }
 
-        helper.processAhead(desc); // extension 
+        helper.processAhead(desc); // extension
 
-        if (!desc.count("--bookshelf_aux_input")) // if specified Bookshelf input, LEF/DEF input is no longer required 
+        if (!desc.count("--bookshelf_aux_input")) // if specified Bookshelf input, LEF/DEF input is no longer required
         {
-            // if not specified, must provide LEF/DEF 
-            dreamplaceAssertMsg(desc.count("--lef_input") && desc.count("--def_input"), "need either Bookshelf or LEF/DEF input files"); 
+            // if not specified, must provide LEF/DEF
+            dreamplaceAssertMsg(desc.count("--lef_input") && desc.count("--def_input"), "need either Bookshelf or LEF/DEF input files");
         }
         if (!desc.count("--def_output"))
         {
-            // set default value 
+            // set default value
             defOutput = limbo::trim_file_suffix(limbo::get_file_name(defInput)) + "-out.def";
         }
         // post processing vAbuPerc
@@ -184,8 +186,8 @@ bool UserParam::readNormal(int argc, char** argv, UserParamExtHelper const& help
             std::size_t found = it->find(',');
             vAbuPerc.push_back(std::make_pair(atoi(it->substr(0, found).c_str()), atoi(it->substr(found+1).c_str())));
         }
-        std::sort(vAbuPerc.begin(), vAbuPerc.end(), 
-                boost::bind(&std::pair<int, int>::first, _1) 
+        std::sort(vAbuPerc.begin(), vAbuPerc.end(),
+                boost::bind(&std::pair<int, int>::first, _1)
                 <  boost::bind(&std::pair<int, int>::first, _2));
 
         // post processing fileFormat
@@ -204,18 +206,18 @@ bool UserParam::readNormal(int argc, char** argv, UserParamExtHelper const& help
             dreamplacePrint(kWARN, "DEF input file not specified, cannot output DEF file; set to DEFSIMPLE\n");
         }
 
-        // post processing drawRegion 
-        std::vector<std::string> vToken; 
+        // post processing drawRegion
+        std::vector<std::string> vToken;
         boost::trim(drawRegionStr);
         boost::split(vToken, drawRegionStr, boost::is_any_of(","));
         for (int i = 0; i < 4; ++i)
             drawRegion[i] = atoi(vToken.at(i).c_str());
 
-        helper.processLater(desc); // extension 
+        helper.processLater(desc); // extension
     }
     catch (std::exception& e)
     {
-        // print help message and error message 
+        // print help message and error message
         std::cout << desc << "\n";
         dreamplacePrint(kERROR, "%s\n", e.what());
         return false;
@@ -227,15 +229,15 @@ bool UserParam::readNormal(int argc, char** argv, UserParamExtHelper const& help
     return true;
 }
 
-bool UserParam::readICCAD(int argc, char** argv, UserParamExtHelper const& helper) 
+bool UserParam::readICCAD(int argc, char** argv, UserParamExtHelper const& helper)
 {
     bool help = false;
     std::string placeConfigStr;
     std::string parmFile;
     std::string iccadFile;
-    // not all arguments can be initialized by defaultParam 
-    UserParam defaultParam; // default parameters from default constructor 
-    // append options here 
+    // not all arguments can be initialized by defaultParam
+    UserParam defaultParam; // default parameters from default constructor
+    // append options here
     typedef limbo::programoptions::ProgramOptions po_type;
     using limbo::programoptions::Value;
     po_type desc (std::string("Available options"));
@@ -255,12 +257,12 @@ bool UserParam::readICCAD(int argc, char** argv, UserParamExtHelper const& helpe
         .add_option(Value<bool>("--draw_place_anime", &drawPlaceAnime, "draw placement for animation").default_value(defaultParam.drawPlaceAnime))
         .add_option(Value<unsigned>("-max_iters", &maxIters, "maximum optimization iterations").default_value(defaultParam.maxIters))
         ;
-    helper.addOptions(desc); // extension 
+    helper.addOptions(desc); // extension
     try
     {
         desc.parse(argc, argv);
 
-        // print help message 
+        // print help message
         if (help)
         {
             std::cout << desc << "\n";
@@ -294,10 +296,10 @@ bool UserParam::readICCAD(int argc, char** argv, UserParamExtHelper const& helpe
                 else if (suffix == "def")
                     defInput = dir + '/' + token;
                 else if (suffix == "sdc")
-                {// set sdc file 
+                {// set sdc file
                 }
                 else if (suffix == "lib") // may not exist
-                {// set timing library 
+                {// set timing library
                 }
             }
         }
@@ -305,7 +307,7 @@ bool UserParam::readICCAD(int argc, char** argv, UserParamExtHelper const& helpe
 
         if (!desc.count("def_output"))
         {
-            // set default value 
+            // set default value
             defOutput = limbo::trim_file_suffix(limbo::get_file_name(defInput)) + "-cada003.def";
         }
 
@@ -313,7 +315,7 @@ bool UserParam::readICCAD(int argc, char** argv, UserParamExtHelper const& helpe
     }
     catch (std::exception& e)
     {
-        // print help message and error message 
+        // print help message and error message
         std::cout << desc << "\n";
         dreamplacePrint(kERROR, "%s\n", e.what());
         return false;
@@ -326,7 +328,7 @@ bool UserParam::readICCAD(int argc, char** argv, UserParamExtHelper const& helpe
     vAbuPerc.push_back(std::make_pair(5, 4));
     vAbuPerc.push_back(std::make_pair(10, 2));
     vAbuPerc.push_back(std::make_pair(20, 1));
-    sMacroObsAwareLayer.insert("metal1"); 
+    sMacroObsAwareLayer.insert("metal1");
     fileFormat = DEFSIMPLE;
 
     /// print parameters
@@ -335,7 +337,7 @@ bool UserParam::readICCAD(int argc, char** argv, UserParamExtHelper const& helpe
     return true;
 }
 
-void UserParam::printParams() const 
+void UserParam::printParams() const
 {
     dreamplacePrint(kINFO, "lef_input = ");
     for (std::vector<std::string>::const_iterator it = vLefInput.begin(), ite = vLefInput.end(); it != ite; ++it)
@@ -371,11 +373,12 @@ void UserParam::printParams() const
     dreamplacePrint(kINFO, "move_multi_row_cell = %s\n", ((moveMultiRowCell)? "true" : "false"));
     dreamplacePrint(kINFO, "align_power_line = %s\n", ((alignPowerLine)? "true" : "false"));
     dreamplacePrint(kINFO, "cluster_cell = %s\n", ((clusterCell)? "true" : "false"));
+    dreamplacePrint(kINFO, "sort_nets_by_degree = %s\n", ((sortNetsByDegree)? "true" : "false"));
     dreamplacePrint(kINFO, "file_format = %s\n", toString(fileFormat).c_str());
     dreamplacePrint(kINFO, "max_iters = %u\n", maxIters);
 }
 
-void UserParam::printWelcome() const 
+void UserParam::printWelcome() const
 {
 }
 

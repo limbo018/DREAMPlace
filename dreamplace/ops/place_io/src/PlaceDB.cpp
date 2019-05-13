@@ -1145,7 +1145,10 @@ void PlaceDB::adjustParams()
     // sort nets and pins such that
     // nets are ordered from small to large degrees
     // pins are ordered to have bulk locations for each net
-    sortNetByDegree();
+    if (userParam().sortNetsByDegree)
+    {
+        sortNetByDegree();
+    }
 
     // some input parameters are not compatible
     // set max displacement to database unit

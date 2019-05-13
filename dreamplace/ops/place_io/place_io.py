@@ -15,11 +15,13 @@ class PlaceIOFunction(Function):
         if "aux_file" in params.__dict__:
             args += " --bookshelf_aux_input %s" % (params.aux_file)
         if "lef_input" in params.__dict__:
-            for lef in params.lef_input: 
+            for lef in params.lef_input:
                 args += " --lef_input %s" % (lef)
         if "def_input" in params.__dict__:
             args += " --def_input %s" % (params.def_input)
         if "verilog_input" in params.__dict__:
             args += " --verilog_input %s" % (params.verilog_input)
+        if "sort_nets_by_degree" in params.__dict__:
+            args += " --sort_nets_by_degree %s" % (params.sort_nets_by_degree)
 
         return place_io_cpp.forward(args.split(' '))
