@@ -425,7 +425,7 @@ class ElectricPotential(nn.Module):
 
             # init dct2, idct2, idct_idxst, idxst_idct with expkM and expkN
             self.dct2 = dct2_fft2.DCT2(M, N, pos.dtype, pos.device, self.exact_expkM, self.exact_expkN)
-            if self.fast_mode:
+            if not self.fast_mode:
                 self.idct2 = dct2_fft2.IDCT2(M, N, pos.dtype, pos.device, self.exact_expkM, self.exact_expkN)
             self.idct_idxst = dct2_fft2.IDCT_IDXST(M, N, pos.dtype, pos.device, self.exact_expkM, self.exact_expkN)
             self.idxst_idct = dct2_fft2.IDXST_IDCT(M, N, pos.dtype, pos.device, self.exact_expkM, self.exact_expkN)

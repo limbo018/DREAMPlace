@@ -97,7 +97,7 @@ void computeReorderCudaLauncher(
         )
 {
     const int thread_count = 1024;
-    const int block_count = (M * N - 1 / thread_count) / thread_count;
+    const int block_count = (M * N - 1 + thread_count) / thread_count;
 
     computeReorder<<<block_count, thread_count>>>(
             x,
