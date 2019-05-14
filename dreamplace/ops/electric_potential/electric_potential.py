@@ -17,8 +17,13 @@ from torch import nn
 from torch.autograd import Function
 from torch.nn import functional as F
 
-import dreamplace.ops.dct.dct2_fft2 as dct2_fft2
 import dreamplace.ops.dct.discrete_spectral_transform as discrete_spectral_transform
+
+import dreamplace.ops.dct.dct2_fft2 as dct
+from dreamplace.ops.dct.discrete_spectral_transform import get_exact_expk as precompute_expk
+
+#import dreamplace.ops.dct.dct as dct
+#from dreamplace.ops.dct.discrete_spectral_transform import get_expk as precompute_expk
 
 import dreamplace.ops.electric_potential.electric_potential_cpp as electric_potential_cpp
 try:
@@ -420,15 +425,15 @@ class ElectricPotential(nn.Module):
             # expk
             M = self.num_bins_x
             N = self.num_bins_y
-            self.exact_expkM = discrete_spectral_transform.get_exact_expk(M, dtype=pos.dtype, device=pos.device)
-            self.exact_expkN = discrete_spectral_transform.get_exact_expk(N, dtype=pos.dtype, device=pos.device)
+            self.exact_expkM = precompute_expk(M, dtype=pos.dtype, device=pos.device)
+            self.exact_expkN = precompute_expk(N, dtype=pos.dtype, device=pos.device)
 
             # init dct2, idct2, idct_idxst, idxst_idct with expkM and expkN
-            self.dct2 = dct2_fft2.DCT2(M, N, pos.dtype, pos.device, self.exact_expkM, self.exact_expkN)
+            self.dct2 = dct.DCT2(self.exact_expkM, self.exact_expkN)
             if not self.fast_mode:
-                self.idct2 = dct2_fft2.IDCT2(M, N, pos.dtype, pos.device, self.exact_expkM, self.exact_expkN)
-            self.idct_idxst = dct2_fft2.IDCT_IDXST(M, N, pos.dtype, pos.device, self.exact_expkM, self.exact_expkN)
-            self.idxst_idct = dct2_fft2.IDXST_IDCT(M, N, pos.dtype, pos.device, self.exact_expkM, self.exact_expkN)
+                self.idct2 = dct.IDCT2(self.exact_expkM, self.exact_expkN)
+            self.idct_idxst = dct.IDCT_IDXST(self.exact_expkM, self.exact_expkN)
+            self.idxst_idct = dct.IDXST_IDCT(self.exact_expkM, self.exact_expkN)
 
             # wu and wv
             wu = torch.arange(M, dtype=pos.dtype, device=pos.device).mul(2 * np.pi / M).view([M, 1])

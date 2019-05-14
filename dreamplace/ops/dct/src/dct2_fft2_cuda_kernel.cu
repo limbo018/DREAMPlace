@@ -1,10 +1,13 @@
-// Refernece: Byeong Lee, "A new algorithm to compute the discrete cosine Transform,"
-// in IEEE Transactions on Acoustics, Speech, and Signal Processing,
-// vol. 32, no. 6, pp. 1243-1245, December 1984.
-
-// The preprocess and postprocess of 2d dct and 2d idct are discussed in the original paper.
-// idct(idxst(x)) and idxst(idct(x)) are similar to the idct2d(x),
-// except tiny modifications on preprocessing and postprocessing
+/**
+ * @file   dct2_fft2_cuda_kernel.cu
+ * @author Zixuan Jiang, Jiaqi Gu
+ * @date   Apr 2019
+ * @brief  Refernece: Byeong Lee, "A new algorithm to compute the discrete cosine Transform,"
+ *      in IEEE Transactions on Acoustics, Speech, and Signal Processing, vol. 32, no. 6, pp. 1243-1245, December 1984.
+ *      The preprocess and postprocess of 2d dct and 2d idct are discussed in the original paper.
+ *      idct(idxst(x)) and idxst(idct(x)) are similar to the idct2d(x),
+ *      except tiny modifications on preprocessing and postprocessing
+ */
 
 #include <math.h>
 #include <float.h>

@@ -469,9 +469,8 @@ at::Tensor idxst_idct_forward(
                     z.data<scalar_t>()
                     );
             //std::cout << "z\n" << z << "\n";
-            // this is to match python implementation 
-            // normal way should be multiply by 0.25*N
-            z.mul_(0.25*M); 
+            // normalized to match dct2_fft2 implementation 
+            z.mul_(0.25*M*N); 
 
             negateOddEntries<scalar_t>(
                     z.data<scalar_t>(), 
@@ -539,9 +538,8 @@ at::Tensor idct_idxst_forward(
                     z.data<scalar_t>()
                     );
             //std::cout << "z\n" << z << "\n";
-            // this is to match python implementation 
-            // normal way should be multiply by 0.25*N
-            z.mul_(0.25*N); 
+            // normalized to match dct2_fft2 implementation 
+            z.mul_(0.25*N*M); 
 
             negateOddEntries<scalar_t>(
                     z.data<scalar_t>(), 

@@ -288,9 +288,15 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
   m.def("idxct", &DREAMPLACE_NAMESPACE::idxct_forward, "IDXCT forward (CUDA)");
   m.def("idxst", &DREAMPLACE_NAMESPACE::idxst_forward, "IDXST forward (CUDA)");
+
+  // use idxst and idxct as kernels 
   m.def("idcct2", &DREAMPLACE_NAMESPACE::idcct2_forward, "IDCCT2 forward (CUDA)");
   m.def("idcst2", &DREAMPLACE_NAMESPACE::idcst2_forward, "IDCST2 forward (CUDA)");
   m.def("idsct2", &DREAMPLACE_NAMESPACE::idsct2_forward, "IDSCT2 forward (CUDA)");
+
+  // use idxst and idct as kernels 
+  m.def("idxst_idct", &DREAMPLACE_NAMESPACE::idxst_idct_forward, "IDXST(IDCT(x)) forward (CUDA)");
+  m.def("idct_idxst", &DREAMPLACE_NAMESPACE::idct_idxst_forward, "IDCT(IDXST(x)) forward (CUDA)");
 
   m.def("dct_2N", &DREAMPLACE_NAMESPACE::dct_2N_forward, "DCT forward (CUDA)");
   m.def("idct_2N", &DREAMPLACE_NAMESPACE::idct_2N_forward, "IDCT forward (CUDA)");

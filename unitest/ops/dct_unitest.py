@@ -230,7 +230,7 @@ class DCTOpTest(unittest.TestCase):
 
         # test gpu using fft2
         x = x.cuda()
-        custom = dct2_fft2.DCT2(x.size(-2), x.size(-1), x.dtype, x.device, expkM, expkN)
+        custom = dct2_fft2.DCT2(expkM, expkN)
         dct_value = custom.forward(x).cpu()
         print("2D dct_value cuda")
         print(dct_value.data.numpy())
@@ -307,7 +307,7 @@ class DCTOpTest(unittest.TestCase):
 
         # test gpu using ifft2
         y = y.cuda()
-        custom = dct2_fft2.IDCT2(y.size(-2), y.size(-1), y.dtype, y.device, expkM, expkN)
+        custom = dct2_fft2.IDCT2(expkM, expkN)
         dct_value = custom.forward(y).cpu()
         print("2D idct_value cuda")
         print(dct_value.data.numpy())
@@ -662,11 +662,27 @@ class DXTOpTest(unittest.TestCase):
         print("2D golden_value")
         print(golden_value)
 
+        # test cpu
+        custom = dct.IDCT_IDXST()
+        idct_idxst_value = custom.forward(x)
+        print("2D dct.idct_idxst")
+        print(idct_idxst_value.data.numpy())
+
+        np.testing.assert_allclose(idct_idxst_value.data.numpy(), golden_value * 2, atol=1e-14)
+
+        # test gpu
+        custom = dct.IDCT_IDXST()
+        idct_idxst_value = custom.forward(x.cuda()).cpu()
+        print("2D dct.idct_idxst cuda")
+        print(idct_idxst_value.data.numpy())
+
+        np.testing.assert_allclose(idct_idxst_value.data.numpy(), golden_value * 2, atol=1e-14)
+
         # test gpu
         x = x.cuda()
-        custom = dct2_fft2.IDCT_IDXST(x.size(-2), x.size(-1), x.dtype, x.device, expkM, expkN)
+        custom = dct2_fft2.IDCT_IDXST(expkM, expkN)
         idct_idxst_value = custom.forward(x).cpu()
-        print("2D idct_idxst_value cuda")
+        print("2D dct2_fft2.idct_idxst cuda")
         print(idct_idxst_value.data.numpy())
 
         # note the scale factor
@@ -687,11 +703,27 @@ class DXTOpTest(unittest.TestCase):
         print("2D golden_value")
         print(golden_value)
 
+        # test cpu
+        custom = dct.IDXST_IDCT()
+        idxst_idct_value = custom.forward(x)
+        print("2D dct.idxst_idct")
+        print(idxst_idct_value.data.numpy())
+
+        np.testing.assert_allclose(idxst_idct_value.data.numpy(), golden_value * 2, atol=1e-14)
+
+        # test cpu
+        custom = dct.IDXST_IDCT()
+        idxst_idct_value = custom.forward(x.cuda()).cpu()
+        print("2D dct.idxst_idct cuda")
+        print(idxst_idct_value.data.numpy())
+
+        np.testing.assert_allclose(idxst_idct_value.data.numpy(), golden_value * 2, atol=1e-14)
+
         # test gpu
         x = x.cuda()
-        custom = dct2_fft2.IDXST_IDCT(x.size(-2), x.size(-1), x.dtype, x.device, expkM, expkN)
+        custom = dct2_fft2.IDXST_IDCT(expkM, expkN)
         idxst_idct_value = custom.forward(x).cpu()
-        print("2D idxst_idct_value cuda")
+        print("2D dct2_fft2.idxst_idct cuda")
         print(idxst_idct_value.data.numpy())
 
         # note the scale factor
@@ -720,7 +752,7 @@ def eval_torch_rfft2d(x, runs):
 
 
 def eval_dct2d(x, expk0, expk1, expkM, expkN, runs):
-    dct2func = dct2_fft2.DCT2(x.size(-2), x.size(-1), x.dtype, x.device, expkM, expkN)
+    dct2func = dct2_fft2.DCT2(expkM, expkN)
     y = dct2func.forward(x)
     torch.cuda.synchronize()
     tt = time.time()
@@ -794,7 +826,7 @@ def eval_dct2d(x, expk0, expk1, expkM, expkN, runs):
 
 
 def eval_idct2d(x, expk0, expk1, expkM, expkN, runs):
-    dct2func = dct2_fft2.IDCT2(x.size(-2), x.size(-1), x.dtype, x.device, expkM, expkN)
+    dct2func = dct2_fft2.IDCT2(expkM, expkN)
     y = dct2func.forward(x)
     torch.cuda.synchronize()
     tt = time.time()
@@ -835,14 +867,23 @@ def eval_idct2d(x, expk0, expk1, expkM, expkN, runs):
 
 
 def eval_idxt2d(x, expk0, expk1, expkM, expkN, runs):
-    dct2func = dct2_fft2.IDXST_IDCT(x.size(-2), x.size(-1), x.dtype, x.device, expkM, expkN)
+    dct2func = dct2_fft2.IDXST_IDCT(expkM, expkN)
     y = dct2func.forward(x)
     torch.cuda.synchronize()
     tt = time.time()
     for i in range(runs):
         y_test = dct2func.forward(x)
     torch.cuda.synchronize()
-    print("IDXST_IDCT Function takes %.7f ms" % ((time.time()-tt)/runs*1000))
+    print("dct2_fft2.IDXST_IDCT takes %.7f ms" % ((time.time()-tt)/runs*1000))
+
+    dct2func = dct.IDXST_IDCT(expk0, expk1)
+    y = dct2func.forward(x)
+    torch.cuda.synchronize()
+    tt = time.time()
+    for i in range(runs):
+        y_test = dct2func.forward(x)
+    torch.cuda.synchronize()
+    print("dct.IDXST_IDCT Function takes %.7f ms" % ((time.time()-tt)/runs*1000))
 
     y_N = discrete_spectral_transform.idxst_idct(x, expk_0=expk0, expk_1=expk1)
     torch.cuda.synchronize()
@@ -852,14 +893,23 @@ def eval_idxt2d(x, expk0, expk1, expkM, expkN, runs):
     torch.cuda.synchronize()
     print("PyTorch: idxst_idct takes %.7f ms" % ((time.time()-tt)/runs*1000))
 
-    dct2func = dct2_fft2.IDCT_IDXST(x.size(-2), x.size(-1), x.dtype, x.device, expkM, expkN)
+    dct2func = dct2_fft2.IDCT_IDXST(expkM, expkN)
     y = dct2func.forward(x)
     torch.cuda.synchronize()
     tt = time.time()
     for i in range(runs):
         y_test = dct2func.forward(x)
     torch.cuda.synchronize()
-    print("Ours: IDCT_IDXST takes %.7f ms" % ((time.time()-tt)/runs*1000))
+    print("dct2_fft2.IDCT_IDXST takes %.7f ms" % ((time.time()-tt)/runs*1000))
+
+    dct2func = dct.IDCT_IDXST(expk0, expk1)
+    y = dct2func.forward(x)
+    torch.cuda.synchronize()
+    tt = time.time()
+    for i in range(runs):
+        y_test = dct2func.forward(x)
+    torch.cuda.synchronize()
+    print("dct.IDCT_IDXST takes %.7f ms" % ((time.time()-tt)/runs*1000))
 
     y_N = discrete_spectral_transform.idct_idxst(x, expk_0=expk0, expk_1=expk1)
     torch.cuda.synchronize()
@@ -966,5 +1016,10 @@ def eval_runtime():
 if __name__ == '__main__':
     torch.manual_seed(10)
     np.random.seed(10)
-    unittest.main()
-    eval_runtime()
+
+    print("usage: python dct_unitest.py test|eval")
+
+    if len(sys.argv) > 1 and sys.argv[1] == "eval": 
+        eval_runtime()
+    else:
+        unittest.main()

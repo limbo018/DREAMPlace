@@ -1,6 +1,10 @@
-# compare two different transforms to calculate the electric potential
-# The fitst apporach is used in electric_potential_backup.py
-# The second approach is used in electric_potential.py
+##
+# @file   dct_electrical_potential_unitest.py
+# @author Zixuan Jiang, Jiaqi Gu
+# @date   Mar 2019
+# @brief  compare two different transforms to calculate the electric potential
+#       The fitst apporach is used in electric_potential_backup.py
+#       The second approach is used in electric_potential.py
 
 import torch
 import os
@@ -12,7 +16,7 @@ from dreamplace.ops.electric_potential import electric_potential, electric_overf
 sys.path.pop()
 
 
-def compare_two_different_methods(M=1024, N=1024, dtype=torch.float64):
+def compare_different_methods(M=1024, N=1024, dtype=torch.float64):
     density_map = torch.empty(M, N, dtype=dtype).uniform_(0, 10.0).cuda()
     expkM = discrete_spectral_transform.get_expk(M, dtype, density_map.device)
     expkN = discrete_spectral_transform.get_expk(N, dtype, density_map.device)
@@ -51,10 +55,10 @@ def compare_two_different_methods(M=1024, N=1024, dtype=torch.float64):
         torch.cuda.synchronize()
 
     # the second approach uses the idxst_idct and idct_idxst
-    dct2 = dct2_fft2.DCT2(M, N, density_map.dtype, density_map.device, exact_expkM, exact_expkN)
-    idct2 = dct2_fft2.IDCT2(M, N, density_map.dtype, density_map.device, exact_expkM, exact_expkN)
-    idct_idxst = dct2_fft2.IDCT_IDXST(M, N, density_map.dtype, density_map.device, exact_expkM, exact_expkN)
-    idxst_idct = dct2_fft2.IDXST_IDCT(M, N, density_map.dtype, density_map.device, exact_expkM, exact_expkN)
+    dct2 = dct2_fft2.DCT2(exact_expkM, exact_expkN)
+    idct2 = dct2_fft2.IDCT2(exact_expkM, exact_expkN)
+    idct_idxst = dct2_fft2.IDCT_IDXST(exact_expkM, exact_expkN)
+    idxst_idct = dct2_fft2.IDXST_IDCT(exact_expkM, exact_expkN)
 
     inv_wu2_plus_wv2 = 1.0 / wu2_plus_wv2
     inv_wu2_plus_wv2[0, 0] = 0.0
@@ -81,6 +85,32 @@ def compare_two_different_methods(M=1024, N=1024, dtype=torch.float64):
     np.testing.assert_allclose(potential_map.data.cpu().numpy(), potential_map_golden.data.cpu().numpy(), rtol=1e-6, atol=1e-5)
     np.testing.assert_allclose(energy.data.cpu().numpy(), energy_golden.data.cpu().numpy(), rtol=1e-6, atol=1e-5)
 
+    # the third approach uses the dct.idxst_idct and dct.idxst_idct 
+    dct2 = dct.DCT2(expkM, expkN)
+    idct2 = dct.IDCT2(expkM, expkN)
+    idct_idxst = dct.IDCT_IDXST(expkM, expkN)
+    idxst_idct = dct.IDXST_IDCT(expkM, expkN)
+
+    cuv = dct2.forward(density_map)
+
+    cuv_by_wu2_plus_wv2_wu = cuv.mul(wu_by_wu2_plus_wv2_half)
+    cuv_by_wu2_plus_wv2_wv = cuv.mul(wv_by_wu2_plus_wv2_half)
+    field_map_x = idxst_idct.forward(cuv_by_wu2_plus_wv2_wu)
+    field_map_y = idct_idxst.forward(cuv_by_wu2_plus_wv2_wv)
+    cuv_by_wu2_plus_wv2 = cuv.mul(inv_wu2_plus_wv2)
+    potential_map = idct2.forward(cuv_by_wu2_plus_wv2)
+    energy = potential_map.mul(density_map).sum()
+
+    if density_map.is_cuda:
+        torch.cuda.synchronize()
+
+    # compare results
+    np.testing.assert_allclose(cuv.data.cpu().numpy(), auv_golden.data.cpu().numpy(), rtol=1e-6, atol=1e-5)
+    np.testing.assert_allclose(field_map_x.data.cpu().numpy(), field_map_x_golden.data.cpu().numpy(), rtol=1e-6, atol=1e-5)
+    np.testing.assert_allclose(field_map_y.data.cpu().numpy(), field_map_y_golden.data.cpu().numpy(), rtol=1e-6, atol=1e-5)
+    np.testing.assert_allclose(potential_map.data.cpu().numpy(), potential_map_golden.data.cpu().numpy(), rtol=1e-6, atol=1e-5)
+    np.testing.assert_allclose(energy.data.cpu().numpy(), energy_golden.data.cpu().numpy(), rtol=1e-6, atol=1e-5)
+
 
 if __name__ == "__main__":
-    compare_two_different_methods(M=1024, N=1024, dtype=torch.float64)
+    compare_different_methods(M=1024, N=1024, dtype=torch.float64)
