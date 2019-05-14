@@ -1,4 +1,10 @@
-# Implement 2d dct, 2d idct, idxst(idct(x)), idct(idxst(x)) based on 2d fft
+##
+# @file   dct.py
+# @author Zixuan Jiang, Jiaqi Gu
+# @date   Jun 2018
+# @brief  Implement 2d dct, 2d idct, idxst(idct(x)), idct(idxst(x)) based on 2d fft
+#
+
 import numpy as np
 import torch
 from torch.autograd import Function

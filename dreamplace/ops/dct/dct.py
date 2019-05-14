@@ -344,3 +344,57 @@ class IDSCT2(nn.Module):
             self.expk1 = discrete_spectral_transform.get_expk(x.size(-1), dtype=x.dtype, device=x.device)
         return IDSCT2Function.apply(x, self.expk0, self.expk1)
 
+def idct_idxst(x, expk0, expk1):
+    """compute inverse discrete cosine-sine transformation
+    This is equivalent to idct(idxst(x)^T)^T
+    """
+    if x.is_cuda:
+        output = dct_cuda.idct_idxst(x.view([-1, x.size(-1)]), expk0, expk1)
+    else:
+        output = dct_cpp.idct_idxst(x.view([-1, x.size(-1)]), expk0, expk1)
+    return output.view(x.size())  
+
+class IDCT_IDXSTFunction(Function):
+    @staticmethod
+    def forward(ctx, x, expk0, expk1):
+        return idct_idxst(x, expk0, expk1)
+
+class IDCT_IDXST(nn.Module):
+    def __init__(self, expk0=None, expk1=None):
+        super(IDCT_IDXST, self).__init__()
+        self.expk0 = expk0
+        self.expk1 = expk1
+    def forward(self, x): 
+        if self.expk0 is None or self.expk0.size(-2) != x.size(-2):
+            self.expk0 = discrete_spectral_transform.get_expk(x.size(-2), dtype=x.dtype, device=x.device)
+        if self.expk1 is None or self.expk1.size(-2) != x.size(-1):
+            self.expk1 = discrete_spectral_transform.get_expk(x.size(-1), dtype=x.dtype, device=x.device)
+        return IDCT_IDXSTFunction.apply(x, self.expk0, self.expk1)
+
+def idxst_idct(x, expk0, expk1):
+    """compute inverse discrete cosine-sine transformation
+    This is equivalent to idxst(idct(x)^T)^T
+    """
+    if x.is_cuda:
+        output = dct_cuda.idxst_idct(x.view([-1, x.size(-1)]), expk0, expk1)
+    else:
+        output = dct_cpp.idxst_idct(x.view([-1, x.size(-1)]), expk0, expk1)
+    return output.view(x.size()) 
+
+class IDXST_IDCTFunction(Function):
+    @staticmethod
+    def forward(ctx, x, expk0, expk1):
+        return idxst_idct(x, expk0, expk1)
+
+
+class IDXST_IDCT(nn.Module):
+    def __init__(self, expk0=None, expk1=None):
+        super(IDXST_IDCT, self).__init__()
+        self.expk0 = expk0
+        self.expk1 = expk1
+    def forward(self, x): 
+        if self.expk0 is None or self.expk0.size(-2) != x.size(-2):
+            self.expk0 = discrete_spectral_transform.get_expk(x.size(-2), dtype=x.dtype, device=x.device)
+        if self.expk1 is None or self.expk1.size(-2) != x.size(-1):
+            self.expk1 = discrete_spectral_transform.get_expk(x.size(-1), dtype=x.dtype, device=x.device)
+        return IDXST_IDCTFunction.apply(x, self.expk0, self.expk1)
