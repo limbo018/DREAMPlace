@@ -12,7 +12,6 @@ import sys
 import numpy as np
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from dreamplace.ops.dct import dct, discrete_spectral_transform, dct2_fft2
-from dreamplace.ops.electric_potential import electric_potential, electric_overflow
 sys.path.pop()
 
 
@@ -85,7 +84,7 @@ def compare_different_methods(M=1024, N=1024, dtype=torch.float64):
     np.testing.assert_allclose(potential_map.data.cpu().numpy(), potential_map_golden.data.cpu().numpy(), rtol=1e-6, atol=1e-5)
     np.testing.assert_allclose(energy.data.cpu().numpy(), energy_golden.data.cpu().numpy(), rtol=1e-6, atol=1e-5)
 
-    # the third approach uses the dct.idxst_idct and dct.idxst_idct 
+    # the third approach uses the dct.idxst_idct and dct.idxst_idct
     dct2 = dct.DCT2(expkM, expkN)
     idct2 = dct.IDCT2(expkM, expkN)
     idct_idxst = dct.IDCT_IDXST(expkM, expkN)
