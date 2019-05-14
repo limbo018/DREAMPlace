@@ -111,17 +111,9 @@ int computeWeightedAverageWirelengthCudaSparseLauncher(
     int block_count = 32; // separate x and y
 
     cudaError_t status;
-    cudaStream_t stream_x_exp;
     cudaStream_t stream_nx_exp;
     cudaStream_t stream_y_exp;
     cudaStream_t stream_ny_exp;
-    status = cudaStreamCreate(&stream_x_exp);
-    if (status != cudaSuccess)
-    {
-        printf("cudaStreamCreate failed for stream_x_exp\n");
-        fflush(stdout);
-        return 1;
-    }
     status = cudaStreamCreate(&stream_y_exp);
     if (status != cudaSuccess)
     {
@@ -132,7 +124,7 @@ int computeWeightedAverageWirelengthCudaSparseLauncher(
 
     if (grad_tensor)
     {
-        computeWeightedAverageWirelengthGrad<<<block_count, thread_count, 0, stream_x_exp>>>(
+        computeWeightedAverageWirelengthGrad<<<block_count, thread_count>>>(
                 x,
                 exp_xy, exp_nxy,
                 exp_xy_sum, exp_nxy_sum,
@@ -194,7 +186,7 @@ int computeWeightedAverageWirelengthCudaSparseLauncher(
         }
 
         // compute max/min
-        computeMax<<<block_count, thread_count, 0, stream_x_exp>>>(
+        computeMax<<<block_count, thread_count>>>(
                 x,
                 pin2net_map,
                 net_mask,
@@ -224,7 +216,7 @@ int computeWeightedAverageWirelengthCudaSparseLauncher(
                 );
 
         // compute exp and negative exp
-        computeExp<<<block_count, thread_count, 0, stream_x_exp>>>(
+        computeExp<<<block_count, thread_count>>>(
                 x,
                 pin2net_map,
                 net_mask,
@@ -266,7 +258,7 @@ int computeWeightedAverageWirelengthCudaSparseLauncher(
                 );
 
         // compute x*exp and x*negative exp
-        multiply<<<block_count, thread_count, 0, stream_x_exp>>>(
+        multiply<<<block_count, thread_count>>>(
                 x,
                 exp_xy,
                 num_pins,
@@ -325,7 +317,7 @@ int computeWeightedAverageWirelengthCudaSparseLauncher(
         delete [] net_sum_x_arrays;
 
         // compute log sum exp
-        computeXExpSumByExpSum<<<block_count, thread_count, 0, stream_x_exp>>>(
+        computeXExpSumByExpSum<<<block_count, thread_count>>>(
                 xyexp_xy_sum,
                 exp_xy_sum,
                 pin2net_map,
@@ -401,14 +393,6 @@ int computeWeightedAverageWirelengthCudaSparseLauncher(
     }
 
     /* destroy stream */
-    status = cudaStreamDestroy(stream_x_exp);
-    stream_x_exp = 0;
-    if (status != cudaSuccess)
-    {
-        printf("stream_x_exp destroy failed\n");
-        fflush(stdout);
-        return 1;
-    }
     status = cudaStreamDestroy(stream_y_exp);
     stream_y_exp = 0;
     if (status != cudaSuccess)

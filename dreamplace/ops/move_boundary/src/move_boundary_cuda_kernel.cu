@@ -39,15 +39,7 @@ int computeMoveBoundaryMapCudaLauncher(
         )
 {
     cudaError_t status;
-    cudaStream_t stream_x;
     cudaStream_t stream_y;
-    status = cudaStreamCreate(&stream_x);
-    if (status != cudaSuccess)
-    {
-        printf("cudaStreamCreate failed for stream_x\n");
-        fflush(stdout);
-        return 1;
-    }
     status = cudaStreamCreate(&stream_y);
     if (status != cudaSuccess)
     {
@@ -58,7 +50,7 @@ int computeMoveBoundaryMapCudaLauncher(
 
     int thread_count = 512;
     int block_count = (num_nodes - 1 + thread_count) / thread_count;
-    computeMoveBoundary<<<block_count, thread_count, 0, stream_x>>>(
+    computeMoveBoundary<<<block_count, thread_count>>>(
             x_tensor,
             node_size_x_tensor,
             xl, xh,
@@ -77,14 +69,6 @@ int computeMoveBoundaryMapCudaLauncher(
             );
 
     /* destroy stream */
-    status = cudaStreamDestroy(stream_x);
-    stream_x = 0;
-    if (status != cudaSuccess)
-    {
-        printf("stream_x destroy failed\n");
-        fflush(stdout);
-        return 1;
-    }
     status = cudaStreamDestroy(stream_y);
     stream_y = 0;
     if (status != cudaSuccess)

@@ -9,7 +9,7 @@ DREAMPLACE_BEGIN_NAMESPACE
 template <typename T>
 void printArray(const T* x, const int n, const char* str)
 {
-    printf("%s[%d] = ", str, n); 
+    printf("%s[%d] = ", str, n);
     T* host_x = (T*)malloc(n*sizeof(T));
     if (host_x == NULL)
     {
@@ -29,7 +29,7 @@ void printArray(const T* x, const int n, const char* str)
 template <typename T>
 void printScalar(const T& x, const char* str)
 {
-    printf("%s = ", str); 
+    printf("%s = ", str);
     T* host_x = (T*)malloc(sizeof(T));
     if (host_x == NULL)
     {
@@ -45,22 +45,22 @@ void printScalar(const T& x, const char* str)
 template <typename T>
 __global__ void fillArray(T* x, const int n, const T v)
 {
-    //for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) 
+    //for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x)
     int i  = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < n)
     {
-        x[i] = v; 
+        x[i] = v;
     }
 }
 
 template <typename T>
 __global__ void computeHPWL(
-        const T* x, 
-        const int* flat_netpin, 
-        const int* netpin_start, 
-        const unsigned char* net_mask, 
+        const T* x,
+        const int* flat_netpin,
+        const int* netpin_start,
+        const unsigned char* net_mask,
         int num_nets,
-        T* partial_hpwl 
+        T* partial_hpwl
         )
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -76,92 +76,76 @@ __global__ void computeHPWL(
                 min_x = min(min_x, x[flat_netpin[j]]);
                 max_x = max(max_x, x[flat_netpin[j]]);
             }
-            partial_hpwl[i] = max_x-min_x; 
+            partial_hpwl[i] = max_x-min_x;
         }
-        else 
+        else
         {
-            partial_hpwl[i] = 0; 
+            partial_hpwl[i] = 0;
         }
     }
 }
 
 template <typename T>
 int computeHPWLCudaLauncher(
-        const T* x, const T* y, 
-        const int* flat_netpin, 
-        const int* netpin_start, 
-        const unsigned char* net_mask, 
+        const T* x, const T* y,
+        const int* flat_netpin,
+        const int* netpin_start,
+        const unsigned char* net_mask,
         int num_nets,
         T* partial_hpwl
         )
 {
-    const int thread_count = 512; 
-    const int block_count_nets = (num_nets + thread_count - 1) / thread_count; 
+    const int thread_count = 512;
+    const int block_count_nets = (num_nets + thread_count - 1) / thread_count;
 
-    cudaError_t status; 
-    cudaStream_t stream_x; 
-    status = cudaStreamCreate(&stream_x);
-    if (status != cudaSuccess)
-    {
-        printf("cudaStreamCreate failed for stream_x\n");
-        fflush(stdout);
-        return 1; 
-    }
-    cudaStream_t stream_y; 
+    cudaError_t status;
+    cudaStream_t stream_y;
     status = cudaStreamCreate(&stream_y);
     if (status != cudaSuccess)
     {
         printf("cudaStreamCreate failed for stream_y\n");
         fflush(stdout);
-        return 1; 
+        return 1;
     }
 
-    computeHPWL<<<block_count_nets, thread_count, 0, stream_x>>>(
-            x, 
-            flat_netpin, 
-            netpin_start, 
-            net_mask, 
+    computeHPWL<<<block_count_nets, thread_count>>>(
+            x,
+            flat_netpin,
+            netpin_start,
+            net_mask,
             num_nets,
             partial_hpwl
             );
 
     computeHPWL<<<block_count_nets, thread_count, 0, stream_y>>>(
-            y, 
-            flat_netpin, 
-            netpin_start, 
-            net_mask, 
+            y,
+            flat_netpin,
+            netpin_start,
+            net_mask,
             num_nets,
             partial_hpwl+num_nets
             );
 
     /* destroy stream */
-    status = cudaStreamDestroy(stream_x); 
-    stream_x = 0;
-    if (status != cudaSuccess) 
-    {
-        printf("stream_x destroy failed\n");
-        fflush(stdout);
-        return 1;
-    }   
-    status = cudaStreamDestroy(stream_y); 
-    stream_y = 0; 
-    if (status != cudaSuccess) 
+    status = cudaStreamDestroy(stream_y);
+    stream_y = 0;
+    if (status != cudaSuccess)
     {
         printf("stream_y destroy failed\n");
         fflush(stdout);
         return 1;
-    }   
+    }
 
     //printArray(partial_hpwl, num_nets, "partial_hpwl");
 
-    // I move out the summation to use ATen 
-    // significant speedup is observed 
+    // I move out the summation to use ATen
+    // significant speedup is observed
     //sumArray<<<1, 1>>>(partial_hpwl, num_nets, hpwl);
 
-    return 0; 
+    return 0;
 }
 
-// manually instantiate the template function 
+// manually instantiate the template function
 #define REGISTER_KERNEL_LAUNCHER(type) \
     int instantiateComputeHPWLLauncher(\
         const type* x, const type* y, \

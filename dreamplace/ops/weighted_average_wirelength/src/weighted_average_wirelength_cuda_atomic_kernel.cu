@@ -30,15 +30,7 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
     int block_count_nets = (num_nets - 1 + thread_count) / thread_count;
 
     cudaError_t status;
-    cudaStream_t stream_x_exp;
     cudaStream_t stream_y_exp;
-    status = cudaStreamCreate(&stream_x_exp);
-    if (status != cudaSuccess)
-    {
-        printf("cudaStreamCreate failed for stream_x_exp\n");
-        fflush(stdout);
-        return 1;
-    }
     status = cudaStreamCreate(&stream_y_exp);
     if (status != cudaSuccess)
     {
@@ -49,7 +41,7 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
 
     if (grad_tensor)
     {
-        computeWeightedAverageWirelengthGrad<<<block_count_pins, thread_count, 0, stream_x_exp>>>(
+        computeWeightedAverageWirelengthGrad<<<block_count_pins, thread_count>>>(
             x,
             exp_xy, exp_nxy,
             exp_xy_sum, exp_nxy_sum,
@@ -77,7 +69,7 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
     else
     {
         // compute max and min in one kernel
-        computeMaxMin<<<block_count_pins, thread_count, 0, stream_x_exp>>>(
+        computeMaxMin<<<block_count_pins, thread_count>>>(
             x,
             pin2net_map,
             net_mask,
@@ -93,7 +85,7 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
             xy_min + num_nets);
         // compute plus-minus exp, sum of plus-minus exp, sum of x*exp in one CUDA kernels
         // corresponding to the plus and minus a b c kernels in the DREAMPlace paper
-        computeABCKernels<<<block_count_pins, thread_count, 0, stream_x_exp>>>(
+        computeABCKernels<<<block_count_pins, thread_count>>>(
             x,
             pin2net_map,
             net_mask,
@@ -116,7 +108,7 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
             exp_xy_sum + num_nets, exp_nxy_sum + num_nets,
             xyexp_xy_sum + num_nets, xyexp_nxy_sum + num_nets);
         // compute log sum exp
-        computeXExpSumByExpSum<<<block_count_nets, thread_count, 0, stream_x_exp>>>(
+        computeXExpSumByExpSum<<<block_count_nets, thread_count>>>(
             xyexp_xy_sum, xyexp_nxy_sum,
             exp_xy_sum, exp_nxy_sum,
             pin2net_map,
@@ -139,14 +131,6 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
     }
 
     /* destroy stream */
-    status = cudaStreamDestroy(stream_x_exp);
-    stream_x_exp = 0;
-    if (status != cudaSuccess)
-    {
-        printf("stream_x_exp destroy failed\n");
-        fflush(stdout);
-        return 1;
-    }
     status = cudaStreamDestroy(stream_y_exp);
     stream_y_exp = 0;
     if (status != cudaSuccess)

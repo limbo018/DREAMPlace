@@ -214,21 +214,9 @@ int computeTriangleDensityMapCudaLauncher(
     const T bin_size_x, const T bin_size_y,
     T *density_map_tensor)
 {
-
-    cudaError_t status;
-    cudaStream_t stream_movable;
-    cudaStream_t stream_filler;
-    status = cudaStreamCreate(&stream_movable);
-    if (status != cudaSuccess)
-    {
-        printf("cudaStreamCreate failed for stream_movable\n");
-        fflush(stdout);
-        return 1;
-    }
-
     int thread_count = 512;
     int block_count = (num_movable_nodes - 1 + thread_count) / thread_count;
-    computeTriangleDensityMap<<<block_count, thread_count, 0, stream_movable>>>(
+    computeTriangleDensityMap<<<block_count, thread_count>>>(
         x_tensor, y_tensor,
         node_size_x_tensor, node_size_y_tensor,
         bin_center_x_tensor, bin_center_y_tensor,
@@ -241,6 +229,9 @@ int computeTriangleDensityMapCudaLauncher(
 
     if (num_filler_nodes)
     {
+        cudaError_t status;
+        cudaStream_t stream_filler;
+
         status = cudaStreamCreate(&stream_filler);
         if (status != cudaSuccess)
         {
@@ -271,15 +262,6 @@ int computeTriangleDensityMapCudaLauncher(
         }
     }
 
-    /* destroy stream */
-    status = cudaStreamDestroy(stream_movable);
-    stream_movable = 0;
-    if (status != cudaSuccess)
-    {
-        printf("stream_movable destroy failed\n");
-        fflush(stdout);
-        return 1;
-    }
     return 0;
 }
 

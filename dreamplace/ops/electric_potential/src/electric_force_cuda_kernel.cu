@@ -174,20 +174,8 @@ int computeElectricForceCudaLauncher(
     T *grad_x_tensor, T *grad_y_tensor)
 {
     int thread_count = 512;
-
-    cudaError_t status;
-    cudaStream_t stream_movable;
-    cudaStream_t stream_filler;
-    status = cudaStreamCreate(&stream_movable);
-    if (status != cudaSuccess)
-    {
-        printf("cudaStreamCreate failed for stream_movable\n");
-        fflush(stdout);
-        return 1;
-    }
-
     int block_count_nodes = (num_movable_nodes + thread_count - 1) / thread_count;
-    computeElectricForce<<<block_count_nodes, thread_count, 0, stream_movable>>>(
+    computeElectricForce<<<block_count_nodes, thread_count>>>(
         num_bins_x, num_bins_y,
         num_movable_impacted_bins_x, num_movable_impacted_bins_y,
         field_map_x_tensor, field_map_y_tensor,
@@ -201,6 +189,9 @@ int computeElectricForceCudaLauncher(
 
     if (num_filler_nodes)
     {
+        cudaError_t status;
+        cudaStream_t stream_filler;
+
         status = cudaStreamCreate(&stream_filler);
         if (status != cudaSuccess)
         {
@@ -233,15 +224,6 @@ int computeElectricForceCudaLauncher(
         }
     }
 
-    /* destroy stream */
-    status = cudaStreamDestroy(stream_movable);
-    stream_movable = 0;
-    if (status != cudaSuccess)
-    {
-        printf("stream_movable destroy failed\n");
-        fflush(stdout);
-        return 1;
-    }
     return 0;
 }
 
