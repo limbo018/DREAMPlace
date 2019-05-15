@@ -91,7 +91,7 @@ __global__ __launch_bounds__(1024, 3) void computeElectricForce(
     int num_nodes,
     T *grad_x_tensor, T *grad_y_tensor)
 {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int i = blockIdx.x * blockDim.z + threadIdx.z;
     if (i < num_nodes)
     {
         auto computeDensityFunc = [](T x, T node_size, T bin_center, T bin_size) {
@@ -126,11 +126,20 @@ __global__ __launch_bounds__(1024, 3) void computeElectricForce(
         tmp_x = 0;
         tmp_y = 0;
 
+        extern __shared__ unsigned char s_xy[];
+        T *s_x = (T *)s_xy;
+        T *s_y = s_x + blockDim.z;
+        if (threadIdx.x == 0 && threadIdx.y == 0)
+        {
+            s_x[threadIdx.z] = s_y[threadIdx.z] = 0;
+        }
+        __syncthreads();
+
         // update density potential map
-        for (int k = bin_index_xl; k < bin_index_xh; ++k)
+        for (int k = bin_index_xl + threadIdx.y; k < bin_index_xh; k += blockDim.y)
         {
             T px = computeDensityFunc(node_x, node_size_x, bin_center_x_tensor[k], bin_size_x);
-            for (int h = bin_index_yl; h < bin_index_yh; ++h)
+            for (int h = bin_index_yl + threadIdx.x; h < bin_index_yh; h += blockDim.x)
             {
                 T py = computeDensityFunc(node_y, node_size_y, bin_center_y_tensor[h], bin_size_y);
 
@@ -154,8 +163,15 @@ __global__ __launch_bounds__(1024, 3) void computeElectricForce(
                 #endif
             }
         }
-        grad_x_tensor[i] = tmp_x;
-        grad_y_tensor[i] = tmp_y;
+        atomicAdd(&s_x[threadIdx.z], tmp_x);
+        atomicAdd(&s_y[threadIdx.z], tmp_y);
+        __syncthreads();
+
+        if (threadIdx.x == 0 && threadIdx.y == 0)
+        {
+            grad_x_tensor[i] = s_x[threadIdx.z];
+            grad_y_tensor[i] = s_y[threadIdx.z];
+        }
     }
 }
 
@@ -173,9 +189,11 @@ int computeElectricForceCudaLauncher(
     int num_nodes, int num_movable_nodes, int num_filler_nodes,
     T *grad_x_tensor, T *grad_y_tensor)
 {
-    int thread_count = 512;
+    int thread_count = 128;
     int block_count_nodes = (num_movable_nodes + thread_count - 1) / thread_count;
-    computeElectricForce<<<block_count_nodes, thread_count>>>(
+    dim3 blockSize(2, 2, thread_count);
+    size_t shared_mem_size = sizeof(T) * thread_count * 2;
+    computeElectricForce<<<block_count_nodes, blockSize, shared_mem_size>>>(
         num_bins_x, num_bins_y,
         num_movable_impacted_bins_x, num_movable_impacted_bins_y,
         field_map_x_tensor, field_map_y_tensor,
@@ -202,7 +220,7 @@ int computeElectricForceCudaLauncher(
 
         block_count_nodes = (num_filler_nodes + thread_count - 1) / thread_count;
         int offset = num_nodes - num_filler_nodes;
-        computeElectricForce<<<block_count_nodes, thread_count, 0, stream_filler>>>(
+        computeElectricForce<<<block_count_nodes, blockSize, shared_mem_size, stream_filler>>>(
             num_bins_x, num_bins_y,
             num_filler_impacted_bins_x, num_filler_impacted_bins_y,
             field_map_x_tensor, field_map_y_tensor,

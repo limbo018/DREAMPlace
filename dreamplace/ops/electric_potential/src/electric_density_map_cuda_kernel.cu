@@ -99,7 +99,7 @@ __global__ void computeTriangleDensityMap(
     const int num_impacted_bins_x, const int num_impacted_bins_y,
     T *density_map_tensor)
 {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int i = blockIdx.x * blockDim.z + threadIdx.z;
     if (i < num_nodes)
     {
         auto computeDensityFunc = [](T x, T node_size, T bin_center, T bin_size) {
@@ -125,13 +125,12 @@ __global__ void computeTriangleDensityMap(
         //int bin_index_yh = bin_index_yl+num_impacted_bins_y;
 
         // update density potential map
-        for (int k = bin_index_xl; k < bin_index_xh; ++k)
+        for (int k = bin_index_xl + threadIdx.y; k < bin_index_xh; k += blockDim.y)
         {
             T px = computeDensityFunc(node_x, node_size_x, bin_center_x_tensor[k], bin_size_x);
-            for (int h = bin_index_yl; h < bin_index_yh; ++h)
+            for (int h = bin_index_yl + threadIdx.x; h < bin_index_yh; h += blockDim.x)
             {
                 T py = computeDensityFunc(node_y, node_size_y, bin_center_y_tensor[h], bin_size_y);
-
                 T area = px * py * ratio;
 
                 atomicAdd(&density_map_tensor[k * num_bins_y + h], area);
@@ -214,9 +213,10 @@ int computeTriangleDensityMapCudaLauncher(
     const T bin_size_x, const T bin_size_y,
     T *density_map_tensor)
 {
-    int thread_count = 512;
+    int thread_count = 128;
     int block_count = (num_movable_nodes - 1 + thread_count) / thread_count;
-    computeTriangleDensityMap<<<block_count, thread_count>>>(
+    dim3 blockSize(2, 2, thread_count);
+    computeTriangleDensityMap<<<block_count, blockSize>>>(
         x_tensor, y_tensor,
         node_size_x_tensor, node_size_y_tensor,
         bin_center_x_tensor, bin_center_y_tensor,
@@ -241,7 +241,7 @@ int computeTriangleDensityMapCudaLauncher(
         }
 
         block_count = (num_filler_nodes - 1 + thread_count) / thread_count;
-        computeTriangleDensityMap<<<block_count, thread_count, 0, stream_filler>>>(
+        computeTriangleDensityMap<<<block_count, blockSize, 0, stream_filler>>>(
             x_tensor + num_nodes - num_filler_nodes, y_tensor + num_nodes - num_filler_nodes,
             node_size_x_tensor + num_nodes - num_filler_nodes, node_size_y_tensor + num_nodes - num_filler_nodes,
             bin_center_x_tensor, bin_center_y_tensor,
