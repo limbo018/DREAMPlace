@@ -562,15 +562,13 @@ int computeLogSumExpWirelengthCudaLauncher(
         fflush(stdout);
 
         status = cudaStreamDestroy(stream_nx_exp); 
-        stream_nx_exp = 0;
         if (status != cudaSuccess) 
         {
             printf("stream_nx_exp destroy failed\n");
             fflush(stdout);
             return 1;
         }   
-        status = cudaStreamDestroy(stream_ny_exp); 
-        stream_ny_exp = 0; 
+        status = cudaStreamDestroy(stream_ny_exp);  
         if (status != cudaSuccess) 
         {
             printf("stream_ny_exp destroy failed\n");
@@ -581,7 +579,6 @@ int computeLogSumExpWirelengthCudaLauncher(
 
     /* destroy stream */
     status = cudaStreamDestroy(stream_x_exp); 
-    stream_x_exp = 0;
     if (status != cudaSuccess) 
     {
         printf("stream_x_exp destroy failed\n");
@@ -589,7 +586,6 @@ int computeLogSumExpWirelengthCudaLauncher(
         return 1;
     }   
     status = cudaStreamDestroy(stream_y_exp); 
-    stream_y_exp = 0; 
     if (status != cudaSuccess) 
     {
         printf("stream_y_exp destroy failed\n");

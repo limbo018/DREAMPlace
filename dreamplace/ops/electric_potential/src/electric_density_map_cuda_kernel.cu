@@ -253,7 +253,6 @@ int computeTriangleDensityMapCudaLauncher(
             density_map_tensor);
 
         status = cudaStreamDestroy(stream_filler);
-        stream_filler = 0;
         if (status != cudaSuccess)
         {
             printf("stream_filler destroy failed\n");

@@ -416,7 +416,6 @@ int computeLogSumExpWirelengthCudaAtomicLauncher(
         //sumArray<<<1, 1>>>(partial_wl, 2*num_nets, wl);
 
         status = cudaStreamDestroy(stream_nx_exp);
-        stream_nx_exp = 0;
         if (status != cudaSuccess)
         {
             printf("stream_nx_exp destroy failed\n");
@@ -424,7 +423,6 @@ int computeLogSumExpWirelengthCudaAtomicLauncher(
             return 1;
         }
         status = cudaStreamDestroy(stream_ny_exp);
-        stream_ny_exp = 0;
         if (status != cudaSuccess)
         {
             printf("stream_ny_exp destroy failed\n");
@@ -435,7 +433,6 @@ int computeLogSumExpWirelengthCudaAtomicLauncher(
 
     /* destroy stream */
     status = cudaStreamDestroy(stream_y_exp);
-    stream_y_exp = 0;
     if (status != cudaSuccess)
     {
         printf("stream_y_exp destroy failed\n");

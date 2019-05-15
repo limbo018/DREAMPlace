@@ -128,7 +128,6 @@ int computeHPWLCudaLauncher(
 
     /* destroy stream */
     status = cudaStreamDestroy(stream_y);
-    stream_y = 0;
     if (status != cudaSuccess)
     {
         printf("stream_y destroy failed\n");

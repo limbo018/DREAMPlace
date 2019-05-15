@@ -233,7 +233,6 @@ int computeElectricForceCudaLauncher(
             grad_x_tensor + offset, grad_y_tensor + offset);
 
         status = cudaStreamDestroy(stream_filler);
-        stream_filler = 0;
         if (status != cudaSuccess)
         {
             printf("stream_filler destroy failed\n");

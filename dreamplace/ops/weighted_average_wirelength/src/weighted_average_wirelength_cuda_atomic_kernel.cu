@@ -132,7 +132,6 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
 
     /* destroy stream */
     status = cudaStreamDestroy(stream_y_exp);
-    stream_y_exp = 0;
     if (status != cudaSuccess)
     {
         printf("stream_y_exp destroy failed\n");

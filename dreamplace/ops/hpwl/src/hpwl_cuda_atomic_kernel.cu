@@ -121,7 +121,6 @@ int computeHPWLCudaAtomicLauncher(
             );
 
     status = cudaStreamDestroy(stream_x_min);
-    stream_x_min = 0;
     if (status != cudaSuccess)
     {
         printf("stream_x_min destroy failed\n");
@@ -129,7 +128,6 @@ int computeHPWLCudaAtomicLauncher(
         return 1;
     }
     status = cudaStreamDestroy(stream_y_max);
-    stream_y_max = 0;
     if (status != cudaSuccess)
     {
         printf("stream_y_max destroy failed\n");
@@ -137,7 +135,6 @@ int computeHPWLCudaAtomicLauncher(
         return 1;
     }
     status = cudaStreamDestroy(stream_y_min);
-    stream_y_min = 0;
     if (status != cudaSuccess)
     {
         printf("stream_y_min destroy failed\n");
