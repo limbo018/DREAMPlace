@@ -189,7 +189,7 @@ int computeElectricForceCudaLauncher(
     int num_nodes, int num_movable_nodes, int num_filler_nodes,
     T *grad_x_tensor, T *grad_y_tensor)
 {
-    int thread_count = 128;
+    int thread_count = 64;
     int block_count_nodes = (num_movable_nodes + thread_count - 1) / thread_count;
     dim3 blockSize(2, 2, thread_count);
     size_t shared_mem_size = sizeof(T) * thread_count * 2;

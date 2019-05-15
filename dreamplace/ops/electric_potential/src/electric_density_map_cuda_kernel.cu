@@ -213,7 +213,7 @@ int computeTriangleDensityMapCudaLauncher(
     const T bin_size_x, const T bin_size_y,
     T *density_map_tensor)
 {
-    int thread_count = 128;
+    int thread_count = 64;
     int block_count = (num_movable_nodes - 1 + thread_count) / thread_count;
     dim3 blockSize(2, 2, thread_count);
     computeTriangleDensityMap<<<block_count, blockSize>>>(
