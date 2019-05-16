@@ -105,7 +105,8 @@ __global__ void __launch_bounds__(1024, 8) computeTriangleDensityMap(
     if (i < num_nodes)
     {
         auto computeDensityFunc = [](T x, T node_size, T bin_center, T half_bin_size) {
-            return max(T(0.0), min(x + node_size, bin_center + half_bin_size) - max(x, bin_center - half_bin_size));
+            // return max(T(0.0), min(x + node_size, bin_center + half_bin_size) - max(x, bin_center - half_bin_size));
+            return min(x + node_size, bin_center + half_bin_size) - max(x, bin_center - half_bin_size);
         };
         // stretch node size to bin size
         
@@ -151,24 +152,27 @@ __global__ void __launch_bounds__(1024, 8) computeTriangleDensityMap(
 
         int bin_index_xl = int((node_x - xl) * inv_bin_size_x);
         int bin_index_xh = int(((node_x + node_size_x - xl) * inv_bin_size_x)) + 1; // exclusive
-        bin_index_xl = max(bin_index_xl, 0);
+        bin_index_xl = (bin_index_xl > 0) * bin_index_xl; // max(bin_index_xl, 0);
         bin_index_xh = min(bin_index_xh, num_bins_x);
         //int bin_index_xh = bin_index_xl+num_impacted_bins_x;
 
-        int bin_index_yl = int((node_y - yl) *inv_bin_size_y);
+        int bin_index_yl = int((node_y - yl) * inv_bin_size_y);
         int bin_index_yh = int(((node_y + node_size_y - yl) * inv_bin_size_y)) + 1; // exclusive
-        bin_index_yl = max(bin_index_yl, 0);
+        bin_index_yl = (bin_index_yl > 0) * bin_index_yl; // max(bin_index_yl, 0);
         bin_index_yh = min(bin_index_yh, num_bins_y);
         //int bin_index_yh = bin_index_yl+num_impacted_bins_y;
 
         // update density potential map
+      
         for (int k = bin_index_xl + threadIdx.y; k < bin_index_xh; k += blockDim.y)
         {
             T px = computeDensityFunc(node_x, node_size_x, bin_center_x_tensor[k], half_bin_size_x);
+            T px_by_ratio = px * ratio;
+            #pragma unroll 2
             for (int h = bin_index_yl + threadIdx.x; h < bin_index_yh; h += blockDim.x)
             {
                 T py = computeDensityFunc(node_y, node_size_y, bin_center_y_tensor[h], half_bin_size_y);
-                T area = px * py * ratio;
+                T area = px_by_ratio * py;
 
                 atomicAdd(&density_map_tensor[k * num_bins_y + h], area);
             }

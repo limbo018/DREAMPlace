@@ -80,7 +80,7 @@ __global__ void computeElectricForceAtomic(
 
 template <typename T>
 inline __device__ T computeDensityFunc (T x, T node_size, T bin_center, T half_bin_size) {
-    //return max(T(0.0), min(x+node_size, bin_center+bin_size/2) - max(x, bin_center-bin_size/2));
+    // return max(T(0.0), min(x + node_size, bin_center + half_bin_size) - max(x, bin_center - half_bin_size));
     // Yibo: cannot understand why negative overlap is allowed in RePlAce
     return min(x + node_size, bin_center + half_bin_size) - max(x, bin_center - half_bin_size);
 };
@@ -152,23 +152,19 @@ __global__ void __launch_bounds__(1024, 8) computeElectricForce(
 
         // Yibo: looks very weird implementation, but this is how RePlAce implements it
         // the common practice should be floor
-        int bin_index_xl = round((node_x - xl) * inv_bin_size_x);
-        int bin_index_xh = round(((node_x + node_size_x - xl) * inv_bin_size_x)) + 1; // exclusive
+        int bin_index_xl = int((node_x - xl) * inv_bin_size_x);
+        int bin_index_xh = int(((node_x + node_size_x - xl) * inv_bin_size_x)) + 1; // exclusive
         bin_index_xl = (bin_index_xl > 0) * bin_index_xl; // max(bin_index_xl, 0);
         bin_index_xh = min(bin_index_xh, num_bins_x);
         //int bin_index_xh = bin_index_xl+num_impacted_bins_x;
 
         // Yibo: looks very weird implementation, but this is how RePlAce implements it
         // the common practice should be floor
-        int bin_index_yl = round((node_y - yl) * inv_bin_size_y);
-        int bin_index_yh = round(((node_y + node_size_y - yl) * inv_bin_size_y)) + 1; // exclusive
+        int bin_index_yl = int((node_y - yl) * inv_bin_size_y);
+        int bin_index_yh = int(((node_y + node_size_y - yl) * inv_bin_size_y)) + 1; // exclusive
         bin_index_yl = (bin_index_yl > 0) * bin_index_yl; // max(bin_index_yl, 0);
         bin_index_yh = min(bin_index_yh, num_bins_y);
         //int bin_index_yh = bin_index_yl+num_impacted_bins_y;
-
-        T tmp_x, tmp_y;
-        tmp_x = 0;
-        tmp_y = 0;
 
         extern __shared__ unsigned char s_xy[];
         T *s_x = (T *)s_xy;
@@ -178,16 +174,22 @@ __global__ void __launch_bounds__(1024, 8) computeElectricForce(
             s_x[threadIdx.z] = s_y[threadIdx.z] = 0;
         }
         __syncthreads();
-
+        
+        T tmp_x, tmp_y;
+        tmp_x = 0;
+        tmp_y = 0;
+        
         // update density potential map
+        
         for (int k = bin_index_xl + threadIdx.y; k < bin_index_xh; k += blockDim.y)
         {
             T px = computeDensityFunc(node_x, node_size_x, bin_center_x_tensor[k], half_bin_size_x);
+            #pragma unroll 2
             for (int h = bin_index_yl + threadIdx.x; h < bin_index_yh; h += blockDim.x)
             {
                 T py = computeDensityFunc(node_y, node_size_y, bin_center_y_tensor[h], half_bin_size_y);
 
-                T area = px * py * ratio;
+                T area = px * py;
 
                 tmp_x += area * field_map_x_tensor[k * num_bins_y + h];
                 tmp_y += area * field_map_y_tensor[k * num_bins_y + h];
@@ -207,8 +209,9 @@ __global__ void __launch_bounds__(1024, 8) computeElectricForce(
                 #endif
             }
         }
-        atomicAdd(&s_x[threadIdx.z], tmp_x);
-        atomicAdd(&s_y[threadIdx.z], tmp_y);
+        
+        atomicAdd(&s_x[threadIdx.z], tmp_x * ratio);
+        atomicAdd(&s_y[threadIdx.z], tmp_y * ratio);
         __syncthreads();
 
         if (threadIdx.x == 0 && threadIdx.y == 0)
