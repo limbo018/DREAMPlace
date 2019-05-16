@@ -64,7 +64,7 @@ void dct2dPreprocessCudaLauncher(const T *x, T *y, const int M, const int N)
 }
 
 template <typename T, typename TComplex>
-__global__ __launch_bounds__(1024, 10) void dct2dPostprocess(const TComplex *V, T *y, const int M, const int N,
+__global__ void __launch_bounds__(1024, 10) dct2dPostprocess(const TComplex *V, T *y, const int M, const int N,
                                                              const int halfM, const int halfN, const T two_over_MN, const T four_over_MN,
                                                              const TComplex *__restrict__ expkM, const TComplex *__restrict__ expkN)
 {
@@ -154,7 +154,7 @@ void dct2dPostprocessCudaLauncher(const T *x, T *y, const int M, const int N,
 
 // idct2_fft2
 template <typename T, typename TComplex>
-__global__ __launch_bounds__(TPB *TPB, 10) void idct2_fft2Preprocess(const T *input, TComplex *output, const int M, const int N,
+__global__ void __launch_bounds__(TPB *TPB, 10) idct2_fft2Preprocess(const T *input, TComplex *output, const int M, const int N,
                                                                      const int halfM, const int halfN,
                                                                      const TComplex *__restrict__ expkM, const TComplex *__restrict__ expkN)
 {
@@ -316,7 +316,7 @@ void idct2_fft2PostprocessCudaLauncher(const T *x, T *y, const int M, const int 
 // else
 //     new_input[hid][0] = 0
 template <typename T, typename TComplex>
-__global__ __launch_bounds__(TPB * TPB, 10) void idct_idxstPreprocess(const T *input, TComplex *output, const int M, const int N,
+__global__ void __launch_bounds__(TPB * TPB, 10) idct_idxstPreprocess(const T *input, TComplex *output, const int M, const int N,
                                                                      const int halfM, const int halfN,
                                                                      const TComplex *__restrict__ expkM, const TComplex *__restrict__ expkN)
 {
@@ -474,7 +474,7 @@ void idct_idxstPostprocessCudaLauncher(const T *x, T *y, const int M, const int 
 // else
 //     new_input[0][wid] = 0
 template <typename T, typename TComplex>
-__global__ __launch_bounds__(TPB *TPB, 10) void idxst_idctPreprocess(const T *input, TComplex *output, const int M, const int N,
+__global__ void __launch_bounds__(TPB *TPB, 10) idxst_idctPreprocess(const T *input, TComplex *output, const int M, const int N,
                                                                      const int halfM, const int halfN,
                                                                      const TComplex *__restrict__ expkM, const TComplex *__restrict__ expkN)
 {
