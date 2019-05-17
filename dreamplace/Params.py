@@ -40,6 +40,7 @@ class Params:
         self.RePlAce_ref_hpwl = 3.5e5
         self.RePlAce_LOWER_PCOF = 0.95
         self.RePlAce_UPPER_PCOF = 1.05
+        self.num_threads = 8
 
     def printWelcome(self): 
         """
@@ -84,6 +85,7 @@ plot_flag [default %d]                 | whether plot solution or not
 RePlAce_ref_hpwl [default %g]     | reference HPWL used in RePlAce for updating density weight 
 RePlAce_LOWER_PCOF [default %g]     | lower bound ratio used in RePlAce for updating density weight 
 RePlAce_UPPER_PCOF [default %g]     | upper bound ratio used in RePlAce for updating density weight 
+num_threads [default %d]            | number of CPU threads
         """ % (self.gpu, 
                 self.num_bins_x, 
                 self.num_bins_y, 
@@ -105,7 +107,8 @@ RePlAce_UPPER_PCOF [default %g]     | upper bound ratio used in RePlAce for upda
                 self.plot_flag, 
                 self.RePlAce_ref_hpwl, 
                 self.RePlAce_LOWER_PCOF, 
-                self.RePlAce_UPPER_PCOF
+                self.RePlAce_UPPER_PCOF, 
+                self.num_threads
                 )
         print(content)
 
@@ -138,6 +141,7 @@ RePlAce_UPPER_PCOF [default %g]     | upper bound ratio used in RePlAce for upda
         data['RePlAce_ref_hpwl'] = self.RePlAce_ref_hpwl
         data['RePlAce_LOWER_PCOF'] = self.RePlAce_LOWER_PCOF
         data['RePlAce_UPPER_PCOF'] = self.RePlAce_UPPER_PCOF
+        data['num_threads'] = self.num_threads
         return data 
 
     def fromJson(self, data):
@@ -168,6 +172,7 @@ RePlAce_UPPER_PCOF [default %g]     | upper bound ratio used in RePlAce for upda
         if 'RePlAce_ref_hpwl' in data: self.RePlAce_ref_hpwl = data['RePlAce_ref_hpwl']
         if 'RePlAce_LOWER_PCOF' in data: self.RePlAce_LOWER_PCOF = data['RePlAce_LOWER_PCOF']
         if 'RePlAce_UPPER_PCOF' in data: self.RePlAce_UPPER_PCOF = data['RePlAce_UPPER_PCOF']
+        if 'num_threads' in data: self.num_threads = data['num_threads']
 
     def dump(self, filename):
         """

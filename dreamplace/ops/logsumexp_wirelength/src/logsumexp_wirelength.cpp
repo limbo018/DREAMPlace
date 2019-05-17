@@ -23,6 +23,7 @@ int computeLogSumExpWirelengthLauncher(
         T* exp_xy_sum, T* exp_nxy_sum,
         T* wl, 
         const T* grad_tensor, 
+        int num_threads, 
         T* grad_x_tensor, T* grad_y_tensor 
         );
 
@@ -42,7 +43,8 @@ std::vector<at::Tensor> logsumexp_wirelength_forward(
         at::Tensor flat_netpin,
         at::Tensor netpin_start, 
         at::Tensor net_mask, 
-        at::Tensor gamma 
+        at::Tensor gamma, 
+        int num_threads
         ) 
 {
     CHECK_FLAT(pos); 
@@ -52,7 +54,8 @@ std::vector<at::Tensor> logsumexp_wirelength_forward(
     CHECK_CONTIGUOUS(flat_netpin);
     CHECK_FLAT(netpin_start);
     CHECK_CONTIGUOUS(netpin_start);
-    at::Tensor wl = at::zeros({1}, pos.type());
+    int num_nets = netpin_start.numel()-1;
+    at::Tensor wl = at::zeros({num_nets}, pos.type());
     at::Tensor exp_xy = at::zeros_like(pos);
     at::Tensor exp_nxy = at::zeros_like(pos);
     at::Tensor exp_xy_sum = at::zeros({2*(netpin_start.numel()-1)}, pos.type());
@@ -64,18 +67,19 @@ std::vector<at::Tensor> logsumexp_wirelength_forward(
                     flat_netpin.data<int>(), 
                     netpin_start.data<int>(), 
                     net_mask.data<unsigned char>(), 
-                    netpin_start.numel()-1, 
+                    num_nets, 
                     flat_netpin.numel(), 
                     gamma.data<scalar_t>(), 
                     exp_xy.data<scalar_t>(), exp_nxy.data<scalar_t>(), 
                     exp_xy_sum.data<scalar_t>(), exp_nxy_sum.data<scalar_t>(),
                     wl.data<scalar_t>(), 
                     nullptr, 
+                    num_threads, 
                     nullptr, nullptr
                     );
             });
 
-    return {wl, exp_xy, exp_nxy, exp_xy_sum, exp_nxy_sum}; 
+    return {wl.sum(), exp_xy, exp_nxy, exp_xy_sum, exp_nxy_sum}; 
 }
 
 /// @brief Compute gradient 
@@ -97,7 +101,8 @@ at::Tensor logsumexp_wirelength_backward(
         at::Tensor flat_netpin,
         at::Tensor netpin_start, 
         at::Tensor net_mask, 
-        at::Tensor gamma // a scalar tensor 
+        at::Tensor gamma, // a scalar tensor 
+        int num_threads
         ) 
 {
     CHECK_FLAT(pos); 
@@ -134,6 +139,7 @@ at::Tensor logsumexp_wirelength_backward(
                     exp_xy_sum.data<scalar_t>(), exp_nxy_sum.data<scalar_t>(),
                     nullptr, 
                     grad_pos.data<scalar_t>(), 
+                    num_threads, 
                     grad_out.data<scalar_t>(), grad_out.data<scalar_t>()+pos.numel()/2
                     );
             });
@@ -153,22 +159,21 @@ int computeLogSumExpWirelengthLauncher(
         T* exp_xy_sum, T* exp_nxy_sum,
         T* wl,
         const T* grad_tensor, 
+        int num_threads, 
         T* grad_x_tensor, T* grad_y_tensor 
         )
 {
     T tol = 80; // tolerance to trigger numeric adjustment, which may cause precision loss  
     if (grad_tensor)
     {
+#pragma omp parallel for num_threads(num_threads)
         for (int i = 0; i < num_pins; ++i)
         {
             grad_x_tensor[i] = 0; 
             grad_y_tensor[i] = 0; 
         }
     }
-    else 
-    {
-        *wl = 0; 
-    }
+#pragma omp parallel for num_threads(num_threads)
     for (int i = 0; i < num_nets; ++i)
     {
         if (!net_mask[i])
@@ -229,7 +234,7 @@ int computeLogSumExpWirelengthLauncher(
                 T log_exp_nxy_sum = log(exp_nxy_sum[i+k*num_nets])*(*gamma) - xy_min; 
 
                 T wl_xy = log_exp_xy_sum + log_exp_nxy_sum;
-                *wl += wl_xy; 
+                wl[i] += wl_xy; 
             }
         }
     }

@@ -49,7 +49,8 @@ class DensityOverflowFunction(Function):
           bin_size_y, 
           num_movable_nodes, 
           num_filler_nodes, 
-          algorithm
+          algorithm, 
+          num_threads
           ):
         if pos.is_cuda:
             if algorithm == 'threadmap': 
@@ -105,7 +106,8 @@ class DensityOverflowFunction(Function):
                     bin_size_x, 
                     bin_size_y, 
                     num_movable_nodes, 
-                    num_filler_nodes
+                    num_filler_nodes, 
+                    num_threads
                     )
         #print("overflow initial_density_map")
         #print(initial_density_map/(bin_size_x*bin_size_y))
@@ -121,7 +123,7 @@ class DensityOverflow(Function):
     The density map for fixed cells is pre-computed. 
     Each call will only compute the density map for movable cells. 
     """
-    def __init__(self, node_size_x, node_size_y, bin_center_x, bin_center_y, target_density, xl, yl, xh, yh, bin_size_x, bin_size_y, num_movable_nodes, num_terminals, num_filler_nodes, algorithm='by-node'):
+    def __init__(self, node_size_x, node_size_y, bin_center_x, bin_center_y, target_density, xl, yl, xh, yh, bin_size_x, bin_size_y, num_movable_nodes, num_terminals, num_filler_nodes, algorithm='by-node', num_threads=8):
         """
         @brief initialization 
         @param node_size_x cell width array consisting of movable cells, fixed cells, and filler cells in order  
@@ -179,6 +181,7 @@ class DensityOverflow(Function):
             self.thread2bin_x_map = None
             self.thread2bin_y_map = None
         self.initial_density_map = None
+        self.num_threads = num_threads
     def forward(self, pos): 
         """
         @brief API 
@@ -223,7 +226,8 @@ class DensityOverflow(Function):
                         self.bin_size_x, 
                         self.bin_size_y, 
                         self.num_movable_nodes, 
-                        self.num_terminals
+                        self.num_terminals, 
+                        self.num_threads
                         )
             #plot(self.initial_density_map.clone().div(self.bin_size_x*self.bin_size_y).cpu().numpy(), 'initial_density_map')
 
@@ -246,7 +250,8 @@ class DensityOverflow(Function):
                 bin_size_y=self.bin_size_y, 
                 num_movable_nodes=self.num_movable_nodes, 
                 num_filler_nodes=self.num_filler_nodes, 
-                algorithm=self.algorithm
+                algorithm=self.algorithm, 
+                num_threads=self.num_threads
                 )
 
 def plot(density_map, name):

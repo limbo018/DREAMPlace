@@ -29,7 +29,8 @@ class MoveBoundaryFunction(Function):
           xh, 
           yh, 
           num_movable_nodes, 
-          num_filler_nodes
+          num_filler_nodes, 
+          num_threads
           ):
         if pos.is_cuda:
             output = move_boundary_cuda.forward(
@@ -53,7 +54,8 @@ class MoveBoundaryFunction(Function):
                     xh, 
                     yh, 
                     num_movable_nodes, 
-                    num_filler_nodes
+                    num_filler_nodes, 
+                    num_threads
                     )
         return output
 
@@ -61,7 +63,7 @@ class MoveBoundary(Function):
     """ 
     @brief Bound cells into layout boundary, perform in-place update 
     """
-    def __init__(self, node_size_x, node_size_y, xl, yl, xh, yh, num_movable_nodes, num_filler_nodes):
+    def __init__(self, node_size_x, node_size_y, xl, yl, xh, yh, num_movable_nodes, num_filler_nodes, num_threads=8):
         super(MoveBoundary, self).__init__()
         self.node_size_x = node_size_x
         self.node_size_y = node_size_y
@@ -71,6 +73,7 @@ class MoveBoundary(Function):
         self.yh = yh 
         self.num_movable_nodes = num_movable_nodes
         self.num_filler_nodes = num_filler_nodes
+        self.num_threads = num_threads
     def forward(self, pos): 
         return MoveBoundaryFunction.forward(
                 pos,
@@ -82,4 +85,5 @@ class MoveBoundary(Function):
                 yh=self.yh, 
                 num_movable_nodes=self.num_movable_nodes, 
                 num_filler_nodes=self.num_filler_nodes, 
+                num_threads=self.num_threads
                 )

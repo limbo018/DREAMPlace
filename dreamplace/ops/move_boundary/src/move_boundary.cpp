@@ -16,7 +16,8 @@ int computeMoveBoundaryMapLauncher(
         const T xl, const T yl, const T xh, const T yh, 
         const int num_nodes, 
         const int num_movable_nodes, 
-        const int num_filler_nodes
+        const int num_filler_nodes, 
+        const int num_threads
         );
 
 #define CHECK_FLAT(x) AT_ASSERTM(!x.is_cuda() && x.ndimension() == 1, #x "must be a flat tensor on CPU")
@@ -32,7 +33,8 @@ at::Tensor move_boundary_forward(
         double xh, 
         double yh, 
         int num_movable_nodes, 
-        int num_filler_nodes
+        int num_filler_nodes, 
+        int num_threads
         ) 
 {
     CHECK_FLAT(pos); 
@@ -47,7 +49,8 @@ at::Tensor move_boundary_forward(
                     xl, yl, xh, yh, 
                     pos.numel()/2, 
                     num_movable_nodes, 
-                    num_filler_nodes
+                    num_filler_nodes, 
+                    num_threads
                     );
             });
 
@@ -61,9 +64,11 @@ int computeMoveBoundaryMapLauncher(
         const T xl, const T yl, const T xh, const T yh, 
         const int num_nodes, 
         const int num_movable_nodes, 
-        const int num_filler_nodes
+        const int num_filler_nodes, 
+        const int num_threads
         )
 {
+#pragma omp parallel for num_threads(num_threads)
     for (int i = 0; i < num_nodes; ++i)
     {
         if (i < num_movable_nodes || i >= num_nodes-num_filler_nodes)

@@ -38,6 +38,7 @@ class PlaceDataCollection (object):
         @param placedb placement database 
         @param device cpu or cuda 
         """
+        torch.set_num_threads = params.num_threads
         # position should be parameter 
         self.pos = pos 
         # other tensors required to build ops 
@@ -231,7 +232,8 @@ class BasicPlace (nn.Module):
                 data_collections.node_size_x, data_collections.node_size_y, 
                 xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
                 num_movable_nodes=placedb.num_movable_nodes, 
-                num_filler_nodes=placedb.num_filler_nodes
+                num_filler_nodes=placedb.num_filler_nodes, 
+                num_threads=params.num_threads
                 )
 
     def build_hpwl(self, params, placedb, data_collections, pin_pos_op, device):
@@ -249,7 +251,8 @@ class BasicPlace (nn.Module):
                 netpin_start=data_collections.flat_net2pin_start_map,
                 pin2net_map=data_collections.pin2net_map, 
                 net_mask=data_collections.net_mask_all, 
-                algorithm='atomic'
+                algorithm='atomic', 
+                num_threads=params.num_threads
                 )
 
         # wirelength for position 
@@ -306,7 +309,8 @@ class BasicPlace (nn.Module):
                 num_movable_nodes=placedb.num_movable_nodes, 
                 num_terminals=placedb.num_terminals, 
                 num_filler_nodes=0,
-                algorithm='by-node'
+                algorithm='by-node', 
+                num_threads=params.num_threads
                 )
 
     def build_electric_overflow(self, params, placedb, data_collections, device):
@@ -326,7 +330,8 @@ class BasicPlace (nn.Module):
                 num_movable_nodes=placedb.num_movable_nodes, 
                 num_terminals=placedb.num_terminals, 
                 num_filler_nodes=0,
-                padding=0
+                padding=0, 
+                num_threads=params.num_threads
                 )
 
     def build_greedy_legalization(self, params, placedb, data_collections, device):

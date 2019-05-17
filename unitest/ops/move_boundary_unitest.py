@@ -54,18 +54,19 @@ class MoveBoundaryOpTest(unittest.TestCase):
         #print("custom_result.grad = ", result.grad)
 
         # test cuda 
-        custom_cuda = move_boundary.MoveBoundary(
-                    torch.from_numpy(node_size_x).cuda(), torch.from_numpy(node_size_y).cuda(), 
-                    xl=xl, yl=yl, xh=xh, yh=yh, 
-                    num_movable_nodes=num_movable_nodes, 
-                    num_filler_nodes=num_filler_nodes)
+        if torch.cuda.device_count(): 
+            custom_cuda = move_boundary.MoveBoundary(
+                        torch.from_numpy(node_size_x).cuda(), torch.from_numpy(node_size_y).cuda(), 
+                        xl=xl, yl=yl, xh=xh, yh=yh, 
+                        num_movable_nodes=num_movable_nodes, 
+                        num_filler_nodes=num_filler_nodes)
 
-        pos = Variable(torch.from_numpy(np.concatenate([xx, yy]))).cuda()
-        result_cuda = custom_cuda.forward(pos)
-        print("custom_result = ", result_cuda.data.cpu())
+            pos = Variable(torch.from_numpy(np.concatenate([xx, yy]))).cuda()
+            result_cuda = custom_cuda.forward(pos)
+            print("custom_result = ", result_cuda.data.cpu())
 
 
-        np.testing.assert_allclose(result, result_cuda.data.cpu())
+            np.testing.assert_allclose(result, result_cuda.data.cpu())
 
 if __name__ == '__main__':
     unittest.main()
