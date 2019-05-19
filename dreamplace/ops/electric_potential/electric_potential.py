@@ -48,7 +48,9 @@ class ElectricPotentialFunction(Function):
     def forward(
         ctx,
         pos,
-        node_size_x, node_size_y,
+        node_size_x_clamped, node_size_y_clamped,
+        offset_x, offset_y,
+        ratio,
         bin_center_x, bin_center_y,
         initial_density_map,
         target_density,
@@ -64,6 +66,7 @@ class ElectricPotentialFunction(Function):
         num_movable_impacted_bins_y,
         num_filler_impacted_bins_x,
         num_filler_impacted_bins_y,
+        sorted_node_map,
         exact_expkM=None,  # exp(-j*pi*k/M)
         exact_expkN=None,  # exp(-j*pi*k/N)
         inv_wu2_plus_wv2=None,  # 1.0/(wu^2 + wv^2)
@@ -79,7 +82,9 @@ class ElectricPotentialFunction(Function):
         if pos.is_cuda:
             output = electric_potential_cuda.density_map(
                 pos.view(pos.numel()),
-                node_size_x, node_size_y,
+                node_size_x_clamped, node_size_y_clamped,
+                offset_x, offset_y,
+                ratio,
                 bin_center_x, bin_center_y,
                 initial_density_map,
                 target_density,
@@ -94,12 +99,13 @@ class ElectricPotentialFunction(Function):
                 num_movable_impacted_bins_x,
                 num_movable_impacted_bins_y,
                 num_filler_impacted_bins_x,
-                num_filler_impacted_bins_y
+                num_filler_impacted_bins_y,
+                sorted_node_map
             )
         else:
             output = electric_potential_cpp.density_map(
                 pos.view(pos.numel()),
-                node_size_x, node_size_y,
+                node_size_x_clamped, node_size_y_clamped,
                 bin_center_x, bin_center_y,
                 initial_density_map,
                 target_density,
@@ -118,8 +124,11 @@ class ElectricPotentialFunction(Function):
             )
 
         # output consists of (density_cost, density_map, max_density)
-        ctx.node_size_x = node_size_x
-        ctx.node_size_y = node_size_y
+        ctx.node_size_x_clamped = node_size_x_clamped
+        ctx.node_size_y_clamped = node_size_y_clamped
+        ctx.offset_x = offset_x
+        ctx.offset_y = offset_y
+        ctx.ratio = ratio
         ctx.bin_center_x = bin_center_x
         ctx.bin_center_y = bin_center_y
         ctx.target_density = target_density
@@ -139,6 +148,7 @@ class ElectricPotentialFunction(Function):
         ctx.num_filler_impacted_bins_x = num_filler_impacted_bins_x
         ctx.num_filler_impacted_bins_y = num_filler_impacted_bins_y
         ctx.pos = pos
+        ctx.sorted_node_map = sorted_node_map
         density_map = output.view([ctx.num_bins_x, ctx.num_bins_y])
         #density_map = torch.ones([ctx.num_bins_x, ctx.num_bins_y], dtype=pos.dtype, device=pos.device)
         #ctx.field_map_x = torch.ones([ctx.num_bins_x, ctx.num_bins_y], dtype=pos.dtype, device=pos.device)
@@ -228,12 +238,15 @@ class ElectricPotentialFunction(Function):
                 ctx.num_filler_impacted_bins_x, ctx.num_filler_impacted_bins_y,
                 ctx.field_map_x.view([-1]), ctx.field_map_y.view([-1]),
                 ctx.pos,
-                ctx.node_size_x, ctx.node_size_y,
+                ctx.node_size_x_clamped, ctx.node_size_y_clamped,
+                ctx.offset_x, ctx.offset_y,
+                ctx.ratio,
                 ctx.bin_center_x, ctx.bin_center_y,
                 ctx.xl, ctx.yl, ctx.xh, ctx.yh,
                 ctx.bin_size_x, ctx.bin_size_y,
                 ctx.num_movable_nodes,
-                ctx.num_filler_nodes
+                ctx.num_filler_nodes,
+                ctx.sorted_node_map
             )
         else:
             output = -electric_potential_cpp.electric_force(
@@ -243,7 +256,7 @@ class ElectricPotentialFunction(Function):
                 ctx.num_filler_impacted_bins_x, ctx.num_filler_impacted_bins_y,
                 ctx.field_map_x.view([-1]), ctx.field_map_y.view([-1]),
                 ctx.pos,
-                ctx.node_size_x, ctx.node_size_y,
+                ctx.node_size_x_clamped, ctx.node_size_y_clamped,
                 ctx.bin_center_x, ctx.bin_center_y,
                 ctx.xl, ctx.yl, ctx.xh, ctx.yh,
                 ctx.bin_size_x, ctx.bin_size_y,
@@ -277,6 +290,7 @@ class ElectricPotentialFunction(Function):
             None, None, None, None, \
             None, None, None, None, \
             None, None, None, None, \
+            None, None, None, None, \
             None, None, None, None
 
 
@@ -295,6 +309,7 @@ class ElectricPotential(nn.Module):
                  num_terminals,
                  num_filler_nodes,
                  padding,
+                 sorted_node_map,
                  fast_mode=False
                  ):
         """
@@ -319,8 +334,15 @@ class ElectricPotential(nn.Module):
         @param fast_mode if true, only gradient is computed, while objective computation is skipped
         """
         super(ElectricPotential, self).__init__()
+        sqrt2 = math.sqrt(2)
         self.node_size_x = node_size_x
+        self.node_size_x_clamped = node_size_x.clamp(min=bin_size_x*sqrt2)
+        self.offset_x = (node_size_x - self.node_size_x_clamped).mul(0.5)
         self.node_size_y = node_size_y
+        self.node_size_y_clamped = node_size_y.clamp(min=bin_size_y*sqrt2)
+        self.offset_y = (node_size_y - self.node_size_y_clamped).mul(0.5)
+        self.ratio = node_size_x * node_size_y / (self.node_size_x_clamped * self.node_size_y_clamped)
+
         self.bin_center_x = bin_center_x
         self.bin_center_y = bin_center_y
         self.target_density = target_density
@@ -334,10 +356,11 @@ class ElectricPotential(nn.Module):
         self.num_terminals = num_terminals
         self.num_filler_nodes = num_filler_nodes
         self.padding = padding
+        self.sorted_node_map = sorted_node_map
         # compute maximum impacted bins
         self.num_bins_x = int(math.ceil((xh - xl) / bin_size_x))
         self.num_bins_y = int(math.ceil((yh - yl) / bin_size_y))
-        sqrt2 = 1.414213562
+        
         self.num_movable_impacted_bins_x = int(
             ((node_size_x[:num_movable_nodes].max() + 2 * sqrt2 * self.bin_size_x) / self.bin_size_x).ceil().clamp(max=self.num_bins_x))
         self.num_movable_impacted_bins_y = int(
@@ -446,7 +469,9 @@ class ElectricPotential(nn.Module):
 
         return ElectricPotentialFunction.apply(
             pos,
-            self.node_size_x, self.node_size_y,
+            self.node_size_x_clamped, self.node_size_y_clamped,
+            self.offset_x, self.offset_y,
+            self.ratio,
             self.bin_center_x, self.bin_center_y,
             self.initial_density_map,
             self.target_density,
@@ -461,6 +486,7 @@ class ElectricPotential(nn.Module):
             self.num_movable_impacted_bins_y,
             self.num_filler_impacted_bins_x,
             self.num_filler_impacted_bins_y,
+            self.sorted_node_map,
             self.exact_expkM, self.exact_expkN,
             self.inv_wu2_plus_wv2,
             self.wu_by_wu2_plus_wv2_half, self.wv_by_wu2_plus_wv2_half,

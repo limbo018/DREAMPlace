@@ -67,6 +67,18 @@ class PlaceDataCollection (object):
         self.bin_center_x = torch.from_numpy(placedb.bin_center_x).to(device)
         self.bin_center_y = torch.from_numpy(placedb.bin_center_y).to(device)
 
+        # sort nodes by size, return their sorted indices, designed for memory coalesce in electrical force
+        movable_size_x = self.node_size_x[:placedb.num_movable_nodes]
+        _, self.sorted_node_map = torch.sort(movable_size_x)
+        self.sorted_node_map = self.sorted_node_map.to(torch.int32) 
+        # self.sorted_node_map = torch.arange(0, placedb.num_movable_nodes, dtype=torch.int32, device=device)
+
+        # print(self.node_size_x[placedb.num_movable_nodes//2 :placedb.num_movable_nodes//2+20])
+        # print(self.sorted_node_map[placedb.num_movable_nodes//2 :placedb.num_movable_nodes//2+20])
+        # print(self.node_size_x[self.sorted_node_map[0: 10].long()])
+        # print(self.node_size_x[self.sorted_node_map[-10:].long()])
+
+        
     def bin_center_x_padded(self, placedb, padding): 
         """
         @brief compute array of bin center horizontal coordinates with padding 
@@ -326,7 +338,8 @@ class BasicPlace (nn.Module):
                 num_movable_nodes=placedb.num_movable_nodes, 
                 num_terminals=placedb.num_terminals, 
                 num_filler_nodes=0,
-                padding=0
+                padding=0,
+                sorted_node_map=data_collections.sorted_node_map
                 )
 
     def build_greedy_legalization(self, params, placedb, data_collections, device):
