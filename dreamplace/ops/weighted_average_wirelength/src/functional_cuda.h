@@ -76,7 +76,7 @@ __global__ void computeExp(
     const unsigned char *net_mask,
     int num_nets,
     int num_pins,
-    const T *gamma,
+    const T *inv_gamma,
     V *x_max,
     T *exp_x)
 {
@@ -86,7 +86,7 @@ __global__ void computeExp(
         int net_id = pin2net_map[i];
         if (net_id >= 0 || net_mask[net_id])
         {
-            exp_x[i] = exp((x[i] - x_max[net_id]) / (*gamma));
+            exp_x[i] = exp((x[i] - x_max[net_id]) * (*inv_gamma));
         }
     }
 }
@@ -98,7 +98,7 @@ __global__ void computeNegExp(
     const unsigned char *net_mask,
     int num_nets,
     int num_pins,
-    const T *gamma,
+    const T *inv_gamma,
     V *x_min,
     T *exp_nx)
 {
@@ -108,7 +108,7 @@ __global__ void computeNegExp(
         int net_id = pin2net_map[i];
         if (net_id >= 0 || net_mask[net_id])
         {
-            exp_nx[i] = exp(-(x[i] - x_min[net_id]) / (*gamma));
+            exp_nx[i] = exp(-(x[i] - x_min[net_id]) * (*inv_gamma));
         }
     }
 }
@@ -161,7 +161,7 @@ __global__ void computeABCKernels(
     const unsigned char *net_mask,
     int num_nets,
     int num_pins,
-    const T *gamma,
+    const T *inv_gamma,
     V *x_max, V *x_min,
     T *exp_x, T *exp_nx,
     T *exp_x_sum, T *exp_nx_sum,
@@ -173,8 +173,8 @@ __global__ void computeABCKernels(
         int net_id = pin2net_map[i];
         if (net_id >= 0 || net_mask[net_id])
         {
-            exp_x[i] = exp((x[i] - x_max[net_id]) / (*gamma));
-            exp_nx[i] = exp(-(x[i] - x_min[net_id]) / (*gamma));
+            exp_x[i] = exp((x[i] - x_max[net_id]) * (*inv_gamma));
+            exp_nx[i] = exp(-(x[i] - x_min[net_id]) * (*inv_gamma));
 
             atomicAdd(&exp_x_sum[net_id], exp_x[i]);
             atomicAdd(&exp_nx_sum[net_id], exp_nx[i]);
@@ -191,7 +191,6 @@ __global__ void computeXExpSumByExpSum(
     const int *pin2net_map,
     const unsigned char *net_mask,
     int num_nets,
-    const T *gamma,
     T *partial_wl)
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -211,7 +210,6 @@ __global__ void computeXNegExpSumByNegExpSum(
     const int *pin2net_map,
     const unsigned char *net_mask,
     int num_nets,
-    const T *gamma,
     T *partial_wl)
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -231,7 +229,6 @@ __global__ void computeXExpSumByExpSum(
     const int *pin2net_map,
     const unsigned char *net_mask,
     int num_nets,
-    const T *gamma,
     T *partial_wl)
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -255,7 +252,7 @@ __global__ void computeWeightedAverageWirelengthGrad(
     const unsigned char *net_mask,
     int num_nets,
     int num_pins,
-    const T *gamma,
+    const T *inv_gamma,
     const T *grad_tensor,
     T *grad_x_tensor)
 {
@@ -265,7 +262,7 @@ __global__ void computeWeightedAverageWirelengthGrad(
         int net_id = pin2net_map[i];
         if (net_id >= 0 || net_mask[net_id])
         {
-            T gamma_inv = 1.0/(*gamma);
+            T gamma_inv = (*inv_gamma);
             grad_x_tensor[i] = (\
                     ( (1+gamma_inv*x[i])*exp_x_sum[net_id] - gamma_inv*xexp_x_sum[net_id] ) / (exp_x_sum[net_id]*exp_x_sum[net_id]) * exp_x[i] \
                     - ( (1-gamma_inv*x[i])*exp_nx_sum[net_id] + gamma_inv*xexp_nx_sum[net_id] ) / (exp_nx_sum[net_id]*exp_nx_sum[net_id]) * exp_nx[i] \

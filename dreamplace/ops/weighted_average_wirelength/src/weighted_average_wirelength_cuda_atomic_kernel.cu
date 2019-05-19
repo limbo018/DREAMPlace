@@ -15,7 +15,7 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
     const unsigned char *net_mask,
     int num_nets,
     int num_pins,
-    const T *gamma,
+    const T *inv_gamma,
     T *exp_xy, T *exp_nxy,
     T *exp_xy_sum, T *exp_nxy_sum,
     T *xyexp_xy_sum, T *xyexp_nxy_sum,
@@ -50,7 +50,7 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
             net_mask,
             num_nets,
             num_pins,
-            gamma,
+            inv_gamma,
             grad_tensor,
             grad_x_tensor);
         computeWeightedAverageWirelengthGrad<<<block_count_pins, thread_count, 0, stream_y_exp>>>(
@@ -62,7 +62,7 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
             net_mask,
             num_nets,
             num_pins,
-            gamma,
+            inv_gamma,
             grad_tensor,
             grad_y_tensor);
     }
@@ -91,7 +91,7 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
             net_mask,
             num_nets,
             num_pins,
-            gamma,
+            inv_gamma,
             xy_max, xy_min,
             exp_xy, exp_nxy,
             exp_xy_sum, exp_nxy_sum,
@@ -102,7 +102,7 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
             net_mask,
             num_nets,
             num_pins,
-            gamma,
+            inv_gamma,
             xy_max + num_nets, xy_min + num_nets,
             exp_xy + num_pins, exp_nxy + num_pins,
             exp_xy_sum + num_nets, exp_nxy_sum + num_nets,
@@ -114,7 +114,6 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
             pin2net_map,
             net_mask,
             num_nets,
-            gamma,
             partial_wl);
         computeXExpSumByExpSum<<<block_count_nets, thread_count, 0, stream_y_exp>>>(
             xyexp_xy_sum + num_nets, xyexp_nxy_sum + num_nets,
@@ -122,7 +121,6 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
             pin2net_map,
             net_mask,
             num_nets,
-            gamma,
             partial_wl + 2 * num_nets);
 
         // I move out the summation to use ATen
@@ -150,7 +148,7 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
             const unsigned char* net_mask, \
             int num_nets, \
             int num_pins, \
-            const T* gamma, \
+            const T* inv_gamma, \
             T* exp_xy, T* exp_nxy, \
             T* exp_xy_sum, T* exp_nxy_sum,\
             T* xyexp_xy_sum, T* xyexp_nxy_sum, \
@@ -166,7 +164,7 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
                 net_mask, \
                 num_nets,\
                 num_pins,\
-                gamma, \
+                inv_gamma, \
                 exp_xy, exp_nxy, \
                 exp_xy_sum, exp_nxy_sum, \
                 xyexp_xy_sum, xyexp_nxy_sum, \
