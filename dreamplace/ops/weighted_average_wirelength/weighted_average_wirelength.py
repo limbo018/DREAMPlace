@@ -133,23 +133,23 @@ class WeightedAverageWirelengthSparseFunction(Function):
     @brief compute weighted average wirelength.
     """
     @staticmethod
-    def forward(ctx, pos, flat_netpin, netpin_start, netpin_values, pin2net_map, net_mask, pin_mask, gamma):
+    def forward(ctx, pos, flat_netpin, netpin_start, netpin_values, pin2net_map, net_mask, pin_mask, inv_gamma):
         """
         @param pos pin location (x array, y array), not cell location
         @param pin2net_map pin2net map
         @param net_mask whether to compute wirelength
         @param pin_mask whether compute gradient for a pin, 1 means to fill with zero, 0 means to compute
-        @param gamma the smaller, the closer to HPWL
+        @param inv_gamma the larger, the closer to HPWL
         """
         #tt = time.time()
         if pos.is_cuda:
-            output = weighted_average_wirelength_cuda_sparse.forward(pos.view(pos.numel()), flat_netpin, netpin_start, netpin_values, pin2net_map, net_mask, gamma)
+            output = weighted_average_wirelength_cuda_sparse.forward(pos.view(pos.numel()), flat_netpin, netpin_start, netpin_values, pin2net_map, net_mask, inv_gamma)
         else:
             assert 0, "CPU version NOT IMPLEMENTED"
         ctx.pin2net_map = pin2net_map
         ctx.net_mask = net_mask
         ctx.pin_mask = pin_mask
-        ctx.gamma = gamma
+        ctx.inv_gamma = inv_gamma
         ctx.exp_xy = output[1]
         ctx.exp_nxy = output[2]
         ctx.exp_xy_sum = output[3];
@@ -175,7 +175,7 @@ class WeightedAverageWirelengthSparseFunction(Function):
                     ctx.xyexp_xy_sum.view([-1]), ctx.xyexp_nxy_sum.view([-1]),
                     ctx.pin2net_map,
                     ctx.net_mask,
-                    ctx.gamma
+                    ctx.inv_gamma
                     )
         else:
             assert 0, "CPU version NOT IMPLEMENTED"
@@ -248,7 +248,7 @@ class WeightedAverageWirelength(nn.Module):
                         self.pin2net_map,
                         self.net_mask,
                         self.pin_mask,
-                        self.gamma
+                        1.0/self.gamma
                         )
         else: # only net-by-net for CPU
             return WeightedAverageWirelengthFunction.apply(pos,
