@@ -50,10 +50,11 @@ __global__ void computeMin(
 // V has to be int, or long long int
 template <typename T, typename V>
 __global__ void computeMaxMin(
-    const T *x,
+    const T *x, const T *y,
     const int *pin2net_map,
     const unsigned char *net_mask,
     int num_pins,
+    int num_nets,
     V *x_max,
     V *x_min)
 {
@@ -65,6 +66,10 @@ __global__ void computeMaxMin(
         {
             atomicMax(&x_max[net_id], (V)(x[i]));
             atomicMin(&x_min[net_id], (V)(x[i]));
+
+            net_id += num_nets;
+            atomicMax(&x_max[net_id], (V)(y[i]));
+            atomicMin(&x_min[net_id], (V)(y[i]));
         }
     }
 }
@@ -156,7 +161,7 @@ __global__ void computeXExpSum(
 
 template <typename T, typename V>
 __global__ void computeABCKernels(
-    const T *x,
+    const T *x, const T *y,
     const int *pin2net_map,
     const unsigned char *net_mask,
     int num_nets,
@@ -174,12 +179,22 @@ __global__ void computeABCKernels(
         if (net_id >= 0 || net_mask[net_id])
         {
             exp_x[i] = exp((x[i] - x_max[net_id]) * (*inv_gamma));
-            exp_nx[i] = exp(-(x[i] - x_min[net_id]) * (*inv_gamma));
+            exp_nx[i] = exp((x_min[net_id] - x[i]) * (*inv_gamma));
 
             atomicAdd(&exp_x_sum[net_id], exp_x[i]);
             atomicAdd(&exp_nx_sum[net_id], exp_nx[i]);
             atomicAdd(&xexp_x_sum[net_id], x[i] * exp_x[i]);
             atomicAdd(&xexp_nx_sum[net_id], x[i] * exp_nx[i]);
+
+            net_id += num_nets;
+            int pin_id = i + num_pins;
+            exp_x[pin_id] = exp((y[i] - x_max[net_id]) * (*inv_gamma));
+            exp_nx[pin_id] = exp((x_min[net_id] - y[i]) * (*inv_gamma));
+
+            atomicAdd(&exp_x_sum[net_id], exp_x[pin_id]);
+            atomicAdd(&exp_nx_sum[net_id], exp_nx[pin_id]);
+            atomicAdd(&xexp_x_sum[net_id], y[i] * exp_x[pin_id]);
+            atomicAdd(&xexp_nx_sum[net_id], y[i] * exp_nx[pin_id]);
         }
     }
 }
@@ -232,19 +247,20 @@ __global__ void computeXExpSumByExpSum(
     T *partial_wl)
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i < num_nets)
+    if (i < num_nets && net_mask[i])
     {
-        if (net_mask[i])
-        {
-            partial_wl[i] = xexp_x_sum[i] / exp_x_sum[i];
-            partial_wl[i + +num_nets] = -xexp_nx_sum[i] / exp_nx_sum[i];
-        }
+        partial_wl[i] = xexp_x_sum[i] / exp_x_sum[i];
+        partial_wl[i + num_nets] = -xexp_nx_sum[i] / exp_nx_sum[i];
+        
+        i += num_nets;
+        partial_wl[i + num_nets] = xexp_x_sum[i] / exp_x_sum[i];
+        partial_wl[i + 2 * num_nets] = -xexp_nx_sum[i] / exp_nx_sum[i];
     }
 }
 
 template <typename T>
 __global__ void computeWeightedAverageWirelengthGrad(
-    const T *x,
+    const T *x, const T *y,
     const T *exp_x, const T *exp_nx,
     const T *exp_x_sum, const T *exp_nx_sum,
     const T *xexp_x_sum, const T *xexp_nx_sum,
@@ -254,7 +270,7 @@ __global__ void computeWeightedAverageWirelengthGrad(
     int num_pins,
     const T *inv_gamma,
     const T *grad_tensor,
-    T *grad_x_tensor)
+    T *grad_x_tensor, T* grad_y_tensor)
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < num_pins)
@@ -263,10 +279,17 @@ __global__ void computeWeightedAverageWirelengthGrad(
         if (net_id >= 0 || net_mask[net_id])
         {
             T gamma_inv = (*inv_gamma);
-            grad_x_tensor[i] = (\
-                    ( (1+gamma_inv*x[i])*exp_x_sum[net_id] - gamma_inv*xexp_x_sum[net_id] ) / (exp_x_sum[net_id]*exp_x_sum[net_id]) * exp_x[i] \
-                    - ( (1-gamma_inv*x[i])*exp_nx_sum[net_id] + gamma_inv*xexp_nx_sum[net_id] ) / (exp_nx_sum[net_id]*exp_nx_sum[net_id]) * exp_nx[i] \
-                    ) * (*grad_tensor);
+            grad_x_tensor[i] = (*grad_tensor) * (
+                  ((1+gamma_inv*x[i])*exp_x_sum[net_id]  - gamma_inv*xexp_x_sum[net_id])  / (exp_x_sum[net_id]*exp_x_sum[net_id])   * exp_x[i] 
+                - ((1-gamma_inv*x[i])*exp_nx_sum[net_id] + gamma_inv*xexp_nx_sum[net_id]) / (exp_nx_sum[net_id]*exp_nx_sum[net_id]) * exp_nx[i] 
+                );
+            
+            net_id += num_nets;
+            int pin_id = i + num_pins;
+            grad_y_tensor[i] = (*grad_tensor) * (
+                  ((1+gamma_inv*y[i])*exp_x_sum[net_id]  - gamma_inv*xexp_x_sum[net_id])  / (exp_x_sum[net_id]*exp_x_sum[net_id])   * exp_x[pin_id]
+                - ((1-gamma_inv*y[i])*exp_nx_sum[net_id] + gamma_inv*xexp_nx_sum[net_id]) / (exp_nx_sum[net_id]*exp_nx_sum[net_id]) * exp_nx[pin_id] 
+                );
         }
     }
 }

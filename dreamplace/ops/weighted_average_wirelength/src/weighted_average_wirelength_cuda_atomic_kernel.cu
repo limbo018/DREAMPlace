@@ -26,23 +26,12 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
 )
 {
     int thread_count = 256;
-    int block_count_pins = (num_pins - 1 + thread_count) / thread_count; // separate x and y
-    int block_count_nets = (num_nets - 1 + thread_count) / thread_count;
-
-    cudaError_t status;
-    cudaStream_t stream_y_exp;
-    status = cudaStreamCreate(&stream_y_exp);
-    if (status != cudaSuccess)
-    {
-        printf("cudaStreamCreate failed for stream_y_exp\n");
-        fflush(stdout);
-        return 1;
-    }
+    int block_count_pins = (num_pins - 1 + thread_count) / thread_count;
 
     if (grad_tensor)
     {
         computeWeightedAverageWirelengthGrad<<<block_count_pins, thread_count>>>(
-            x,
+            x, y,
             exp_xy, exp_nxy,
             exp_xy_sum, exp_nxy_sum,
             xyexp_xy_sum, xyexp_nxy_sum,
@@ -52,41 +41,23 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
             num_pins,
             inv_gamma,
             grad_tensor,
-            grad_x_tensor);
-        computeWeightedAverageWirelengthGrad<<<block_count_pins, thread_count, 0, stream_y_exp>>>(
-            y,
-            exp_xy + num_pins, exp_nxy + num_pins,
-            exp_xy_sum + num_nets, exp_nxy_sum + num_nets,
-            xyexp_xy_sum + num_nets, xyexp_nxy_sum + num_nets,
-            pin2net_map,
-            net_mask,
-            num_nets,
-            num_pins,
-            inv_gamma,
-            grad_tensor,
-            grad_y_tensor);
+            grad_x_tensor, grad_y_tensor);
     }
     else
     {
         // compute max and min in one kernel
         computeMaxMin<<<block_count_pins, thread_count>>>(
-            x,
+            x, y,
             pin2net_map,
             net_mask,
             num_pins,
+            num_nets,
             xy_max,
             xy_min);
-        computeMaxMin<<<block_count_pins, thread_count, 0, stream_y_exp>>>(
-            y,
-            pin2net_map,
-            net_mask,
-            num_pins,
-            xy_max + num_nets,
-            xy_min + num_nets);
         // compute plus-minus exp, sum of plus-minus exp, sum of x*exp in one CUDA kernels
         // corresponding to the plus and minus a b c kernels in the DREAMPlace paper
         computeABCKernels<<<block_count_pins, thread_count>>>(
-            x,
+            x, y,
             pin2net_map,
             net_mask,
             num_nets,
@@ -96,18 +67,8 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
             exp_xy, exp_nxy,
             exp_xy_sum, exp_nxy_sum,
             xyexp_xy_sum, xyexp_nxy_sum);
-        computeABCKernels<<<block_count_pins, thread_count, 0, stream_y_exp>>>(
-            y,
-            pin2net_map,
-            net_mask,
-            num_nets,
-            num_pins,
-            inv_gamma,
-            xy_max + num_nets, xy_min + num_nets,
-            exp_xy + num_pins, exp_nxy + num_pins,
-            exp_xy_sum + num_nets, exp_nxy_sum + num_nets,
-            xyexp_xy_sum + num_nets, xyexp_nxy_sum + num_nets);
         // compute log sum exp
+        int block_count_nets = (num_nets - 1 + thread_count) / thread_count;
         computeXExpSumByExpSum<<<block_count_nets, thread_count>>>(
             xyexp_xy_sum, xyexp_nxy_sum,
             exp_xy_sum, exp_nxy_sum,
@@ -115,28 +76,12 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
             net_mask,
             num_nets,
             partial_wl);
-        computeXExpSumByExpSum<<<block_count_nets, thread_count, 0, stream_y_exp>>>(
-            xyexp_xy_sum + num_nets, xyexp_nxy_sum + num_nets,
-            exp_xy_sum + num_nets, exp_nxy_sum + num_nets,
-            pin2net_map,
-            net_mask,
-            num_nets,
-            partial_wl + 2 * num_nets);
 
         // I move out the summation to use ATen
         // significant speedup is observed
         //sumArray<<<1, 1>>>(partial_wl, 2*num_nets, wl);
     }
-
-    /* destroy stream */
-    status = cudaStreamDestroy(stream_y_exp);
-    if (status != cudaSuccess)
-    {
-        printf("stream_y_exp destroy failed\n");
-        fflush(stdout);
-        return 1;
-    }
-
+    
     return 0;
 }
 
