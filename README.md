@@ -7,7 +7,7 @@ Over 30X speedup over the CPU implementation ([RePlAce](https://doi.org/10.1109/
 
 | Bigblue4 | Density Map | Electric Potential | Electric Field |
 | -------- | ----------- | ------------------ | -------------- |
-| ![Bigblue4](images/bigblue4-nofiller_SLD.gif | width=250) | ![Density Map](images/density_map_SLD.gif | width=250) | ![Electric Potential Map](images/potential_map_SLD.gif | width=250) | ![Electric Field Map](images/field_map_SLD.gif | width=250) |
+| ![Bigblue4](images/bigblue4-nofiller_SLD.gif) | ![Density Map](images/density_map_SLD.gif) | ![Electric Potential Map](images/potential_map_SLD.gif) | ![Electric Field Map](images/field_map_SLD.gif) |
 
 # Publications
 
