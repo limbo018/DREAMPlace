@@ -79,13 +79,15 @@ __global__ void computeElectricForceAtomic(
 }
 
 template <typename T>
-inline __device__ T computeDensityFunc(T x, T node_size, T bin_center, T half_bin_size) {
+inline __device__ T computeDensityFunc(T x, T node_size, T bin_center, T half_bin_size)
+{
     // Yibo: cannot understand why negative overlap is allowed in RePlAce
     return min(x + node_size, bin_center + half_bin_size) - max(x, bin_center - half_bin_size);
 };
 
 template <typename T>
-inline __device__ T computeDensityFunc(T x, T node_size, T xl, int k, T bin_size) {
+inline __device__ T computeDensityFunc(T x, T node_size, T xl, int k, T bin_size)
+{
     T bin_xl = xl + k * bin_size;
     return min(x + node_size, bin_xl + bin_size) - max(x, bin_xl);
 };
@@ -95,9 +97,9 @@ __global__ void __launch_bounds__(1024, 8) computeElectricForce(
     int num_bins_x, int num_bins_y,
     const T *field_map_x_tensor, const T *field_map_y_tensor,
     const T *x_tensor, const T *y_tensor,
-    const T* node_size_x_clamped_tensor, const T* node_size_y_clamped_tensor, 
-    const T* offset_x_tensor, const T* offset_y_tensor,
-    const T* ratio_tensor,
+    const T *node_size_x_clamped_tensor, const T *node_size_y_clamped_tensor,
+    const T *offset_x_tensor, const T *offset_y_tensor,
+    const T *ratio_tensor,
     const T *bin_center_x_tensor, const T *bin_center_y_tensor,
     T xl, T yl, T xh, T yh,
     const T half_bin_size_x, const T half_bin_size_y,
@@ -110,8 +112,8 @@ __global__ void __launch_bounds__(1024, 8) computeElectricForce(
     if (i < num_nodes)
     {
         // stretch node size to bin size
-        T node_size_x = node_size_x_clamped_tensor[i]; 
-        T node_size_y = node_size_y_clamped_tensor[i]; 
+        T node_size_x = node_size_x_clamped_tensor[i];
+        T node_size_y = node_size_y_clamped_tensor[i];
         T node_x = x_tensor[i] + offset_x_tensor[i];
         T node_y = y_tensor[i] + offset_y_tensor[i];
         T ratio = ratio_tensor[i];
@@ -120,14 +122,14 @@ __global__ void __launch_bounds__(1024, 8) computeElectricForce(
         // Zixuan and Jiaqi: use the common practice of floor
         int bin_index_xl = int((node_x - xl) * inv_bin_size_x);
         int bin_index_xh = int(((node_x + node_size_x - xl) * inv_bin_size_x)) + 1; // exclusive
-        bin_index_xl = (bin_index_xl > 0) * bin_index_xl; // max(bin_index_xl, 0);
+        bin_index_xl = (bin_index_xl > 0) * bin_index_xl;                           // max(bin_index_xl, 0);
         bin_index_xh = min(bin_index_xh, num_bins_x);
 
         // Yibo: looks very weird implementation, but this is how RePlAce implements it
         // Zixuan and Jiaqi: use the common practice of floor
         int bin_index_yl = int((node_y - yl) * inv_bin_size_y);
         int bin_index_yh = int(((node_y + node_size_y - yl) * inv_bin_size_y)) + 1; // exclusive
-        bin_index_yl = (bin_index_yl > 0) * bin_index_yl; // max(bin_index_yl, 0);
+        bin_index_yl = (bin_index_yl > 0) * bin_index_yl;                           // max(bin_index_yl, 0);
         bin_index_yh = min(bin_index_yh, num_bins_y);
 
         // blockDim.x * blockDim.y threads will be used to update one node
@@ -140,11 +142,11 @@ __global__ void __launch_bounds__(1024, 8) computeElectricForce(
             s_x[threadIdx.z] = s_y[threadIdx.z] = 0;
         }
         __syncthreads();
-        
+
         T tmp_x, tmp_y;
         tmp_x = 0;
         tmp_y = 0;
-        
+
         // update density potential map
         for (int k = bin_index_xl + threadIdx.y; k < bin_index_xh; k += blockDim.y)
         {
@@ -159,7 +161,7 @@ __global__ void __launch_bounds__(1024, 8) computeElectricForce(
                 tmp_y += area * field_map_y_tensor[k * num_bins_y + h];
             }
         }
-        
+
         atomicAdd(&s_x[threadIdx.z], tmp_x * ratio);
         atomicAdd(&s_y[threadIdx.z], tmp_y * ratio);
         __syncthreads();
@@ -177,9 +179,9 @@ __global__ void __launch_bounds__(1024, 8) computeElectricForce(
     int num_bins_x, int num_bins_y,
     const T *field_map_x_tensor, const T *field_map_y_tensor,
     const T *x_tensor, const T *y_tensor,
-    const T* node_size_x_clamped_tensor, const T* node_size_y_clamped_tensor, 
-    const T* offset_x_tensor, const T* offset_y_tensor,
-    const T* ratio_tensor,
+    const T *node_size_x_clamped_tensor, const T *node_size_y_clamped_tensor,
+    const T *offset_x_tensor, const T *offset_y_tensor,
+    const T *ratio_tensor,
     const T *bin_center_x_tensor, const T *bin_center_y_tensor,
     T xl, T yl, T xh, T yh,
     const T half_bin_size_x, const T half_bin_size_y,
@@ -187,16 +189,16 @@ __global__ void __launch_bounds__(1024, 8) computeElectricForce(
     const T inv_bin_size_x, const T inv_bin_size_y,
     int num_nodes,
     T *grad_x_tensor, T *grad_y_tensor,
-    const int* sorted_node_map)
+    const int *sorted_node_map)
 {
     int index = blockIdx.x * blockDim.z + threadIdx.z;
     if (index < num_nodes)
     {
         int i = sorted_node_map[index];
-        
+
         // stretch node size to bin size
-        T node_size_x = node_size_x_clamped_tensor[i]; 
-        T node_size_y = node_size_y_clamped_tensor[i]; 
+        T node_size_x = node_size_x_clamped_tensor[i];
+        T node_size_y = node_size_y_clamped_tensor[i];
         T node_x = x_tensor[i] + offset_x_tensor[i];
         T node_y = y_tensor[i] + offset_y_tensor[i];
         T ratio = ratio_tensor[i];
@@ -205,14 +207,14 @@ __global__ void __launch_bounds__(1024, 8) computeElectricForce(
         // Zixuan and Jiaqi: use the common practice of floor
         int bin_index_xl = int((node_x - xl) * inv_bin_size_x);
         int bin_index_xh = int(((node_x + node_size_x - xl) * inv_bin_size_x)) + 1; // exclusive
-        bin_index_xl = (bin_index_xl > 0) * bin_index_xl; // max(bin_index_xl, 0);
+        bin_index_xl = (bin_index_xl > 0) * bin_index_xl;                           // max(bin_index_xl, 0);
         bin_index_xh = min(bin_index_xh, num_bins_x);
 
         // Yibo: looks very weird implementation, but this is how RePlAce implements it
         // Zixuan and Jiaqi: use the common practice of floor
         int bin_index_yl = int((node_y - yl) * inv_bin_size_y);
         int bin_index_yh = int(((node_y + node_size_y - yl) * inv_bin_size_y)) + 1; // exclusive
-        bin_index_yl = (bin_index_yl > 0) * bin_index_yl; // max(bin_index_yl, 0);
+        bin_index_yl = (bin_index_yl > 0) * bin_index_yl;                           // max(bin_index_yl, 0);
         bin_index_yh = min(bin_index_yh, num_bins_y);
 
         // blockDim.x * blockDim.y threads will be used to update one node
@@ -225,7 +227,7 @@ __global__ void __launch_bounds__(1024, 8) computeElectricForce(
             s_x[threadIdx.z] = s_y[threadIdx.z] = 0;
         }
         __syncthreads();
-        
+
         T tmp_x, tmp_y;
         tmp_x = 0;
         tmp_y = 0;
@@ -244,7 +246,7 @@ __global__ void __launch_bounds__(1024, 8) computeElectricForce(
                 tmp_y += area * field_map_y_tensor[k * num_bins_y + h];
             }
         }
-        
+
         atomicAdd(&s_x[threadIdx.z], tmp_x * ratio);
         atomicAdd(&s_y[threadIdx.z], tmp_y * ratio);
         __syncthreads();
@@ -258,27 +260,422 @@ __global__ void __launch_bounds__(1024, 8) computeElectricForce(
 }
 
 template <typename T>
+__global__ void computeElectricForceUnroll(
+    int num_bins_x, int num_bins_y,
+    const T *field_map_x_tensor, const T *field_map_y_tensor,
+    const T *x_tensor, const T *y_tensor,
+    const T *node_size_x_clamped_tensor, const T *node_size_y_clamped_tensor,
+    const T *offset_x_tensor, const T *offset_y_tensor,
+    const T *ratio_tensor,
+    const T *bin_center_x_tensor, const T *bin_center_y_tensor,
+    T xl, T yl, T xh, T yh,
+    const T half_bin_size_x, const T half_bin_size_y,
+    const T bin_size_x, const T bin_size_y,
+    const T inv_bin_size_x, const T inv_bin_size_y,
+    int num_nodes,
+    T *grad_x_tensor, T *grad_y_tensor)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_nodes)
+    {
+        // stretch node size to bin size
+        T node_size_x = node_size_x_clamped_tensor[i];
+        T node_size_y = node_size_y_clamped_tensor[i];
+        T node_x = x_tensor[i] + offset_x_tensor[i];
+        T node_y = y_tensor[i] + offset_y_tensor[i];
+        T ratio = ratio_tensor[i];
+
+        // Yibo: looks very weird implementation, but this is how RePlAce implements it
+        // Zixuan and Jiaqi: use the common practice of floor
+        int bin_index_xl = int((node_x - xl) * inv_bin_size_x);
+        int bin_index_xh = int(((node_x + node_size_x - xl) * inv_bin_size_x)); // inclusive
+        bin_index_xl = (bin_index_xl > 0) * bin_index_xl;                       // max(bin_index_xl, 0);
+        bin_index_xh = min(bin_index_xh, num_bins_x - 1);
+
+        int bin_index_yl = int((node_y - yl) * inv_bin_size_y);
+        int bin_index_yh = int(((node_y + node_size_y - yl) * inv_bin_size_y)); // inclusive
+        bin_index_yl = (bin_index_yl > 0) * bin_index_yl;                       // max(bin_index_yl, 0);
+        bin_index_yh = min(bin_index_yh, num_bins_y - 1);
+
+        int k, h;
+        T tmp_x, tmp_y;
+
+        int cond = ((bin_index_xl == bin_index_xh) << 1) | (bin_index_yl == bin_index_yh);
+        switch (cond)
+        {
+        case 0:
+        {
+            T px_l = xl + bin_index_xl * bin_size_x + bin_size_x - node_x;
+            T px_c = bin_size_x;
+            T px_h = node_x + node_size_x - (bin_index_xh * bin_size_x + xl);
+
+            T py_l = yl + bin_index_yl * bin_size_y + bin_size_y - node_y;
+            T py_c = bin_size_y;
+            T py_h = node_y + node_size_y - (bin_index_yh * bin_size_y + yl);
+
+            T area_xl_yl = px_l * py_l;
+            T area_xl_yc = px_l * py_c;
+            T area_xl_yh = px_l * py_h;
+
+            T area_xc_yl = px_c * py_l;
+            T area_xc_yc = px_c * py_c;
+            T area_xc_yh = px_c * py_h;
+
+            T area_xh_yl = px_h * py_l;
+            T area_xh_yc = px_h * py_c;
+            T area_xh_yh = px_h * py_h;
+
+            k = bin_index_xl;
+
+            h = bin_index_yl;
+
+            tmp_x = area_xl_yl * field_map_x_tensor[k * num_bins_y + h];
+            tmp_y = area_xl_yl * field_map_y_tensor[k * num_bins_y + h];
+
+            for (++h; h < bin_index_yh; ++h)
+            {
+                tmp_x += area_xl_yc * field_map_x_tensor[k * num_bins_y + h];
+                tmp_y += area_xl_yc * field_map_y_tensor[k * num_bins_y + h];
+            }
+
+            tmp_x += area_xl_yh * field_map_x_tensor[k * num_bins_y + h];
+            tmp_y += area_xl_yh * field_map_y_tensor[k * num_bins_y + h];
+
+            for (++k; k < bin_index_xh; ++k)
+            {
+                h = bin_index_yl;
+                tmp_x += area_xc_yl * field_map_x_tensor[k * num_bins_y + h];
+                tmp_y += area_xc_yl * field_map_y_tensor[k * num_bins_y + h];
+
+                for (++h; h < bin_index_yh; ++h)
+                {
+                    tmp_x += area_xc_yc * field_map_x_tensor[k * num_bins_y + h];
+                    tmp_y += area_xc_yc * field_map_y_tensor[k * num_bins_y + h];
+                }
+
+                tmp_x += area_xc_yh * field_map_x_tensor[k * num_bins_y + h];
+                tmp_y += area_xc_yh * field_map_y_tensor[k * num_bins_y + h];
+            }
+
+            h = bin_index_yl;
+            tmp_x += area_xh_yl * field_map_x_tensor[k * num_bins_y + h];
+            tmp_y += area_xh_yl * field_map_y_tensor[k * num_bins_y + h];
+
+            for (++h; h < bin_index_yh; ++h)
+            {
+                tmp_x += area_xh_yc * field_map_x_tensor[k * num_bins_y + h];
+                tmp_y += area_xh_yc * field_map_y_tensor[k * num_bins_y + h];
+            }
+
+            tmp_x += area_xh_yh * field_map_x_tensor[k * num_bins_y + h];
+            tmp_y += area_xh_yh * field_map_y_tensor[k * num_bins_y + h];
+
+            grad_x_tensor[i] = tmp_x * ratio;
+            grad_y_tensor[i] = tmp_y * ratio;
+            break;
+        }
+        case 1:
+        {
+            T px_l = xl + bin_index_xl * bin_size_x + bin_size_x - node_x;
+            T px_c = bin_size_x;
+            T px_h = node_x + node_size_x - (bin_index_xh * bin_size_x + xl);
+
+            T py = yl + bin_index_yl * bin_size_y + bin_size_y - node_y;
+
+            T area_xl = px_l * py;
+            T area_xc = px_c * py;
+            T area_xh = px_h * py;
+
+            k = bin_index_xl;
+            h = bin_index_yl;
+            tmp_x = area_xl * field_map_x_tensor[k * num_bins_y + h];
+            tmp_y = area_xl * field_map_y_tensor[k * num_bins_y + h];
+
+            for (++k; k < bin_index_xh; ++k)
+            {
+                tmp_x += area_xc * field_map_x_tensor[k * num_bins_y + h];
+                tmp_y += area_xc * field_map_y_tensor[k * num_bins_y + h];
+            }
+
+            tmp_x += area_xh * field_map_x_tensor[k * num_bins_y + h];
+            tmp_y += area_xh * field_map_y_tensor[k * num_bins_y + h];
+
+            grad_x_tensor[i] = tmp_x * ratio;
+            grad_y_tensor[i] = tmp_y * ratio;
+            break;
+        }
+        case 2:
+        {
+            T px = xl + bin_index_xl * bin_size_x + bin_size_x - node_x;
+
+            T py_l = yl + bin_index_yl * bin_size_y + bin_size_y - node_y;
+            T py_c = bin_size_y;
+            T py_h = node_y + node_size_y - (bin_index_yh * bin_size_y + yl);
+
+            T area_yl = px * py_l;
+            T area_yc = px * py_c;
+            T area_yh = px * py_h;
+
+            k = bin_index_xl;
+            h = bin_index_yl;
+
+            tmp_x = area_yl * field_map_x_tensor[k * num_bins_y + h];
+            tmp_y = area_yl * field_map_y_tensor[k * num_bins_y + h];
+
+            for (++h; h < bin_index_yh; ++h)
+            {
+                tmp_x += area_yc * field_map_x_tensor[k * num_bins_y + h];
+                tmp_y += area_yc * field_map_y_tensor[k * num_bins_y + h];
+            }
+
+            tmp_x += area_yh * field_map_x_tensor[k * num_bins_y + h];
+            tmp_y += area_yh * field_map_y_tensor[k * num_bins_y + h];
+
+            grad_x_tensor[i] = tmp_x * ratio;
+            grad_y_tensor[i] = tmp_y * ratio;
+            break;
+        }
+        case 3:
+        {
+            T px = xl + bin_index_xl * bin_size_x + bin_size_x - node_x;
+            T py = yl + bin_index_yl * bin_size_y + bin_size_y - node_y;
+            T area = px * py;
+
+            k = bin_index_xl;
+            h = bin_index_yl;
+
+            grad_x_tensor[i] = area * field_map_x_tensor[k * num_bins_y + h] * ratio;
+            grad_y_tensor[i] = area * field_map_y_tensor[k * num_bins_y + h] * ratio;
+            break;
+        }
+        default:
+            assert(0);
+        }
+    }
+}
+
+template <typename T>
+__global__ void computeElectricForceUnroll(
+    int num_bins_x, int num_bins_y,
+    const T *field_map_x_tensor, const T *field_map_y_tensor,
+    const T *x_tensor, const T *y_tensor,
+    const T *node_size_x_clamped_tensor, const T *node_size_y_clamped_tensor,
+    const T *offset_x_tensor, const T *offset_y_tensor,
+    const T *ratio_tensor,
+    const T *bin_center_x_tensor, const T *bin_center_y_tensor,
+    T xl, T yl, T xh, T yh,
+    const T half_bin_size_x, const T half_bin_size_y,
+    const T bin_size_x, const T bin_size_y,
+    const T inv_bin_size_x, const T inv_bin_size_y,
+    int num_nodes,
+    T *grad_x_tensor, T *grad_y_tensor,
+    const int *sorted_node_map)
+{
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (index < num_nodes)
+    {
+        int i = sorted_node_map[index];
+
+        // stretch node size to bin size
+        T node_size_x = node_size_x_clamped_tensor[i];
+        T node_size_y = node_size_y_clamped_tensor[i];
+        T node_x = x_tensor[i] + offset_x_tensor[i];
+        T node_y = y_tensor[i] + offset_y_tensor[i];
+        T ratio = ratio_tensor[i];
+
+        // Yibo: looks very weird implementation, but this is how RePlAce implements it
+        // Zixuan and Jiaqi: use the common practice of floor
+        int bin_index_xl = int((node_x - xl) * inv_bin_size_x);
+        int bin_index_xh = int(((node_x + node_size_x - xl) * inv_bin_size_x)); // inclusive
+        bin_index_xl = (bin_index_xl > 0) * bin_index_xl;                       // max(bin_index_xl, 0);
+        bin_index_xh = min(bin_index_xh, num_bins_x - 1);
+
+        int bin_index_yl = int((node_y - yl) * inv_bin_size_y);
+        int bin_index_yh = int(((node_y + node_size_y - yl) * inv_bin_size_y)); // inclusive
+        bin_index_yl = (bin_index_yl > 0) * bin_index_yl;                       // max(bin_index_yl, 0);
+        bin_index_yh = min(bin_index_yh, num_bins_y - 1);
+
+        int k, h;
+        T tmp_x, tmp_y;
+
+        int cond = ((bin_index_xl == bin_index_xh) << 1) | (bin_index_yl == bin_index_yh);
+        switch (cond)
+        {
+        case 0:
+        {
+            T px_l = xl + bin_index_xl * bin_size_x + bin_size_x - node_x;
+            T px_c = bin_size_x;
+            T px_h = node_x + node_size_x - (bin_index_xh * bin_size_x + xl);
+
+            T py_l = yl + bin_index_yl * bin_size_y + bin_size_y - node_y;
+            T py_c = bin_size_y;
+            T py_h = node_y + node_size_y - (bin_index_yh * bin_size_y + yl);
+
+            T area_xl_yl = px_l * py_l;
+            T area_xl_yc = px_l * py_c;
+            T area_xl_yh = px_l * py_h;
+
+            T area_xc_yl = px_c * py_l;
+            T area_xc_yc = px_c * py_c;
+            T area_xc_yh = px_c * py_h;
+
+            T area_xh_yl = px_h * py_l;
+            T area_xh_yc = px_h * py_c;
+            T area_xh_yh = px_h * py_h;
+
+            k = bin_index_xl;
+
+            h = bin_index_yl;
+
+            tmp_x = area_xl_yl * field_map_x_tensor[k * num_bins_y + h];
+            tmp_y = area_xl_yl * field_map_y_tensor[k * num_bins_y + h];
+
+            for (++h; h < bin_index_yh; ++h)
+            {
+                tmp_x += area_xl_yc * field_map_x_tensor[k * num_bins_y + h];
+                tmp_y += area_xl_yc * field_map_y_tensor[k * num_bins_y + h];
+            }
+
+            tmp_x += area_xl_yh * field_map_x_tensor[k * num_bins_y + h];
+            tmp_y += area_xl_yh * field_map_y_tensor[k * num_bins_y + h];
+
+            for (++k; k < bin_index_xh; ++k)
+            {
+                h = bin_index_yl;
+                tmp_x += area_xc_yl * field_map_x_tensor[k * num_bins_y + h];
+                tmp_y += area_xc_yl * field_map_y_tensor[k * num_bins_y + h];
+
+                for (++h; h < bin_index_yh; ++h)
+                {
+                    tmp_x += area_xc_yc * field_map_x_tensor[k * num_bins_y + h];
+                    tmp_y += area_xc_yc * field_map_y_tensor[k * num_bins_y + h];
+                }
+
+                tmp_x += area_xc_yh * field_map_x_tensor[k * num_bins_y + h];
+                tmp_y += area_xc_yh * field_map_y_tensor[k * num_bins_y + h];
+            }
+
+            h = bin_index_yl;
+            tmp_x += area_xh_yl * field_map_x_tensor[k * num_bins_y + h];
+            tmp_y += area_xh_yl * field_map_y_tensor[k * num_bins_y + h];
+
+            for (++h; h < bin_index_yh; ++h)
+            {
+                tmp_x += area_xh_yc * field_map_x_tensor[k * num_bins_y + h];
+                tmp_y += area_xh_yc * field_map_y_tensor[k * num_bins_y + h];
+            }
+
+            tmp_x += area_xh_yh * field_map_x_tensor[k * num_bins_y + h];
+            tmp_y += area_xh_yh * field_map_y_tensor[k * num_bins_y + h];
+
+            grad_x_tensor[i] = tmp_x * ratio;
+            grad_y_tensor[i] = tmp_y * ratio;
+            break;
+        }
+        case 1:
+        {
+            T px_l = xl + bin_index_xl * bin_size_x + bin_size_x - node_x;
+            T px_c = bin_size_x;
+            T px_h = node_x + node_size_x - (bin_index_xh * bin_size_x + xl);
+
+            T py = yl + bin_index_yl * bin_size_y + bin_size_y - node_y;
+
+            T area_xl = px_l * py;
+            T area_xc = px_c * py;
+            T area_xh = px_h * py;
+
+            k = bin_index_xl;
+            h = bin_index_yl;
+            tmp_x = area_xl * field_map_x_tensor[k * num_bins_y + h];
+            tmp_y = area_xl * field_map_y_tensor[k * num_bins_y + h];
+
+            for (++k; k < bin_index_xh; ++k)
+            {
+                tmp_x += area_xc * field_map_x_tensor[k * num_bins_y + h];
+                tmp_y += area_xc * field_map_y_tensor[k * num_bins_y + h];
+            }
+
+            tmp_x += area_xh * field_map_x_tensor[k * num_bins_y + h];
+            tmp_y += area_xh * field_map_y_tensor[k * num_bins_y + h];
+
+            grad_x_tensor[i] = tmp_x * ratio;
+            grad_y_tensor[i] = tmp_y * ratio;
+            break;
+        }
+        case 2:
+        {
+            T px = xl + bin_index_xl * bin_size_x + bin_size_x - node_x;
+
+            T py_l = yl + bin_index_yl * bin_size_y + bin_size_y - node_y;
+            T py_c = bin_size_y;
+            T py_h = node_y + node_size_y - (bin_index_yh * bin_size_y + yl);
+
+            T area_yl = px * py_l;
+            T area_yc = px * py_c;
+            T area_yh = px * py_h;
+
+            k = bin_index_xl;
+            h = bin_index_yl;
+
+            tmp_x = area_yl * field_map_x_tensor[k * num_bins_y + h];
+            tmp_y = area_yl * field_map_y_tensor[k * num_bins_y + h];
+
+            for (++h; h < bin_index_yh; ++h)
+            {
+                tmp_x += area_yc * field_map_x_tensor[k * num_bins_y + h];
+                tmp_y += area_yc * field_map_y_tensor[k * num_bins_y + h];
+            }
+
+            tmp_x += area_yh * field_map_x_tensor[k * num_bins_y + h];
+            tmp_y += area_yh * field_map_y_tensor[k * num_bins_y + h];
+
+            grad_x_tensor[i] = tmp_x * ratio;
+            grad_y_tensor[i] = tmp_y * ratio;
+            break;
+        }
+        case 3:
+        {
+            T px = xl + bin_index_xl * bin_size_x + bin_size_x - node_x;
+            T py = yl + bin_index_yl * bin_size_y + bin_size_y - node_y;
+            T area = px * py;
+
+            k = bin_index_xl;
+            h = bin_index_yl;
+
+            grad_x_tensor[i] = area * field_map_x_tensor[k * num_bins_y + h] * ratio;
+            grad_y_tensor[i] = area * field_map_y_tensor[k * num_bins_y + h] * ratio;
+            break;
+        }
+        default:
+            assert(0);
+        }
+    }
+}
+
+template <typename T>
 int computeElectricForceCudaLauncher(
     int num_bins_x, int num_bins_y,
     int num_movable_impacted_bins_x, int num_movable_impacted_bins_y,
     int num_filler_impacted_bins_x, int num_filler_impacted_bins_y,
     const T *field_map_x_tensor, const T *field_map_y_tensor,
     const T *x_tensor, const T *y_tensor,
-    const T* node_size_x_clamped_tensor, const T* node_size_y_clamped_tensor, 
-    const T* offset_x_tensor, const T* offset_y_tensor,
-    const T* ratio_tensor,
+    const T *node_size_x_clamped_tensor, const T *node_size_y_clamped_tensor,
+    const T *offset_x_tensor, const T *offset_y_tensor,
+    const T *ratio_tensor,
     const T *bin_center_x_tensor, const T *bin_center_y_tensor,
     T xl, T yl, T xh, T yh,
     T bin_size_x, T bin_size_y,
     int num_nodes, int num_movable_nodes, int num_filler_nodes,
     T *grad_x_tensor, T *grad_y_tensor,
-    const int* sorted_node_map)
+    const int *sorted_node_map)
 {
     int thread_count = 64;
+    dim3 blockSize(thread_count, 1, 1);
+    // dim3 blockSize(2, 2, thread_count);
+    // size_t shared_mem_size = sizeof(T) * thread_count * 2;
+
     int block_count_nodes = (num_movable_nodes + thread_count - 1) / thread_count;
-    dim3 blockSize(2, 2, thread_count);
-    size_t shared_mem_size = sizeof(T) * thread_count * 2;
-    computeElectricForce<<<block_count_nodes, blockSize, shared_mem_size>>>(
+    computeElectricForceUnroll<<<block_count_nodes, blockSize>>>(
         num_bins_x, num_bins_y,
         field_map_x_tensor, field_map_y_tensor,
         x_tensor, y_tensor,
@@ -287,9 +684,9 @@ int computeElectricForceCudaLauncher(
         ratio_tensor,
         bin_center_x_tensor, bin_center_y_tensor,
         xl, yl, xh, yh,
-        bin_size_x/2, bin_size_y/2,
+        bin_size_x / 2, bin_size_y / 2,
         bin_size_x, bin_size_y,
-        1/bin_size_x, 1/bin_size_y,
+        1 / bin_size_x, 1 / bin_size_y,
         num_movable_nodes,
         grad_x_tensor, grad_y_tensor,
         sorted_node_map);
@@ -309,7 +706,7 @@ int computeElectricForceCudaLauncher(
 
         block_count_nodes = (num_filler_nodes + thread_count - 1) / thread_count;
         int num_physical_nodes = num_nodes - num_filler_nodes;
-        computeElectricForce<<<block_count_nodes, blockSize, shared_mem_size, stream_filler>>>(
+        computeElectricForceUnroll<<<block_count_nodes, blockSize, 0, stream_filler>>>(
             num_bins_x, num_bins_y,
             field_map_x_tensor, field_map_y_tensor,
             x_tensor + num_physical_nodes, y_tensor + num_physical_nodes,
@@ -318,9 +715,9 @@ int computeElectricForceCudaLauncher(
             ratio_tensor + num_physical_nodes,
             bin_center_x_tensor, bin_center_y_tensor,
             xl, yl, xh, yh,
-            bin_size_x/2, bin_size_y/2,
+            bin_size_x / 2, bin_size_y / 2,
             bin_size_x, bin_size_y,
-            1/bin_size_x, 1/bin_size_y,
+            1 / bin_size_x, 1 / bin_size_y,
             num_filler_nodes,
             grad_x_tensor + num_physical_nodes, grad_y_tensor + num_physical_nodes);
 
@@ -343,15 +740,15 @@ int computeElectricForceCudaLauncher(
         int num_filler_impacted_bins_x, int num_filler_impacted_bins_y,           \
         const T *field_map_x_tensor, const T *field_map_y_tensor,                 \
         const T *x_tensor, const T *y_tensor,                                     \
-        const T* node_size_x_clamped_tensor, const T* node_size_y_clamped_tensor, \
-        const T* offset_x_tensor, const T* offset_y_tensor,                       \
-        const T* ratio_tensor,                                                    \
+        const T *node_size_x_clamped_tensor, const T *node_size_y_clamped_tensor, \
+        const T *offset_x_tensor, const T *offset_y_tensor,                       \
+        const T *ratio_tensor,                                                    \
         const T *bin_center_x_tensor, const T *bin_center_y_tensor,               \
         T xl, T yl, T xh, T yh,                                                   \
         T bin_size_x, T bin_size_y,                                               \
         int num_nodes, int num_movable_nodes, int num_filler_nodes,               \
         T *grad_x_tensor, T *grad_y_tensor,                                       \
-        const int* sorted_node_map)                                               \
+        const int *sorted_node_map)                                               \
     {                                                                             \
         return computeElectricForceCudaLauncher(                                  \
             num_bins_x, num_bins_y,                                               \

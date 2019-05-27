@@ -88,22 +88,24 @@ __global__ void computeTriangleDensityMapAtomic(
 }
 
 template <typename T>
-inline __device__ T computeDensityFunc(T x, T node_size, T xl, int k, T bin_size) {
+inline __device__ T computeDensityFunc(T x, T node_size, T xl, int k, T bin_size)
+{
     T bin_xl = xl + k * bin_size;
     return min(x + node_size, bin_xl + bin_size) - max(x, bin_xl);
 };
 
 template <typename T>
-inline __device__ T computeDensityFunc(T x, T node_size, T bin_center, T half_bin_size) {
+inline __device__ T computeDensityFunc(T x, T node_size, T bin_center, T half_bin_size)
+{
     return min(x + node_size, bin_center + half_bin_size) - max(x, bin_center - half_bin_size);
 };
 
 template <typename T>
 __global__ void __launch_bounds__(1024, 8) computeTriangleDensityMap(
     const T *x_tensor, const T *y_tensor,
-    const T* node_size_x_clamped_tensor, const T* node_size_y_clamped_tensor,
-    const T* offset_x_tensor, const T* offset_y_tensor,
-    const T* ratio_tensor,
+    const T *node_size_x_clamped_tensor, const T *node_size_y_clamped_tensor,
+    const T *offset_x_tensor, const T *offset_y_tensor,
+    const T *ratio_tensor,
     const T *bin_center_x_tensor, const T *bin_center_y_tensor,
     const int num_nodes,
     const int num_bins_x, const int num_bins_y,
@@ -125,12 +127,12 @@ __global__ void __launch_bounds__(1024, 8) computeTriangleDensityMap(
 
         int bin_index_xl = int((node_x - xl) * inv_bin_size_x);
         int bin_index_xh = int(((node_x + node_size_x - xl) * inv_bin_size_x)) + 1; // exclusive
-        bin_index_xl = (bin_index_xl > 0) * bin_index_xl; // max(bin_index_xl, 0);
+        bin_index_xl = (bin_index_xl > 0) * bin_index_xl;                           // max(bin_index_xl, 0);
         bin_index_xh = min(bin_index_xh, num_bins_x);
 
         int bin_index_yl = int((node_y - yl) * inv_bin_size_y);
         int bin_index_yh = int(((node_y + node_size_y - yl) * inv_bin_size_y)) + 1; // exclusive
-        bin_index_yl = (bin_index_yl > 0) * bin_index_yl; // max(bin_index_yl, 0);
+        bin_index_yl = (bin_index_yl > 0) * bin_index_yl;                           // max(bin_index_yl, 0);
         bin_index_yh = min(bin_index_yh, num_bins_y);
 
         // update density potential map
@@ -152,9 +154,9 @@ __global__ void __launch_bounds__(1024, 8) computeTriangleDensityMap(
 template <typename T>
 __global__ void __launch_bounds__(1024, 8) computeTriangleDensityMap(
     const T *x_tensor, const T *y_tensor,
-    const T* node_size_x_clamped_tensor, const T* node_size_y_clamped_tensor,
-    const T* offset_x_tensor, const T* offset_y_tensor,
-    const T* ratio_tensor,
+    const T *node_size_x_clamped_tensor, const T *node_size_y_clamped_tensor,
+    const T *offset_x_tensor, const T *offset_y_tensor,
+    const T *ratio_tensor,
     const T *bin_center_x_tensor, const T *bin_center_y_tensor,
     const int num_nodes,
     const int num_bins_x, const int num_bins_y,
@@ -163,7 +165,7 @@ __global__ void __launch_bounds__(1024, 8) computeTriangleDensityMap(
     const T bin_size_x, const T bin_size_y,
     const T inv_bin_size_x, const T inv_bin_size_y,
     T *density_map_tensor,
-    const int* sorted_node_map)
+    const int *sorted_node_map)
 {
     int index = blockIdx.x * blockDim.z + threadIdx.z;
     if (index < num_nodes)
@@ -179,12 +181,12 @@ __global__ void __launch_bounds__(1024, 8) computeTriangleDensityMap(
 
         int bin_index_xl = int((node_x - xl) * inv_bin_size_x);
         int bin_index_xh = int(((node_x + node_size_x - xl) * inv_bin_size_x)) + 1; // exclusive
-        bin_index_xl = (bin_index_xl > 0) * bin_index_xl; // max(bin_index_xl, 0);
+        bin_index_xl = (bin_index_xl > 0) * bin_index_xl;                           // max(bin_index_xl, 0);
         bin_index_xh = min(bin_index_xh, num_bins_x);
 
         int bin_index_yl = int((node_y - yl) * inv_bin_size_y);
         int bin_index_yh = int(((node_y + node_size_y - yl) * inv_bin_size_y)) + 1; // exclusive
-        bin_index_yl = (bin_index_yl > 0) * bin_index_yl; // max(bin_index_yl, 0);
+        bin_index_yl = (bin_index_yl > 0) * bin_index_yl;                           // max(bin_index_yl, 0);
         bin_index_yh = min(bin_index_yh, num_bins_y);
 
         // update density potential map
@@ -199,6 +201,326 @@ __global__ void __launch_bounds__(1024, 8) computeTriangleDensityMap(
                 T area = px_by_ratio * py;
                 atomicAdd(&density_map_tensor[k * num_bins_y + h], area);
             }
+        }
+    }
+}
+
+template <typename T>
+__global__ void computeTriangleDensityMapUnroll(
+    const T *x_tensor, const T *y_tensor,
+    const T *node_size_x_clamped_tensor, const T *node_size_y_clamped_tensor,
+    const T *offset_x_tensor, const T *offset_y_tensor,
+    const T *ratio_tensor,
+    const T *bin_center_x_tensor, const T *bin_center_y_tensor,
+    const int num_nodes,
+    const int num_bins_x, const int num_bins_y,
+    const T xl, const T yl, const T xh, const T yh,
+    const T half_bin_size_x, const T half_bin_size_y,
+    const T bin_size_x, const T bin_size_y,
+    const T inv_bin_size_x, const T inv_bin_size_y,
+    T *density_map_tensor)
+{
+    const int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_nodes)
+    {
+        // stretch node size to bin size
+        T node_size_x = node_size_x_clamped_tensor[i];
+        T node_size_y = node_size_y_clamped_tensor[i];
+        T node_x = x_tensor[i] + offset_x_tensor[i];
+        T node_y = y_tensor[i] + offset_y_tensor[i];
+        T ratio = ratio_tensor[i];
+
+        int bin_index_xl = int((node_x - xl) * inv_bin_size_x);
+        int bin_index_xh = int(((node_x + node_size_x - xl) * inv_bin_size_x)); // inclusive
+        bin_index_xl = (bin_index_xl > 0) * bin_index_xl;                       // max(bin_index_xl, 0);
+        bin_index_xh = min(bin_index_xh, num_bins_x - 1);
+
+        int bin_index_yl = int((node_y - yl) * inv_bin_size_y);
+        int bin_index_yh = int(((node_y + node_size_y - yl) * inv_bin_size_y)); // inclusive
+        bin_index_yl = (bin_index_yl > 0) * bin_index_yl;                       // max(bin_index_yl, 0);
+        bin_index_yh = min(bin_index_yh, num_bins_y - 1);
+
+        // update density potential map
+        int k, h;
+
+        int cond = ((bin_index_xl == bin_index_xh) << 1) | (bin_index_yl == bin_index_yh);
+        switch (cond)
+        {
+        case 0:
+        {
+            T px_l = xl + bin_index_xl * bin_size_x + bin_size_x - node_x;
+            T px_c = bin_size_x;
+            T px_h = node_x + node_size_x - (bin_index_xh * bin_size_x + xl);
+
+            T py_l = yl + bin_index_yl * bin_size_y + bin_size_y - node_y;
+            T py_c = bin_size_y;
+            T py_h = node_y + node_size_y - (bin_index_yh * bin_size_y + yl);
+
+            T area_xl_yl = px_l * py_l * ratio;
+            T area_xl_yc = px_l * py_c * ratio;
+            T area_xl_yh = px_l * py_h * ratio;
+
+            T area_xc_yl = px_c * py_l * ratio;
+            T area_xc_yc = px_c * py_c * ratio;
+            T area_xc_yh = px_c * py_h * ratio;
+
+            T area_xh_yl = px_h * py_l * ratio;
+            T area_xh_yc = px_h * py_c * ratio;
+            T area_xh_yh = px_h * py_h * ratio;
+
+            k = bin_index_xl;
+            
+            h = bin_index_yl;
+            atomicAdd(&density_map_tensor[k * num_bins_y + h], area_xl_yl);
+            for (++h; h < bin_index_yh; ++h)
+            {
+                atomicAdd(&density_map_tensor[k * num_bins_y + h], area_xl_yc);
+            }
+            atomicAdd(&density_map_tensor[k * num_bins_y + h], area_xl_yh);
+
+            for (++k; k < bin_index_xh; ++k)
+            {
+                h = bin_index_yl;
+                atomicAdd(&density_map_tensor[k * num_bins_y + h], area_xc_yl);
+                for (++h; h < bin_index_yh; ++h)
+                {
+                    atomicAdd(&density_map_tensor[k * num_bins_y + h], area_xc_yc);
+                }
+                atomicAdd(&density_map_tensor[k * num_bins_y + h], area_xc_yh);
+            }
+
+            h = bin_index_yl;
+            atomicAdd(&density_map_tensor[k * num_bins_y + h], area_xh_yl);
+            for (++h; h < bin_index_yh; ++h)
+            {
+                atomicAdd(&density_map_tensor[k * num_bins_y + h], area_xh_yc);
+            }
+            atomicAdd(&density_map_tensor[k * num_bins_y + h], area_xh_yh);
+            
+            break;
+        }
+        case 1:
+        {
+            T px_l = xl + bin_index_xl * bin_size_x + bin_size_x - node_x;
+            T px_c = bin_size_x;
+            T px_h = node_x + node_size_x - (bin_index_xh * bin_size_x + xl);
+
+            T py = yl + bin_index_yl * bin_size_y + bin_size_y - node_y;
+
+            T area_xl = px_l * py * ratio;
+            T area_xc = px_c * py * ratio;
+            T area_xh = px_h * py * ratio;
+
+            k = bin_index_xl;
+            h = bin_index_yl;
+            atomicAdd(&density_map_tensor[k * num_bins_y + h], area_xl);
+            for (++k; k < bin_index_xh; ++k)
+            {
+                atomicAdd(&density_map_tensor[k * num_bins_y + h], area_xc);
+            }
+            atomicAdd(&density_map_tensor[k * num_bins_y + h], area_xh);
+            
+            break;
+        }
+        case 2:
+        {
+            T px = xl + bin_index_xl * bin_size_x + bin_size_x - node_x;
+
+            T py_l = yl + bin_index_yl * bin_size_y + bin_size_y - node_y;
+            T py_c = bin_size_y;
+            T py_h = node_y + node_size_y - (bin_index_yh * bin_size_y + yl);
+
+            T area_yl = px * py_l * ratio;
+            T area_yc = px * py_c * ratio;
+            T area_yh = px * py_h * ratio;
+
+            k = bin_index_xl;
+            h = bin_index_yl;
+            atomicAdd(&density_map_tensor[k * num_bins_y + h], area_yl);
+            for (++h; h < bin_index_yh; ++h)
+            {
+                atomicAdd(&density_map_tensor[k * num_bins_y + h], area_yc);
+            }
+            atomicAdd(&density_map_tensor[k * num_bins_y + h], area_yh);
+            
+            break;
+        }
+        case 3:
+        {
+            T px = xl + bin_index_xl * bin_size_x + bin_size_x - node_x;
+            T py = yl + bin_index_yl * bin_size_y + bin_size_y - node_y;
+            T area = px * py * ratio;
+
+            k = bin_index_xl;
+            h = bin_index_yl;
+            atomicAdd(&density_map_tensor[k * num_bins_y + h], area);
+
+            break;
+        }
+        default:
+            assert(0);
+        }
+    }
+}
+
+template <typename T>
+__global__ void computeTriangleDensityMapUnroll(
+    const T *x_tensor, const T *y_tensor,
+    const T *node_size_x_clamped_tensor, const T *node_size_y_clamped_tensor,
+    const T *offset_x_tensor, const T *offset_y_tensor,
+    const T *ratio_tensor,
+    const T *bin_center_x_tensor, const T *bin_center_y_tensor,
+    const int num_nodes,
+    const int num_bins_x, const int num_bins_y,
+    const T xl, const T yl, const T xh, const T yh,
+    const T half_bin_size_x, const T half_bin_size_y,
+    const T bin_size_x, const T bin_size_y,
+    const T inv_bin_size_x, const T inv_bin_size_y,
+    T *density_map_tensor,
+    const int *sorted_node_map)
+{
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (index < num_nodes)
+    {
+        int i = sorted_node_map[index];
+
+        T node_size_x = node_size_x_clamped_tensor[i];
+        T node_size_y = node_size_y_clamped_tensor[i];
+        T node_x = x_tensor[i] + offset_x_tensor[i];
+        T node_y = y_tensor[i] + offset_y_tensor[i];
+        T ratio = ratio_tensor[i];
+
+        int bin_index_xl = int((node_x - xl) * inv_bin_size_x);
+        int bin_index_xh = int(((node_x + node_size_x - xl) * inv_bin_size_x)); // inclusive
+        bin_index_xl = (bin_index_xl > 0) * bin_index_xl;                       // max(bin_index_xl, 0);
+        bin_index_xh = min(bin_index_xh, num_bins_x - 1);
+
+        int bin_index_yl = int((node_y - yl) * inv_bin_size_y);
+        int bin_index_yh = int(((node_y + node_size_y - yl) * inv_bin_size_y)); // inclusive
+        bin_index_yl = (bin_index_yl > 0) * bin_index_yl;                       // max(bin_index_yl, 0);
+        bin_index_yh = min(bin_index_yh, num_bins_y - 1);
+
+        // update density potential map
+        int k, h;
+        
+        int cond = ((bin_index_xl == bin_index_xh) << 1) | (bin_index_yl == bin_index_yh);
+        switch (cond)
+        {
+        case 0:
+        {
+            T px_l = xl + bin_index_xl * bin_size_x + bin_size_x - node_x;
+            T px_c = bin_size_x;
+            T px_h = node_x + node_size_x - (bin_index_xh * bin_size_x + xl);
+
+            T py_l = yl + bin_index_yl * bin_size_y + bin_size_y - node_y;
+            T py_c = bin_size_y;
+            T py_h = node_y + node_size_y - (bin_index_yh * bin_size_y + yl);
+
+            T area_xl_yl = px_l * py_l * ratio;
+            T area_xl_yc = px_l * py_c * ratio;
+            T area_xl_yh = px_l * py_h * ratio;
+
+            T area_xc_yl = px_c * py_l * ratio;
+            T area_xc_yc = px_c * py_c * ratio;
+            T area_xc_yh = px_c * py_h * ratio;
+
+            T area_xh_yl = px_h * py_l * ratio;
+            T area_xh_yc = px_h * py_c * ratio;
+            T area_xh_yh = px_h * py_h * ratio;
+
+            k = bin_index_xl;
+            
+            h = bin_index_yl;
+            atomicAdd(&density_map_tensor[k * num_bins_y + h], area_xl_yl);
+            for (++h; h < bin_index_yh; ++h)
+            {
+                atomicAdd(&density_map_tensor[k * num_bins_y + h], area_xl_yc);
+            }
+            atomicAdd(&density_map_tensor[k * num_bins_y + h], area_xl_yh);
+
+            for (++k; k < bin_index_xh; ++k)
+            {
+                h = bin_index_yl;
+                atomicAdd(&density_map_tensor[k * num_bins_y + h], area_xc_yl);
+                for (++h; h < bin_index_yh; ++h)
+                {
+                    atomicAdd(&density_map_tensor[k * num_bins_y + h], area_xc_yc);
+                }
+                atomicAdd(&density_map_tensor[k * num_bins_y + h], area_xc_yh);
+            }
+
+            h = bin_index_yl;
+            atomicAdd(&density_map_tensor[k * num_bins_y + h], area_xh_yl);
+            for (++h; h < bin_index_yh; ++h)
+            {
+                atomicAdd(&density_map_tensor[k * num_bins_y + h], area_xh_yc);
+            }
+            atomicAdd(&density_map_tensor[k * num_bins_y + h], area_xh_yh);
+            
+            break;
+        }
+        case 1:
+        {
+            T px_l = xl + bin_index_xl * bin_size_x + bin_size_x - node_x;
+            T px_c = bin_size_x;
+            T px_h = node_x + node_size_x - (bin_index_xh * bin_size_x + xl);
+
+            T py = yl + bin_index_yl * bin_size_y + bin_size_y - node_y;
+
+            T area_xl = px_l * py * ratio;
+            T area_xc = px_c * py * ratio;
+            T area_xh = px_h * py * ratio;
+
+            k = bin_index_xl;
+            h = bin_index_yl;
+            atomicAdd(&density_map_tensor[k * num_bins_y + h], area_xl);
+
+            for (++k; k < bin_index_xh; ++k)
+            {
+                atomicAdd(&density_map_tensor[k * num_bins_y + h], area_xc);
+            }
+
+            atomicAdd(&density_map_tensor[k * num_bins_y + h], area_xh);
+            
+            break;
+        }
+        case 2:
+        {
+            T px = xl + bin_index_xl * bin_size_x + bin_size_x - node_x;
+
+            T py_l = yl + bin_index_yl * bin_size_y + bin_size_y - node_y;
+            T py_c = bin_size_y;
+            T py_h = node_y + node_size_y - (bin_index_yh * bin_size_y + yl);
+
+            T area_yl = px * py_l * ratio;
+            T area_yc = px * py_c * ratio;
+            T area_yh = px * py_h * ratio;
+
+            k = bin_index_xl;
+            h = bin_index_yl;
+            atomicAdd(&density_map_tensor[k * num_bins_y + h], area_yl);
+            for (++h; h < bin_index_yh; ++h)
+            {
+                atomicAdd(&density_map_tensor[k * num_bins_y + h], area_yc);
+            }
+            atomicAdd(&density_map_tensor[k * num_bins_y + h], area_yh);
+            
+            break;
+        }
+        case 3:
+        {
+            T px = xl + bin_index_xl * bin_size_x + bin_size_x - node_x;
+            T py = yl + bin_index_yl * bin_size_y + bin_size_y - node_y;
+            T area = px * py * ratio;
+
+            k = bin_index_xl;
+            h = bin_index_yl;
+            atomicAdd(&density_map_tensor[k * num_bins_y + h], area);
+
+            break;
+        }
+        default:
+            assert(0);
         }
     }
 }
@@ -267,9 +589,9 @@ __global__ void computeExactDensityMap(
 template <typename T>
 int computeTriangleDensityMapCudaLauncher(
     const T *x_tensor, const T *y_tensor,
-    const T* node_size_x_clamped_tensor, const T* node_size_y_clamped_tensor,
-    const T* offset_x_tensor, const T* offset_y_tensor,
-    const T* ratio_tensor,
+    const T *node_size_x_clamped_tensor, const T *node_size_y_clamped_tensor,
+    const T *offset_x_tensor, const T *offset_y_tensor,
+    const T *ratio_tensor,
     const T *bin_center_x_tensor, const T *bin_center_y_tensor,
     int num_nodes, int num_movable_nodes, int num_filler_nodes,
     const int num_bins_x, const int num_bins_y,
@@ -278,12 +600,13 @@ int computeTriangleDensityMapCudaLauncher(
     const T xl, const T yl, const T xh, const T yh,
     const T bin_size_x, const T bin_size_y,
     T *density_map_tensor,
-    const int* sorted_node_map)
+    const int *sorted_node_map)
 {
     int thread_count = 64;
+    dim3 blockSize(thread_count, 1, 1);
+
     int block_count = (num_movable_nodes - 1 + thread_count) / thread_count;
-    dim3 blockSize(2, 2, thread_count);
-    computeTriangleDensityMap<<<block_count, blockSize>>>(
+    computeTriangleDensityMapUnroll<<<block_count, blockSize>>>(
         x_tensor, y_tensor,
         node_size_x_clamped_tensor, node_size_y_clamped_tensor,
         offset_x_tensor, offset_y_tensor,
@@ -292,9 +615,9 @@ int computeTriangleDensityMapCudaLauncher(
         num_movable_nodes,
         num_bins_x, num_bins_y,
         xl, yl, xh, yh,
-        bin_size_x/2, bin_size_y/2,
+        bin_size_x / 2, bin_size_y / 2,
         bin_size_x, bin_size_y,
-        1/bin_size_x, 1/bin_size_y,
+        1 / bin_size_x, 1 / bin_size_y,
         density_map_tensor,
         sorted_node_map);
 
@@ -313,7 +636,7 @@ int computeTriangleDensityMapCudaLauncher(
 
         int num_physical_nodes = num_nodes - num_filler_nodes;
         block_count = (num_filler_nodes - 1 + thread_count) / thread_count;
-        computeTriangleDensityMap<<<block_count, blockSize, 0, stream_filler>>>(
+        computeTriangleDensityMapUnroll<<<block_count, blockSize, 0, stream_filler>>>(
             x_tensor + num_physical_nodes, y_tensor + num_physical_nodes,
             node_size_x_clamped_tensor + num_physical_nodes, node_size_y_clamped_tensor + num_physical_nodes,
             offset_x_tensor + num_physical_nodes, offset_y_tensor + num_physical_nodes,
@@ -322,9 +645,9 @@ int computeTriangleDensityMapCudaLauncher(
             num_filler_nodes,
             num_bins_x, num_bins_y,
             xl, yl, xh, yh,
-            bin_size_x/2, bin_size_y/2,
+            bin_size_x / 2, bin_size_y / 2,
             bin_size_x, bin_size_y,
-            1/bin_size_x, 1/bin_size_y,
+            1 / bin_size_x, 1 / bin_size_y,
             density_map_tensor);
 
         status = cudaStreamDestroy(stream_filler);
@@ -373,9 +696,9 @@ int computeExactDensityMapCudaLauncher(
 #define REGISTER_KERNEL_LAUNCHER(T)                                                   \
     int instantiateComputeTriangleDensityMapLauncher(                                 \
         const T *x_tensor, const T *y_tensor,                                         \
-        const T* node_size_x_clamped_tensor, const T* node_size_y_clamped_tensor,     \
-        const T* offset_x_tensor, const T* offset_y_tensor,                           \
-        const T* ratio_tensor,                                                        \
+        const T *node_size_x_clamped_tensor, const T *node_size_y_clamped_tensor,     \
+        const T *offset_x_tensor, const T *offset_y_tensor,                           \
+        const T *ratio_tensor,                                                        \
         const T *bin_center_x_tensor, const T *bin_center_y_tensor,                   \
         const int num_nodes, const int num_movable_nodes, const int num_filler_nodes, \
         const int num_bins_x, const int num_bins_y,                                   \
@@ -384,7 +707,7 @@ int computeExactDensityMapCudaLauncher(
         const T xl, const T yl, const T xh, const T yh,                               \
         const T bin_size_x, const T bin_size_y,                                       \
         T *density_map_tensor,                                                        \
-        const int* sorted_node_map)                                                   \
+        const int *sorted_node_map)                                                   \
     {                                                                                 \
         return computeTriangleDensityMapCudaLauncher(                                 \
             x_tensor, y_tensor,                                                       \

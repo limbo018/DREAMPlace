@@ -197,7 +197,7 @@ class ElectricPotentialFunction(Function):
             #potential_map = discrete_spectral_transform.idcct2(auv_by_wu2_plus_wv2, exact_expkM, exact_expkN)
             potential_map = idct2.forward(auv_by_wu2_plus_wv2)
             # compute energy
-            energy = potential_map.mul_(density_map).sum()
+            energy = potential_map.mul(density_map).sum()
 
         # torch.set_printoptions(precision=10)
         # print("initial_density_map")

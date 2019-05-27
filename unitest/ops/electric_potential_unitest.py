@@ -34,6 +34,7 @@ matplotlib.use('Agg')
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 
+
 def spectral(x, transform_type, normalize=False):
     M = x.shape[0]
     N = x.shape[1]
@@ -43,26 +44,28 @@ def spectral(x, transform_type, normalize=False):
             for i in range(M):
                 for j in range(N):
                     if transform_type == 'coscos':
-                        y[u, v] += x[i, j]*np.cos(2*np.pi/M*i*u)*np.cos(2*np.pi/N*j*v)
+                        y[u, v] += x[i, j] * np.cos(2 * np.pi / M * i * u) * np.cos(2 * np.pi / N * j * v)
                     elif transform_type == 'cossin':
-                        y[u, v] += x[i, j]*np.cos(2*np.pi/M*i*u)*np.sin(2*np.pi/N*j*v)
+                        y[u, v] += x[i, j] * np.cos(2 * np.pi / M * i * u) * np.sin(2 * np.pi / N * j * v)
                     elif transform_type == 'sincos':
-                        y[u, v] += x[i, j]*np.sin(2*np.pi/M*i*u)*np.cos(2*np.pi/N*j*v)
+                        y[u, v] += x[i, j] * np.sin(2 * np.pi / M * i * u) * np.cos(2 * np.pi / N * j * v)
                     elif transform_type == 'sinsin':
-                        y[u, v] += x[i, j]*np.sin(2*np.pi/M*i*u)*np.sin(2*np.pi/N*j*v)
+                        y[u, v] += x[i, j] * np.sin(2 * np.pi / M * i * u) * np.sin(2 * np.pi / N * j * v)
             if normalize:
-                y[u, v] *= 1.0/(M*N)
+                y[u, v] *= 1.0 / (M * N)
     return y
+
 
 def naive_idct(x):
     N = len(x)
     y = np.zeros(N)
-    y += 0.5*x[0]
+    y += 0.5 * x[0]
     for u in range(N):
         for k in range(1, N):
-            y[u] += x[k]*np.cos(np.pi/(2*N)*k*(2*u+1))
+            y[u] += x[k] * np.cos(np.pi / (2 * N) * k * (2 * u + 1))
 
     return y
+
 
 def naive_idct2(x):
     M = x.shape[0]
@@ -70,10 +73,10 @@ def naive_idct2(x):
 
     y = np.zeros_like(x)
 
-    #for u in range(M):
+    # for u in range(M):
     #    y[u] = naive_idct(x[u])
     #y = np.transpose(y)
-    #for v in range(N):
+    # for v in range(N):
     #    y[v] = naive_idct(y[v])
     #y = np.transpose(y)
 
@@ -81,10 +84,11 @@ def naive_idct2(x):
         for v in range(N):
             for p in range(M):
                 for q in range(N):
-                    a = 1 #if p == 0 else 2
-                    b = 1 #if q == 0 else 2
-                    y[u, v] += a*b*x[p, q]*np.cos(np.pi/M*p*(u+0.5))*np.cos(np.pi/N*q*(v+0.5))
+                    a = 1  # if p == 0 else 2
+                    b = 1  # if q == 0 else 2
+                    y[u, v] += a * b * x[p, q] * np.cos(np.pi / M * p * (u + 0.5)) * np.cos(np.pi / N * q * (v + 0.5))
     return y
+
 
 def naive_idct2_grad_x(x):
     M = x.shape[0]
@@ -95,10 +99,12 @@ def naive_idct2_grad_x(x):
         for v in range(N):
             for p in range(M):
                 for q in range(N):
-                    a = 1 #if p == 0 else 2
-                    b = 1 #if q == 0 else 2
-                    y[u, v] += -a*b*x[p, q]*(np.pi/M*p)*np.sin(np.pi/M*p*(u+0.5))*np.cos(np.pi/N*q*(v+0.5))
+                    a = 1  # if p == 0 else 2
+                    b = 1  # if q == 0 else 2
+                    y[u, v] += -a * b * x[p, q] * (np.pi / M * p) * np.sin(np.pi / M *
+                                                                           p * (u + 0.5)) * np.cos(np.pi / N * q * (v + 0.5))
     return y
+
 
 def naive_idct2_grad_y(x):
     M = x.shape[0]
@@ -109,10 +115,12 @@ def naive_idct2_grad_y(x):
         for v in range(N):
             for p in range(M):
                 for q in range(N):
-                    a = 1 #if p == 0 else 2
-                    b = 1 #if q == 0 else 2
-                    y[u, v] += -a*b*x[p, q]*(np.pi/N*q)*np.cos(np.pi/M*p*(u+0.5))*np.sin(np.pi/N*q*(v+0.5))
+                    a = 1  # if p == 0 else 2
+                    b = 1  # if q == 0 else 2
+                    y[u, v] += -a * b * x[p, q] * (np.pi / N * q) * np.cos(np.pi / M *
+                                                                           p * (u + 0.5)) * np.sin(np.pi / N * q * (v + 0.5))
     return y
+
 
 def naive_idsct2(x):
     M = x.shape[0]
@@ -123,10 +131,11 @@ def naive_idsct2(x):
         for v in range(N):
             for p in range(M):
                 for q in range(N):
-                    a = 1 #if p == 0 else 2
-                    b = 1 #if q == 0 else 2
-                    y[u, v] += -a*b*x[p, q]*np.sin(np.pi/M*p*(u+0.5))*np.cos(np.pi/N*q*(v+0.5))
+                    a = 1  # if p == 0 else 2
+                    b = 1  # if q == 0 else 2
+                    y[u, v] += -a * b * x[p, q] * np.sin(np.pi / M * p * (u + 0.5)) * np.cos(np.pi / N * q * (v + 0.5))
     return y
+
 
 def naive_idsct2_2(x):
     M = x.shape[0]
@@ -134,14 +143,14 @@ def naive_idsct2_2(x):
 
     y1 = np.zeros_like(x)
 
-    #for u in range(M):
+    # for u in range(M):
     #    y1[u] = naive_idct(x[u])
     for v in range(N):
         for p in range(M):
             for q in range(N):
-                y1[p, v] += x[p, q]*np.cos(np.pi/N*q*(v+0.5))
+                y1[p, v] += x[p, q] * np.cos(np.pi / N * q * (v + 0.5))
     #print("y1 = ", y1)
-    #for u in range(M):
+    # for u in range(M):
     #    for v in range(N):
     #        for p in range(M):
     #            for q in range(N):
@@ -152,8 +161,8 @@ def naive_idsct2_2(x):
     for u in range(M):
         for v in range(N):
             for p in range(M):
-                y2[u, v] += -y1[p, v]*np.sin(np.pi/M*p*(u+0.5))
-    #for u in range(M):
+                y2[u, v] += -y1[p, v] * np.sin(np.pi / M * p * (u + 0.5))
+    # for u in range(M):
     #    for v in range(N):
     #        for p in range(M):
     #            for q in range(N):
@@ -161,6 +170,7 @@ def naive_idsct2_2(x):
     #y = np.transpose(y2)
 
     return y1, y2
+
 
 """
 class DctOpTest(unittest.TestCase):
@@ -330,7 +340,7 @@ class DstOpTest(unittest.TestCase):
         np.testing.assert_allclose(result.numpy(), golden_value, atol=1e-12)
 """
 
-#class SpectralOpTest(unittest.TestCase):
+# class SpectralOpTest(unittest.TestCase):
 #    def test_spectral_even(self):
 #
 #        xx = np.array([[1, 2], [3, 4]]).astype(np.float64)
@@ -414,6 +424,8 @@ class DstOpTest(unittest.TestCase):
 #        np.testing.assert_allclose(result.numpy(), golden_value, atol=1e-12)
 #
 #
+
+
 class ElectricPotentialOpTest(unittest.TestCase):
     def test_densityOverflowRandom(self):
         dtype = np.float64
@@ -436,42 +448,42 @@ class ElectricPotentialOpTest(unittest.TestCase):
         bin_size_x = 1.0
         bin_size_y = 1.0
         target_density = 0.1
-        num_bins_x = int(np.ceil((xh-xl)/bin_size_x))
-        num_bins_y = int(np.ceil((yh-yl)/bin_size_y))
+        num_bins_x = int(np.ceil((xh - xl) / bin_size_x))
+        num_bins_y = int(np.ceil((yh - yl) / bin_size_y))
 
         """
         return bin xl
         """
         def bin_xl(id_x):
-            return xl+id_x*bin_size_x
+            return xl + id_x * bin_size_x
 
         """
         return bin xh
         """
         def bin_xh(id_x):
-            return min(bin_xl(id_x)+bin_size_x, xh)
+            return min(bin_xl(id_x) + bin_size_x, xh)
 
         """
         return bin yl
         """
         def bin_yl(id_y):
-            return yl+id_y*bin_size_y
+            return yl + id_y * bin_size_y
 
         """
         return bin yh
         """
         def bin_yh(id_y):
-            return min(bin_yl(id_y)+bin_size_y, yh)
+            return min(bin_yl(id_y) + bin_size_y, yh)
 
         bin_center_x = np.zeros(num_bins_x, dtype=dtype)
         for id_x in range(num_bins_x):
-            bin_center_x[id_x] = (bin_xl(id_x)+bin_xh(id_x))/2*scale_factor
+            bin_center_x[id_x] = (bin_xl(id_x) + bin_xh(id_x)) / 2 * scale_factor
 
         bin_center_y = np.zeros(num_bins_y, dtype=dtype)
         for id_y in range(num_bins_y):
-            bin_center_y[id_y] = (bin_yl(id_y)+bin_yh(id_y))/2*scale_factor
+            bin_center_y[id_y] = (bin_yl(id_y) + bin_yh(id_y)) / 2 * scale_factor
 
-        print("target_area = ", target_density*bin_size_x*bin_size_y)
+        print("target_area = ", target_density * bin_size_x * bin_size_y)
 
         if dtype == np.float64:
             dtype = torch.float64
@@ -479,16 +491,18 @@ class ElectricPotentialOpTest(unittest.TestCase):
             dtype = torch.float32
         # test cpu
         custom = electric_potential.ElectricPotential(
-                    torch.tensor(node_size_x, requires_grad=False, dtype=dtype), torch.tensor(node_size_y, requires_grad=False, dtype=dtype),
-                    torch.tensor(bin_center_x, requires_grad=False, dtype=dtype), torch.tensor(bin_center_y, requires_grad=False, dtype=dtype),
-                    target_density=torch.tensor(target_density, requires_grad=False, dtype=dtype),
-                    xl=xl, yl=yl, xh=xh, yh=yh,
-                    bin_size_x=bin_size_x, bin_size_y=bin_size_y,
-                    num_movable_nodes=num_nodes,
-                    num_terminals=0,
-                    num_filler_nodes=0,
-                    padding=0
-                    )
+            torch.tensor(node_size_x, requires_grad=False, dtype=dtype), torch.tensor(
+                node_size_y, requires_grad=False, dtype=dtype),
+            torch.tensor(bin_center_x, requires_grad=False, dtype=dtype), torch.tensor(
+                bin_center_y, requires_grad=False, dtype=dtype),
+            target_density=torch.tensor(target_density, requires_grad=False, dtype=dtype),
+            xl=xl, yl=yl, xh=xh, yh=yh,
+            bin_size_x=bin_size_x, bin_size_y=bin_size_y,
+            num_movable_nodes=num_nodes,
+            num_terminals=0,
+            num_filler_nodes=0,
+            padding=0
+        )
 
         pos = Variable(torch.from_numpy(np.concatenate([xx, yy])), requires_grad=True)
         result = custom.forward(pos)
@@ -500,19 +514,21 @@ class ElectricPotentialOpTest(unittest.TestCase):
 
         # test cuda
         custom_cuda = electric_potential.ElectricPotential(
-                    torch.tensor(node_size_x, requires_grad=False, dtype=dtype).cuda(), torch.tensor(node_size_y, requires_grad=False, dtype=dtype).cuda(),
-                    torch.tensor(bin_center_x, requires_grad=False, dtype=dtype).cuda(), torch.tensor(bin_center_y, requires_grad=False, dtype=dtype).cuda(),
-                    target_density=torch.tensor(target_density, requires_grad=False, dtype=dtype).cuda(),
-                    xl=xl, yl=yl, xh=xh, yh=yh,
-                    bin_size_x=bin_size_x, bin_size_y=bin_size_y,
-                    num_movable_nodes=num_nodes,
-                    num_terminals=0,
-                    num_filler_nodes=0,
-                    padding=0
-                    )
+            torch.tensor(node_size_x, requires_grad=False, dtype=dtype).cuda(), torch.tensor(
+                node_size_y, requires_grad=False, dtype=dtype).cuda(),
+            torch.tensor(bin_center_x, requires_grad=False, dtype=dtype).cuda(), torch.tensor(
+                bin_center_y, requires_grad=False, dtype=dtype).cuda(),
+            target_density=torch.tensor(target_density, requires_grad=False, dtype=dtype).cuda(),
+            xl=xl, yl=yl, xh=xh, yh=yh,
+            bin_size_x=bin_size_x, bin_size_y=bin_size_y,
+            num_movable_nodes=num_nodes,
+            num_terminals=0,
+            num_filler_nodes=0,
+            padding=0
+        )
 
         pos = Variable(torch.from_numpy(np.concatenate([xx, yy])).cuda(), requires_grad=True)
-        #pos.grad.zero_()
+        # pos.grad.zero_()
         result_cuda = custom_cuda.forward(pos)
         print("custom_result_cuda = ", result_cuda.data.cpu())
         print(result_cuda.type())
@@ -522,11 +538,12 @@ class ElectricPotentialOpTest(unittest.TestCase):
 
         #np.testing.assert_allclose(result.detach().numpy(), result_cuda.data.cpu().detach().numpy())
 
+
 def plot(plot_count, density_map, padding, name):
     """
     density map contour and heat map
     """
-    density_map = density_map[padding:density_map.shape[0]-padding, padding:density_map.shape[1]-padding]
+    density_map = density_map[padding:density_map.shape[0] - padding, padding:density_map.shape[1] - padding]
     print("max density = %g" % (np.amax(density_map)))
     print("mean density = %g" % (np.mean(density_map)))
 
@@ -544,62 +561,71 @@ def plot(plot_count, density_map, padding, name):
     ax.set_ylabel('y')
     ax.set_zlabel('density')
 
-    #plt.tight_layout()
-    plt.savefig(name+".3d.png")
+    # plt.tight_layout()
+    plt.savefig(name + ".3d.png")
     plt.close()
 
-    #plt.clf()
+    # plt.clf()
 
     #fig, ax = plt.subplots()
 
-    #ax.pcolor(density_map)
+    # ax.pcolor(density_map)
 
-    ## Loop over data dimensions and create text annotations.
-    ##for i in range(density_map.shape[0]):
-    ##    for j in range(density_map.shape[1]):
-    ##        text = ax.text(j, i, density_map[i, j],
-    ##                ha="center", va="center", color="w")
-    #fig.tight_layout()
+    # Loop over data dimensions and create text annotations.
+    # for i in range(density_map.shape[0]):
+    # for j in range(density_map.shape[1]):
+    # text = ax.text(j, i, density_map[i, j],
+    # ha="center", va="center", color="w")
+    # fig.tight_layout()
     #plt.savefig(name+".2d.%d.png" % (plot_count))
-    #plt.close()
+    # plt.close()
+
 
 def eval_runtime(design):
     with gzip.open("../../benchmarks/ispd2005/density/%s_density.pklz" % (design), "rb") as f:
-        node_size_x, node_size_y, bin_center_x, bin_center_y, target_density, xl, yl, xh, yh, bin_size_x, bin_size_y, num_movable_nodes, num_terminals, num_filler_nodes = pickle.load(f)
+        node_size_x, node_size_y, bin_center_x, bin_center_y, target_density, xl, yl, xh, yh, bin_size_x, bin_size_y, num_movable_nodes, num_terminals, num_filler_nodes = pickle.load(
+            f)
 
     dtype = torch.float64
-    pos_var = Variable(torch.empty(len(node_size_x)*2, dtype=dtype).uniform_(xl, xh), requires_grad=True)
-    custom = electric_potential.ElectricPotential(
-                torch.tensor(node_size_x, requires_grad=False, dtype=dtype), torch.tensor(node_size_y, requires_grad=False, dtype=dtype),
-                torch.tensor(bin_center_x, requires_grad=False, dtype=dtype), torch.tensor(bin_center_y, requires_grad=False, dtype=dtype),
-                target_density=torch.tensor(target_density, requires_grad=False, dtype=dtype),
-                xl=xl, yl=yl, xh=xh, yh=yh,
-                bin_size_x=bin_size_x, bin_size_y=bin_size_y,
-                num_movable_nodes=num_movable_nodes,
-                num_terminals=num_terminals,
-                num_filler_nodes=num_filler_nodes,
-                padding=0
-                )
+    pos_var = Variable(torch.empty(len(node_size_x) * 2, dtype=dtype).uniform_(xl, xh), requires_grad=True)
+    # custom = electric_potential.ElectricPotential(
+    #             torch.tensor(node_size_x, requires_grad=False, dtype=dtype), torch.tensor(node_size_y, requires_grad=False, dtype=dtype),
+    #             torch.tensor(bin_center_x, requires_grad=False, dtype=dtype), torch.tensor(bin_center_y, requires_grad=False, dtype=dtype),
+    #             target_density=torch.tensor(target_density, requires_grad=False, dtype=dtype),
+    #             xl=xl, yl=yl, xh=xh, yh=yh,
+    #             bin_size_x=bin_size_x, bin_size_y=bin_size_y,
+    #             num_movable_nodes=num_movable_nodes,
+    #             num_terminals=num_terminals,
+    #             num_filler_nodes=num_filler_nodes,
+    #             padding=0
+    #             )
+
+    movable_size_x = node_size_x[:num_movable_nodes]
+    _, sorted_node_map = torch.sort(torch.tensor(movable_size_x,requires_grad=False, dtype=dtype).cuda())
+    sorted_node_map = sorted_node_map.to(torch.int32).contiguous()
+
     custom_cuda = electric_potential.ElectricPotential(
-                torch.tensor(node_size_x, requires_grad=False, dtype=dtype).cuda(), torch.tensor(node_size_y, requires_grad=False, dtype=dtype).cuda(),
-                torch.tensor(bin_center_x, requires_grad=False, dtype=dtype).cuda(), torch.tensor(bin_center_y, requires_grad=False, dtype=dtype).cuda(),
-                target_density=torch.tensor(target_density, requires_grad=False, dtype=dtype).cuda(),
-                xl=xl, yl=yl, xh=xh, yh=yh,
-                bin_size_x=bin_size_x, bin_size_y=bin_size_y,
-                num_movable_nodes=num_movable_nodes,
-                num_terminals=num_terminals,
-                num_filler_nodes=num_filler_nodes,
-                padding=0
-                )
+        torch.tensor(node_size_x, requires_grad=False, dtype=dtype).cuda(),
+        torch.tensor(node_size_y, requires_grad=False, dtype=dtype).cuda(),
+        torch.tensor(bin_center_x, requires_grad=False, dtype=dtype).cuda(),
+        torch.tensor(bin_center_y, requires_grad=False, dtype=dtype).cuda(),
+        target_density=torch.tensor(target_density, requires_grad=False, dtype=dtype).cuda(),
+        xl=xl, yl=yl, xh=xh, yh=yh,
+        bin_size_x=bin_size_x, bin_size_y=bin_size_y,
+        num_movable_nodes=num_movable_nodes,
+        num_terminals=num_terminals,
+        num_filler_nodes=num_filler_nodes,
+        padding=0,
+        sorted_node_map=sorted_node_map)
 
     torch.cuda.synchronize()
     iters = 10
-    tt = time.time()
-    for i in range(iters):
-        result = custom.forward(pos_var)
-        result.backward()
-    torch.cuda.synchronize()
-    print("custom takes %.3f ms" % ((time.time()-tt)/iters*1000))
+    # tt = time.time()
+    # for i in range(iters):
+    #     result = custom.forward(pos_var)
+    #     result.backward()
+    # torch.cuda.synchronize()
+    # print("custom takes %.3f ms" % ((time.time()-tt)/iters*1000))
 
     pos_var = pos_var.cuda()
     tt = time.time()
@@ -607,11 +633,12 @@ def eval_runtime(design):
         result = custom_cuda.forward(pos_var)
         result.backward()
     torch.cuda.synchronize()
-    print("custom_cuda takes %.3f ms" % ((time.time()-tt)/iters*1000))
+    print("custom_cuda takes %.3f ms" % ((time.time() - tt) / iters * 1000))
+
 
 if __name__ == '__main__':
-    unittest.main()
-    exit()
+    # unittest.main()
+    # exit()
 
     design = sys.argv[1]
     eval_runtime(design)
@@ -647,8 +674,8 @@ if __name__ == '__main__':
                 cell_density.append(float(tokens[10].strip()))
                 fill_density.append(float(tokens[11].strip()))
 
-        M = np.amax(x)+1
-        N = np.amax(y)+1
+        M = np.amax(x) + 1
+        N = np.amax(y) + 1
 
         density_map = np.zeros([M, N])
         auv_map = np.zeros_like(density_map)
@@ -687,8 +714,8 @@ if __name__ == '__main__':
                 ex_in.append(float(tokens[3].strip()))
                 ey_in.append(float(tokens[4].strip()))
 
-        M = np.amax(x)+1
-        N = np.amax(y)+1
+        M = np.amax(x) + 1
+        N = np.amax(y) + 1
 
         phi_in_map = np.zeros([M, N])
         ex_in_map = np.zeros([M, N])
@@ -717,8 +744,8 @@ if __name__ == '__main__':
                 ex_out.append(float(tokens[3].strip()))
                 ey_out.append(float(tokens[4].strip()))
 
-        M = np.amax(x)+1
-        N = np.amax(y)+1
+        M = np.amax(x) + 1
+        N = np.amax(y) + 1
 
         phi_out_map = np.zeros([M, N])
         ex_out_map = np.zeros([M, N])
@@ -773,10 +800,10 @@ if __name__ == '__main__':
     expk_M = discrete_spectral_transform.get_expk(M, dtype=density_map.dtype, device=density_map.device)
     expk_N = discrete_spectral_transform.get_expk(N, dtype=density_map.dtype, device=density_map.device)
     # wu and wv
-    wu = torch.arange(M, dtype=density_map.dtype, device=density_map.device).mul(2*np.pi/M).view([M, 1])
-    wv = torch.arange(N, dtype=density_map.dtype, device=density_map.device).mul(2*np.pi/N).view([1, N])
+    wu = torch.arange(M, dtype=density_map.dtype, device=density_map.device).mul(2 * np.pi / M).view([M, 1])
+    wv = torch.arange(N, dtype=density_map.dtype, device=density_map.device).mul(2 * np.pi / N).view([1, N])
     wu2_plus_wv2 = wu.pow(2) + wv.pow(2)
-    wu2_plus_wv2[0, 0] = 1.0 # avoid zero-division, it will be zeroed out
+    wu2_plus_wv2[0, 0] = 1.0  # avoid zero-division, it will be zeroed out
     inv_wu2_plus_wv2_2X = 2.0 / wu2_plus_wv2
     inv_wu2_plus_wv2_2X[0, 0] = 0.0
     wu_by_wu2_plus_wv2 = wu.mul(inv_wu2_plus_wv2_2X)
@@ -890,17 +917,17 @@ if __name__ == '__main__':
     """
 
     #tmp1 = naive_idct2(phi_in_map)
-    tmp1 = discrete_spectral_transform.idcct2(torch.from_numpy(phi_in_map)).numpy()#*phi_in_map.size
+    tmp1 = discrete_spectral_transform.idcct2(torch.from_numpy(phi_in_map)).numpy()  # *phi_in_map.size
     print(tmp1)
     tmp3 = fftpack.idct(fftpack.idct(phi_in_map).T).T
     print(tmp3)
     tmp4 = naive_idct2_grad_y(phi_in_map)
     print(tmp4)
     #tmp5 = naive_idsct2(ex_in_map)
-    #print(tmp5)
-    tmp12 = discrete_spectral_transform.idsct2(torch.from_numpy(ex_in_map)).numpy()#*ex_in_map.size
+    # print(tmp5)
+    tmp12 = discrete_spectral_transform.idsct2(torch.from_numpy(ex_in_map)).numpy()  # *ex_in_map.size
     print(tmp12)
-    tmp13 = discrete_spectral_transform.idcst2(torch.from_numpy(ey_in_map)).numpy()#*ey_in_map.size
+    tmp13 = discrete_spectral_transform.idcst2(torch.from_numpy(ey_in_map)).numpy()  # *ey_in_map.size
     print(tmp13)
     pdb.set_trace()
 
@@ -915,7 +942,6 @@ if __name__ == '__main__':
     print(ratio)
     exit()
 
-
     field_map_x = discrete_spectral_transform.dsct2(auv_by_wu2_plus_wv2.mul(wu))
     field_map_y = discrete_spectral_transform.dcst2(auv_by_wu2_plus_wv2.mul(wv))
 
@@ -928,4 +954,3 @@ if __name__ == '__main__':
     print(ratio.max())
     print(ratio.mean())
     np.testing.assert_allclose(field_map_x.numpy(), ex_map, rtol=3e-1)
-
