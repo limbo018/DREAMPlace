@@ -275,7 +275,7 @@ __global__ void computeElectricForceUnroll(
     int num_nodes,
     T *grad_x_tensor, T *grad_y_tensor)
 {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int i = blockIdx.x * blockDim.y + threadIdx.y;
     if (i < num_nodes)
     {
         // stretch node size to bin size
@@ -298,155 +298,228 @@ __global__ void computeElectricForceUnroll(
         bin_index_yh = min(bin_index_yh, num_bins_y - 1);
 
         int k, h;
-        T tmp_x, tmp_y;
 
         int cond = ((bin_index_xl == bin_index_xh) << 1) | (bin_index_yl == bin_index_yh);
         switch (cond)
         {
         case 0:
         {
-            T px_l = xl + bin_index_xl * bin_size_x + bin_size_x - node_x;
+            // blockDim.x threads will be used to update one node
+            // shared memory is used to privatize the atomic memory access to thread block
+            extern __shared__ unsigned char shared_memory[];
+            T *s_x = (T *)shared_memory;
+            T *s_y = s_x + blockDim.y;
+            if (threadIdx.x == 0)
+            {
+                s_x[threadIdx.y] = s_y[threadIdx.y] = 0;
+            }
+            __syncthreads();
+
+            T tmp_x = 0;
+            T tmp_y = 0;
+
             T px_c = bin_size_x;
-            T px_h = node_x + node_size_x - (bin_index_xh * bin_size_x + xl);
 
             T py_l = yl + bin_index_yl * bin_size_y + bin_size_y - node_y;
             T py_c = bin_size_y;
             T py_h = node_y + node_size_y - (bin_index_yh * bin_size_y + yl);
-
-            T area_xl_yl = px_l * py_l;
-            T area_xl_yc = px_l * py_c;
-            T area_xl_yh = px_l * py_h;
 
             T area_xc_yl = px_c * py_l;
             T area_xc_yc = px_c * py_c;
             T area_xc_yh = px_c * py_h;
 
-            T area_xh_yl = px_h * py_l;
-            T area_xh_yc = px_h * py_c;
-            T area_xh_yh = px_h * py_h;
-
             k = bin_index_xl;
-
-            h = bin_index_yl;
-
-            tmp_x = area_xl_yl * field_map_x_tensor[k * num_bins_y + h];
-            tmp_y = area_xl_yl * field_map_y_tensor[k * num_bins_y + h];
-
-            for (++h; h < bin_index_yh; ++h)
+            if (threadIdx.x == 0)
             {
-                tmp_x += area_xl_yc * field_map_x_tensor[k * num_bins_y + h];
-                tmp_y += area_xl_yc * field_map_y_tensor[k * num_bins_y + h];
+                T px_l = xl + bin_index_xl * bin_size_x + bin_size_x - node_x;
+                T area_xl_yl = px_l * py_l;
+                T area_xl_yc = px_l * py_c;
+                T area_xl_yh = px_l * py_h;
+
+                h = bin_index_yl;
+                tmp_x = area_xl_yl * field_map_x_tensor[k * num_bins_y + h];
+                tmp_y = area_xl_yl * field_map_y_tensor[k * num_bins_y + h];
+                for (++h; h < bin_index_yh; ++h)
+                {
+                    tmp_x += area_xl_yc * field_map_x_tensor[k * num_bins_y + h];
+                    tmp_y += area_xl_yc * field_map_y_tensor[k * num_bins_y + h];
+                }
+                tmp_x += area_xl_yh * field_map_x_tensor[k * num_bins_y + h];
+                tmp_y += area_xl_yh * field_map_y_tensor[k * num_bins_y + h];
+                k += blockDim.x;
             }
 
-            tmp_x += area_xl_yh * field_map_x_tensor[k * num_bins_y + h];
-            tmp_y += area_xl_yh * field_map_y_tensor[k * num_bins_y + h];
-
-            for (++k; k < bin_index_xh; ++k)
+            for (k += threadIdx.x; k < bin_index_xh; k += blockDim.x)
             {
                 h = bin_index_yl;
                 tmp_x += area_xc_yl * field_map_x_tensor[k * num_bins_y + h];
                 tmp_y += area_xc_yl * field_map_y_tensor[k * num_bins_y + h];
-
                 for (++h; h < bin_index_yh; ++h)
                 {
                     tmp_x += area_xc_yc * field_map_x_tensor[k * num_bins_y + h];
                     tmp_y += area_xc_yc * field_map_y_tensor[k * num_bins_y + h];
                 }
-
                 tmp_x += area_xc_yh * field_map_x_tensor[k * num_bins_y + h];
                 tmp_y += area_xc_yh * field_map_y_tensor[k * num_bins_y + h];
             }
 
-            h = bin_index_yl;
-            tmp_x += area_xh_yl * field_map_x_tensor[k * num_bins_y + h];
-            tmp_y += area_xh_yl * field_map_y_tensor[k * num_bins_y + h];
-
-            for (++h; h < bin_index_yh; ++h)
+            if (k == bin_index_xh)
             {
-                tmp_x += area_xh_yc * field_map_x_tensor[k * num_bins_y + h];
-                tmp_y += area_xh_yc * field_map_y_tensor[k * num_bins_y + h];
+                T px_h = node_x + node_size_x - (bin_index_xh * bin_size_x + xl);
+                T area_xh_yl = px_h * py_l;
+                T area_xh_yc = px_h * py_c;
+                T area_xh_yh = px_h * py_h;
+
+                h = bin_index_yl;
+                tmp_x += area_xh_yl * field_map_x_tensor[k * num_bins_y + h];
+                tmp_y += area_xh_yl * field_map_y_tensor[k * num_bins_y + h];
+                for (++h; h < bin_index_yh; ++h)
+                {
+                    tmp_x += area_xh_yc * field_map_x_tensor[k * num_bins_y + h];
+                    tmp_y += area_xh_yc * field_map_y_tensor[k * num_bins_y + h];
+                }
+                tmp_x += area_xh_yh * field_map_x_tensor[k * num_bins_y + h];
+                tmp_y += area_xh_yh * field_map_y_tensor[k * num_bins_y + h];
             }
 
-            tmp_x += area_xh_yh * field_map_x_tensor[k * num_bins_y + h];
-            tmp_y += area_xh_yh * field_map_y_tensor[k * num_bins_y + h];
+            atomicAdd(&s_x[threadIdx.y], tmp_x * ratio);
+            atomicAdd(&s_y[threadIdx.y], tmp_y * ratio);
+            __syncthreads();
 
-            grad_x_tensor[i] = tmp_x * ratio;
-            grad_y_tensor[i] = tmp_y * ratio;
-            break;
+            if (threadIdx.x == 0)
+            {
+                grad_x_tensor[i] = s_x[threadIdx.y];
+                grad_y_tensor[i] = s_y[threadIdx.y];
+            }
+
+            return;
         }
         case 1:
         {
-            T px_l = xl + bin_index_xl * bin_size_x + bin_size_x - node_x;
-            T px_c = bin_size_x;
-            T px_h = node_x + node_size_x - (bin_index_xh * bin_size_x + xl);
+            extern __shared__ unsigned char shared_memory[];
+            T *s_x = (T *)shared_memory;
+            T *s_y = s_x + blockDim.y;
+            if (threadIdx.x == 0)
+            {
+                s_x[threadIdx.y] = s_y[threadIdx.y] = 0;
+            }
+            __syncthreads();
+
+            T tmp_x = 0;
+            T tmp_y = 0;
 
             T py = yl + bin_index_yl * bin_size_y + bin_size_y - node_y;
-
-            T area_xl = px_l * py;
-            T area_xc = px_c * py;
-            T area_xh = px_h * py;
+            h = bin_index_yl;
 
             k = bin_index_xl;
-            h = bin_index_yl;
-            tmp_x = area_xl * field_map_x_tensor[k * num_bins_y + h];
-            tmp_y = area_xl * field_map_y_tensor[k * num_bins_y + h];
+            if (threadIdx.x == 0)
+            {
+                T px_l = xl + bin_index_xl * bin_size_x + bin_size_x - node_x;
+                T area_xl = px_l * py;
+                tmp_x = area_xl * field_map_x_tensor[k * num_bins_y + h];
+                tmp_y = area_xl * field_map_y_tensor[k * num_bins_y + h];
+                k += blockDim.x;
+            }
 
-            for (++k; k < bin_index_xh; ++k)
+            T px_c = bin_size_x;
+            T area_xc = px_c * py;
+            for (k += threadIdx.x; k < bin_index_xh; k += blockDim.x)
             {
                 tmp_x += area_xc * field_map_x_tensor[k * num_bins_y + h];
                 tmp_y += area_xc * field_map_y_tensor[k * num_bins_y + h];
             }
 
-            tmp_x += area_xh * field_map_x_tensor[k * num_bins_y + h];
-            tmp_y += area_xh * field_map_y_tensor[k * num_bins_y + h];
+            if (k == bin_index_xh)
+            {
+                T px_h = node_x + node_size_x - (bin_index_xh * bin_size_x + xl);
+                T area_xh = px_h * py;
+                tmp_x += area_xh * field_map_x_tensor[k * num_bins_y + h];
+                tmp_y += area_xh * field_map_y_tensor[k * num_bins_y + h];
+            }
 
-            grad_x_tensor[i] = tmp_x * ratio;
-            grad_y_tensor[i] = tmp_y * ratio;
-            break;
+            atomicAdd(&s_x[threadIdx.y], tmp_x * ratio);
+            atomicAdd(&s_y[threadIdx.y], tmp_y * ratio);
+            __syncthreads();
+
+            if (threadIdx.x == 0)
+            {
+                grad_x_tensor[i] = s_x[threadIdx.y];
+                grad_y_tensor[i] = s_y[threadIdx.y];
+            }
+
+            return;
         }
         case 2:
         {
+            extern __shared__ unsigned char shared_memory[];
+            T *s_x = (T *)shared_memory;
+            T *s_y = s_x + blockDim.y;
+            if (threadIdx.x == 0)
+            {
+                s_x[threadIdx.y] = s_y[threadIdx.y] = 0;
+            }
+            __syncthreads();
+
+            T tmp_x = 0;
+            T tmp_y = 0;
+
             T px = xl + bin_index_xl * bin_size_x + bin_size_x - node_x;
-
-            T py_l = yl + bin_index_yl * bin_size_y + bin_size_y - node_y;
-            T py_c = bin_size_y;
-            T py_h = node_y + node_size_y - (bin_index_yh * bin_size_y + yl);
-
-            T area_yl = px * py_l;
-            T area_yc = px * py_c;
-            T area_yh = px * py_h;
-
             k = bin_index_xl;
+
             h = bin_index_yl;
+            if (threadIdx.x == 0)
+            {
+                T py_l = yl + bin_index_yl * bin_size_y + bin_size_y - node_y;
+                T area_yl = px * py_l;
+                tmp_x = area_yl * field_map_x_tensor[k * num_bins_y + h];
+                tmp_y = area_yl * field_map_y_tensor[k * num_bins_y + h];
+                h += blockDim.x;
+            }
 
-            tmp_x = area_yl * field_map_x_tensor[k * num_bins_y + h];
-            tmp_y = area_yl * field_map_y_tensor[k * num_bins_y + h];
-
-            for (++h; h < bin_index_yh; ++h)
+            T py_c = bin_size_y;
+            T area_yc = px * py_c;
+            for (h += threadIdx.x; h < bin_index_yh; h += blockDim.x)
             {
                 tmp_x += area_yc * field_map_x_tensor[k * num_bins_y + h];
                 tmp_y += area_yc * field_map_y_tensor[k * num_bins_y + h];
             }
 
-            tmp_x += area_yh * field_map_x_tensor[k * num_bins_y + h];
-            tmp_y += area_yh * field_map_y_tensor[k * num_bins_y + h];
+            if (h == bin_index_yh)
+            {
+                T py_h = node_y + node_size_y - (bin_index_yh * bin_size_y + yl);
+                T area_yh = px * py_h;
+                tmp_x += area_yh * field_map_x_tensor[k * num_bins_y + h];
+                tmp_y += area_yh * field_map_y_tensor[k * num_bins_y + h];
+            }
 
-            grad_x_tensor[i] = tmp_x * ratio;
-            grad_y_tensor[i] = tmp_y * ratio;
-            break;
+            atomicAdd(&s_x[threadIdx.y], tmp_x * ratio);
+            atomicAdd(&s_y[threadIdx.y], tmp_y * ratio);
+            __syncthreads();
+
+            if (threadIdx.x == 0)
+            {
+                grad_x_tensor[i] = s_x[threadIdx.y];
+                grad_y_tensor[i] = s_y[threadIdx.y];
+            }
+
+            return;
         }
         case 3:
         {
-            T px = xl + bin_index_xl * bin_size_x + bin_size_x - node_x;
-            T py = yl + bin_index_yl * bin_size_y + bin_size_y - node_y;
-            T area = px * py;
+            if (threadIdx.x == 0)
+            {
+                T px = xl + bin_index_xl * bin_size_x + bin_size_x - node_x;
+                T py = yl + bin_index_yl * bin_size_y + bin_size_y - node_y;
+                T area_by_ratio = px * py * ratio;
 
-            k = bin_index_xl;
-            h = bin_index_yl;
+                k = bin_index_xl;
+                h = bin_index_yl;
 
-            grad_x_tensor[i] = area * field_map_x_tensor[k * num_bins_y + h] * ratio;
-            grad_y_tensor[i] = area * field_map_y_tensor[k * num_bins_y + h] * ratio;
-            break;
+                grad_x_tensor[i] = area_by_ratio * field_map_x_tensor[k * num_bins_y + h];
+                grad_y_tensor[i] = area_by_ratio * field_map_y_tensor[k * num_bins_y + h];
+            }
+
+            return;
         }
         default:
             assert(0);
@@ -471,7 +544,7 @@ __global__ void computeElectricForceUnroll(
     T *grad_x_tensor, T *grad_y_tensor,
     const int *sorted_node_map)
 {
-    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    int index = blockIdx.x * blockDim.y + threadIdx.y;
     if (index < num_nodes)
     {
         int i = sorted_node_map[index];
@@ -496,155 +569,228 @@ __global__ void computeElectricForceUnroll(
         bin_index_yh = min(bin_index_yh, num_bins_y - 1);
 
         int k, h;
-        T tmp_x, tmp_y;
 
         int cond = ((bin_index_xl == bin_index_xh) << 1) | (bin_index_yl == bin_index_yh);
         switch (cond)
         {
         case 0:
         {
-            T px_l = xl + bin_index_xl * bin_size_x + bin_size_x - node_x;
+            // blockDim.x threads will be used to update one node
+            // shared memory is used to privatize the atomic memory access to thread block
+            extern __shared__ unsigned char shared_memory[];
+            T *s_x = (T *)shared_memory;
+            T *s_y = s_x + blockDim.y;
+            if (threadIdx.x == 0)
+            {
+                s_x[threadIdx.y] = s_y[threadIdx.y] = 0;
+            }
+            __syncthreads();
+
+            T tmp_x = 0;
+            T tmp_y = 0;
+
             T px_c = bin_size_x;
-            T px_h = node_x + node_size_x - (bin_index_xh * bin_size_x + xl);
 
             T py_l = yl + bin_index_yl * bin_size_y + bin_size_y - node_y;
             T py_c = bin_size_y;
             T py_h = node_y + node_size_y - (bin_index_yh * bin_size_y + yl);
-
-            T area_xl_yl = px_l * py_l;
-            T area_xl_yc = px_l * py_c;
-            T area_xl_yh = px_l * py_h;
 
             T area_xc_yl = px_c * py_l;
             T area_xc_yc = px_c * py_c;
             T area_xc_yh = px_c * py_h;
 
-            T area_xh_yl = px_h * py_l;
-            T area_xh_yc = px_h * py_c;
-            T area_xh_yh = px_h * py_h;
-
             k = bin_index_xl;
-
-            h = bin_index_yl;
-
-            tmp_x = area_xl_yl * field_map_x_tensor[k * num_bins_y + h];
-            tmp_y = area_xl_yl * field_map_y_tensor[k * num_bins_y + h];
-
-            for (++h; h < bin_index_yh; ++h)
+            if (threadIdx.x == 0)
             {
-                tmp_x += area_xl_yc * field_map_x_tensor[k * num_bins_y + h];
-                tmp_y += area_xl_yc * field_map_y_tensor[k * num_bins_y + h];
+                T px_l = xl + bin_index_xl * bin_size_x + bin_size_x - node_x;
+                T area_xl_yl = px_l * py_l;
+                T area_xl_yc = px_l * py_c;
+                T area_xl_yh = px_l * py_h;
+
+                h = bin_index_yl;
+                tmp_x = area_xl_yl * field_map_x_tensor[k * num_bins_y + h];
+                tmp_y = area_xl_yl * field_map_y_tensor[k * num_bins_y + h];
+                for (++h; h < bin_index_yh; ++h)
+                {
+                    tmp_x += area_xl_yc * field_map_x_tensor[k * num_bins_y + h];
+                    tmp_y += area_xl_yc * field_map_y_tensor[k * num_bins_y + h];
+                }
+                tmp_x += area_xl_yh * field_map_x_tensor[k * num_bins_y + h];
+                tmp_y += area_xl_yh * field_map_y_tensor[k * num_bins_y + h];
+                k += blockDim.x;
             }
 
-            tmp_x += area_xl_yh * field_map_x_tensor[k * num_bins_y + h];
-            tmp_y += area_xl_yh * field_map_y_tensor[k * num_bins_y + h];
-
-            for (++k; k < bin_index_xh; ++k)
+            for (k += threadIdx.x; k < bin_index_xh; k += blockDim.x)
             {
                 h = bin_index_yl;
                 tmp_x += area_xc_yl * field_map_x_tensor[k * num_bins_y + h];
                 tmp_y += area_xc_yl * field_map_y_tensor[k * num_bins_y + h];
-
                 for (++h; h < bin_index_yh; ++h)
                 {
                     tmp_x += area_xc_yc * field_map_x_tensor[k * num_bins_y + h];
                     tmp_y += area_xc_yc * field_map_y_tensor[k * num_bins_y + h];
                 }
-
                 tmp_x += area_xc_yh * field_map_x_tensor[k * num_bins_y + h];
                 tmp_y += area_xc_yh * field_map_y_tensor[k * num_bins_y + h];
             }
 
-            h = bin_index_yl;
-            tmp_x += area_xh_yl * field_map_x_tensor[k * num_bins_y + h];
-            tmp_y += area_xh_yl * field_map_y_tensor[k * num_bins_y + h];
-
-            for (++h; h < bin_index_yh; ++h)
+            if (k == bin_index_xh)
             {
-                tmp_x += area_xh_yc * field_map_x_tensor[k * num_bins_y + h];
-                tmp_y += area_xh_yc * field_map_y_tensor[k * num_bins_y + h];
+                T px_h = node_x + node_size_x - (bin_index_xh * bin_size_x + xl);
+                T area_xh_yl = px_h * py_l;
+                T area_xh_yc = px_h * py_c;
+                T area_xh_yh = px_h * py_h;
+
+                h = bin_index_yl;
+                tmp_x += area_xh_yl * field_map_x_tensor[k * num_bins_y + h];
+                tmp_y += area_xh_yl * field_map_y_tensor[k * num_bins_y + h];
+                for (++h; h < bin_index_yh; ++h)
+                {
+                    tmp_x += area_xh_yc * field_map_x_tensor[k * num_bins_y + h];
+                    tmp_y += area_xh_yc * field_map_y_tensor[k * num_bins_y + h];
+                }
+                tmp_x += area_xh_yh * field_map_x_tensor[k * num_bins_y + h];
+                tmp_y += area_xh_yh * field_map_y_tensor[k * num_bins_y + h];
             }
 
-            tmp_x += area_xh_yh * field_map_x_tensor[k * num_bins_y + h];
-            tmp_y += area_xh_yh * field_map_y_tensor[k * num_bins_y + h];
+            atomicAdd(&s_x[threadIdx.y], tmp_x * ratio);
+            atomicAdd(&s_y[threadIdx.y], tmp_y * ratio);
+            __syncthreads();
 
-            grad_x_tensor[i] = tmp_x * ratio;
-            grad_y_tensor[i] = tmp_y * ratio;
-            break;
+            if (threadIdx.x == 0)
+            {
+                grad_x_tensor[i] = s_x[threadIdx.y];
+                grad_y_tensor[i] = s_y[threadIdx.y];
+            }
+
+            return;
         }
         case 1:
         {
-            T px_l = xl + bin_index_xl * bin_size_x + bin_size_x - node_x;
-            T px_c = bin_size_x;
-            T px_h = node_x + node_size_x - (bin_index_xh * bin_size_x + xl);
+            extern __shared__ unsigned char shared_memory[];
+            T *s_x = (T *)shared_memory;
+            T *s_y = s_x + blockDim.y;
+            if (threadIdx.x == 0)
+            {
+                s_x[threadIdx.y] = s_y[threadIdx.y] = 0;
+            }
+            __syncthreads();
+
+            T tmp_x = 0;
+            T tmp_y = 0;
 
             T py = yl + bin_index_yl * bin_size_y + bin_size_y - node_y;
-
-            T area_xl = px_l * py;
-            T area_xc = px_c * py;
-            T area_xh = px_h * py;
+            h = bin_index_yl;
 
             k = bin_index_xl;
-            h = bin_index_yl;
-            tmp_x = area_xl * field_map_x_tensor[k * num_bins_y + h];
-            tmp_y = area_xl * field_map_y_tensor[k * num_bins_y + h];
+            if (threadIdx.x == 0)
+            {
+                T px_l = xl + bin_index_xl * bin_size_x + bin_size_x - node_x;
+                T area_xl = px_l * py;
+                tmp_x = area_xl * field_map_x_tensor[k * num_bins_y + h];
+                tmp_y = area_xl * field_map_y_tensor[k * num_bins_y + h];
+                k += blockDim.x;
+            }
 
-            for (++k; k < bin_index_xh; ++k)
+            T px_c = bin_size_x;
+            T area_xc = px_c * py;
+            for (k += threadIdx.x; k < bin_index_xh; k += blockDim.x)
             {
                 tmp_x += area_xc * field_map_x_tensor[k * num_bins_y + h];
                 tmp_y += area_xc * field_map_y_tensor[k * num_bins_y + h];
             }
 
-            tmp_x += area_xh * field_map_x_tensor[k * num_bins_y + h];
-            tmp_y += area_xh * field_map_y_tensor[k * num_bins_y + h];
+            if (k == bin_index_xh)
+            {
+                T px_h = node_x + node_size_x - (bin_index_xh * bin_size_x + xl);
+                T area_xh = px_h * py;
+                tmp_x += area_xh * field_map_x_tensor[k * num_bins_y + h];
+                tmp_y += area_xh * field_map_y_tensor[k * num_bins_y + h];
+            }
 
-            grad_x_tensor[i] = tmp_x * ratio;
-            grad_y_tensor[i] = tmp_y * ratio;
-            break;
+            atomicAdd(&s_x[threadIdx.y], tmp_x * ratio);
+            atomicAdd(&s_y[threadIdx.y], tmp_y * ratio);
+            __syncthreads();
+
+            if (threadIdx.x == 0)
+            {
+                grad_x_tensor[i] = s_x[threadIdx.y];
+                grad_y_tensor[i] = s_y[threadIdx.y];
+            }
+
+            return;
         }
         case 2:
         {
+            extern __shared__ unsigned char shared_memory[];
+            T *s_x = (T *)shared_memory;
+            T *s_y = s_x + blockDim.y;
+            if (threadIdx.x == 0)
+            {
+                s_x[threadIdx.y] = s_y[threadIdx.y] = 0;
+            }
+            __syncthreads();
+
+            T tmp_x = 0;
+            T tmp_y = 0;
+
             T px = xl + bin_index_xl * bin_size_x + bin_size_x - node_x;
-
-            T py_l = yl + bin_index_yl * bin_size_y + bin_size_y - node_y;
-            T py_c = bin_size_y;
-            T py_h = node_y + node_size_y - (bin_index_yh * bin_size_y + yl);
-
-            T area_yl = px * py_l;
-            T area_yc = px * py_c;
-            T area_yh = px * py_h;
-
             k = bin_index_xl;
+
             h = bin_index_yl;
+            if (threadIdx.x == 0)
+            {
+                T py_l = yl + bin_index_yl * bin_size_y + bin_size_y - node_y;
+                T area_yl = px * py_l;
+                tmp_x = area_yl * field_map_x_tensor[k * num_bins_y + h];
+                tmp_y = area_yl * field_map_y_tensor[k * num_bins_y + h];
+                h += blockDim.x;
+            }
 
-            tmp_x = area_yl * field_map_x_tensor[k * num_bins_y + h];
-            tmp_y = area_yl * field_map_y_tensor[k * num_bins_y + h];
-
-            for (++h; h < bin_index_yh; ++h)
+            T py_c = bin_size_y;
+            T area_yc = px * py_c;
+            for (h += threadIdx.x; h < bin_index_yh; h += blockDim.x)
             {
                 tmp_x += area_yc * field_map_x_tensor[k * num_bins_y + h];
                 tmp_y += area_yc * field_map_y_tensor[k * num_bins_y + h];
             }
 
-            tmp_x += area_yh * field_map_x_tensor[k * num_bins_y + h];
-            tmp_y += area_yh * field_map_y_tensor[k * num_bins_y + h];
+            if (h == bin_index_yh)
+            {
+                T py_h = node_y + node_size_y - (bin_index_yh * bin_size_y + yl);
+                T area_yh = px * py_h;
+                tmp_x += area_yh * field_map_x_tensor[k * num_bins_y + h];
+                tmp_y += area_yh * field_map_y_tensor[k * num_bins_y + h];
+            }
 
-            grad_x_tensor[i] = tmp_x * ratio;
-            grad_y_tensor[i] = tmp_y * ratio;
-            break;
+            atomicAdd(&s_x[threadIdx.y], tmp_x * ratio);
+            atomicAdd(&s_y[threadIdx.y], tmp_y * ratio);
+            __syncthreads();
+
+            if (threadIdx.x == 0)
+            {
+                grad_x_tensor[i] = s_x[threadIdx.y];
+                grad_y_tensor[i] = s_y[threadIdx.y];
+            }
+
+            return;
         }
         case 3:
         {
-            T px = xl + bin_index_xl * bin_size_x + bin_size_x - node_x;
-            T py = yl + bin_index_yl * bin_size_y + bin_size_y - node_y;
-            T area = px * py;
+            if (threadIdx.x == 0)
+            {
+                T px = xl + bin_index_xl * bin_size_x + bin_size_x - node_x;
+                T py = yl + bin_index_yl * bin_size_y + bin_size_y - node_y;
+                T area_by_ratio = px * py * ratio;
 
-            k = bin_index_xl;
-            h = bin_index_yl;
+                k = bin_index_xl;
+                h = bin_index_yl;
 
-            grad_x_tensor[i] = area * field_map_x_tensor[k * num_bins_y + h] * ratio;
-            grad_y_tensor[i] = area * field_map_y_tensor[k * num_bins_y + h] * ratio;
-            break;
+                grad_x_tensor[i] = area_by_ratio * field_map_x_tensor[k * num_bins_y + h];
+                grad_y_tensor[i] = area_by_ratio * field_map_y_tensor[k * num_bins_y + h];
+            }
+
+            return;
         }
         default:
             assert(0);
@@ -670,12 +816,12 @@ int computeElectricForceCudaLauncher(
     const int *sorted_node_map)
 {
     int thread_count = 64;
-    dim3 blockSize(thread_count, 1, 1);
-    // dim3 blockSize(2, 2, thread_count);
-    // size_t shared_mem_size = sizeof(T) * thread_count * 2;
+    // dim3 blockSize(4, thread_count, 1);
+    dim3 blockSize(2, 2, thread_count);
+    size_t shared_mem_size = sizeof(T) * thread_count * 2;
 
     int block_count_nodes = (num_movable_nodes + thread_count - 1) / thread_count;
-    computeElectricForceUnroll<<<block_count_nodes, blockSize>>>(
+    computeElectricForce<<<block_count_nodes, blockSize, shared_mem_size>>>(
         num_bins_x, num_bins_y,
         field_map_x_tensor, field_map_y_tensor,
         x_tensor, y_tensor,
@@ -706,7 +852,7 @@ int computeElectricForceCudaLauncher(
 
         block_count_nodes = (num_filler_nodes + thread_count - 1) / thread_count;
         int num_physical_nodes = num_nodes - num_filler_nodes;
-        computeElectricForceUnroll<<<block_count_nodes, blockSize, 0, stream_filler>>>(
+        computeElectricForce<<<block_count_nodes, blockSize, shared_mem_size, stream_filler>>>(
             num_bins_x, num_bins_y,
             field_map_x_tensor, field_map_y_tensor,
             x_tensor + num_physical_nodes, y_tensor + num_physical_nodes,
