@@ -20,7 +20,6 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
         T* exp_xy_sum, T* exp_nxy_sum,
         T* xyexp_xy_sum, T* xyexp_nxy_sum,
         V* xy_max, V* xy_min, 
-        T* partial_wl, // wirelength of each net 
         const T* grad_tensor, 
         T* grad_x_tensor, T* grad_y_tensor // the gradient is partial total wirelength to partial pin position  
         );
@@ -58,7 +57,6 @@ std::vector<at::Tensor> weighted_average_wirelength_atomic_forward(
     int num_pins = pin2net_map.numel();
 
     // log-sum-exp for x, log-sum-exp for -x, log-sum-exp for y, log-sum-exp for -y 
-    at::Tensor partial_wl = at::zeros({4, num_nets}, pos.options());
     at::Tensor exp_xy = at::zeros_like(pos);
     at::Tensor exp_nxy = at::zeros_like(pos);
     at::Tensor exp_xy_sum = at::zeros({2, num_nets}, pos.options());
@@ -84,14 +82,13 @@ std::vector<at::Tensor> weighted_average_wirelength_atomic_forward(
                     exp_xy_sum.data<scalar_t>(), exp_nxy_sum.data<scalar_t>(),
                     xyexp_xy_sum.data<scalar_t>(), xyexp_nxy_sum.data<scalar_t>(), 
                     xy_max.data<V>(), xy_min.data<V>(), 
-                    partial_wl.data<scalar_t>(), 
                     nullptr, 
                     nullptr, nullptr
                     );
             });
 
     // significant speedup is achieved by using summation in ATen 
-    auto wl = at::sum(partial_wl); 
+    auto wl = at::sum(xyexp_xy_sum.div(exp_xy_sum) - xyexp_nxy_sum.div(exp_nxy_sum));  
     return {wl, exp_xy, exp_nxy, exp_xy_sum, exp_nxy_sum, xyexp_xy_sum, xyexp_nxy_sum}; 
 }
 
@@ -159,7 +156,6 @@ at::Tensor weighted_average_wirelength_atomic_backward(
                     exp_xy_sum.data<scalar_t>(), exp_nxy_sum.data<scalar_t>(),
                     xyexp_xy_sum.data<scalar_t>(), xyexp_nxy_sum.data<scalar_t>(),
                     nullptr, nullptr, 
-                    nullptr, 
                     grad_pos.data<scalar_t>(), 
                     grad_out.data<scalar_t>(), grad_out.data<scalar_t>()+num_pins
                     );
