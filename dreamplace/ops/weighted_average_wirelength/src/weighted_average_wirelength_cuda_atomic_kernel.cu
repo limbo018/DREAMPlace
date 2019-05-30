@@ -21,7 +21,7 @@ __global__ void computeExpSum(
     for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_pins; i += blockDim.x * gridDim.x) 
     {
         int net_id = pin2net_map[i]; 
-        if (net_id >= 0 || net_mask[net_id])
+        if (net_mask[net_id])
         {
             atomicAdd(&exp_x_sum[net_id], exp_x[i]); 
             __syncthreads();
@@ -43,7 +43,7 @@ __global__ void computeXExpSum(
     for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_pins; i += blockDim.x * gridDim.x) 
     {
         int net_id = pin2net_map[i]; 
-        if (net_id >= 0 || net_mask[net_id])
+        if (net_mask[net_id])
         {
             atomicAdd(&xexp_x_sum[net_id], x[i]*exp_x[i]); 
             __syncthreads();

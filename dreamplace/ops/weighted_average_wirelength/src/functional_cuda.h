@@ -21,7 +21,7 @@ __global__ void computeMax(
     for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_pins; i += blockDim.x * gridDim.x) 
     {
         int net_id = pin2net_map[i];
-        if (net_id >= 0 || net_mask[net_id])
+        if (net_mask[net_id])
         {
             atomicMax(&x_max[net_id], (V)(x[i]));
             __syncthreads();
@@ -43,7 +43,7 @@ __global__ void computeMin(
     for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_pins; i += blockDim.x * gridDim.x) 
     {
         int net_id = pin2net_map[i];
-        if (net_id >= 0 || net_mask[net_id])
+        if (net_mask[net_id])
         {
             atomicMin(&x_min[net_id], (V)(x[i]));
             __syncthreads();
@@ -66,7 +66,7 @@ __global__ void computeExp(
     for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_pins; i += blockDim.x * gridDim.x) 
     {
         int net_id = pin2net_map[i]; 
-        if (net_id >= 0 || net_mask[net_id])
+        if (net_mask[net_id])
         {
             exp_x[i] = exp((x[i]-x_max[net_id])/(*gamma)); 
         }
@@ -88,7 +88,7 @@ __global__ void computeNegExp(
     for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_pins; i += blockDim.x * gridDim.x) 
     {
         int net_id = pin2net_map[i]; 
-        if (net_id >= 0 || net_mask[net_id])
+        if (net_mask[net_id])
         {
             exp_nx[i] = exp(-(x[i]-x_min[net_id])/(*gamma)); 
         }
@@ -153,7 +153,7 @@ __global__ void computeWeightedAverageWirelengthGrad(
     for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_pins; i += blockDim.x * gridDim.x) 
     {
         int net_id = pin2net_map[i]; 
-        if (net_id >= 0 || net_mask[net_id])
+        if (net_mask[net_id])
         {
             T gamma_inv = 1.0/(*gamma); 
             grad_x_tensor[i] = (\
