@@ -20,6 +20,7 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
     T *exp_xy_sum, T *exp_nxy_sum,
     T *xyexp_xy_sum, T *xyexp_nxy_sum,
     V *xy_max, V *xy_min,
+    T *partial_wl, // wirelength of each net
     const T *grad_tensor,
     T *grad_x_tensor, T *grad_y_tensor // the gradient is partial total wirelength to partial pin position
 )
@@ -72,10 +73,19 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
             exp_xy_sum, exp_nxy_sum,
             xyexp_xy_sum, xyexp_nxy_sum);
 
-        // Zixuan: move out the log sum exp compuation to use ATen
+        // compute log sum exp
+        int block_count_nets = (num_nets - 1 + thread_count) / thread_count;
+        computeXExpSumByExpSumXY<<<block_count_nets, thread_count>>>(
+            xyexp_xy_sum, xyexp_nxy_sum,
+            exp_xy_sum, exp_nxy_sum,
+            pin2net_map,
+            net_mask,
+            num_nets,
+            partial_wl);
+
         // Yibo: move out the summation to use ATen
         // significant speedup is observed
-        //sumArray<<<1, 1>>>(partial_wl, 2*num_nets, wl);
+        //sumArray<<<1, 1>>>(partial_wl, num_nets, wl);
     }
 
     return 0;
@@ -93,6 +103,7 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
         T *exp_xy_sum, T *exp_nxy_sum,                             \
         T *xyexp_xy_sum, T *xyexp_nxy_sum,                         \
         V *xy_max, V *xy_min,                                      \
+        T* partial_wl,                                             \
         const T *grad_tensor,                                      \
         T *grad_x_tensor, T *grad_y_tensor)                        \
     {                                                              \
@@ -107,6 +118,7 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
             exp_xy_sum, exp_nxy_sum,                               \
             xyexp_xy_sum, xyexp_nxy_sum,                           \
             xy_max, xy_min,                                        \
+            partial_wl,                                            \
             grad_tensor,                                           \
             grad_x_tensor, grad_y_tensor);                         \
     }

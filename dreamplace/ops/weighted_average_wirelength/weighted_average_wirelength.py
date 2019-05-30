@@ -93,10 +93,10 @@ class WeightedAverageWirelengthAtomicFunction(Function):
         ctx.inv_gamma = inv_gamma
         ctx.exp_xy = output[1]
         ctx.exp_nxy = output[2]
-        ctx.exp_xy_sum = output[3];
-        ctx.exp_nxy_sum = output[4];
-        ctx.xyexp_xy_sum = output[5];
-        ctx.xyexp_nxy_sum = output[6];
+        ctx.exp_xy_sum = output[3]
+        ctx.exp_nxy_sum = output[4]
+        ctx.xyexp_xy_sum = output[5]
+        ctx.xyexp_nxy_sum = output[6]
         ctx.pos = pos
         #if torch.isnan(ctx.exp_xy).any() or torch.isnan(ctx.exp_nxy).any() or torch.isnan(ctx.exp_xy_sum).any() or torch.isnan(ctx.exp_nxy_sum).any() or torch.isnan(output[0]).any():
         #    pdb.set_trace()

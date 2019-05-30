@@ -297,6 +297,26 @@ __global__ void computeXNegExpSumByNegExpSum(
 }
 
 template <typename T>
+__global__ void computeXExpSumByExpSumXY(
+    const T *xexp_x_sum, const T *xexp_nx_sum,
+    const T *exp_x_sum, const T *exp_nx_sum,
+    const int *pin2net_map,
+    const unsigned char *net_mask,
+    int num_nets,
+    T *partial_wl)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_nets && net_mask[i])
+    {
+        T wl_x = xexp_x_sum[i] / exp_x_sum[i] - xexp_nx_sum[i] / exp_nx_sum[i];
+        int y_index = i + num_nets;
+        T wl_y = xexp_x_sum[y_index] / exp_x_sum[y_index] - xexp_nx_sum[y_index] / exp_nx_sum[y_index];
+
+        partial_wl[i] = wl_x + wl_y;
+    }
+}
+
+template <typename T>
 __global__ void computeWeightedAverageWirelengthGrad(
     const T *x, const T *y,
     const T *exp_x, const T *exp_nx,

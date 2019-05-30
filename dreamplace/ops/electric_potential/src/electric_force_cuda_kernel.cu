@@ -125,8 +125,6 @@ __global__ void __launch_bounds__(1024, 8) computeElectricForce(
         bin_index_xl = (bin_index_xl > 0) * bin_index_xl;                           // max(bin_index_xl, 0);
         bin_index_xh = min(bin_index_xh, num_bins_x);
 
-        // Yibo: looks very weird implementation, but this is how RePlAce implements it
-        // Zixuan and Jiaqi: use the common practice of floor
         int bin_index_yl = int((node_y - yl) * inv_bin_size_y);
         int bin_index_yh = int(((node_y + node_size_y - yl) * inv_bin_size_y)) + 1; // exclusive
         bin_index_yl = (bin_index_yl > 0) * bin_index_yl;                           // max(bin_index_yl, 0);
@@ -210,8 +208,6 @@ __global__ void __launch_bounds__(1024, 8) computeElectricForce(
         bin_index_xl = (bin_index_xl > 0) * bin_index_xl;                           // max(bin_index_xl, 0);
         bin_index_xh = min(bin_index_xh, num_bins_x);
 
-        // Yibo: looks very weird implementation, but this is how RePlAce implements it
-        // Zixuan and Jiaqi: use the common practice of floor
         int bin_index_yl = int((node_y - yl) * inv_bin_size_y);
         int bin_index_yh = int(((node_y + node_size_y - yl) * inv_bin_size_y)) + 1; // exclusive
         bin_index_yl = (bin_index_yl > 0) * bin_index_yl;                           // max(bin_index_yl, 0);
