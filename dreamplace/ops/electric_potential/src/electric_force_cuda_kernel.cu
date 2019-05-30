@@ -109,16 +109,16 @@ __global__ void computeElectricForce(
 
         // Yibo: looks very weird implementation, but this is how RePlAce implements it 
         // the common practice should be floor 
-        int bin_index_xl = round((node_x-xl)/bin_size_x);
-        int bin_index_xh = round(((node_x+node_size_x-xl)/bin_size_x))+1; // exclusive 
+        int bin_index_xl = int((node_x-xl)/bin_size_x);
+        int bin_index_xh = int(((node_x+node_size_x-xl)/bin_size_x))+1; // exclusive 
         bin_index_xl = max(bin_index_xl, 0); 
         bin_index_xh = min(bin_index_xh, num_bins_x);
         //int bin_index_xh = bin_index_xl+num_impacted_bins_x; 
 
         // Yibo: looks very weird implementation, but this is how RePlAce implements it 
         // the common practice should be floor 
-        int bin_index_yl = round((node_y-yl)/bin_size_y);
-        int bin_index_yh = round(((node_y+node_size_y-yl)/bin_size_y))+1; // exclusive 
+        int bin_index_yl = int((node_y-yl)/bin_size_y);
+        int bin_index_yh = int(((node_y+node_size_y-yl)/bin_size_y))+1; // exclusive 
         bin_index_yl = max(bin_index_yl, 0); 
         bin_index_yh = min(bin_index_yh, num_bins_y);
         //int bin_index_yh = bin_index_yl+num_impacted_bins_y; 
