@@ -101,11 +101,11 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                 print("[I] %s initialization takes %g seconds" % (optimizer_name, (time.time()-tt)))
 
                 for step in range(model.iteration):
+                    t0 = time.time()
+                    
                     # metric for this iteration 
                     cur_metric = EvalMetrics.EvalMetrics(iteration)
                     metrics.append(cur_metric)
-
-                    t0 = time.time()
 
                     # move any out-of-bound cell back to placement region 
                     self.op_collections.move_boundary_op(model.data_collections.pos[0])
@@ -118,6 +118,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                     #t1 = time.time()
                     cur_metric.evaluate(placedb, eval_ops, model.data_collections.pos[0])
                     #print("evaluation %.3f ms" % ((time.time()-t1)*1000))
+                    
                     #t2 = time.time()
                     # update density weight 
                     # gradually reduce gamma to tradeoff smoothness and accuracy 
