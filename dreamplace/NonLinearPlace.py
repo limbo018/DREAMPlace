@@ -107,11 +107,11 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                     assert 0, "unsupported optimizer %s" % (optimizer_name)
 
                 for step in range(model.iteration):
+                    t0 = time.time()
+                    
                     # metric for this iteration 
                     cur_metric = EvalMetrics.EvalMetrics(iteration)
                     metrics.append(cur_metric)
-
-                    t0 = time.time()
 
                     # move any out-of-bound cell back to placement region 
                     self.op_collections.move_boundary_op(model.data_collections.pos[0])

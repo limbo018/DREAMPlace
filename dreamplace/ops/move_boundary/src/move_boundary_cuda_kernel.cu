@@ -18,13 +18,9 @@ __global__ void computeMoveBoundary(
         )
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i < num_nodes)
+    if (i < num_movable_nodes || (i >= num_nodes-num_filler_nodes && i < num_nodes))
     {
-        if (i < num_movable_nodes || i >= num_nodes-num_filler_nodes)
-        {
-            x_tensor[i] = max(xl, x_tensor[i]);
-            x_tensor[i] = min(xh-node_size_x_tensor[i], x_tensor[i]);
-        }
+        x_tensor[i] = min(xh-node_size_x_tensor[i], max(xl, x_tensor[i]));
     }
 }
 
