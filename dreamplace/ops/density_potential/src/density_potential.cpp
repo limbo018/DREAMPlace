@@ -54,6 +54,7 @@ int computeDensityPotentialMapLauncher(
         const T target_area, 
         T* density_map_tensor, T* density_cost_tensor, 
         const T* grad_tensor, 
+        int num_threads, 
         T* grad_x_tensor, T* grad_y_tensor 
         );
 
@@ -109,7 +110,8 @@ std::vector<at::Tensor> density_potential_forward(
         int padding, 
         at::Tensor padding_mask, 
         int num_bins_x, int num_bins_y, 
-        int num_impacted_bins_x, int num_impacted_bins_y
+        int num_impacted_bins_x, int num_impacted_bins_y, 
+        int num_threads
         ) 
 {
     CHECK_FLAT(pos); 
@@ -139,6 +141,7 @@ std::vector<at::Tensor> density_potential_forward(
                     density_map.data<scalar_t>(), 
                     density_cost.data<scalar_t>(), 
                     nullptr, 
+                    num_threads, 
                     nullptr, nullptr
                     );
             });
@@ -160,6 +163,7 @@ std::vector<at::Tensor> density_potential_forward(
                         density_map.data<scalar_t>(), 
                         density_cost.data<scalar_t>(), 
                         nullptr, 
+                        num_threads, 
                         nullptr, nullptr
                         );
                 });
@@ -218,7 +222,9 @@ at::Tensor density_potential_backward(
         double bin_size_y, 
         int num_movable_nodes, 
         int num_filler_nodes, 
-        int padding) 
+        int padding, 
+        int num_threads
+        ) 
 {
     CHECK_FLAT(pos); 
     CHECK_EVEN(pos);
@@ -247,6 +253,7 @@ at::Tensor density_potential_backward(
                     density_map.data<scalar_t>(), 
                     nullptr, 
                     grad_pos.data<scalar_t>(), 
+                    num_threads, 
                     grad_out.data<scalar_t>(), grad_out.data<scalar_t>()+pos.numel()/2
                     );
             });
@@ -268,6 +275,7 @@ at::Tensor density_potential_backward(
                         density_map.data<scalar_t>(), 
                         nullptr, 
                         grad_pos.data<scalar_t>(), 
+                        num_threads, 
                         grad_out.data<scalar_t>()+pos.numel()/2-num_filler_nodes, grad_out.data<scalar_t>()+pos.numel()-num_filler_nodes
                         );
                 });
@@ -286,6 +294,7 @@ int computeDensityOverflowMapLauncher(
         const T xl, const T yl, const T xh, const T yh, 
         const T bin_size_x, const T bin_size_y, 
         const T target_density, 
+        const int num_threads, 
         T* density_map_tensor, T* density_cost_tensor
         );
 
@@ -293,6 +302,7 @@ template <typename T>
 int computeGaussianFilterLauncher(
         const int num_bins_x, const int num_bins_y, 
         const T sigma, 
+        const int num_threads, 
         T* gaussian_filter_tensor
         );
 
@@ -314,7 +324,8 @@ at::Tensor fixed_density_potential_map(
         int num_terminals, 
         int num_bins_x, int num_bins_y, 
         int num_impacted_bins_x, int num_impacted_bins_y, 
-        double sigma, double delta
+        double sigma, double delta, 
+        int num_threads
         ) 
 {
     CHECK_FLAT(pos); 
@@ -338,6 +349,7 @@ at::Tensor fixed_density_potential_map(
                         xl, yl, xh, yh, 
                         bin_size_x, bin_size_y, 
                         0, 
+                        num_threads, 
                         density_map.data<scalar_t>(), 
                         nullptr
                         );
@@ -362,6 +374,7 @@ int computeDensityPotentialMapLauncher(
         const T target_area, 
         T* density_map_tensor, T* density_cost_tensor, 
         const T* grad_tensor, 
+        int num_threads, 
         T* grad_x_tensor, T* grad_y_tensor 
         )
 {
@@ -414,6 +427,7 @@ int computeDensityPotentialMapLauncher(
         }
     };
 
+#pragma omp parallel for num_threads(num_threads)
     for (int i = 0; i < num_nodes; ++i)
     {
         // x direction 
@@ -439,13 +453,16 @@ int computeDensityPotentialMapLauncher(
                 //printf("px[%d, %d] = %g, py[%d, %d] = %g\n", k, h, px, k, h, py);
 
                 // still area 
-                density_map_tensor[k*num_bins_y+h] += px*py;
+                T& density = density_map_tensor[k*num_bins_y+h];
+#pragma omp atomic
+                density += px*py;
             }
         }
     }
 
     if (grad_tensor) // compute density gradient 
     {
+#pragma omp parallel for num_threads(num_threads)
         for (int i = 0; i < num_nodes; ++i) 
         {
             int bin_index_xl = int((x_tensor[i]-xl-2*bin_size_x)/bin_size_x);
@@ -496,6 +513,7 @@ int computeDensityPotentialMapLauncher(
     else // compute density cost 
     {
         // handle padding 
+#pragma omp parallel for num_threads(num_threads)
         for (int i = 0; i < num_bins_x; ++i)
         {
             for (int j = 0; j < num_bins_y; ++j)
@@ -509,15 +527,14 @@ int computeDensityPotentialMapLauncher(
 
         if (density_cost_tensor)
         {
-            for (int i = 0; i < num_bins_x; ++i)
+            int num_bins = num_bins_x*num_bins_y; 
+#pragma omp parallel for num_threads(num_threads)
+            for (int i = 0; i < num_bins; ++i)
             {
-                for (int j = 0; j < num_bins_y; ++j)
-                {
-                    //printf("density_map[%d, %d] = %g, target_area = %g\n", i, j, density_map_tensor[i*num_bins_y+j], target_area);
-                    T delta = density_map_tensor[i*num_bins_y+j]-target_area;
-                    //delta = std::max(delta, (T)0);
-                    *density_cost_tensor += delta*delta;
-                }
+                T delta = density_map_tensor[i]-target_area;
+                //delta = std::max(delta, (T)0);
+#pragma omp atomic
+                *density_cost_tensor += delta*delta;
             }
         }
     }
@@ -535,23 +552,23 @@ int computeDensityOverflowMapLauncher(
         const T xl, const T yl, const T xh, const T yh, 
         const T bin_size_x, const T bin_size_y, 
         const T target_area, 
+        const int num_threads, 
         T* density_map_tensor, T* density_cost_tensor
         )
 {
     // initialize 
-    for (int i = 0; i < num_bins_x; ++i)
+    int num_bins = num_bins_x*num_bins_y; 
+#pragma omp parallel for num_threads(num_threads)
+    for (int i = 0; i < num_bins; ++i)
     {
-        for (int j = 0; j < num_bins_y; ++j)
-        {
-            // becomes density 
-            density_map_tensor[i*num_bins_y+j] = 0;  
-        }
+        density_map_tensor[i] = 0; 
     }
 
     // density overflow function 
     auto computeDensityOverflowFunc = [](T x, T node_size, T bin_center, T bin_size){
         return std::max(T(0.0), std::min(x+node_size, bin_center+bin_size/2) - std::max(x, bin_center-bin_size/2));
     };
+#pragma omp parallel for num_threads(num_threads)
     for (int i = 0; i < num_nodes; ++i)
     {
         // x direction 
@@ -575,21 +592,21 @@ int computeDensityOverflowMapLauncher(
                 //printf("px[%d, %d] = %g, py[%d, %d] = %g\n", k, h, px, k, h, py);
 
                 // still area 
-                density_map_tensor[k*num_bins_y+h] += px*py;
+                T& density = density_map_tensor[k*num_bins_y+h];
+#pragma omp atomic
+                density += px*py;
             }
         }
     }
 
     if (density_cost_tensor)
     {
-        *density_cost_tensor = 0; 
-        for (int i = 0; i < num_bins_x; ++i)
+        T& cost = *density_cost_tensor; 
+        cost = 0; 
+#pragma omp parallel for num_threads(num_threads) reduction(+:cost)
+        for (int i = 0; i < num_bins; ++i)
         {
-            for (int j = 0; j < num_bins_y; ++j)
-            {
-                //printf("density_map[%d, %d] = %g, target_area = %g\n", i, j, density_map_tensor[i*num_bins_y+j], target_area);
-                *density_cost_tensor += std::max(density_map_tensor[i*num_bins_y+j]-target_area, T(0.0));
-            }
+            cost += std::max(density_map_tensor[i]-target_area, T(0.0));
         }
         //printf("density_cost_tensor = %g\n", *density_cost_tensor);
         // convert area to density 
@@ -602,10 +619,12 @@ template <typename T>
 int computeGaussianFilterLauncher(
         const int num_bins_x, const int num_bins_y, 
         const T sigma, 
+        const int num_threads, 
         T* gaussian_filter_tensor
         )
 {
     T sigma_square = sigma*sigma; 
+#pragma omp parallel for num_threads(num_threads)
     for (int i = 0; i < num_bins_x; ++i)
     {
         for (int j = 0; j < num_bins_y; ++j)

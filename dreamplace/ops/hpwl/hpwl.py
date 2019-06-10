@@ -11,9 +11,12 @@ import numpy as np
 import pdb 
 
 import dreamplace.ops.hpwl.hpwl_cpp as hpwl_cpp
-import dreamplace.ops.hpwl.hpwl_cuda as hpwl_cuda
 import dreamplace.ops.hpwl.hpwl_cpp_atomic as hpwl_cpp_atomic
-import dreamplace.ops.hpwl.hpwl_cuda_atomic as hpwl_cuda_atomic
+try: 
+    import dreamplace.ops.hpwl.hpwl_cuda as hpwl_cuda
+    import dreamplace.ops.hpwl.hpwl_cuda_atomic as hpwl_cuda_atomic
+except:
+    pass 
 
 class HPWLFunction(Function):
     """compute half-perimeter wirelength.
@@ -24,12 +27,12 @@ class HPWLFunction(Function):
     @param pin2net_map pin2net map, second set of options 
     """
     @staticmethod
-    def forward(ctx, pos, flat_netpin, netpin_start, net_mask):
+    def forward(ctx, pos, flat_netpin, netpin_start, net_mask, num_threads):
         output = pos.new_empty(1)
         if pos.is_cuda:
             output = hpwl_cuda.forward(pos.view(pos.numel()), flat_netpin, netpin_start, net_mask)
         else:
-            output = hpwl_cpp.forward(pos.view(pos.numel()), flat_netpin, netpin_start, net_mask)
+            output = hpwl_cpp.forward(pos.view(pos.numel()), flat_netpin, netpin_start, net_mask, num_threads)
         return output 
 
 class HPWLAtomicFunction(Function):
@@ -53,7 +56,7 @@ class HPWL(nn.Module):
     Support two algoriths: net-by-net and atomic. 
     Different parameters are required for different algorithms. 
     """
-    def __init__(self, flat_netpin=None, netpin_start=None, pin2net_map=None, net_mask=None, algorithm='atomic'):
+    def __init__(self, flat_netpin=None, netpin_start=None, pin2net_map=None, net_mask=None, algorithm='atomic', num_threads=8):
         """
         @brief initialization 
         @param flat_netpin flat netpin map, length of #pins 
@@ -73,12 +76,14 @@ class HPWL(nn.Module):
         self.pin2net_map = pin2net_map 
         self.net_mask = net_mask 
         self.algorithm = algorithm
+        self.num_threads = num_threads
     def forward(self, pos): 
         if self.algorithm == 'net-by-net': 
             return HPWLFunction.apply(pos, 
                     self.flat_netpin, 
                     self.netpin_start, 
-                    self.net_mask
+                    self.net_mask, 
+                    self.num_threads
                     )
         elif self.algorithm == 'atomic':
             return HPWLAtomicFunction.apply(pos, 

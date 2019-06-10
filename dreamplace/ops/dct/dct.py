@@ -12,7 +12,10 @@ from torch.autograd import Function
 from torch import nn
 
 import dreamplace.ops.dct.dct_cpp as dct_cpp
-import dreamplace.ops.dct.dct_cuda as dct_cuda
+try: 
+    import dreamplace.ops.dct.dct_cuda as dct_cuda
+except:
+    pass 
 
 import dreamplace.ops.dct.discrete_spectral_transform as discrete_spectral_transform
 

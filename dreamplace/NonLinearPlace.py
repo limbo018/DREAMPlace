@@ -144,6 +144,10 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                         param_group['lr'] = learning_rate
 
                     print(cur_metric)
+                    # plot placement 
+                    if params.plot_flag and iteration % 100 == 0: 
+                        cur_pos = self.pos[0].data.clone().cpu().numpy()
+                        self.plot(params, placedb, iteration, cur_pos)
 
                     t3 = time.time()
                     optimizer.step()

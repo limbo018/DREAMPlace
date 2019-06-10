@@ -129,7 +129,8 @@ class NesterovAcceleratedGradientOptimizer(Optimizer):
                         break 
                     else:
                         alpha_k.data.copy_(alpha_kp1.data)
-                torch.cuda.synchronize()
+                if v_k.is_cuda: 
+                    torch.cuda.synchronize()
                 #print("\tline search %.3f ms" % ((time.time()-ttt)*1000))
 
                 v_k_1.data.copy_(v_k.data)

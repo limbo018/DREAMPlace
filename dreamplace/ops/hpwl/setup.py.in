@@ -40,7 +40,7 @@ modules.extend([
         library_dirs=lib_dirs,
         libraries=libs,
         extra_compile_args={
-            'cxx' : [torch_major_version, torch_minor_version]
+            'cxx' : [torch_major_version, torch_minor_version, '-fopenmp']
             }
         ),
     CppExtension('hpwl_cpp_atomic', 
@@ -51,12 +51,12 @@ modules.extend([
         library_dirs=lib_dirs,
         libraries=libs,
         extra_compile_args={
-            'cxx' : [torch_major_version, torch_minor_version]
+            'cxx' : [torch_major_version, torch_minor_version, '-fopenmp']
             }
         ),
     ])
 
-if not "${CUDA_FOUND}" or "${CUDA_FOUND}".upper() == 'TRUE': 
+if "${CUDA_FOUND}".upper() == 'TRUE': 
     modules.extend([
             CUDAExtension('hpwl_cuda', 
                 [

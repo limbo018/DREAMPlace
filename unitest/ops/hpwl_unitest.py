@@ -92,16 +92,17 @@ class HPWLOpTest(unittest.TestCase):
         np.testing.assert_allclose(hpwl_value.data.numpy(), golden_value)
 
         # test gpu 
-        custom_cuda = hpwl.HPWL(
-                flat_netpin=torch.from_numpy(flat_net2pin_map).cuda(), 
-                netpin_start=torch.from_numpy(flat_net2pin_start_map).cuda(),
-                pin2net_map=torch.from_numpy(pin2net_map).cuda(), 
-                net_mask=torch.from_numpy(net_mask).cuda(), 
-                algorithm='net-by-net'
-                )
-        hpwl_value = custom_cuda.forward(pin_pos_var.cuda())
-        print("hpwl_value cuda = ", hpwl_value.data.cpu().numpy())
-        np.testing.assert_allclose(hpwl_value.data.cpu().numpy(), golden_value)
+        if torch.cuda.device_count(): 
+            custom_cuda = hpwl.HPWL(
+                    flat_netpin=torch.from_numpy(flat_net2pin_map).cuda(), 
+                    netpin_start=torch.from_numpy(flat_net2pin_start_map).cuda(),
+                    pin2net_map=torch.from_numpy(pin2net_map).cuda(), 
+                    net_mask=torch.from_numpy(net_mask).cuda(), 
+                    algorithm='net-by-net'
+                    )
+            hpwl_value = custom_cuda.forward(pin_pos_var.cuda())
+            print("hpwl_value cuda = ", hpwl_value.data.cpu().numpy())
+            np.testing.assert_allclose(hpwl_value.data.cpu().numpy(), golden_value)
 
         # test atomic cpu 
         custom_atomic = hpwl.HPWL(
@@ -116,16 +117,17 @@ class HPWLOpTest(unittest.TestCase):
         np.testing.assert_allclose(hpwl_value.data.numpy(), golden_value)
 
         # test atomic gpu 
-        custom_cuda_atomic = hpwl.HPWL(
-                flat_netpin=torch.from_numpy(flat_net2pin_map).cuda(), 
-                netpin_start=torch.from_numpy(flat_net2pin_start_map).cuda(),
-                pin2net_map=torch.from_numpy(pin2net_map).cuda(), 
-                net_mask=torch.from_numpy(net_mask).cuda(), 
-                algorithm='atomic'
-                )
-        hpwl_value = custom_cuda_atomic.forward(pin_pos_var.cuda())
-        print("hpwl_value cuda atomic = ", hpwl_value.data.cpu().numpy())
-        np.testing.assert_allclose(hpwl_value.data.cpu().numpy(), golden_value)
+        if torch.cuda.device_count(): 
+            custom_cuda_atomic = hpwl.HPWL(
+                    flat_netpin=torch.from_numpy(flat_net2pin_map).cuda(), 
+                    netpin_start=torch.from_numpy(flat_net2pin_start_map).cuda(),
+                    pin2net_map=torch.from_numpy(pin2net_map).cuda(), 
+                    net_mask=torch.from_numpy(net_mask).cuda(), 
+                    algorithm='atomic'
+                    )
+            hpwl_value = custom_cuda_atomic.forward(pin_pos_var.cuda())
+            print("hpwl_value cuda atomic = ", hpwl_value.data.cpu().numpy())
+            np.testing.assert_allclose(hpwl_value.data.cpu().numpy(), golden_value)
 
 if __name__ == '__main__':
     unittest.main()

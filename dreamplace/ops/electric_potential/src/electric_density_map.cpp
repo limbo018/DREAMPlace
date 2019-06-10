@@ -22,6 +22,7 @@ int computeTriangleDensityMapLauncher(
         const int num_bins_x, const int num_bins_y, 
         const T xl, const T yl, const T xh, const T yh, 
         const T bin_size_x, const T bin_size_y, 
+        const int num_threads, 
         T* density_map_tensor
         );
 
@@ -37,6 +38,7 @@ int computeExactDensityMapLauncher(
         const T xl, const T yl, const T xh, const T yh, 
         const T bin_size_x, const T bin_size_y, 
         bool fixed_node_flag, 
+        const int num_threads, 
         T* density_map_tensor
         );
 
@@ -87,7 +89,8 @@ at::Tensor density_map(
         at::Tensor padding_mask, 
         int num_bins_x, int num_bins_y, 
         int num_movable_impacted_bins_x, int num_movable_impacted_bins_y, 
-        int num_filler_impacted_bins_x, int num_filler_impacted_bins_y
+        int num_filler_impacted_bins_x, int num_filler_impacted_bins_y, 
+        int num_threads
         ) 
 {
     CHECK_FLAT(pos); 
@@ -108,6 +111,7 @@ at::Tensor density_map(
                     xl, yl, xh, yh, 
                     bin_size_x, bin_size_y, 
                     //false, 
+                    num_threads, 
                     density_map.data<scalar_t>()
                     );
             });
@@ -124,6 +128,7 @@ at::Tensor density_map(
                         xl, yl, xh, yh, 
                         bin_size_x, bin_size_y, 
                         //false, 
+                        num_threads, 
                         density_map.data<scalar_t>()
                         );
                 });
@@ -153,7 +158,8 @@ at::Tensor fixed_density_map(
         int num_movable_nodes, 
         int num_terminals, 
         int num_bins_x, int num_bins_y,
-        int num_fixed_impacted_bins_x, int num_fixed_impacted_bins_y
+        int num_fixed_impacted_bins_x, int num_fixed_impacted_bins_y, 
+        int num_threads
         ) 
 {
     CHECK_FLAT(pos); 
@@ -177,6 +183,7 @@ at::Tensor fixed_density_map(
                         xl, yl, xh, yh, 
                         bin_size_x, bin_size_y, 
                         true, 
+                        num_threads, 
                         density_map.data<scalar_t>()
                         );
                 });
@@ -220,7 +227,8 @@ at::Tensor electric_force(
         double xl, double yl, double xh, double yh, 
         double bin_size_x, double bin_size_y, 
         int num_movable_nodes, 
-        int num_filler_nodes
+        int num_filler_nodes, 
+        int num_threads
         );
 
 template <typename T>
@@ -232,6 +240,7 @@ int computeTriangleDensityMapLauncher(
         const int num_bins_x, const int num_bins_y, 
         const T xl, const T yl, const T xh, const T yh, 
         const T bin_size_x, const T bin_size_y, 
+        const int num_threads, 
         T* density_map_tensor
         )
 {
@@ -242,6 +251,7 @@ int computeTriangleDensityMapLauncher(
     auto computeDensityFunc = [](T x, T node_size, T bin_center, T bin_size){
         return std::max(T(0.0), std::min(x+node_size, bin_center+bin_size/2) - std::max(x, bin_center-bin_size/2));
     };
+#pragma omp parallel for num_threads(num_threads)
     for (int i = 0; i < num_nodes; ++i)
     {
         // x direction 
@@ -275,7 +285,9 @@ int computeTriangleDensityMapLauncher(
                 // scale the total area back to node area 
                 T area = px*py*(node_size_x_tensor[i]*node_size_y_tensor[i]/(bin_size_x*bin_size_y*2));
                 // still area 
-                density_map_tensor[k*num_bins_y+h] += area;
+                T& density = density_map_tensor[k*num_bins_y+h]; 
+#pragma omp atomic
+                density += area;
             }
         }
     }
@@ -293,6 +305,7 @@ int computeExactDensityMapLauncher(
         const T xl, const T yl, const T xh, const T yh, 
         const T bin_size_x, const T bin_size_y, 
         bool fixed_node_flag, 
+        const int num_threads, 
         T* density_map_tensor
         )
 {
@@ -317,6 +330,7 @@ int computeExactDensityMapLauncher(
         }
         return std::max(T(0.0), std::min(x+node_size, bin_xh) - std::max(x, bin_xl));
     };
+#pragma omp parallel for num_threads(num_threads)
     for (int i = 0; i < num_nodes; ++i)
     {
         // x direction 
@@ -340,7 +354,9 @@ int computeExactDensityMapLauncher(
                 //printf("px[%d, %d] = %g, py[%d, %d] = %g\n", k, h, px, k, h, py);
 
                 // still area 
-                density_map_tensor[k*num_bins_y+h] += px*py;
+                T& density = density_map_tensor[k*num_bins_y+h];
+#pragma omp atomic
+                density += px*py;
             }
         }
     }

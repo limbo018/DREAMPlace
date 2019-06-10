@@ -11,7 +11,10 @@ from torch import nn
 import pdb
 
 import dreamplace.ops.dct.dct_lee_cpp as dct_cpp
-import dreamplace.ops.dct.dct_lee_cuda as dct_cuda
+try: 
+    import dreamplace.ops.dct.dct_lee_cuda as dct_cuda
+except:
+    pass 
 
 def dct(x, expk, buf, out):
     """compute discrete cosine transformation, DCT II 

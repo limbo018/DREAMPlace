@@ -161,29 +161,30 @@ class DensityPotentialOpTest(unittest.TestCase):
         print("custom_grad = ", grad)
 
         # test cuda 
-        custom_cuda = density_potential.DensityPotential(
-                    torch.tensor(node_size_x, requires_grad=False).cuda(), torch.tensor(node_size_y, requires_grad=False).cuda(), 
-                    torch.tensor(ax, requires_grad=False).cuda(), torch.tensor(bx, requires_grad=False).cuda(), torch.tensor(cx, requires_grad=False).cuda(), 
-                    torch.tensor(ay, requires_grad=False).cuda(), torch.tensor(by, requires_grad=False).cuda(), torch.tensor(cy, requires_grad=False).cuda(), 
-                    torch.tensor(bin_center_x, requires_grad=False).cuda(), torch.tensor(bin_center_y, requires_grad=False).cuda(), 
-                    target_density=torch.tensor(target_density, requires_grad=False).cuda(), 
-                    xl=torch.tensor(xl, requires_grad=False).cuda(), yl=torch.tensor(yl, requires_grad=False).cuda(), xh=torch.tensor(xh, requires_grad=False).cuda(), yh=torch.tensor(yh, requires_grad=False).cuda(), 
-                    bin_size_x=torch.tensor(bin_size_x, requires_grad=False).cuda(), bin_size_y=torch.tensor(bin_size_y, requires_grad=False).cuda(), 
-                    num_movable_nodes=torch.tensor(num_nodes, requires_grad=False).cuda(), 
-                    num_terminals=0, 
-                    num_filler_nodes=0, 
-                    padding=torch.tensor(0, dtype=torch.int32, requires_grad=False).cuda(), 
-                    sigma=sigma, delta=delta)
+        if torch.cuda.device_count(): 
+            custom_cuda = density_potential.DensityPotential(
+                        torch.tensor(node_size_x, requires_grad=False).cuda(), torch.tensor(node_size_y, requires_grad=False).cuda(), 
+                        torch.tensor(ax, requires_grad=False).cuda(), torch.tensor(bx, requires_grad=False).cuda(), torch.tensor(cx, requires_grad=False).cuda(), 
+                        torch.tensor(ay, requires_grad=False).cuda(), torch.tensor(by, requires_grad=False).cuda(), torch.tensor(cy, requires_grad=False).cuda(), 
+                        torch.tensor(bin_center_x, requires_grad=False).cuda(), torch.tensor(bin_center_y, requires_grad=False).cuda(), 
+                        target_density=torch.tensor(target_density, requires_grad=False).cuda(), 
+                        xl=torch.tensor(xl, requires_grad=False).cuda(), yl=torch.tensor(yl, requires_grad=False).cuda(), xh=torch.tensor(xh, requires_grad=False).cuda(), yh=torch.tensor(yh, requires_grad=False).cuda(), 
+                        bin_size_x=torch.tensor(bin_size_x, requires_grad=False).cuda(), bin_size_y=torch.tensor(bin_size_y, requires_grad=False).cuda(), 
+                        num_movable_nodes=torch.tensor(num_nodes, requires_grad=False).cuda(), 
+                        num_terminals=0, 
+                        num_filler_nodes=0, 
+                        padding=torch.tensor(0, dtype=torch.int32, requires_grad=False).cuda(), 
+                        sigma=sigma, delta=delta)
 
-        pos = Variable(torch.from_numpy(np.concatenate([xx, yy])).cuda(), requires_grad=True)
-        #pos.grad.zero_()
-        result_cuda = custom_cuda.forward(pos)
-        print("custom_result_cuda = ", result_cuda.data.cpu())
-        result_cuda.backward()
-        grad_cuda = pos.grad.clone()
-        print("custom_grad_cuda = ", grad_cuda.data.cpu())
+            pos = Variable(torch.from_numpy(np.concatenate([xx, yy])).cuda(), requires_grad=True)
+            #pos.grad.zero_()
+            result_cuda = custom_cuda.forward(pos)
+            print("custom_result_cuda = ", result_cuda.data.cpu())
+            result_cuda.backward()
+            grad_cuda = pos.grad.clone()
+            print("custom_grad_cuda = ", grad_cuda.data.cpu())
 
-        np.testing.assert_allclose(result.detach().numpy(), result_cuda.data.cpu().detach().numpy())
+            np.testing.assert_allclose(result.detach().numpy(), result_cuda.data.cpu().detach().numpy())
 
 if __name__ == '__main__':
     unittest.main()

@@ -140,17 +140,17 @@ class PlaceDrawer (object):
             ctx.line_to(normalize_x(xh), normalize_y(yl))
             ctx.close_path()
             ctx.stroke()
-            # draw bins 
-            for i in range(1, num_bins_x):
-                ctx.move_to(normalize_x(bin_xl(i)), normalize_y(yl))
-                ctx.line_to(normalize_x(bin_xl(i)), normalize_y(yh))
-                ctx.close_path()
-                ctx.stroke()
-            for i in range(1, num_bins_y):
-                ctx.move_to(normalize_x(xl), normalize_y(bin_yl(i)))
-                ctx.line_to(normalize_x(xh), normalize_y(bin_yl(i)))
-                ctx.close_path()
-                ctx.stroke()
+            ## draw bins 
+            #for i in range(1, num_bins_x):
+            #    ctx.move_to(normalize_x(bin_xl(i)), normalize_y(yl))
+            #    ctx.line_to(normalize_x(bin_xl(i)), normalize_y(yh))
+            #    ctx.close_path()
+            #    ctx.stroke()
+            #for i in range(1, num_bins_y):
+            #    ctx.move_to(normalize_x(xl), normalize_y(bin_yl(i)))
+            #    ctx.line_to(normalize_x(xh), normalize_y(bin_yl(i)))
+            #    ctx.close_path()
+            #    ctx.stroke()
 
             # draw cells
             ctx.set_font_size(16)
@@ -177,18 +177,26 @@ class PlaceDrawer (object):
             # draw fillers
             if len(node_xl) > num_physical_nodes: # filler is included 
                 ctx.set_line_width(line_width)
+                ctx.set_source_rgba(115/255.0, 115/255.0, 125/255.0, alpha=0.5)  # Solid color
+                for i in range(num_physical_nodes, num_nodes):
+                    ctx.rectangle(node_xl[i], node_yl[i], node_xh[i]-node_xl[i], node_yh[i]-node_yl[i])  # Rectangle(xl, yl, w, h)
+                    ctx.fill()
                 ctx.set_source_rgba(230/255.0, 230/255.0, 250/255.0, alpha=0.3)  # Solid color
                 for i in range(num_physical_nodes, num_nodes):
                     draw_rect(node_xl[i], node_yl[i], node_xh[i], node_yh[i])
             # draw cells 
             ctx.set_line_width(line_width*2)
-            ctx.set_source_rgba(0, 0, 1, alpha=0.8)  # Solid color
+            ctx.set_source_rgba(0, 0, 1, alpha=0.5)  # Solid color
+            for i in range(num_movable_nodes):
+                ctx.rectangle(node_xl[i], node_yl[i], node_xh[i]-node_xl[i], node_yh[i]-node_yl[i])  # Rectangle(xl, yl, w, h)
+                ctx.fill()
+            ctx.set_source_rgba(0, 0, 0.8, alpha=0.8)  # Solid color
             for i in range(num_movable_nodes):
                 draw_rect(node_xl[i], node_yl[i], node_xh[i], node_yh[i])
-            # draw cell indices 
-            for i in range(num_nodes): 
-                ctx.move_to((node_xl[i]+node_xh[i])/2, (node_yl[i]+node_yh[i])/2)
-                ctx.show_text("%d" % (i))
+            ## draw cell indices 
+            #for i in range(num_nodes): 
+            #    ctx.move_to((node_xl[i]+node_xh[i])/2, (node_yl[i]+node_yh[i])/2)
+            #    ctx.show_text("%d" % (i))
 
             # show iteration
             if iteration: 
