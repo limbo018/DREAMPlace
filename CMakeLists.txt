@@ -44,8 +44,10 @@ string(REPLACE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} FLUTE_LIN
 message("-- FLUTE_INCLUDE_DIRS ${FLUTE_INCLUDE_DIRS}")
 message("-- FLUTE_LINK_DIRS ${FLUTE_LINK_DIRS}")
 
-set(LIMBO_DIR ${CMAKE_CURRENT_BINARY_DIR}/thirdparty/Limbo)
-message("-- LIMBO_DIR ${LIMBO_DIR}")
+set(LIMBO_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Limbo)
+message("-- LIMBO_SOURCE_DIR ${LIMBO_SOURCE_DIR}")
+set(LIMBO_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/thirdparty/Limbo)
+message("-- LIMBO_BINARY_DIR ${LIMBO_BINARY_DIR}")
 
 add_subdirectory(thirdparty)
 add_subdirectory(dreamplace)
