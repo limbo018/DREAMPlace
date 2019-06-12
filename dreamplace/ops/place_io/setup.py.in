@@ -11,10 +11,17 @@ from setuptools import setup
 import torch 
 from torch.utils.cpp_extension import BuildExtension, CppExtension
 
-limbo_dir = "${LIMBO_DIR}"
+limbo_source_dir = "${LIMBO_SOURCE_DIR}"
+limbo_binary_dir = "${LIMBO_BINARY_DIR}"
 
-include_dirs = [os.path.join(os.path.abspath(limbo_dir), 'include'), '${OPS_DIR}', '${Boost_INCLUDE_DIRS}', '${ZLIB_INCLUDE_DIRS}']
-lib_dirs = [os.path.join(os.path.abspath(limbo_dir), 'lib'), '${Boost_LIBRARY_DIRS}', os.path.dirname('${ZLIB_LIBRARIES}'), '${UTILITY_LIBRARY_DIRS}']
+include_dirs = [os.path.abspath(limbo_source_dir), '${OPS_DIR}', '${Boost_INCLUDE_DIRS}', '${ZLIB_INCLUDE_DIRS}']
+lib_dirs = [os.path.join(os.path.abspath(limbo_binary_dir), 'limbo/parsers/lef/adapt'), 
+        os.path.join(os.path.abspath(limbo_binary_dir), 'limbo/parsers/def/adapt'), 
+        os.path.join(os.path.abspath(limbo_binary_dir), 'limbo/parsers/bookshelf/bison'), 
+        os.path.join(os.path.abspath(limbo_binary_dir), 'limbo/parsers/verilog/bison'), 
+        os.path.join(os.path.abspath(limbo_binary_dir), 'limbo/parsers/gdsii/stream'), 
+        os.path.join(os.path.abspath(limbo_binary_dir), 'limbo/programoptions'), 
+        '${Boost_LIBRARY_DIRS}', os.path.dirname('${ZLIB_LIBRARIES}'), '${UTILITY_LIBRARY_DIRS}']
 libs = ['lefparseradapt', 'defparseradapt', 'verilogparser', 'gdsparser', 'bookshelfparser', 'programoptions', 'boost_system', 'boost_timer', 'boost_chrono', 'boost_iostreams', 'z', 'utility'] 
 
 tokens = str(torch.__version__).split('.')
