@@ -9,7 +9,7 @@
 
 DREAMPLACE_BEGIN_NAMESPACE
 
-#define SQRT2 1.414213562
+#define SQRT2 1.4142135623730950488016887242096980785696718753769480731766797379907324784621
 
 /// @brief The triangular density model from e-place.  
 /// The impact of a cell to bins is extended to two neighboring bins 
@@ -256,7 +256,7 @@ int computeTriangleDensityMapLauncher(
     {
         // x direction 
         // stretch node size to bin size 
-        T node_size_x = bin_size_x*SQRT2; 
+        T node_size_x = std::max((T)(bin_size_x*SQRT2), node_size_x_tensor[i]); 
         T node_x = x_tensor[i]+node_size_x_tensor[i]/2-node_size_x/2;
         int bin_index_xl = int((node_x-xl)/bin_size_x);
         int bin_index_xh = int(ceil((node_x+node_size_x-xl)/bin_size_x))+1; // exclusive 
@@ -265,7 +265,7 @@ int computeTriangleDensityMapLauncher(
 
         // y direction 
         // stretch node size to bin size 
-        T node_size_y = bin_size_y*SQRT2; 
+        T node_size_y = std::max((T)(bin_size_y*SQRT2), node_size_y_tensor[i]); 
         T node_y = y_tensor[i]+node_size_y_tensor[i]/2-node_size_y/2;
         int bin_index_yl = int((node_y-yl)/bin_size_y);
         int bin_index_yh = int(ceil((node_y+node_size_y-yl)/bin_size_y))+1; // exclusive 
@@ -278,7 +278,6 @@ int computeTriangleDensityMapLauncher(
             for (int h = bin_index_yl; h < bin_index_yh; ++h)
             {
                 // stretch node size to bin size 
-                T node_size_y = bin_size_y*SQRT2; 
                 T py = computeDensityFunc(node_y, node_size_y, bin_center_y_tensor[h], bin_size_y);
                 //printf("node %d@(%g, %g) size (%g, %g): px[%d, %d] = %g, py[%d, %d] = %g\n", i, x_tensor[i], y_tensor[i], node_size_x_tensor[i], node_size_y_tensor[i], k, h, px, k, h, py);
 
