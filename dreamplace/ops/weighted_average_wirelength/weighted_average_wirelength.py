@@ -232,7 +232,8 @@ class WeightedAverageWirelength(nn.Module):
                         self.netpin_start, 
                         self.net_mask, 
                         self.pin_mask, 
-                        self.gamma
+                        self.gamma, 
+                        self.num_threads
                         )
             elif self.algorithm == 'atomic':
                 return WeightedAverageWirelengthAtomicFunction.apply(pos, 

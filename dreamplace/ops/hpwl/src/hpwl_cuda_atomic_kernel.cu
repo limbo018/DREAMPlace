@@ -21,7 +21,6 @@ __global__ void computeHPWLMax(
         if (net_mask[net_id])
         {
             atomicMax(&partial_hpwl_x_max[net_id], x[i]); 
-            __syncthreads(); 
         }
     }
 }
@@ -41,7 +40,6 @@ __global__ void computeHPWLMin(
         if (net_mask[net_id])
         {
             atomicMin(&partial_hpwl_x_min[net_id], x[i]); 
-            __syncthreads(); 
         }
     }
 }
