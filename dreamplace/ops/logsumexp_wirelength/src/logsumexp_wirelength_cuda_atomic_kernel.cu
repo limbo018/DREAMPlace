@@ -25,7 +25,6 @@ __global__ void computeMax(
         if (net_mask[net_id])
         {
             atomicMax(&x_max[net_id], (V)(x[i]));
-            __syncthreads();
         }
     }
 }
@@ -47,7 +46,6 @@ __global__ void computeMin(
         if (net_mask[net_id])
         {
             atomicMin(&x_min[net_id], (V)(x[i]));
-            __syncthreads();
         }
     }
 }
@@ -112,7 +110,6 @@ __global__ void computeExpSum(
         if (net_mask[net_id])
         {
             atomicAdd(&exp_x_sum[net_id], exp_x[i]); 
-            __syncthreads();
         }
     }
 }

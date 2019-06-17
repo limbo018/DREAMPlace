@@ -35,7 +35,6 @@ DREAMPLACE_BEGIN_NAMESPACE
 /// @param bin_size_y bin height 
 /// @param target_area target area computed from target density 
 /// @param density_map_tensor 2D density map in column-major to write 
-/// @param density_cost_tensor overall density overflow 
 /// @param grad_tensor input gradient from backward propagation
 /// @param grad_x_tensor density gradient of cell in x direction 
 /// @param grad_y_tensor density gradient of cell in y direction 
@@ -52,7 +51,7 @@ int computeDensityPotentialMapLauncher(
         const T xl, const T yl, const T xh, const T yh, 
         const T bin_size_x, const T bin_size_y, 
         const T target_area, 
-        T* density_map_tensor, T* density_cost_tensor, 
+        T* density_map_tensor, 
         const T* grad_tensor, 
         int num_threads, 
         T* grad_x_tensor, T* grad_y_tensor 
@@ -118,7 +117,6 @@ std::vector<at::Tensor> density_potential_forward(
     CHECK_EVEN(pos);
     CHECK_CONTIGUOUS(pos);
 
-    at::Tensor density_cost = at::zeros({1}, pos.type());
     at::Tensor density_map = initial_density_map.clone();
     double target_area = target_density*bin_size_x*bin_size_y;
 
@@ -139,7 +137,6 @@ std::vector<at::Tensor> density_potential_forward(
                     bin_size_x, bin_size_y, 
                     target_area, 
                     density_map.data<scalar_t>(), 
-                    density_cost.data<scalar_t>(), 
                     nullptr, 
                     num_threads, 
                     nullptr, nullptr
@@ -161,7 +158,6 @@ std::vector<at::Tensor> density_potential_forward(
                         bin_size_x, bin_size_y, 
                         target_area, 
                         density_map.data<scalar_t>(), 
-                        density_cost.data<scalar_t>(), 
                         nullptr, 
                         num_threads, 
                         nullptr, nullptr
@@ -170,6 +166,10 @@ std::vector<at::Tensor> density_potential_forward(
     }
 
     auto max_density = density_map.max(); 
+    // (max(0, density-target_area))^2
+    //auto delta = (density_map-target_area).clamp_min(0).pow(2); 
+    auto delta = (density_map-target_area).pow(2); 
+    auto density_cost = at::sum(delta);
 
     return {density_cost, density_map, max_density};
 }
@@ -251,7 +251,6 @@ at::Tensor density_potential_backward(
                     bin_size_x, bin_size_y, 
                     target_area, 
                     density_map.data<scalar_t>(), 
-                    nullptr, 
                     grad_pos.data<scalar_t>(), 
                     num_threads, 
                     grad_out.data<scalar_t>(), grad_out.data<scalar_t>()+pos.numel()/2
@@ -273,7 +272,6 @@ at::Tensor density_potential_backward(
                         bin_size_x, bin_size_y, 
                         target_area, 
                         density_map.data<scalar_t>(), 
-                        nullptr, 
                         grad_pos.data<scalar_t>(), 
                         num_threads, 
                         grad_out.data<scalar_t>()+pos.numel()/2-num_filler_nodes, grad_out.data<scalar_t>()+pos.numel()-num_filler_nodes
@@ -295,7 +293,7 @@ int computeDensityOverflowMapLauncher(
         const T bin_size_x, const T bin_size_y, 
         const T target_density, 
         const int num_threads, 
-        T* density_map_tensor, T* density_cost_tensor
+        T* density_map_tensor 
         );
 
 template <typename T>
@@ -350,8 +348,7 @@ at::Tensor fixed_density_potential_map(
                         bin_size_x, bin_size_y, 
                         0, 
                         num_threads, 
-                        density_map.data<scalar_t>(), 
-                        nullptr
+                        density_map.data<scalar_t>()
                         );
                 });
     }
@@ -372,13 +369,13 @@ int computeDensityPotentialMapLauncher(
         const T xl, const T yl, const T xh, const T yh, 
         const T bin_size_x, const T bin_size_y, 
         const T target_area, 
-        T* density_map_tensor, T* density_cost_tensor, 
+        T* density_map_tensor, 
         const T* grad_tensor, 
         int num_threads, 
         T* grad_x_tensor, T* grad_y_tensor 
         )
 {
-    // density_map_tensor and density_cost_tensor should be initialized outside  
+    // density_map_tensor should be initialized outside  
 
     // density potential function 
     auto computeDensityPotentialFunc = [](T x, T node_size, T bin_center, T bin_size, T a, T b, T c){
@@ -524,19 +521,6 @@ int computeDensityPotentialMapLauncher(
                 }
             }
         }
-
-        if (density_cost_tensor)
-        {
-            int num_bins = num_bins_x*num_bins_y; 
-#pragma omp parallel for num_threads(num_threads)
-            for (int i = 0; i < num_bins; ++i)
-            {
-                T delta = density_map_tensor[i]-target_area;
-                //delta = std::max(delta, (T)0);
-#pragma omp atomic
-                *density_cost_tensor += delta*delta;
-            }
-        }
     }
 
     return 0; 
@@ -553,7 +537,7 @@ int computeDensityOverflowMapLauncher(
         const T bin_size_x, const T bin_size_y, 
         const T target_area, 
         const int num_threads, 
-        T* density_map_tensor, T* density_cost_tensor
+        T* density_map_tensor 
         )
 {
     // initialize 
@@ -599,19 +583,6 @@ int computeDensityOverflowMapLauncher(
         }
     }
 
-    if (density_cost_tensor)
-    {
-        T& cost = *density_cost_tensor; 
-        cost = 0; 
-#pragma omp parallel for num_threads(num_threads) reduction(+:cost)
-        for (int i = 0; i < num_bins; ++i)
-        {
-            cost += std::max(density_map_tensor[i]-target_area, T(0.0));
-        }
-        //printf("density_cost_tensor = %g\n", *density_cost_tensor);
-        // convert area to density 
-        *density_cost_tensor /= bin_size_x*bin_size_y; 
-    }
     return 0; 
 }
 

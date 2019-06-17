@@ -75,7 +75,6 @@ __global__ void computeElectricForceAtomic(
         // still area 
         atomicAdd(&grad_x_tensor[node_id], area*field_map_x_tensor[k*num_bins_y+h]);
         atomicAdd(&grad_y_tensor[node_id], area*field_map_y_tensor[k*num_bins_y+h]);
-        //__syncthreads();
     }
 }
 
