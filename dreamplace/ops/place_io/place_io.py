@@ -11,7 +11,7 @@ import dreamplace.ops.place_io.place_io_cpp as place_io_cpp
 class PlaceIOFunction(Function):
     @staticmethod
     def forward(params):
-        args = "DREAMPlace -config NORMAL"
+        args = "DREAMPlace"
         if "aux_file" in params.__dict__:
             args += " --bookshelf_aux_input %s" % (params.aux_file)
         if "lef_input" in params.__dict__:
