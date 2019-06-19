@@ -99,7 +99,6 @@ __global__ void computeDensityMap(
         //printf("px[%d, %d] = %g, py[%d, %d] = %g\n", k, h, px, k, h, py);
         // still area 
         atomicAdd(&density_map_tensor[k*num_bins_y+h], px*py); 
-        __syncthreads();
     }
 }
 

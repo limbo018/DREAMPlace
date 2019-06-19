@@ -83,7 +83,6 @@ __global__ void computeTriangleDensityMapAtomic(
         //}
         // still area 
         atomicAdd(&density_map_tensor[k*num_bins_y+h], area); 
-        //__syncthreads();
     }
 }
 
@@ -196,7 +195,6 @@ __global__ void computeExactDensityMap(
         T py = computeDensityFunc(y_tensor[node_id], node_size_y_tensor[node_id], bin_center_y_tensor[h], bin_size_y, yl, yh, fixed_node_flag);
         // still area 
         atomicAdd(&density_map_tensor[k*num_bins_y+h], px*py); 
-        //__syncthreads();
     }
 }
 
