@@ -414,8 +414,8 @@ class PlaceDB (object):
         scl_file = None
 
         # read aux file 
-        aux_dir = os.path.dirname(params.aux_file)
-        with open(params.aux_file, "r") as f:
+        aux_dir = os.path.dirname(params.aux_input)
+        with open(params.aux_input, "r") as f:
             for line in f:
                 line = line.strip()
                 if line:

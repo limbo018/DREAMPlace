@@ -12,14 +12,17 @@ class PlaceIOFunction(Function):
     @staticmethod
     def forward(params):
         args = "DREAMPlace"
-        if "aux_file" in params.__dict__:
-            args += " --bookshelf_aux_input %s" % (params.aux_file)
-        if "lef_input" in params.__dict__:
-            for lef in params.lef_input: 
-                args += " --lef_input %s" % (lef)
-        if "def_input" in params.__dict__:
+        if "aux_input" in params.__dict__:
+            args += " --bookshelf_aux_input %s" % (params.aux_input)
+        if "lef_input" in params.__dict__ and params.lef_input:
+            if isinstance(params.lef_input, list): 
+                for lef in params.lef_input: 
+                    args += " --lef_input %s" % (lef)
+            else:
+                args += " --lef_input %s" % (params.lef_input)
+        if "def_input" in params.__dict__ and params.def_input:
             args += " --def_input %s" % (params.def_input)
-        if "verilog_input" in params.__dict__:
+        if "verilog_input" in params.__dict__ and params.verilog_input:
             args += " --verilog_input %s" % (params.verilog_input)
 
         return place_io_cpp.forward(args.split(' '))

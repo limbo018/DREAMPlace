@@ -16,7 +16,13 @@ class Params:
         """
         @brief initialization 
         """
-        self.aux_file = None # directory for .aux file 
+        # for Bookshelf format 
+        self.aux_input = None # directory for .aux file 
+        # for LEF/DEF format 
+        self.lef_input = None # input LEF file 
+        self.def_input = None # input DEF file 
+        self.verilog_input = None # input VERILOG file 
+
         self.gpu = True # enable gpu or not 
         self.num_bins_x = 512 # number of bins in horizontal direction 
         self.num_bins_y = 512 # number of bins in vertical direction 
@@ -61,7 +67,10 @@ class Params:
         content = """\
                     JSON Parameters
 ========================================================
-aux_file [required]                   | directory for .aux file 
+aux_input [required for Bookshelf]    | input .aux file 
+lef_input [required for LEF/DEF]      | input LEF file  
+def_input [required for LEF/DEF]      | input DEF file  
+verilog_input [optional for LEF/DEF]  | input VERILOG file, provide circuit netlist information if it is not included in DEF file 
 gpu [default %d]                       | enable gpu or not 
 num_bins_x [default %d]              | number of bins in horizontal direction 
 num_bins_y [default %d]              | number of bins in vertical direction 
@@ -117,7 +126,10 @@ num_threads [default %d]            | number of CPU threads
         @brief convert to json  
         """
         data = dict()
-        data['aux_file'] = self.aux_file
+        data['aux_input'] = self.aux_input
+        data['lef_input'] = self.lef_input
+        data['def_input'] = self.def_input
+        data['verilog_input'] = self.verilog_input
         data['gpu'] = self.gpu
         data['num_bins_x'] = self.num_bins_x
         data['num_bins_y'] = self.num_bins_y
@@ -148,7 +160,10 @@ num_threads [default %d]            | number of CPU threads
         """
         @brief load form json 
         """
-        if 'aux_file' in data: self.aux_file = data['aux_file']
+        if 'aux_input' in data: self.aux_input = data['aux_input']
+        if 'lef_input' in data: self.lef_input = data['lef_input']
+        if 'def_input' in data: self.def_input = data['def_input']
+        if 'verilog_input' in data: self.verilog_input = data['verilog_input']
         if 'gpu' in data: self.gpu = data['gpu']
         if 'num_bins_x' in data: self.num_bins_x = data['num_bins_x']
         if 'num_bins_y' in data: self.num_bins_y = data['num_bins_y']
