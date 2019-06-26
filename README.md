@@ -23,7 +23,7 @@ Over 30X speedup over the CPU implementation ([RePlAce](https://doi.org/10.1109/
 - Python 2.7 or Python 3.5
 
 - [GCC](https://gcc.gnu.org/)
-    - Recommend GCC 4.8 or later. 
+    - Recommend GCC 5.1 or later. 
     - Other compilers may also work, but not tested. 
 
 - [Boost](www.boost.org)
