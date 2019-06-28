@@ -1,5 +1,5 @@
 {
-"aux_file" : "benchmarks/ispd2005/bigblue3/bigblue3.aux", 
+"aux_input" : "benchmarks/ispd2005/bigblue3/bigblue3.aux", 
 "gpu" : 1,
 "num_bins_x" : 2048,
 "num_bins_y" : 2048, 
@@ -20,5 +20,6 @@
 "detailed_place_engine" : "thirdparty/ntuplace3", 
 "stop_overflow" : 0.07, 
 "dtype" : "float32", 
-"plot_flag" : 0
+"plot_flag" : 0, 
+"num_threads" : 8
 }

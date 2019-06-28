@@ -39,7 +39,7 @@ modules.append(CppExtension('logsumexp_wirelength_cpp',
                 library_dirs=lib_dirs,
                 libraries=libs,
                 extra_compile_args={
-                    'cxx' : [torch_major_version, torch_minor_version]
+                    'cxx' : [torch_major_version, torch_minor_version, '-fopenmp']
                     })
                 )
 

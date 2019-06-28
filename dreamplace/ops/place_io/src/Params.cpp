@@ -15,15 +15,6 @@
 
 DREAMPLACE_BEGIN_NAMESPACE
 
-std::string toString(PlaceConfig pc)
-{
-    switch (pc)
-    {
-        case NORMAL: return "NORMAL";
-        case ICCAD: return "ICCAD";
-        default: return "UNKNOWN";
-    }
-}
 std::string toString(SolutionFileFormat ff)
 {
     switch (ff)
@@ -38,7 +29,6 @@ std::string toString(SolutionFileFormat ff)
 
 UserParam::UserParam()
 {
-    placeConfig = NORMAL;
     defOutput = "";
     rptOutput = "";
     targetUtil = 0;
@@ -69,29 +59,7 @@ UserParam::UserParam()
 }
 bool UserParam::read(int argc, char** argv)
 {
-    for (int i = 1; i < argc; ++i)
-    {
-        if (strcmp(argv[i], "-config") == 0)
-        {
-            dreamplaceAssertMsg(i+1 < argc, "need argument for -config");
-            if (limbo::iequals(argv[i+1], "NORMAL"))
-                placeConfig = NORMAL;
-            else if (limbo::iequals(argv[i+1], "ICCAD"))
-                placeConfig = ICCAD;
-            else 
-                dreamplaceAssertMsg(0, "unknown placeConfig %s", argv[i+1]);
-        }
-    }
-
-    switch (placeConfig)
-    {
-        case ICCAD:
-            return readICCAD(argc, argv, UserParamExtHelper());
-        default:
-            return readNormal(argc, argv, UserParamExtHelper());
-    }
-
-    return true;
+    return readNormal(argc, argv, UserParamExtHelper());
 }
 bool UserParam::readNormal(int argc, char** argv, UserParamExtHelper const& helper)
 {
@@ -107,7 +75,6 @@ bool UserParam::readNormal(int argc, char** argv, UserParamExtHelper const& help
     std::vector<std::string> vAbuPercStr;
     std::vector<std::string> vDefIgnoreCellType;
     bool help = false;
-    std::string placeConfigStr; // dummy to skip place config argument because it is pre-handled 
     std::string fileFormatStr;
     std::string drawRegionStr; 
     // append options here 
@@ -115,7 +82,6 @@ bool UserParam::readNormal(int argc, char** argv, UserParamExtHelper const& help
     using limbo::programoptions::Value;
     po_type desc (std::string("Available options"));
     desc.add_option(Value<bool>("--help", &help, "print help message").default_value(help).help(true))
-        .add_option(Value<std::string>("-config", &placeConfigStr, "configuration to placement context <NORMAL | ICCAD>").default_value(toString(defaultParam.placeConfig)))
         .add_option(Value<std::vector<std::string> >("--lef_input", &vLefInput, "input LEF files")) 
         .add_option(Value<std::string>("--def_input", &defInput, "input DEF file"))
         .add_option(Value<std::string>("--verilog_input", &verilogInput, "input Verilog file"))
@@ -220,114 +186,6 @@ bool UserParam::readNormal(int argc, char** argv, UserParamExtHelper const& help
         dreamplacePrint(kERROR, "%s\n", e.what());
         return false;
     }
-
-    /// print parameters
-    printParams();
-
-    return true;
-}
-
-bool UserParam::readICCAD(int argc, char** argv, UserParamExtHelper const& helper) 
-{
-    bool help = false;
-    std::string placeConfigStr;
-    std::string parmFile;
-    std::string iccadFile;
-    // not all arguments can be initialized by defaultParam 
-    UserParam defaultParam; // default parameters from default constructor 
-    // append options here 
-    typedef limbo::programoptions::ProgramOptions po_type;
-    using limbo::programoptions::Value;
-    po_type desc (std::string("Available options"));
-    desc.add_option(Value<bool>("-help", &help, "print help message").toggle(true).default_value(help).toggle_value(true).help(true))
-        .add_option(Value<std::string>("-config", &placeConfigStr, "configuration to placement context <NORMAL | ICCAD>").default_value(toString(defaultParam.placeConfig)))
-        .add_option(Value<std::string>("-settings", &parmFile, ".parm file").required(true))
-        .add_option(Value<std::string>("-input", &iccadFile, ".iccad file").required(true))
-        .add_option(Value<double>("-ut", &targetUtil, "target utilization").required(true))
-        .add_option(Value<double>("-max_disp", &maxDisplace, "maximum displacement in micron").required(true))
-        .add_option(Value<std::string>("-output", &defOutput, "output DEF file"))
-        .add_option(Value<bool>("-enable_place", &enablePlace, "enable placement").default_value(defaultParam.enablePlace))
-        .add_option(Value<bool>("-enable_legalize", &enableLegalize, "enable legalization").default_value(defaultParam.enableLegalize))
-        .add_option(Value<bool>("--evaluate_overlap", &evaluateOverlap, "evaluate overlapping pairs of cells").default_value(defaultParam.evaluateOverlap))
-        .add_option(Value<bool>("--move_multi_row_cell", &moveMultiRowCell, "enable multi-row cell movement").default_value(defaultParam.moveMultiRowCell))
-        .add_option(Value<bool>("--draw_place_init", &drawPlaceInit, "draw initial placement").default_value(defaultParam.drawPlaceInit))
-        .add_option(Value<bool>("--draw_place_final", &drawPlaceFinal, "draw final placement").default_value(defaultParam.drawPlaceFinal))
-        .add_option(Value<bool>("--draw_place_anime", &drawPlaceAnime, "draw placement for animation").default_value(defaultParam.drawPlaceAnime))
-        .add_option(Value<unsigned>("-max_iters", &maxIters, "maximum optimization iterations").default_value(defaultParam.maxIters))
-        ;
-    helper.addOptions(desc); // extension 
-    try
-    {
-        desc.parse(argc, argv);
-
-        // print help message 
-        if (help)
-        {
-            std::cout << desc << "\n";
-            exit(1);
-        }
-
-        helper.processAhead(desc); // extension
-
-        // read .iccad file to set other parameters
-        std::string dir = limbo::get_file_path(iccadFile);
-        std::ifstream in (iccadFile.c_str());
-        if (!in.good())
-        {
-            dreamplacePrint(kERROR, "unable to open %s for read\n", iccadFile.c_str());
-            return false;
-        }
-        std::vector<std::string> vToken;
-        std::string line;
-        while (getline(in, line))
-        {
-            boost::trim(line);
-            boost::split(vToken, line, boost::is_any_of(" \t"));
-            for (std::vector<std::string>::const_iterator it = vToken.begin(), ite = vToken.end(); it != ite; ++it)
-            {
-                std::string const& token = *it;
-                std::string suffix = limbo::get_file_suffix(token);
-                if (suffix == "v")
-                    verilogInput = dir + '/' + token;
-                else if (suffix == "lef")
-                    vLefInput.push_back(dir + '/' + token);
-                else if (suffix == "def")
-                    defInput = dir + '/' + token;
-                else if (suffix == "sdc")
-                {// set sdc file 
-                }
-                else if (suffix == "lib") // may not exist
-                {// set timing library 
-                }
-            }
-        }
-        in.close();
-
-        if (!desc.count("def_output"))
-        {
-            // set default value 
-            defOutput = limbo::trim_file_suffix(limbo::get_file_name(defInput)) + "-cada003.def";
-        }
-
-        helper.processLater(desc); // extension
-    }
-    catch (std::exception& e)
-    {
-        // print help message and error message 
-        std::cout << desc << "\n";
-        dreamplacePrint(kERROR, "%s\n", e.what());
-        return false;
-    }
-
-    binSize[kX] = binSize[kY] = 9;
-    binSize[2+kX] = binSize[2+kY] = 3;
-    binSpaceThreshold = 0.2;
-    vAbuPerc.push_back(std::make_pair(2, 10));
-    vAbuPerc.push_back(std::make_pair(5, 4));
-    vAbuPerc.push_back(std::make_pair(10, 2));
-    vAbuPerc.push_back(std::make_pair(20, 1));
-    sMacroObsAwareLayer.insert("metal1"); 
-    fileFormat = DEFSIMPLE;
 
     /// print parameters
     printParams();

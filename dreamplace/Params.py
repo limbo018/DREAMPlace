@@ -16,7 +16,13 @@ class Params:
         """
         @brief initialization 
         """
-        self.aux_file = None # directory for .aux file 
+        # for Bookshelf format 
+        self.aux_input = None # directory for .aux file 
+        # for LEF/DEF format 
+        self.lef_input = None # input LEF file 
+        self.def_input = None # input DEF file 
+        self.verilog_input = None # input VERILOG file 
+
         self.gpu = True # enable gpu or not 
         self.num_bins_x = 512 # number of bins in horizontal direction 
         self.num_bins_y = 512 # number of bins in vertical direction 
@@ -40,6 +46,7 @@ class Params:
         self.RePlAce_ref_hpwl = 3.5e5
         self.RePlAce_LOWER_PCOF = 0.95
         self.RePlAce_UPPER_PCOF = 1.05
+        self.num_threads = 8
 
     def printWelcome(self): 
         """
@@ -60,7 +67,10 @@ class Params:
         content = """\
                     JSON Parameters
 ========================================================
-aux_file [required]                   | directory for .aux file 
+aux_input [required for Bookshelf]    | input .aux file 
+lef_input [required for LEF/DEF]      | input LEF file  
+def_input [required for LEF/DEF]      | input DEF file  
+verilog_input [optional for LEF/DEF]  | input VERILOG file, provide circuit netlist information if it is not included in DEF file 
 gpu [default %d]                       | enable gpu or not 
 num_bins_x [default %d]              | number of bins in horizontal direction 
 num_bins_y [default %d]              | number of bins in vertical direction 
@@ -84,6 +94,7 @@ plot_flag [default %d]                 | whether plot solution or not
 RePlAce_ref_hpwl [default %g]     | reference HPWL used in RePlAce for updating density weight 
 RePlAce_LOWER_PCOF [default %g]     | lower bound ratio used in RePlAce for updating density weight 
 RePlAce_UPPER_PCOF [default %g]     | upper bound ratio used in RePlAce for updating density weight 
+num_threads [default %d]            | number of CPU threads
         """ % (self.gpu, 
                 self.num_bins_x, 
                 self.num_bins_y, 
@@ -105,7 +116,8 @@ RePlAce_UPPER_PCOF [default %g]     | upper bound ratio used in RePlAce for upda
                 self.plot_flag, 
                 self.RePlAce_ref_hpwl, 
                 self.RePlAce_LOWER_PCOF, 
-                self.RePlAce_UPPER_PCOF
+                self.RePlAce_UPPER_PCOF, 
+                self.num_threads
                 )
         print(content)
 
@@ -114,7 +126,10 @@ RePlAce_UPPER_PCOF [default %g]     | upper bound ratio used in RePlAce for upda
         @brief convert to json  
         """
         data = dict()
-        data['aux_file'] = self.aux_file
+        data['aux_input'] = self.aux_input
+        data['lef_input'] = self.lef_input
+        data['def_input'] = self.def_input
+        data['verilog_input'] = self.verilog_input
         data['gpu'] = self.gpu
         data['num_bins_x'] = self.num_bins_x
         data['num_bins_y'] = self.num_bins_y
@@ -138,13 +153,17 @@ RePlAce_UPPER_PCOF [default %g]     | upper bound ratio used in RePlAce for upda
         data['RePlAce_ref_hpwl'] = self.RePlAce_ref_hpwl
         data['RePlAce_LOWER_PCOF'] = self.RePlAce_LOWER_PCOF
         data['RePlAce_UPPER_PCOF'] = self.RePlAce_UPPER_PCOF
+        data['num_threads'] = self.num_threads
         return data 
 
     def fromJson(self, data):
         """
         @brief load form json 
         """
-        if 'aux_file' in data: self.aux_file = data['aux_file']
+        if 'aux_input' in data: self.aux_input = data['aux_input']
+        if 'lef_input' in data: self.lef_input = data['lef_input']
+        if 'def_input' in data: self.def_input = data['def_input']
+        if 'verilog_input' in data: self.verilog_input = data['verilog_input']
         if 'gpu' in data: self.gpu = data['gpu']
         if 'num_bins_x' in data: self.num_bins_x = data['num_bins_x']
         if 'num_bins_y' in data: self.num_bins_y = data['num_bins_y']
@@ -168,6 +187,7 @@ RePlAce_UPPER_PCOF [default %g]     | upper bound ratio used in RePlAce for upda
         if 'RePlAce_ref_hpwl' in data: self.RePlAce_ref_hpwl = data['RePlAce_ref_hpwl']
         if 'RePlAce_LOWER_PCOF' in data: self.RePlAce_LOWER_PCOF = data['RePlAce_LOWER_PCOF']
         if 'RePlAce_UPPER_PCOF' in data: self.RePlAce_UPPER_PCOF = data['RePlAce_UPPER_PCOF']
+        if 'num_threads' in data: self.num_threads = data['num_threads']
 
     def dump(self, filename):
         """

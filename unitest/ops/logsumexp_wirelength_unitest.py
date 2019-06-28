@@ -127,42 +127,44 @@ class LogSumExpWirelengthOpTest(unittest.TestCase):
         np.testing.assert_allclose(grad.data.numpy(), golden_grad.data.numpy())
 
         # test gpu 
-        pin_pos_var.grad.zero_()
-        custom_cuda = logsumexp_wirelength.LogSumExpWirelength(
-                Variable(torch.from_numpy(flat_net2pin_map)).cuda(), 
-                Variable(torch.from_numpy(flat_net2pin_start_map)).cuda(),
-                torch.from_numpy(pin2net_map).cuda(), 
-                torch.from_numpy(net_mask).cuda(), 
-                torch.tensor(gamma).cuda(), 
-                algorithm='sparse'
-                )
-        result_cuda = custom_cuda.forward(pin_pos_var.cuda())
-        print("custom_cuda_result = ", result_cuda.data.cpu())
-        result_cuda.backward()
-        grad_cuda = pin_pos_var.grad.clone()
-        print("custom_grad_cuda = ", grad_cuda.data.cpu())
+        if torch.cuda.device_count(): 
+            pin_pos_var.grad.zero_()
+            custom_cuda = logsumexp_wirelength.LogSumExpWirelength(
+                    Variable(torch.from_numpy(flat_net2pin_map)).cuda(), 
+                    Variable(torch.from_numpy(flat_net2pin_start_map)).cuda(),
+                    torch.from_numpy(pin2net_map).cuda(), 
+                    torch.from_numpy(net_mask).cuda(), 
+                    torch.tensor(gamma).cuda(), 
+                    algorithm='sparse'
+                    )
+            result_cuda = custom_cuda.forward(pin_pos_var.cuda())
+            print("custom_cuda_result = ", result_cuda.data.cpu())
+            result_cuda.backward()
+            grad_cuda = pin_pos_var.grad.clone()
+            print("custom_grad_cuda = ", grad_cuda.data.cpu())
 
-        np.testing.assert_allclose(result_cuda.data.cpu().numpy(), golden.data.detach().numpy())
-        np.testing.assert_allclose(grad_cuda.data.cpu().numpy(), grad.data.numpy(), rtol=1e-7, atol=1e-12)
+            np.testing.assert_allclose(result_cuda.data.cpu().numpy(), golden.data.detach().numpy())
+            np.testing.assert_allclose(grad_cuda.data.cpu().numpy(), grad.data.numpy(), rtol=1e-7, atol=1e-12)
 
         # test gpu atomic
-        pin_pos_var.grad.zero_()
-        custom_cuda = logsumexp_wirelength.LogSumExpWirelength(
-                Variable(torch.from_numpy(flat_net2pin_map)).cuda(), 
-                Variable(torch.from_numpy(flat_net2pin_start_map)).cuda(),
-                torch.from_numpy(pin2net_map).cuda(), 
-                torch.from_numpy(net_mask).cuda(), 
-                torch.tensor(gamma).cuda(), 
-                algorithm='atomic'
-                )
-        result_cuda = custom_cuda.forward(pin_pos_var.cuda())
-        print("custom_cuda_result atomic = ", result_cuda.data.cpu())
-        result_cuda.backward()
-        grad_cuda = pin_pos_var.grad.clone()
-        print("custom_grad_cuda atomic = ", grad_cuda.data.cpu())
+        if torch.cuda.device_count(): 
+            pin_pos_var.grad.zero_()
+            custom_cuda = logsumexp_wirelength.LogSumExpWirelength(
+                    Variable(torch.from_numpy(flat_net2pin_map)).cuda(), 
+                    Variable(torch.from_numpy(flat_net2pin_start_map)).cuda(),
+                    torch.from_numpy(pin2net_map).cuda(), 
+                    torch.from_numpy(net_mask).cuda(), 
+                    torch.tensor(gamma).cuda(), 
+                    algorithm='atomic'
+                    )
+            result_cuda = custom_cuda.forward(pin_pos_var.cuda())
+            print("custom_cuda_result atomic = ", result_cuda.data.cpu())
+            result_cuda.backward()
+            grad_cuda = pin_pos_var.grad.clone()
+            print("custom_grad_cuda atomic = ", grad_cuda.data.cpu())
 
-        np.testing.assert_allclose(result_cuda.data.cpu().numpy(), golden.data.detach().numpy())
-        np.testing.assert_allclose(grad_cuda.data.cpu().numpy(), grad.data.numpy(), rtol=1e-7, atol=1e-15)
+            np.testing.assert_allclose(result_cuda.data.cpu().numpy(), golden.data.detach().numpy())
+            np.testing.assert_allclose(grad_cuda.data.cpu().numpy(), grad.data.numpy(), rtol=1e-7, atol=1e-15)
 
 
 if __name__ == '__main__':

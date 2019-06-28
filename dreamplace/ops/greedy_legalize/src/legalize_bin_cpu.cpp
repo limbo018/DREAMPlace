@@ -62,7 +62,8 @@ void legalizeBinCPU(
 
 
             int num_node_rows = ceil(height/row_height); // may take multiple rows 
-            int blank_index_offset[num_node_rows] = {0}; 
+            int blank_index_offset[num_node_rows]; 
+            std::fill(blank_index_offset, blank_index_offset+num_node_rows, 0);
 
             int blank_initial_bin_id_y = (init_yl-yl)/blank_bin_size_y;
             blank_initial_bin_id_y = std::min(blank_bin_id_yh-1, std::max(blank_bin_id_yl, blank_initial_bin_id_y));

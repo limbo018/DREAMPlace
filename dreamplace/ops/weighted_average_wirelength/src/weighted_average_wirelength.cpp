@@ -19,6 +19,7 @@ int computeWeightedAverageWirelengthLauncher(
         const T* gamma, 
         T* wl, 
         const T* grad_tensor, 
+        int num_threads, 
         T* grad_x_tensor, T* grad_y_tensor 
         );
 
@@ -38,7 +39,8 @@ at::Tensor weighted_average_wirelength_forward(
         at::Tensor flat_netpin,
         at::Tensor netpin_start, 
         at::Tensor net_mask, 
-        at::Tensor gamma
+        at::Tensor gamma, 
+        int num_threads
         ) 
 {
     CHECK_FLAT(pos); 
@@ -48,7 +50,9 @@ at::Tensor weighted_average_wirelength_forward(
     CHECK_CONTIGUOUS(flat_netpin);
     CHECK_FLAT(netpin_start);
     CHECK_CONTIGUOUS(netpin_start);
-    at::Tensor wl = at::zeros({1}, pos.options());
+
+    int num_nets = netpin_start.numel()-1; 
+    at::Tensor wl = at::zeros({num_nets}, pos.options());
 
     AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeWeightedAverageWirelengthLauncher", [&] {
             computeWeightedAverageWirelengthLauncher<scalar_t>(
@@ -56,14 +60,15 @@ at::Tensor weighted_average_wirelength_forward(
                     flat_netpin.data<int>(), 
                     netpin_start.data<int>(), 
                     net_mask.data<unsigned char>(), 
-                    netpin_start.numel()-1, 
+                    num_nets, 
                     gamma.data<scalar_t>(), 
                     wl.data<scalar_t>(), 
                     nullptr, 
+                    num_threads, 
                     nullptr, nullptr
                     );
             });
-    return wl; 
+    return wl.sum(); 
 }
 
 /// @brief Compute gradient 
@@ -79,7 +84,8 @@ at::Tensor weighted_average_wirelength_backward(
         at::Tensor flat_netpin,
         at::Tensor netpin_start, 
         at::Tensor net_mask, 
-        at::Tensor gamma
+        at::Tensor gamma, 
+        int num_threads
         ) 
 {
     CHECK_FLAT(pos); 
@@ -101,6 +107,7 @@ at::Tensor weighted_average_wirelength_backward(
                     gamma.data<scalar_t>(), 
                     nullptr, 
                     grad_pos.data<scalar_t>(), 
+                    num_threads, 
                     grad_out.data<scalar_t>(), grad_out.data<scalar_t>()+pos.numel()/2
                     );
             });
@@ -117,13 +124,11 @@ int computeWeightedAverageWirelengthLauncher(
         const T* gamma, 
         T* wl,
         const T* grad_tensor, 
+        int num_threads, 
         T* grad_x_tensor, T* grad_y_tensor 
         )
 {
-    if (!grad_tensor)
-    {
-        *wl = 0; 
-    }
+#pragma omp parallel for num_threads(num_threads)
     for (int i = 0; i < num_nets; ++i)
     {
         T xexp_x_sum = 0; 
@@ -213,7 +218,7 @@ int computeWeightedAverageWirelengthLauncher(
             T wl_x = xexp_x_sum/exp_x_sum - xexp_nx_sum/exp_nx_sum;
             T wl_y = yexp_y_sum/exp_y_sum - yexp_ny_sum/exp_ny_sum; 
             //printf("wl_x = %g, wl_y = %g\n", wl_x, wl_y);
-            *wl += wl_x + wl_y; 
+            wl[i] = wl_x + wl_y; 
         }
     }
 

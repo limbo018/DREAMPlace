@@ -14,13 +14,17 @@ Over 30X speedup over the CPU implementation ([RePlAce](https://doi.org/10.1109/
 * [Yibo Lin](http://yibolin.com), Shounak Dhar, [Wuxi Li](http://wuxili.net), Haoxing Ren, Brucek Khailany and [David Z. Pan](http://users.ece.utexas.edu/~dpan), 
   "**DREAMPlace: Deep Learning Toolkit-Enabled GPU Acceleration for Modern VLSI Placement**", 
   ACM/IEEE Design Automation Conference (DAC), Las Vegas, NV, Jun 2-6, 2019
-  ([preprint](http://yibolin.com/publications/papers/PLACE_DAC2019_Lin.pdf))
+  ([preprint](http://yibolin.com/publications/papers/PLACE_DAC2019_Lin.pdf)) ([slides](http://yibolin.com/publications/papers/PLACE_DAC2019_Lin.slides.pptx))
 
 # Dependency 
 
 - Pytorch 0.4.1 or 1.0.0
 
 - Python 2.7 or Python 3.5
+
+- [GCC](https://gcc.gnu.org/)
+    - Recommend GCC 5.1 or later. 
+    - Other compilers may also work, but not tested. 
 
 - [Boost](www.boost.org)
     - Need to install and visible for linking
@@ -84,6 +88,10 @@ Here are the available options for CMake.
     - Example ```cmake -DCMAKE_INSTALL_PREFIX=path/to/your/directory```
 - CMAKE_CUDA_FLAGS: custom string for NVCC (default -gencode=arch=compute_60,code=sm_60)
     - Example ```cmake -DCMAKE_CUDA_FLAGS=-gencode=arch=compute_60,code=sm_60```
+- CMAKE_CXX_ABI: 0|1 for the value of _GLIBCXX_USE_CXX11_ABI for C++ compiler, default is 0. 
+    - Example ```cmake -DCMAKE_CXX_ABI=0```
+    - It must be consistent with the _GLIBCXX_USE_CXX11_ABI for compling all the C++ dependencies, such as Boost and PyTorch. 
+    - PyTorch in default is compiled with _GLIBCXX_USE_CXX11_ABI=0, but in a customized PyTorch environment, it might be compiled with _GLIBCXX_USE_CXX11_ABI=1. 
 
 # How to Get Benchmarks
 
@@ -95,7 +103,7 @@ python benchmarks/ispd2005.py
 # How to Run
 
 Before running, make sure the benchmarks have been downloaded and the python dependency packages have been installed. 
-Run with JSON configuration file for full placement in the root directory.  
+Go to the **install directory** and run with JSON configuration file for full placement.  
 ```
 python dreamplace/Placer.py test/ispd2005/adaptec1.json
 ```

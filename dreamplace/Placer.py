@@ -38,10 +38,10 @@ def place(params):
     print("[I] non-linear placement takes %.2f seconds" % (time.time()-tt))
 
     # write placement solution 
-    path = "%s/%s" % (params.result_dir, os.path.splitext(os.path.basename(params.aux_file))[0])
+    path = "%s/%s" % (params.result_dir, os.path.splitext(os.path.basename(params.aux_input))[0])
     if not os.path.exists(path):
         os.system("mkdir -p %s" % (path))
-    gp_out_file = os.path.join(path, os.path.basename(params.aux_file).replace(".aux", ".gp.pl"))
+    gp_out_file = os.path.join(path, os.path.basename(params.aux_input).replace(".aux", ".gp.pl"))
     placedb.write_pl(params, gp_out_file)
 
     # call external detailed placement
@@ -60,7 +60,7 @@ def place(params):
             detailed_place = "-nodetail"
         else:
             detailed_place = ""
-        cmd = "%s -aux %s -loadpl %s %s -out %s -noglobal %s %s" % (params.detailed_place_engine, params.aux_file, gp_out_file, target_density_cmd, dp_out_file, legalize, detailed_place)
+        cmd = "%s -aux %s -loadpl %s %s -out %s -noglobal %s %s" % (params.detailed_place_engine, params.aux_input, gp_out_file, target_density_cmd, dp_out_file, legalize, detailed_place)
         print("[I] %s" % (cmd))
         tt = time.time()
         os.system(cmd)

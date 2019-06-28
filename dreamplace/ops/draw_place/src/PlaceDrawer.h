@@ -215,7 +215,10 @@ class PlaceDrawer
                 for (int i = 0; i < m_num_movable_nodes; ++i)
                 {
                     cairo_rectangle(c, m_x[i], m_y[i], m_node_size_x[i], m_node_size_y[i]);
-                    cairo_set_source_rgba(c, 0, 0, 1, 0.8);
+                    cairo_set_source_rgba(c, 0, 0, 1, 0.5);
+                    cairo_fill(c);
+                    cairo_rectangle(c, m_x[i], m_y[i], m_node_size_x[i], m_node_size_y[i]);
+                    cairo_set_source_rgba(c, 0, 0, 0.8, 0.8);
                     cairo_stroke(c);
                     if (m_content&NODETEXT)
                     {

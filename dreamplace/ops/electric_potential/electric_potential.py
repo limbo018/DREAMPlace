@@ -65,7 +65,8 @@ class ElectricPotentialFunction(Function):
           inv_wu2_plus_wv2_2X=None, # 2.0/(wu^2 + wv^2)
           wu_by_wu2_plus_wv2_2X=None, # 2*wu/(wu^2 + wv^2)
           wv_by_wu2_plus_wv2_2X=None, # 2*wv/(wu^2 + wv^2)
-          fast_mode=True # fast mode will discard some computation  
+          fast_mode=True, # fast mode will discard some computation  
+          num_threads=8
           ):
         
         if pos.is_cuda:
@@ -106,7 +107,8 @@ class ElectricPotentialFunction(Function):
                     num_movable_impacted_bins_x, 
                     num_movable_impacted_bins_y,
                     num_filler_impacted_bins_x, 
-                    num_filler_impacted_bins_y
+                    num_filler_impacted_bins_y, 
+                    num_threads
                     ) 
 
         # output consists of (density_cost, density_map, max_density)
@@ -131,6 +133,7 @@ class ElectricPotentialFunction(Function):
         ctx.num_filler_impacted_bins_x = num_filler_impacted_bins_x
         ctx.num_filler_impacted_bins_y = num_filler_impacted_bins_y
         ctx.pos = pos 
+        ctx.num_threads = num_threads
         density_map = output.view([ctx.num_bins_x, ctx.num_bins_y])
         #density_map = torch.ones([ctx.num_bins_x, ctx.num_bins_y], dtype=pos.dtype, device=pos.device)
         #ctx.field_map_x = torch.ones([ctx.num_bins_x, ctx.num_bins_y], dtype=pos.dtype, device=pos.device)
@@ -246,7 +249,8 @@ class ElectricPotentialFunction(Function):
                     ctx.xl, ctx.yl, ctx.xh, ctx.yh, 
                     ctx.bin_size_x, ctx.bin_size_y, 
                     ctx.num_movable_nodes, 
-                    ctx.num_filler_nodes
+                    ctx.num_filler_nodes, 
+                    ctx.num_threads
                     )
 
         #global plot_count 
@@ -275,7 +279,7 @@ class ElectricPotentialFunction(Function):
                 None, None, None, None, \
                 None, None, None, None, \
                 None, None, None, None, \
-                None, None
+                None, None, None
 
 class ElectricPotential(nn.Module):
     """
@@ -291,7 +295,8 @@ class ElectricPotential(nn.Module):
             num_terminals, 
             num_filler_nodes, 
             padding, 
-            fast_mode=False
+            fast_mode=False, 
+            num_threads=8
             ):
         """ 
         @brief initialization 
@@ -360,6 +365,7 @@ class ElectricPotential(nn.Module):
 
         # whether really evaluate potential_map and energy or use dummy 
         self.fast_mode = fast_mode 
+        self.num_threads = num_threads 
 
     def forward(self, pos): 
         if self.initial_density_map is None: 
@@ -395,7 +401,8 @@ class ElectricPotential(nn.Module):
                         self.num_bins_x, 
                         self.num_bins_y, 
                         num_fixed_impacted_bins_x, 
-                        num_fixed_impacted_bins_y
+                        num_fixed_impacted_bins_y, 
+                        self.num_threads
                         ) 
             #plot(0, self.initial_density_map.clone().div(self.bin_size_x*self.bin_size_y).cpu().numpy(), self.padding, 'summary/initial_potential_map')
             # scale density of fixed macros 
