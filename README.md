@@ -39,6 +39,12 @@ Over 30X speedup over the CPU implementation ([RePlAce](https://doi.org/10.1109/
     - If installed and found, GPU acceleration will be enabled. 
     - Otherwise, only CPU implementation is enabled. 
 
+- GPU architecture compatibility 6.0 or later (Optional)
+    - Code has been tested on GPUs with compute compatibility 6.0 and 7.0. 
+    - Please check the [compatibility](https://developer.nvidia.com/cuda-gpus) of the GPU devices. 
+    - The default compilation target is compatibility 6.0. 
+    For compatibility 7.0, it is necessary to set the CMAKE_CUDA_FLAGS to -gencode=arch=compute_70,code=sm_70. 
+
 - [Cairo](https://github.com/freedesktop/cairo) (Optional)
     - If installed and found, the plotting functions will be faster by using C/C++ implementation. 
     - Otherwise, python implementation is used. 
