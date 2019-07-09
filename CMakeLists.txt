@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.13.2)
+cmake_minimum_required(VERSION 3.8.2)
 
 project(DREAMPlace)
 
@@ -30,7 +30,7 @@ set(CMAKE_CXX_STANDARD 11)
 
 find_program(PYTHON "python" REQUIRED)
 find_package(ZLIB REQUIRED)
-find_package(Boost 1.62.0 EXACT REQUIRED)
+find_package(Boost 1.62.0 EQUIRED)
 get_filename_component(Boost_DIR ${Boost_INCLUDE_DIRS}/../ ABSOLUTE)
 find_package(CUDA 9.0)
 find_package(Cairo)
