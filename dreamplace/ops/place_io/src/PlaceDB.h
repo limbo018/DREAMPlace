@@ -284,6 +284,7 @@ class PlaceDB : public DefParser::DefDataBase
         virtual void lef_version_cbk(std::string const& v);
         virtual void lef_version_cbk(double v); 
         virtual void lef_casesensitive_cbk(int v); 
+        virtual void lef_nowireextension_cbk(std::string const&); 
         virtual void lef_dividerchar_cbk(std::string const& ); 
         virtual void lef_units_cbk(LefParser::lefiUnits const& v);
         virtual void lef_manufacturing_cbk(double );

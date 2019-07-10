@@ -15,7 +15,7 @@ sys.path.pop()
 
 class Params (object):
     def __init__(self):
-        self.aux_file = None
+        self.aux_input = None
 
 def name2id_map2str(m):
     id2name_map = [None]*len(m)
@@ -40,7 +40,7 @@ class PlaceIOOpTest(unittest.TestCase):
     def test_simple(self):
         params = Params()
         design = os.path.dirname(os.path.realpath(__file__))
-        params.aux_file = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.join(design, "simple/simple.aux")))
+        params.aux_input = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.join(design, "simple/simple.aux")))
 
         db = place_io.PlaceIOFunction.forward(params)
 
