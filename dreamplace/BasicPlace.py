@@ -38,7 +38,7 @@ class PlaceDataCollection (object):
         @param placedb placement database 
         @param device cpu or cuda 
         """
-        torch.set_num_threads = params.num_threads
+        torch.set_num_threads(params.num_threads)
         # position should be parameter 
         self.pos = pos 
         # other tensors required to build ops 

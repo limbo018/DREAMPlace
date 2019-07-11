@@ -34,9 +34,9 @@ def dct(x, expk, algorithm):
             output = dct_cuda.dct_2N(x.view([-1, x.size(-1)]), expk)
     else:
         if algorithm == 'N': 
-            output = dct_cpp.dct(x.view([-1, x.size(-1)]), expk)
+            output = dct_cpp.dct(x.view([-1, x.size(-1)]), expk, torch.get_num_threads())
         elif algorithm == '2N':
-            output = dct_cpp.dct_2N(x.view([-1, x.size(-1)]), expk)
+            output = dct_cpp.dct_2N(x.view([-1, x.size(-1)]), expk, torch.get_num_threads())
     return output.view(x.size())  
 
 class DCTFunction(Function):
@@ -70,9 +70,9 @@ def idct(x, expk, algorithm):
             output = dct_cuda.idct_2N(x.view([-1, x.size(-1)]), expk)
     else:
         if algorithm == 'N': 
-            output = dct_cpp.idct(x.view([-1, x.size(-1)]), expk)
+            output = dct_cpp.idct(x.view([-1, x.size(-1)]), expk, torch.get_num_threads())
         elif algorithm == '2N': 
-            output = dct_cpp.idct_2N(x.view([-1, x.size(-1)]), expk)
+            output = dct_cpp.idct_2N(x.view([-1, x.size(-1)]), expk, torch.get_num_threads())
     return output.view(x.size())  
 
 class IDCTFunction(Function):
@@ -102,10 +102,10 @@ def dct2(x, expk0, expk1, algorithm='N'):
             #output = dct_cuda.dct_2N(dct_cuda.dct_2N(x, expk1).transpose_(dim0=-2, dim1=-1).contiguous(), expk0).transpose_(dim0=-2, dim1=-1).contiguous()
     else:
         if algorithm == 'N': 
-            output = dct_cpp.dct2(x, expk0, expk1)
-            #output = dct_cpp.dct(dct_cpp.dct(x, expk1).transpose_(dim0=-2, dim1=-1).contiguous(), expk0).transpose_(dim0=-2, dim1=-1).contiguous()
+            output = dct_cpp.dct2(x, expk0, expk1, torch.get_num_threads())
+            #output = dct_cpp.dct(dct_cpp.dct(x, expk1, torch.get_num_threads()).transpose_(dim0=-2, dim1=-1).contiguous(), expk0, torch.get_num_threads()).transpose_(dim0=-2, dim1=-1).contiguous()
         elif algorithm == '2N':
-            output = dct_cpp.dct2_2N(x, expk0, expk1)
+            output = dct_cpp.dct2_2N(x, expk0, expk1, torch.get_num_threads())
     return output 
 
 class DCT2Function(Function):
@@ -137,10 +137,10 @@ def idct2(x, expk0, expk1, algorithm='N'):
             output = dct_cuda.idct2_2N(x, expk0, expk1)
     else:
         if algorithm == 'N': 
-            output = dct_cpp.idct2(x, expk0, expk1)
-            #output = dct_cpp.idct(dct_cpp.idct(x, expk1).transpose_(dim0=-2, dim1=-1).contiguous(), expk0).transpose_(dim0=-2, dim1=-1).contiguous()
+            output = dct_cpp.idct2(x, expk0, expk1, torch.get_num_threads())
+            #output = dct_cpp.idct(dct_cpp.idct(x, expk1, torch.get_num_threads()).transpose_(dim0=-2, dim1=-1).contiguous(), expk0, torch.get_num_threads()).transpose_(dim0=-2, dim1=-1).contiguous()
         elif algorithm == '2N': 
-            output = dct_cpp.idct2_2N(x, expk0, expk1)
+            output = dct_cpp.idct2_2N(x, expk0, expk1, torch.get_num_threads())
     return output 
 
 class IDCT2Function(Function):
@@ -168,7 +168,7 @@ def dst(x, expk):
     if x.is_cuda:
         output = dct_cuda.dst(x.view([-1, x.size(-1)]), expk)
     else:
-        output = dct_cpp.dst(x.view([-1, x.size(-1)]), expk)
+        output = dct_cpp.dst(x.view([-1, x.size(-1)]), expk, torch.get_num_threads())
     return output.view(x.size())  
 
 class DSTFunction(Function):
@@ -193,7 +193,7 @@ def idst(x, expk):
     if x.is_cuda:
         output = dct_cuda.idst(x.view([-1, x.size(-1)]), expk)
     else:
-        output = dct_cpp.idst(x.view([-1, x.size(-1)]), expk)
+        output = dct_cpp.idst(x.view([-1, x.size(-1)]), expk, torch.get_num_threads())
     return output.view(x.size())  
 
 class IDSTFunction(Function):
@@ -218,7 +218,7 @@ def idxct(x, expk):
     if x.is_cuda:
         output = dct_cuda.idxct(x.view([-1, x.size(-1)]), expk)
     else:
-        output = dct_cpp.idxct(x.view([-1, x.size(-1)]), expk)
+        output = dct_cpp.idxct(x.view([-1, x.size(-1)]), expk, torch.get_num_threads())
     #output = IDCTFunction.forward(ctx, x, expk)
     #output.add_(x[..., 0].unsqueeze(-1)).mul_(0.5)
     ##output.mul_(0.5).add_(x[..., 0].unsqueeze(-1).mul(0.5))
@@ -246,7 +246,7 @@ def idxst(x, expk):
     if x.is_cuda:
         output = dct_cuda.idxst(x.view([-1, x.size(-1)]), expk)
     else:
-        output = dct_cpp.idxst(x.view([-1, x.size(-1)]), expk)
+        output = dct_cpp.idxst(x.view([-1, x.size(-1)]), expk, torch.get_num_threads())
     return output.view(x.size())  
 
 class IDXSTFunction(Function):
@@ -270,7 +270,7 @@ def idcct2(x, expk0, expk1):
     if x.is_cuda:
         output = dct_cuda.idcct2(x.view([-1, x.size(-1)]), expk0, expk1)
     else:
-        output = dct_cpp.idcct2(x.view([-1, x.size(-1)]), expk0, expk1)
+        output = dct_cpp.idcct2(x.view([-1, x.size(-1)]), expk0, expk1, torch.get_num_threads())
     return output.view(x.size())  
 
 class IDCCT2Function(Function):
@@ -297,7 +297,7 @@ def idcst2(x, expk0, expk1):
     if x.is_cuda:
         output = dct_cuda.idcst2(x.view([-1, x.size(-1)]), expk0, expk1)
     else:
-        output = dct_cpp.idcst2(x.view([-1, x.size(-1)]), expk0, expk1)
+        output = dct_cpp.idcst2(x.view([-1, x.size(-1)]), expk0, expk1, torch.get_num_threads())
     return output.view(x.size())  
 
 class IDCST2Function(Function):
@@ -324,7 +324,7 @@ def idsct2(x, expk0, expk1):
     if x.is_cuda:
         output = dct_cuda.idsct2(x.view([-1, x.size(-1)]), expk0, expk1)
     else:
-        output = dct_cpp.idsct2(x.view([-1, x.size(-1)]), expk0, expk1)
+        output = dct_cpp.idsct2(x.view([-1, x.size(-1)]), expk0, expk1, torch.get_num_threads())
     return output.view(x.size())  
 
 class IDSCT2Function(Function):

@@ -7,45 +7,11 @@
 
 DREAMPLACE_BEGIN_NAMESPACE
 
-template <typename T>
-void computePad(
-        const T* x, // M*N
-        const int M, 
-        const int N, 
-        T* z // M*2N
-        )
-{
-    for (int i = 0; i < M*N; ++i) 
-    {
-        int row = i/N; // row
-        int col = i-row*N; // column
-        int j = row*(N<<1) + col; 
-        z[j] = x[i]; 
-    }
-}
-
-template <typename T>
-void computeMulExpk_2N(
-        const T* x, // M*(N+1)*2
-        const T* expk, 
-        const int M, 
-        const int N, 
-        T* z // M*N
-        )
-{
-    for (int i = 0; i < M*N; ++i) 
-    {
-        int row = i/N; // row
-        int col = i-row*N; // column
-        int col_2x = (col<<1);
-        int j = row*((N+1)<<1) + col_2x; 
-        z[i] = x[j]*expk[col_2x] + x[j+1]*expk[col_2x+1];
-    }
-}
-
 at::Tensor dct_2N_forward(
         at::Tensor x,
-        at::Tensor expk) 
+        at::Tensor expk,
+		int num_threads
+		) 
 {
     CHECK_CPU(x);
     CHECK_CONTIGUOUS(x);
@@ -62,7 +28,8 @@ at::Tensor dct_2N_forward(
                     x.data<scalar_t>(), 
                     M, 
                     N, 
-                    x_pad.data<scalar_t>()
+                    x_pad.data<scalar_t>(),
+					num_threads
                     );
 
             auto y = at::rfft(x_pad, 1, false, true);
@@ -74,7 +41,8 @@ at::Tensor dct_2N_forward(
                     expk.data<scalar_t>(), 
                     M, 
                     N, 
-                    x_pad.data<scalar_t>()
+                    x_pad.data<scalar_t>(),
+					num_threads
                     );
             x_pad.mul_(1.0/N);
             });
@@ -82,47 +50,11 @@ at::Tensor dct_2N_forward(
     return x_pad; 
 }
 
-template <typename T>
-void computeMulExpkAndPad_2N(
-        const T* x, // M*N
-        const T* expk, 
-        const int M, 
-        const int N, 
-        T* z // M*2N*2
-        )
-{
-    for (int i = 0; i < M*N; ++i) 
-    {
-        int row = i/N; // row
-        int col = i-row*N; // column
-        int col_2x = (col<<1);
-        int j = row*(N<<2) + col_2x; 
-        z[j] = x[i]*expk[col_2x]; 
-        z[j+1] = x[i]*expk[col_2x+1];
-    }
-}
-
-/// remove last N entries in each column 
-template <typename T>
-void computeTruncation(
-        const T* x, // M*2N
-        const int M, 
-        const int N, 
-        T* z // M*N
-        )
-{
-    for (int i = 0; i < M*N; ++i) 
-    {
-        int row = i/N; // row
-        int col = i-row*N; // column
-        int j = row*(N<<1) + col; 
-        z[i] = x[j]; 
-    }
-}
-
 at::Tensor idct_2N_forward(
         at::Tensor x,
-        at::Tensor expk) 
+        at::Tensor expk,
+		int num_threads
+		) 
 {
     CHECK_CPU(x);
     CHECK_CONTIGUOUS(x);
@@ -140,7 +72,8 @@ at::Tensor idct_2N_forward(
                     expk.data<scalar_t>(), 
                     M, 
                     N, 
-                    x_pad.data<scalar_t>()
+                    x_pad.data<scalar_t>(),
+					num_threads
                     );
 
             // y is real now 
@@ -152,7 +85,8 @@ at::Tensor idct_2N_forward(
                     y.data<scalar_t>(), 
                     M, 
                     N, 
-                    x_pad.data<scalar_t>()
+                    x_pad.data<scalar_t>(),
+					num_threads
                     );
             //std::cout << "z\n" << z << "\n";
 
@@ -167,7 +101,9 @@ at::Tensor idct_2N_forward(
 at::Tensor dct2_2N_forward(
         at::Tensor x,
         at::Tensor expk0, 
-        at::Tensor expk1) 
+        at::Tensor expk1,
+		int num_threads
+		) 
 {
     CHECK_CPU(x);
     CHECK_CONTIGUOUS(x);
@@ -188,7 +124,8 @@ at::Tensor dct2_2N_forward(
                     x.data<scalar_t>(), 
                     M, 
                     N, 
-                    x_pad.data<scalar_t>()
+                    x_pad.data<scalar_t>(),
+					num_threads
                     );
 
             auto y = at::rfft(x_pad, 1, false, true);
@@ -200,7 +137,8 @@ at::Tensor dct2_2N_forward(
                     expk1.data<scalar_t>(), 
                     M, 
                     N, 
-                    x_pad.data<scalar_t>()
+                    x_pad.data<scalar_t>(),
+					num_threads
                     );
             //x_pad.mul_(1.0/N);
 
@@ -213,7 +151,8 @@ at::Tensor dct2_2N_forward(
                     xt.data<scalar_t>(), 
                     N, 
                     M, 
-                    x_pad.data<scalar_t>()
+                    x_pad.data<scalar_t>(),
+					num_threads
                     );
 
             y = at::rfft(x_pad, 1, false, true);
@@ -226,7 +165,8 @@ at::Tensor dct2_2N_forward(
                     expk0.data<scalar_t>(), 
                     N, 
                     M, 
-                    x_pad.data<scalar_t>()
+                    x_pad.data<scalar_t>(),
+					num_threads
                     );
 
             x_pad.mul_(1.0/(M*N));
@@ -239,7 +179,9 @@ at::Tensor dct2_2N_forward(
 at::Tensor idct2_2N_forward(
         at::Tensor x,
         at::Tensor expk0, 
-        at::Tensor expk1) 
+        at::Tensor expk1,
+		int num_threads
+		) 
 {
     CHECK_CPU(x);
     CHECK_CONTIGUOUS(x);
@@ -261,7 +203,8 @@ at::Tensor idct2_2N_forward(
                     expk1.data<scalar_t>(), 
                     M, 
                     N, 
-                    x_pad.data<scalar_t>()
+                    x_pad.data<scalar_t>(),
+					num_threads
                     );
 
             // y is real now 
@@ -273,7 +216,8 @@ at::Tensor idct2_2N_forward(
                     y.data<scalar_t>(), 
                     M, 
                     N, 
-                    x_pad.data<scalar_t>()
+                    x_pad.data<scalar_t>(),
+					num_threads
                     );
 
             // this is to match python implementation 
@@ -288,7 +232,8 @@ at::Tensor idct2_2N_forward(
                     expk0.data<scalar_t>(), 
                     N, 
                     M, 
-                    x_pad.data<scalar_t>()
+                    x_pad.data<scalar_t>(),
+					num_threads
                     );
 
             // y is real now 
@@ -300,7 +245,8 @@ at::Tensor idct2_2N_forward(
                     y.data<scalar_t>(), 
                     N, 
                     M, 
-                    x_pad.data<scalar_t>()
+                    x_pad.data<scalar_t>(),
+					num_threads
                     );
 
             // this is to match python implementation 

@@ -9,12 +9,14 @@ DREAMPLACE_BEGIN_NAMESPACE
 
 at::Tensor idxct_forward(
         at::Tensor x,
-        at::Tensor expk) 
+        at::Tensor expk,
+		int num_threads
+		) 
 {
     auto N = x.size(-1);
     auto M = x.numel()/N; 
 
-    auto z = idct_forward(x, expk);
+    auto z = idct_forward(x, expk, num_threads);
 
     //std::cout << __func__ << " z\n" << z << "\n";
 
@@ -23,7 +25,8 @@ at::Tensor idxct_forward(
                     x.data<scalar_t>(), 
                     M, 
                     N, 
-                    z.data<scalar_t>()
+                    z.data<scalar_t>(), 
+					num_threads
                     );
             });
 
@@ -32,7 +35,9 @@ at::Tensor idxct_forward(
 
 at::Tensor idxst_forward(
         at::Tensor x,
-        at::Tensor expk) 
+        at::Tensor expk,
+		int num_threads
+		) 
 {
     auto N = x.size(-1);
     auto M = x.numel()/N; 
@@ -47,17 +52,19 @@ at::Tensor idxst_forward(
                     x.data<scalar_t>(), 
                     M, 
                     N, 
-                    x_reorder.data<scalar_t>()
+                    x_reorder.data<scalar_t>(), 
+					num_threads
                     );
 
-            y = idct_forward(x_reorder, expk);
+            y = idct_forward(x_reorder, expk, num_threads);
             y.mul_(0.5);
             //std::cout << "y\n" << y << "\n";
 
             negateOddEntries<scalar_t>(
                     y.data<scalar_t>(), 
                     M, 
-                    N
+                    N, 
+					num_threads
                     );
             //std::cout << "z\n" << y << "\n";
             });
@@ -68,7 +75,9 @@ at::Tensor idxst_forward(
 at::Tensor idcct2_forward(
         at::Tensor x,
         at::Tensor expk0, 
-        at::Tensor expk1) 
+        at::Tensor expk1,
+		int num_threads
+		) 
 {
     CHECK_CPU(x);
     CHECK_CONTIGUOUS(x);
@@ -93,7 +102,8 @@ at::Tensor idcct2_forward(
                     expk1.data<scalar_t>(), 
                     M, 
                     N, 
-                    v.data<scalar_t>()
+                    v.data<scalar_t>(), 
+					num_threads
                     );
 
             //std::cout << "v\n" << v << "\n";
@@ -109,7 +119,8 @@ at::Tensor idcct2_forward(
                     y.data<scalar_t>(), 
                     M, 
                     N, 
-                    v.data<scalar_t>()
+                    v.data<scalar_t>(), 
+					num_threads
                     );
             //std::cout << "z\n" << z << "\n";
 
@@ -117,7 +128,8 @@ at::Tensor idcct2_forward(
                     x.data<scalar_t>(), 
                     M, 
                     N, 
-                    v.data<scalar_t>()
+                    v.data<scalar_t>(), 
+					num_threads
                     );
 
             //std::cout << "z\n" << z << "\n";
@@ -132,7 +144,8 @@ at::Tensor idcct2_forward(
                     expk0.data<scalar_t>(), 
                     N, 
                     M, 
-                    v.data<scalar_t>()
+                    v.data<scalar_t>(), 
+					num_threads
                     );
 
             //std::cout << __func__ << " v\n" << v << "\n";
@@ -147,7 +160,8 @@ at::Tensor idcct2_forward(
                     y.data<scalar_t>(), 
                     N, 
                     M, 
-                    v.data<scalar_t>()
+                    v.data<scalar_t>(), 
+					num_threads
                     );
             //std::cout << __func__ << " z\n" << z << "\n";
 
@@ -155,7 +169,8 @@ at::Tensor idcct2_forward(
                     xt.data<scalar_t>(), 
                     N, 
                     M, 
-                    v.data<scalar_t>()
+                    v.data<scalar_t>(), 
+					num_threads
                     );
 
             v.transpose_(-2, -1);
@@ -167,7 +182,9 @@ at::Tensor idcct2_forward(
 at::Tensor idsct2_forward(
         at::Tensor x,
         at::Tensor expk0, 
-        at::Tensor expk1) 
+        at::Tensor expk1,
+		int num_threads
+		) 
 {
     CHECK_CPU(x);
     CHECK_CONTIGUOUS(x);
@@ -193,7 +210,8 @@ at::Tensor idsct2_forward(
                     expk1.data<scalar_t>(), 
                     M, 
                     N, 
-                    v.data<scalar_t>()
+                    v.data<scalar_t>(), 
+					num_threads
                     );
 
             //std::cout << "v\n" << v << "\n";
@@ -209,7 +227,8 @@ at::Tensor idsct2_forward(
                     y.data<scalar_t>(), 
                     M, 
                     N, 
-                    z.data<scalar_t>()
+                    z.data<scalar_t>(), 
+					num_threads
                     );
             //std::cout << "z\n" << z << "\n";
 
@@ -217,7 +236,8 @@ at::Tensor idsct2_forward(
                     x.data<scalar_t>(), 
                     M, 
                     N, 
-                    z.data<scalar_t>()
+                    z.data<scalar_t>(), 
+					num_threads
                     );
             //std::cout << __func__ << " z\n" << z << "\n";
 
@@ -230,7 +250,8 @@ at::Tensor idsct2_forward(
                     xt.data<scalar_t>(), 
                     N, 
                     M, 
-                    z.data<scalar_t>()
+                    z.data<scalar_t>(), 
+					num_threads
                     );
 
             //std::cout << "x\n" << x << "\n";
@@ -241,7 +262,8 @@ at::Tensor idsct2_forward(
                     expk0.data<scalar_t>(), 
                     N, 
                     M, 
-                    v.data<scalar_t>()
+                    v.data<scalar_t>(), 
+					num_threads
                     );
 
             //std::cout << "v\n" << v << "\n";
@@ -255,7 +277,8 @@ at::Tensor idsct2_forward(
                     y.data<scalar_t>(), 
                     N, 
                     M, 
-                    z.data<scalar_t>()
+                    z.data<scalar_t>(), 
+					num_threads
                     );
             //std::cout << "z\n" << z << "\n";
             // this is to match python implementation 
@@ -265,7 +288,8 @@ at::Tensor idsct2_forward(
             negateOddEntries<scalar_t>(
                     z.data<scalar_t>(), 
                     N, 
-                    M
+                    M, 
+					num_threads
                     );
             //std::cout << "z\n" << y << "\n";
 
@@ -278,7 +302,9 @@ at::Tensor idsct2_forward(
 at::Tensor idcst2_forward(
         at::Tensor x,
         at::Tensor expk0, 
-        at::Tensor expk1) 
+        at::Tensor expk1,
+		int num_threads
+		) 
 {
     CHECK_CPU(x);
     CHECK_CONTIGUOUS(x);
@@ -300,7 +326,8 @@ at::Tensor idcst2_forward(
                     x.data<scalar_t>(), 
                     M, 
                     N, 
-                    z.data<scalar_t>()
+                    z.data<scalar_t>(), 
+					num_threads
                     );
 
             //std::cout << "x\n" << x << "\n";
@@ -311,7 +338,8 @@ at::Tensor idcst2_forward(
                     expk1.data<scalar_t>(), 
                     M, 
                     N, 
-                    v.data<scalar_t>()
+                    v.data<scalar_t>(), 
+					num_threads
                     );
 
             //std::cout << "v\n" << v << "\n";
@@ -325,7 +353,8 @@ at::Tensor idcst2_forward(
                     y.data<scalar_t>(), 
                     M, 
                     N, 
-                    z.data<scalar_t>()
+                    z.data<scalar_t>(), 
+					num_threads
                     );
             //std::cout << "z\n" << z << "\n";
             // this is to match python implementation 
@@ -335,7 +364,8 @@ at::Tensor idcst2_forward(
             negateOddEntries<scalar_t>(
                     z.data<scalar_t>(), 
                     M, 
-                    N
+                    N, 
+					num_threads
                     );
             //std::cout << __func__ << " z\n" << z << "\n";
 
@@ -352,7 +382,8 @@ at::Tensor idcst2_forward(
                     expk0.data<scalar_t>(), 
                     N, 
                     M, 
-                    v.data<scalar_t>()
+                    v.data<scalar_t>(), 
+					num_threads
                     );
 
             //std::cout << "v\n" << v << "\n";
@@ -367,14 +398,16 @@ at::Tensor idcst2_forward(
                     y.data<scalar_t>(), 
                     N, 
                     M, 
-                    z.data<scalar_t>()
+                    z.data<scalar_t>(), 
+					num_threads
                     );
             //std::cout << "z\n" << z << "\n";
             addX0AndScaleN<scalar_t>(
                     xt.data<scalar_t>(), 
                     N, 
                     M, 
-                    z.data<scalar_t>()
+                    z.data<scalar_t>(), 
+					num_threads
                     );
 
             z.transpose_(-2, -1);
