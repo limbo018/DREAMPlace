@@ -45,9 +45,6 @@ void PlaceDB::lef_casesensitive_cbk(int v)
 {
     lefNamesCaseSensitive = v;
 }
-void PlaceDB::lef_nowireextension_cbk(std::string const& ) 
-{
-}
 void PlaceDB::lef_dividerchar_cbk(std::string const& ) 
 {
 }
