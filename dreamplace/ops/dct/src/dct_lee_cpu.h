@@ -51,8 +51,9 @@ inline void transpose(const TValue *in, TValue *out, TIndex M, TIndex N, TIndex 
 
 /// Negate values in odd position of a vector
 template <typename TValue, typename TIndex = unsigned>
-inline void negateOddEntries(TValue *vec, TIndex N)
+inline void negateOddEntries(TValue *vec, TIndex N, int num_threads)
 {
+#pragma omp parallel for num_threads(num_threads)
     for (TIndex i = 1; i < N; i += 2)
     {
         vec[i] = -vec[i];
@@ -291,9 +292,9 @@ inline void idct(TValue *vec, TValue *out, TValue* buf, const TValue *cos, TInde
 /// @param  M     number of rows
 /// @param  N     number of columns
 template <typename TValue, typename TIndex = unsigned>
-inline void dct(TValue *mtx, TValue *out, TValue* buf, const TValue *cos, TIndex M, TIndex N)
+inline void dct(TValue *mtx, TValue *out, TValue* buf, const TValue *cos, TIndex M, TIndex N, int num_threads)
 {
-    //#pragma omp parallel for schedule(static)
+#pragma omp parallel for num_threads(num_threads) schedule(static)
     for (TIndex i = 0; i < M; ++i)
     {
         dct<TValue, TIndex>(mtx + i * N, out + i * N, buf + i*N, cos, N);
@@ -308,9 +309,9 @@ inline void dct(TValue *mtx, TValue *out, TValue* buf, const TValue *cos, TIndex
 /// @param  M     number of rows
 /// @param  N     number of columns
 template <typename TValue, typename TIndex = unsigned>
-inline void idct(TValue *mtx, TValue *out, TValue* buf, const TValue *cos, TIndex M, TIndex N)
+inline void idct(TValue *mtx, TValue *out, TValue* buf, const TValue *cos, TIndex M, TIndex N, int num_threads)
 {
-    //#pragma omp parallel for schedule(static)
+#pragma omp parallel for num_threads(num_threads) schedule(static)
     for (TIndex i = 0; i < M; ++i)
     {
         idct<TValue, TIndex>(mtx + i * N, out + i * N, buf + i*N, cos, N);
