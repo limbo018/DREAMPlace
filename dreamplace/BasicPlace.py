@@ -417,7 +417,7 @@ class BasicPlace (nn.Module):
 
         # wirelength for position 
         def build_detailed_placement_op(pos): 
-            print("[I] start ABCDPlace for refinement")
+            print("[I] Start ABCDPlace for refinement")
             pos1 = pos 
             for i in range(1): 
                 pos1 = kr(pos1)

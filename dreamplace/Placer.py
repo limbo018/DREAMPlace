@@ -60,7 +60,7 @@ def place(params):
         print("[I] %s" % (cmd))
         tt = time.time()
         os.system(cmd)
-        print("[I] detailed placement takes %.2f seconds" % (time.time()-tt))
+        print("[I] External detailed placement takes %.2f seconds" % (time.time()-tt))
 
         if params.plot_flag: 
             # read solution and evaluate 
