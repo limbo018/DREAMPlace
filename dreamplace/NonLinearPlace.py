@@ -159,15 +159,25 @@ class NonLinearPlace (BasicPlace.BasicPlace):
 
                 print("[I] optimizer %s takes %.3f seconds" % (optimizer_name, time.time()-tt))
 
+        # dump global placement solution for legalization 
+        if params.dump_global_place_solution_flag: 
+            self.dump(params, placedb, self.pos[0].cpu(), "%s.lg.pklz" %(params.design_name()))
+
         # legalization 
         if params.legalize_flag:
             tt = time.time()
             self.pos[0].data.copy_(self.op_collections.greedy_legalize_op(self.pos[0]))
             print("[I] legalization takes %.3f seconds" % (time.time()-tt))
 
+        # dump legalization solution for detailed placement 
+        if params.dump_legalize_solution_flag: 
+            self.dump(params, placedb, self.pos[0].cpu(), "%s.dp.pklz" %(params.design_name()))
+
         # detailed placement 
         if params.detailed_place_flag: 
-            print("[W] detailed placement NOT implemented yet, skipped")
+            tt = time.time()
+            self.pos[0].data.copy_(self.op_collections.detailed_place_op(self.pos[0]))
+            print("[I] detailed placement takes %.3f seconds" % (time.time()-tt))
 
         # save results 
         cur_pos = self.pos[0].data.clone().cpu().numpy()

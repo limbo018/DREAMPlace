@@ -15,7 +15,7 @@ else:
     from io import BytesIO as StringIO
 
 baseURL = "http://www.cerc.utexas.edu/~yibolin/"
-filename = "ispd2005.tar.gz"
+filename = "ispd2005dp.tar.gz"
 target_dir = os.path.dirname(os.path.abspath(__file__))
 
 print("Download from %s to %s" % (baseURL + filename, os.path.join(target_dir, filename)))

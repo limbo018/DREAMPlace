@@ -42,11 +42,14 @@ class Params:
         self.stop_overflow = 0.1 # stopping criteria, consider stop when the overflow reaches to a ratio 
         self.dtype = 'float32' # data type, float32/float64
         self.detailed_place_engine = "" # external detailed placement engine to be called after placement 
+        self.detailed_place_command = "-nolegal -nodetail" # commands for external detailed placement 
         self.plot_flag = False # whether plot solution or not 
-        self.RePlAce_ref_hpwl = 3.5e5
-        self.RePlAce_LOWER_PCOF = 0.95
-        self.RePlAce_UPPER_PCOF = 1.05
-        self.num_threads = 8
+        self.RePlAce_ref_hpwl = 3.5e5 # reference HPWL used in RePlAce for updating density weight 
+        self.RePlAce_LOWER_PCOF = 0.95 # lower bound ratio used in RePlAce for updating density weight 
+        self.RePlAce_UPPER_PCOF = 1.05 # upper bound ratio used in RePlAce for updating density weight 
+        self.num_threads = 8 # number of CPU threads
+        self.dump_global_place_solution_flag = False # whether dump intermediate global placement solution as a compressed pickle file 
+        self.dump_legalize_solution_flag = False # whether dump intermediate legalization solution as a compressed pickle file 
 
     def printWelcome(self): 
         """
@@ -90,11 +93,14 @@ detailed_place_flag [default %d]       | whether use internal detailed placement
 stop_overflow [default %g]           | stopping criteria, consider stop when the overflow reaches to a ratio 
 dtype [default %s]               | data type, float32 | float64
 detailed_place_engine [default %s]      | external detailed placement engine to be called after placement 
+detailed_place_command [default %s]     | commands for external detailed placement engine 
 plot_flag [default %d]                 | whether plot solution or not 
 RePlAce_ref_hpwl [default %g]     | reference HPWL used in RePlAce for updating density weight 
 RePlAce_LOWER_PCOF [default %g]     | lower bound ratio used in RePlAce for updating density weight 
 RePlAce_UPPER_PCOF [default %g]     | upper bound ratio used in RePlAce for updating density weight 
 num_threads [default %d]            | number of CPU threads
+dump_global_place_solution_flag [default %d] | whether dump intermediate global placement solution 
+dump_legalize_solution_flag [default %d] | whether dump intermediate legalization solution 
         """ % (self.gpu, 
                 self.num_bins_x, 
                 self.num_bins_y, 
@@ -113,11 +119,14 @@ num_threads [default %d]            | number of CPU threads
                 self.stop_overflow, 
                 self.dtype, 
                 self.detailed_place_engine, 
+                self.detailed_place_command, 
                 self.plot_flag, 
                 self.RePlAce_ref_hpwl, 
                 self.RePlAce_LOWER_PCOF, 
                 self.RePlAce_UPPER_PCOF, 
-                self.num_threads
+                self.num_threads,
+                self.dump_global_place_solution_flag,
+                self.dump_legalize_solution_flag
                 )
         print(content)
 
@@ -149,11 +158,14 @@ num_threads [default %d]            | number of CPU threads
         data['stop_overflow'] = self.stop_overflow
         data['dtype'] = self.dtype
         data['detailed_place_engine'] = self.detailed_place_engine
+        data['detailed_place_command'] = self.detailed_place_command
         data['plot_flag'] = self.plot_flag
         data['RePlAce_ref_hpwl'] = self.RePlAce_ref_hpwl
         data['RePlAce_LOWER_PCOF'] = self.RePlAce_LOWER_PCOF
         data['RePlAce_UPPER_PCOF'] = self.RePlAce_UPPER_PCOF
         data['num_threads'] = self.num_threads
+        data['dump_global_place_solution_flag'] = self.dump_global_place_solution_flag
+        data['dump_legalize_solution_flag'] = self.dump_legalize_solution_flag
         return data 
 
     def fromJson(self, data):
@@ -183,11 +195,14 @@ num_threads [default %d]            | number of CPU threads
         if 'stop_overflow' in data: self.stop_overflow = data['stop_overflow']
         if 'dtype' in data: self.dtype = data['dtype']
         if 'detailed_place_engine' in data: self.detailed_place_engine = data['detailed_place_engine']
+        if 'detailed_place_command' in data: self.detailed_place_command = data['detailed_place_command']
         if 'plot_flag' in data: self.plot_flag = data['plot_flag']
         if 'RePlAce_ref_hpwl' in data: self.RePlAce_ref_hpwl = data['RePlAce_ref_hpwl']
         if 'RePlAce_LOWER_PCOF' in data: self.RePlAce_LOWER_PCOF = data['RePlAce_LOWER_PCOF']
         if 'RePlAce_UPPER_PCOF' in data: self.RePlAce_UPPER_PCOF = data['RePlAce_UPPER_PCOF']
         if 'num_threads' in data: self.num_threads = data['num_threads']
+        if 'dump_global_place_solution_flag' in data: self.dump_global_place_solution_flag = data['dump_global_place_solution_flag']
+        if 'dump_legalize_solution_flag' in data: self.dump_legalize_solution_flag = data['dump_legalize_solution_flag']
 
     def dump(self, filename):
         """
@@ -214,3 +229,15 @@ num_threads [default %d]            | number of CPU threads
         @brief print 
         """
         return self.__str__()
+
+    def design_name(self):
+        """
+        @brief speculate the design name for dumping out intermediate solutions 
+        """
+        if params.aux_input: 
+            design_name = os.path.basename(params.aux_input).replace(".aux", "").replace(".AUX", "")
+        elif params.verilog_input:
+            design_name = os.path.basename(params.verilog_input).replace(".v", "").replace(".V", "")
+        elif params.def_input: 
+            design_name = os.path.basename(params.def_input).replace(".def", "").replace(".DEF", "")
+        return design_name 

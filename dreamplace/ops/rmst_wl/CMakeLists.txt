@@ -1,5 +1,3 @@
-cmake_minimum_required(VERSION 3.0.2)
-
 project(rmst_wl)
 
 if (PYTHON)

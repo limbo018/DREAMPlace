@@ -24,6 +24,9 @@ import dreamplace.ops.electric_potential.electric_overflow as electric_overflow
 import dreamplace.ops.rmst_wl.rmst_wl as rmst_wl 
 import dreamplace.ops.greedy_legalize.greedy_legalize as greedy_legalize 
 import dreamplace.ops.draw_place.draw_place as draw_place 
+import dreamplace.ops.global_swap.global_swap as global_swap 
+import dreamplace.ops.k_reorder.k_reorder as k_reorder
+import dreamplace.ops.independent_set_matching.independent_set_matching as independent_set_matching
 import pdb 
 
 class PlaceDataCollection (object):
@@ -186,6 +189,8 @@ class BasicPlace (nn.Module):
         self.op_collections.density_overflow_op = self.build_electric_overflow(params, placedb, self.data_collections, self.device)
         # legalization 
         self.op_collections.greedy_legalize_op = self.build_greedy_legalization(params, placedb, self.data_collections, self.device)
+        # detailed placement 
+        self.op_collections.detailed_place_op = self.build_detailed_placement(params, placedb, self.data_collections, self.device)
         # draw placement 
         self.op_collections.draw_place_op = self.build_draw_placement(params, placedb)
 
@@ -352,6 +357,76 @@ class BasicPlace (nn.Module):
                 num_filler_nodes=placedb.num_filler_nodes
                 )
 
+    def build_detailed_placement(self, params, placedb, data_collections, device):
+        """
+        @brief detailed placement consisting of global swap and independent set matching 
+        @param params parameters 
+        @param placedb placement database 
+        @param data_collections a collection of all data and variables required for constructing the ops 
+        @param device cpu or cuda 
+        """
+        gs = global_swap.GlobalSwap(
+                node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
+                flat_net2pin_map=data_collections.flat_net2pin_map, flat_net2pin_start_map=data_collections.flat_net2pin_start_map, pin2net_map=data_collections.pin2net_map, 
+                flat_node2pin_map=data_collections.flat_node2pin_map, flat_node2pin_start_map=data_collections.flat_node2pin_start_map, pin2node_map=data_collections.pin2node_map, 
+                pin_offset_x=data_collections.pin_offset_x, pin_offset_y=data_collections.pin_offset_y, 
+                net_mask=data_collections.net_mask_ignore_large_degrees, 
+                xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
+                site_width=placedb.site_width, row_height=placedb.row_height, 
+                #num_bins_x=placedb.num_bins_x//16, num_bins_y=placedb.num_bins_y//16, 
+                num_bins_x=placedb.num_bins_x//2, num_bins_y=placedb.num_bins_y//2, 
+                num_movable_nodes=placedb.num_movable_nodes, 
+                num_filler_nodes=placedb.num_filler_nodes, 
+                batch_size=256, 
+                max_iters=2, 
+                algorithm='concurrent', 
+                num_threads=params.num_threads
+                )
+        kr = k_reorder.KReorder(
+                node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
+                flat_net2pin_map=data_collections.flat_net2pin_map, flat_net2pin_start_map=data_collections.flat_net2pin_start_map, pin2net_map=data_collections.pin2net_map, 
+                flat_node2pin_map=data_collections.flat_node2pin_map, flat_node2pin_start_map=data_collections.flat_node2pin_start_map, pin2node_map=data_collections.pin2node_map, 
+                pin_offset_x=data_collections.pin_offset_x, pin_offset_y=data_collections.pin_offset_y, 
+                net_mask=data_collections.net_mask_ignore_large_degrees, 
+                xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
+                site_width=placedb.site_width, row_height=placedb.row_height, 
+                num_bins_x=placedb.num_bins_x, num_bins_y=placedb.num_bins_y, 
+                num_movable_nodes=placedb.num_movable_nodes, 
+                num_filler_nodes=placedb.num_filler_nodes, 
+                K=4, 
+                max_iters=2, 
+                num_threads=params.num_threads
+                )
+        ism = independent_set_matching.IndependentSetMatching(
+                node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
+                flat_net2pin_map=data_collections.flat_net2pin_map, flat_net2pin_start_map=data_collections.flat_net2pin_start_map, pin2net_map=data_collections.pin2net_map, 
+                flat_node2pin_map=data_collections.flat_node2pin_map, flat_node2pin_start_map=data_collections.flat_node2pin_start_map, pin2node_map=data_collections.pin2node_map, 
+                pin_offset_x=data_collections.pin_offset_x, pin_offset_y=data_collections.pin_offset_y, 
+                net_mask=data_collections.net_mask_ignore_large_degrees, 
+                xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
+                site_width=placedb.site_width, row_height=placedb.row_height, 
+                num_bins_x=placedb.num_bins_x, num_bins_y=placedb.num_bins_y, 
+                num_movable_nodes=placedb.num_movable_nodes, 
+                num_filler_nodes=placedb.num_filler_nodes, 
+                batch_size=2048, 
+                set_size=128, 
+                max_iters=50, 
+                algorithm='concurrent', 
+                num_threads=params.num_threads
+                )
+
+        # wirelength for position 
+        def build_detailed_placement_op(pos): 
+            print("[I] start ABCDPlace for refinement")
+            pos1 = pos 
+            for i in range(1): 
+                pos1 = kr(pos1)
+                pos1 = ism(pos1)
+                pos1 = gs(pos1)
+                pos1 = kr(pos1)
+            return pos1 
+        return build_detailed_placement_op
+
     def build_draw_placement(self, params, placedb):
         """
         @brief plot placement  
@@ -391,3 +466,26 @@ class BasicPlace (nn.Module):
             pos = torch.from_numpy(pos)
         self.op_collections.draw_place_op(pos, figname)
         print("[I] plotting to %s takes %.3f seconds" % (figname, time.time()-tt))
+
+    def dump(self, params, placedb, pos, filename):
+        """
+        @brief dump intermediate solution as compressed pickle file (.pklz)
+        @param params parameters 
+        @param placedb placement database 
+        @param iteration optimization step 
+        @param pos locations of cells 
+        @param filename output file name 
+        """
+        with gzip.open(filename, "wb") as f:
+            pickle.dump((self.data_collections.node_size_x.cpu(), self.data_collections.node_size_y.cpu(), 
+                self.data_collections.flat_net2pin_map.cpu(), self.data_collections.flat_net2pin_start_map.cpu(), self.data_collections.pin2net_map.cpu(), 
+                self.data_collections.flat_node2pin_map.cpu(), self.data_collections.flat_node2pin_start_map.cpu(), self.data_collections.pin2node_map.cpu(), 
+                self.data_collections.pin_offset_x.cpu(), self.data_collections.pin_offset_y.cpu(), 
+                self.data_collections.net_mask_ignore_large_degrees.cpu(), 
+                placedb.xl, placedb.yl, placedb.xh, placedb.yh, 
+                placedb.site_width, placedb.row_height, 
+                placedb.num_bins_x, placedb.num_bins_y, 
+                placedb.num_movable_nodes, 
+                placedb.num_filler_nodes, 
+                pos 
+                ), f)

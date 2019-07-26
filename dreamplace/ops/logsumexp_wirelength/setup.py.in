@@ -12,6 +12,9 @@ from torch.utils.cpp_extension import BuildExtension, CppExtension, CUDAExtensio
 import os 
 import sys
 
+os.environ["CC"] = "${CMAKE_C_COMPILER}"
+os.environ["CXX"] = "${CMAKE_CXX_COMPILER}"
+
 utility_dir = "${UTILITY_LIBRARY_DIRS}"
 ops_dir = "${OPS_DIR}"
 

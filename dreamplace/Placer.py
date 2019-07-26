@@ -56,15 +56,7 @@ def place(params):
         target_density_cmd = ""
         if params.target_density < 1.0:
             target_density_cmd = " -util %f" % (params.target_density)
-        if params.legalize_flag:
-            legalize = "-nolegal"
-        else:
-            legalize = ""
-        if params.detailed_place_flag:
-            detailed_place = "-nodetail"
-        else:
-            detailed_place = ""
-        cmd = "%s -aux %s -loadpl %s %s -out %s -noglobal %s %s" % (params.detailed_place_engine, params.aux_input, gp_out_file, target_density_cmd, dp_out_file, legalize, detailed_place)
+        cmd = "%s -aux %s -loadpl %s %s -out %s -noglobal %s" % (params.detailed_place_engine, params.aux_input, gp_out_file, target_density_cmd, dp_out_file, params.detailed_place_command)
         print("[I] %s" % (cmd))
         tt = time.time()
         os.system(cmd)

@@ -40,15 +40,37 @@ get_filename_component(UTILITY_LIBRARY_DIRS ${CMAKE_CURRENT_BINARY_DIR}/dreampla
 message("-- OPS_DIR ${OPS_DIR}")
 message("-- UTILITY_LIBRARY_DIRS ${UTILITY_LIBRARY_DIRS}")
 
+# thirdparty libraries 
+# flute for steiner tree generation 
 find_path(FLUTE_INCLUDE_DIRS flute.h PATHS ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/*)
 string(REPLACE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} FLUTE_LINK_DIRS ${FLUTE_INCLUDE_DIRS})
 message("-- FLUTE_INCLUDE_DIRS ${FLUTE_INCLUDE_DIRS}")
 message("-- FLUTE_LINK_DIRS ${FLUTE_LINK_DIRS}")
 
+# Limbo for parsers 
 set(LIMBO_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Limbo)
 message("-- LIMBO_SOURCE_DIR ${LIMBO_SOURCE_DIR}")
 set(LIMBO_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/thirdparty/Limbo)
 message("-- LIMBO_BINARY_DIR ${LIMBO_BINARY_DIR}")
+set(CUB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/cub)
+message("-- CUB_DIR ${CUB_DIR}")
+
+# munkres-cpp for Hungarian algorithm 
+set(MUNKRES_CPP_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/munkres-cpp/src)
+set(MUNKRES_CPP_LINK_DIRS ${CMAKE_CURRENT_BINARY_DIR}/thirdparty/munkres-cpp)
+message("-- MUNKRES_CPP_INCLUDE_DIRS ${MUNKRES_CPP_INCLUDE_DIRS}")
+message("-- MUNKRES_CPP_LINK_DIRS ${MUNKRES_CPP_LINK_DIRS}")
+
+# lemon for network flow algorithms 
+find_path(LEMON_SOURCE_DIR lemon PATHS ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Limbo/limbo/thirdparty/* 
+	NO_DEFAULT_PATH
+	)
+set(LEMON_INCLUDE_DIRS "${LEMON_SOURCE_DIR}")
+string(REPLACE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} LEMON_BINARY_DIR ${LEMON_SOURCE_DIR})
+list(APPEND LEMON_INCLUDE_DIRS "${LEMON_BINARY_DIR}")
+set(LEMON_LINK_DIRS ${LEMON_BINARY_DIR}/lemon)
+message("-- LEMON_INCLUDE_DIRS ${LEMON_INCLUDE_DIRS}")
+message("-- LEMON_LINK_DIRS ${LEMON_LINK_DIRS}")
 
 add_subdirectory(thirdparty)
 add_subdirectory(dreamplace)
