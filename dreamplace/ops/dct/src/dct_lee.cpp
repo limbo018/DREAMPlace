@@ -38,7 +38,7 @@ void dct_lee_forward(
         at::Tensor cos, 
         at::Tensor buf,
         at::Tensor out,
-		int num_threads=torch::get_num_threads()
+		int num_threads=at::get_num_threads()
 		) 
 {
     CHECK_CPU(x);
@@ -69,7 +69,7 @@ void idct_lee_forward(
         at::Tensor cos, 
         at::Tensor buf, 
         at::Tensor out,
-		int num_threads=torch::get_num_threads()
+		int num_threads=at::get_num_threads()
         ) 
 {
     CHECK_CPU(x);
@@ -100,7 +100,7 @@ void dst_lee_forward(
         at::Tensor expk, 
         at::Tensor buf, 
         at::Tensor out,
-		int num_threads=torch::get_num_threads()
+		int num_threads=at::get_num_threads()
         ) 
 {
     auto N = x.size(-1);
@@ -136,7 +136,7 @@ void idst_lee_forward(
         at::Tensor expk, 
         at::Tensor buf, 
         at::Tensor out, 
-		int num_threads=torch::get_num_threads()
+		int num_threads=at::get_num_threads()
         ) 
 {
     auto N = x.size(-1);
@@ -171,7 +171,7 @@ void dct2_lee_forward(
         at::Tensor cos1, 
         at::Tensor buf, 
         at::Tensor out, 
-		int num_threads=torch::get_num_threads()
+		int num_threads=at::get_num_threads()
         ) 
 {
     CHECK_CPU(x);
@@ -209,7 +209,7 @@ void idct2_lee_forward(
         at::Tensor cos1, 
         at::Tensor buf, 
         at::Tensor out, 
-		int num_threads=torch::get_num_threads()
+		int num_threads=at::get_num_threads()
         )
 {
     CHECK_CPU(x);
@@ -246,7 +246,7 @@ void idxct_lee_forward(
         at::Tensor cos, 
         at::Tensor buf, 
         at::Tensor out, 
-		int num_threads=torch::get_num_threads()
+		int num_threads=at::get_num_threads()
         ) 
 {
     auto N = x.size(-1);
@@ -272,7 +272,7 @@ void idxst_lee_forward(
         at::Tensor cos, 
         at::Tensor buf, 
         at::Tensor out, 
-		int num_threads=torch::get_num_threads()
+		int num_threads=at::get_num_threads()
         )
 {
     auto N = x.size(-1);
@@ -309,7 +309,7 @@ void idcct2_lee_forward(
         at::Tensor buf0, 
         at::Tensor buf1, 
         at::Tensor out, 
-		int num_threads=torch::get_num_threads()
+		int num_threads=at::get_num_threads()
         ) 
 {
     CHECK_CPU(x);
@@ -348,7 +348,7 @@ void idcst2_lee_forward(
         at::Tensor buf0, 
         at::Tensor buf1, 
         at::Tensor out,
-		int num_threads=torch::get_num_threads()
+		int num_threads=at::get_num_threads()
         ) 
 {
     CHECK_CPU(x);
@@ -387,7 +387,7 @@ void idsct2_lee_forward(
         at::Tensor buf0, 
         at::Tensor buf1, 
         at::Tensor out, 
-		int num_threads=torch::get_num_threads()
+		int num_threads=at::get_num_threads()
         ) 
 {
     CHECK_CPU(x);
