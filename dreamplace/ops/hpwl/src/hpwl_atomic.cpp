@@ -31,7 +31,8 @@ int computeHPWLAtomicLauncher(
 at::Tensor hpwl_atomic_forward(
         at::Tensor pos,
         at::Tensor pin2net_map, 
-        at::Tensor net_mask) 
+        at::Tensor net_mask, 
+        at::Tensor net_weights) 
 {
     CHECK_FLAT(pos); 
     CHECK_EVEN(pos);
@@ -64,7 +65,7 @@ at::Tensor hpwl_atomic_forward(
     //std::cout << "partial_hpwl_min = " << partial_hpwl_min << "\n";
     //std::cout << "partial_hpwl = \n" << (partial_hpwl_max-partial_hpwl_min)._cast_double().mul(1.0/1000) << "\n";
 
-    auto hpwl = (partial_hpwl_max-partial_hpwl_min).sum();
+    auto hpwl = (partial_hpwl_max-partial_hpwl_min).mul_(net_weights.view({1, num_nets})).sum();
 
     return hpwl; 
 }

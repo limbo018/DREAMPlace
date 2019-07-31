@@ -31,7 +31,8 @@ int computeHPWLCudaAtomicLauncher(
 at::Tensor hpwl_atomic_forward(
         at::Tensor pos,
         at::Tensor pin2net_map, 
-        at::Tensor net_mask) 
+        at::Tensor net_mask, 
+        at::Tensor net_weights) 
 {
     typedef int T; 
 
@@ -65,20 +66,18 @@ at::Tensor hpwl_atomic_forward(
     //std::cout << "partial_hpwl_min = " << partial_hpwl_min << "\n";
     //std::cout << "partial_hpwl = \n" << (partial_hpwl_max-partial_hpwl_min)._cast_double().mul(1.0/1000) << "\n";
 
-    auto hpwl = at::_cast_Long(partial_hpwl_max-partial_hpwl_min, false).sum();
+    auto delta = partial_hpwl_max-partial_hpwl_min;
 
     const at::Type& the_type = pos.type();
     switch (the_type.scalarType())
     {
         case at::ScalarType::Double:
-            return at::_cast_Double(hpwl).mul(1.0/1000); 
+            return at::_cast_Double(delta, false).mul_(net_weights.view({1, num_nets})).sum().mul_(1.0/1000); 
         case at::ScalarType::Float:
-            return at::_cast_Float(hpwl).mul(1.0/1000); 
+            return at::_cast_Float(delta, false).mul_(net_weights.view({1, num_nets})).sum().mul_(1.0/1000); 
         default:
             AT_ERROR("hpwl_atomic_forward", " not implemented for '", the_type.toString(), "'"); 
     }
-
-    return hpwl; 
 }
 
 DREAMPLACE_END_NAMESPACE

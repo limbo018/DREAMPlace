@@ -722,6 +722,13 @@ void PlaceDB::set_bookshelf_node_position(std::string const& name, double x, dou
     if (node.status() == PlaceStatusEnum::FIXED || node.status() == PlaceStatusEnum::DUMMY_FIXED || node.status() == PlaceStatusEnum::PLACED)
         node.setInitPos(ll(node));
 }
+void PlaceDB::set_bookshelf_net_weight(std::string const& name, double w) 
+{
+    string2index_map_type::iterator found = m_mNetName2Index.find(name);
+    dreamplaceAssertMsg(found != m_mNetName2Index.end(), "failed to find net %s", name.c_str());
+    Net& net = this->net(found->second);
+    net.setWeight(w);
+}
 void PlaceDB::set_bookshelf_design(std::string& name)
 {
     m_designName.swap(name);

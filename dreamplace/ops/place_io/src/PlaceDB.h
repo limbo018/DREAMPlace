@@ -333,6 +333,7 @@ class PlaceDB : public DefParser::DefDataBase
         virtual void add_bookshelf_net(BookshelfParser::Net const& n);
         virtual void add_bookshelf_row(BookshelfParser::Row const& r);
         virtual void set_bookshelf_node_position(std::string const& name, double x, double y, std::string const& orient, std::string const& status, bool plFlag);
+        virtual void set_bookshelf_net_weight(std::string const& name, double w); 
         virtual void set_bookshelf_design(std::string& name);
         virtual void bookshelf_end(); 
 

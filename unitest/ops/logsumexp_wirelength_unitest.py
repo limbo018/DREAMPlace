@@ -34,7 +34,7 @@ def unsorted_segment_sum(pin_x, pin2net_map, num_nets):
         result[pin2net_map[i]] += pin_x[i]
     return result
 
-def build_wirelength(pin_x, pin_y, pin2net_map, net2pin_map, gamma, ignore_net_degree):
+def build_wirelength(pin_x, pin_y, pin2net_map, net2pin_map, gamma, ignore_net_degree, net_weights):
     # wirelength cost 
     # log-sum-exp 
     # ignore_net_degree is not supported yet 
@@ -55,6 +55,7 @@ def build_wirelength(pin_x, pin_y, pin2net_map, net2pin_map, gamma, ignore_net_d
     sum_nexp_pin_y = unsorted_segment_sum(nexp_pin_y, pin2net_map, len(net2pin_map))
 
     wl = (torch.log(sum_exp_pin_x) + torch.log(sum_nexp_pin_x) + torch.log(sum_exp_pin_y) + torch.log(sum_nexp_pin_y))*gamma
+    wl *= torch.from_numpy(net_weights)
 
     wirelength = torch.sum(wl)
 
@@ -68,6 +69,7 @@ class LogSumExpWirelengthOpTest(unittest.TestCase):
         for net_id, pins in enumerate(net2pin_map):
             for pin in pins:
                 pin2net_map[pin] = net_id
+        net_weights = np.array([1, 2], dtype=np.float32)
 
         pin_x = pin_pos[:, 0]
         pin_y = pin_pos[:, 1]
@@ -100,7 +102,7 @@ class LogSumExpWirelengthOpTest(unittest.TestCase):
         #pin_pos_var = torch.nn.Parameter(torch.from_numpy(np.transpose(pin_pos)).reshape([-1]))
         print(pin_pos_var)
 
-        golden = build_wirelength(pin_pos_var[:pin_pos_var.numel()//2], pin_pos_var[pin_pos_var.numel()//2:], pin2net_map, net2pin_map, gamma, ignore_net_degree)
+        golden = build_wirelength(pin_pos_var[:pin_pos_var.numel()//2], pin_pos_var[pin_pos_var.numel()//2:], pin2net_map, net2pin_map, gamma, ignore_net_degree, net_weights)
         print("golden_value = ", golden.data)
         golden.backward()
         golden_grad = pin_pos_var.grad.clone()
@@ -114,6 +116,7 @@ class LogSumExpWirelengthOpTest(unittest.TestCase):
                 torch.from_numpy(flat_net2pin_start_map),
                 torch.from_numpy(pin2net_map), 
                 torch.from_numpy(net_mask), 
+                torch.from_numpy(net_weights), 
                 torch.tensor(gamma), 
                 algorithm='sparse'
                 )
@@ -134,6 +137,7 @@ class LogSumExpWirelengthOpTest(unittest.TestCase):
                     Variable(torch.from_numpy(flat_net2pin_start_map)).cuda(),
                     torch.from_numpy(pin2net_map).cuda(), 
                     torch.from_numpy(net_mask).cuda(), 
+                    torch.from_numpy(net_weights).cuda(), 
                     torch.tensor(gamma).cuda(), 
                     algorithm='sparse'
                     )
@@ -144,7 +148,7 @@ class LogSumExpWirelengthOpTest(unittest.TestCase):
             print("custom_grad_cuda = ", grad_cuda.data.cpu())
 
             np.testing.assert_allclose(result_cuda.data.cpu().numpy(), golden.data.detach().numpy())
-            np.testing.assert_allclose(grad_cuda.data.cpu().numpy(), grad.data.numpy(), rtol=1e-7, atol=1e-12)
+            np.testing.assert_allclose(grad_cuda.data.cpu().numpy(), grad.data.numpy(), rtol=1e-7, atol=1e-11)
 
         # test gpu atomic
         if torch.cuda.device_count(): 
@@ -154,6 +158,7 @@ class LogSumExpWirelengthOpTest(unittest.TestCase):
                     Variable(torch.from_numpy(flat_net2pin_start_map)).cuda(),
                     torch.from_numpy(pin2net_map).cuda(), 
                     torch.from_numpy(net_mask).cuda(), 
+                    torch.from_numpy(net_weights).cuda(), 
                     torch.tensor(gamma).cuda(), 
                     algorithm='atomic'
                     )

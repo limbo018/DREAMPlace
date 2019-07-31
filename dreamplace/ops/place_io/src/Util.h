@@ -72,6 +72,7 @@ struct coordinate_traits<int>
 	typedef unsigned int site_index_type; ///< site index in a row structure 
 	typedef unsigned long site_area_type; ///< number of sites for a region 
     typedef unsigned int index_type; ///< index (id) 
+    typedef double weight_type; ///< type for net or node weights 
 };
 /// specialization for unsigned int
 template <>
@@ -84,6 +85,7 @@ struct coordinate_traits<unsigned int>
 	typedef unsigned int site_index_type; ///< site index in a row structure 
 	typedef unsigned long site_area_type; ///< number of sites for a region 
     typedef unsigned int index_type; ///< index (id) 
+    typedef double weight_type; ///< type for net or node weights 
 };
 
 /// type helper for non-const/const  

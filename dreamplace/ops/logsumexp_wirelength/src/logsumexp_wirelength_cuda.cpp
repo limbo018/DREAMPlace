@@ -26,6 +26,16 @@ int computeLogSumExpWirelengthCudaLauncher(
         T* grad_x_tensor, T* grad_y_tensor // the gradient is partial total wirelength to partial pin position  
         );
 
+/// @brief add net weights to gradient 
+template <typename T>
+void integrateNetWeightsCudaLauncher(
+        const int* pin2net_map, 
+        const unsigned char* net_mask, 
+        const T* net_weights, 
+        T* grad_x_tensor, T* grad_y_tensor, 
+        int num_pins
+        );
+
 #define CHECK_FLAT(x) AT_ASSERTM(x.is_cuda() && x.ndimension() == 1, #x "must be a flat tensor on GPU")
 #define CHECK_EVEN(x) AT_ASSERTM((x.numel()&1) == 0, #x "must have even number of elements")
 #define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x "must be contiguous")
@@ -36,14 +46,18 @@ int computeLogSumExpWirelengthCudaLauncher(
 /// @param flat_netpin similar to the JA array in CSR format, which is flattened from the net2pin map (array of array)
 /// @param netpin_start similar to the IA array in CSR format, IA[i+1]-IA[i] is the number of pins in each net, the length of IA is number of nets + 1
 /// @param netpin_values similar to the value array in CSR format, a dummy array of all ones
+/// @param pin2net_map pin2net map 
 /// @param net_mask an array to record whether compute the where for a net or not 
+/// @param net_weights weight of nets 
 /// @param gamma a scalar tensor for the parameter in the equation 
 std::vector<at::Tensor> logsumexp_wirelength_forward(
         at::Tensor pos,
         at::Tensor flat_netpin,
         at::Tensor netpin_start, 
         at::Tensor netpin_values, // all ones 
+        at::Tensor pin2net_map, 
         at::Tensor net_mask, 
+        at::Tensor net_weights, 
         at::Tensor gamma // a scalar tensor 
         ) 
 {
@@ -54,12 +68,17 @@ std::vector<at::Tensor> logsumexp_wirelength_forward(
     CHECK_CONTIGUOUS(flat_netpin);
     CHECK_FLAT(netpin_start);
     CHECK_CONTIGUOUS(netpin_start);
+    CHECK_FLAT(net_mask); 
+    CHECK_CONTIGUOUS(net_mask);
+    CHECK_FLAT(net_weights); 
+    CHECK_CONTIGUOUS(net_weights);
+    int num_nets = netpin_start.numel()-1;
     // log-sum-exp for x, log-sum-exp for -x, log-sum-exp for y, log-sum-exp for -y 
-    at::Tensor partial_wl = at::zeros({4, netpin_start.numel()-1}, pos.type());
+    at::Tensor partial_wl = at::zeros({4, num_nets}, pos.type());
     at::Tensor exp_xy = at::zeros_like(pos);
     at::Tensor exp_nxy = at::zeros_like(pos);
-    at::Tensor exp_xy_sum = at::zeros({2*(netpin_start.numel()-1)}, pos.type());
-    at::Tensor exp_nxy_sum = at::zeros({2*(netpin_start.numel()-1)}, pos.type());
+    at::Tensor exp_xy_sum = at::zeros({2*num_nets}, pos.type());
+    at::Tensor exp_nxy_sum = at::zeros({2*num_nets}, pos.type());
     if (netpin_values.numel() == 0)
     {
         netpin_values = at::ones({flat_netpin.numel()}, pos.type());
@@ -72,7 +91,7 @@ std::vector<at::Tensor> logsumexp_wirelength_forward(
                     netpin_start.data<int>(), 
                     netpin_values.data<scalar_t>(), 
                     net_mask.data<unsigned char>(), 
-                    netpin_start.numel()-1, 
+                    num_nets, 
                     flat_netpin.numel(),  
                     gamma.data<scalar_t>(), 
                     exp_xy.data<scalar_t>(), exp_nxy.data<scalar_t>(), 
@@ -83,7 +102,7 @@ std::vector<at::Tensor> logsumexp_wirelength_forward(
                     );
             });
     // significant speedup is achieved by using summation in ATen 
-    auto wl = at::sum(partial_wl); 
+    auto wl = partial_wl.mul_(net_weights.view({1, num_nets})).sum(); 
     return {wl, exp_xy, exp_nxy, exp_xy_sum, exp_nxy_sum}; 
 }
 
@@ -96,7 +115,9 @@ std::vector<at::Tensor> logsumexp_wirelength_forward(
 /// @param exp_nxy_sum array of \sum(exp(-x/gamma)) for each net and then \sum(exp(-y/gamma))
 /// @param flat_netpin similar to the JA array in CSR format, which is flattened from the net2pin map (array of array)
 /// @param netpin_start similar to the IA array in CSR format, IA[i+1]-IA[i] is the number of pins in each net, the length of IA is number of nets + 1
+/// @param pin2net_map pin2net map 
 /// @param net_mask an array to record whether compute the where for a net or not 
+/// @param net_weights weight of nets 
 /// @param gamma a scalar tensor for the parameter in the equation 
 at::Tensor logsumexp_wirelength_backward(
         at::Tensor grad_pos, 
@@ -106,7 +127,9 @@ at::Tensor logsumexp_wirelength_backward(
         at::Tensor flat_netpin,
         at::Tensor netpin_start, 
         at::Tensor netpin_values, // all ones 
+        at::Tensor pin2net_map, 
         at::Tensor net_mask, 
+        at::Tensor net_weights, 
         at::Tensor gamma // a scalar tensor 
         ) 
 {
@@ -129,23 +152,36 @@ at::Tensor logsumexp_wirelength_backward(
     CHECK_CONTIGUOUS(flat_netpin);
     CHECK_FLAT(netpin_start);
     CHECK_CONTIGUOUS(netpin_start);
+    CHECK_FLAT(net_mask); 
+    CHECK_CONTIGUOUS(net_mask); 
+    CHECK_FLAT(net_weights); 
+    CHECK_CONTIGUOUS(net_weights); 
     at::Tensor grad_out = at::zeros_like(pos);
+    int num_nets = netpin_start.numel()-1;
+    int num_pins = pos.numel()/2;
 
     AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeLogSumExpWirelengthCudaLauncher", [&] {
             computeLogSumExpWirelengthCudaLauncher<scalar_t>(
-                    pos.data<scalar_t>(), pos.data<scalar_t>()+pos.numel()/2, 
+                    pos.data<scalar_t>(), pos.data<scalar_t>()+num_pins, 
                     flat_netpin.data<int>(), 
                     netpin_start.data<int>(), 
                     nullptr, 
                     net_mask.data<unsigned char>(), 
-                    netpin_start.numel()-1, 
+                    num_nets, 
                     flat_netpin.numel(),  
                     gamma.data<scalar_t>(), 
                     exp_xy.data<scalar_t>(), exp_nxy.data<scalar_t>(), 
                     exp_xy_sum.data<scalar_t>(), exp_nxy_sum.data<scalar_t>(),
                     nullptr, 
                     grad_pos.data<scalar_t>(), 
-                    grad_out.data<scalar_t>(), grad_out.data<scalar_t>()+pos.numel()/2
+                    grad_out.data<scalar_t>(), grad_out.data<scalar_t>()+num_pins
+                    );
+            integrateNetWeightsCudaLauncher(
+                    pin2net_map.data<int>(), 
+                    net_mask.data<unsigned char>(), 
+                    net_weights.data<scalar_t>(), 
+                    grad_out.data<scalar_t>(), grad_out.data<scalar_t>()+num_pins,
+                    num_pins
                     );
             });
     return grad_out; 

@@ -32,7 +32,8 @@ at::Tensor hpwl_forward(
         at::Tensor pos,
         at::Tensor flat_netpin,
         at::Tensor netpin_start, 
-        at::Tensor net_mask) 
+        at::Tensor net_mask, 
+        at::Tensor net_weights) 
 {
     CHECK_FLAT(pos); 
     CHECK_EVEN(pos);
@@ -43,7 +44,8 @@ at::Tensor hpwl_forward(
     CHECK_CONTIGUOUS(netpin_start);
 
     // x then y 
-    at::Tensor partial_wl = at::zeros({2, netpin_start.numel()-1}, pos.type()); 
+    int num_nets = net_mask.numel();
+    at::Tensor partial_wl = at::zeros({2, num_nets}, pos.type()); 
 
     AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeHPWLCudaLauncher", [&] {
             computeHPWLCudaLauncher<scalar_t>(
@@ -51,13 +53,13 @@ at::Tensor hpwl_forward(
                     flat_netpin.data<int>(), 
                     netpin_start.data<int>(), 
                     net_mask.data<unsigned char>(), 
-                    netpin_start.numel()-1, 
+                    num_nets, 
                     partial_wl.data<scalar_t>()
                     );
             });
     //std::cout << "partial_hpwl = \n" << partial_wl << "\n";
 
-    auto hpwl = at::sum(partial_wl);
+    auto hpwl = partial_wl.mul_(net_weights.view({1, num_nets})).sum();
 
     return hpwl; 
 }

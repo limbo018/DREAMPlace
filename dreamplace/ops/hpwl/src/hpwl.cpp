@@ -34,6 +34,7 @@ at::Tensor hpwl_forward(
         at::Tensor flat_netpin,
         at::Tensor netpin_start, 
         at::Tensor net_mask, 
+        at::Tensor net_weights, 
         int num_threads
         ) 
 {
@@ -58,7 +59,7 @@ at::Tensor hpwl_forward(
                     hpwl.data<scalar_t>()
                     );
             });
-    return hpwl.sum(); 
+    return hpwl.mul_(net_weights).sum(); 
 }
 
 template <typename T>

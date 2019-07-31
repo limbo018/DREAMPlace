@@ -55,6 +55,7 @@ class PlaceDataCollection (object):
         self.pin2net_map = torch.from_numpy(placedb.pin2net_map).to(device)
         self.flat_net2pin_map = torch.from_numpy(placedb.flat_net2pin_map).to(device)
         self.flat_net2pin_start_map = torch.from_numpy(placedb.flat_net2pin_start_map).to(device)
+        self.net_weights = torch.from_numpy(placedb.net_weights).to(device)
 
         self.net_mask_all = torch.from_numpy(np.ones(placedb.num_nets, dtype=np.uint8)).to(device) # all nets included 
         net_degrees = np.array([len(net2pin) for net2pin in placedb.net2pin_map])
@@ -139,13 +140,13 @@ class BasicPlace (nn.Module):
         self.init_pos = np.zeros(placedb.num_nodes*2, dtype=placedb.dtype)
         # x position 
         self.init_pos[0:placedb.num_physical_nodes] = placedb.node_x
-        if params.global_place_flag: # move to center of layout 
+        if params.global_place_flag and params.random_center_init_flag: # move to center of layout 
             print("[I] move cells to the center of layout with random noise")
             self.init_pos[0:placedb.num_movable_nodes] = np.random.normal(loc=(placedb.xl*1.0+placedb.xh*1.0)/2, scale=(placedb.xh-placedb.xl)*0.001, size=placedb.num_movable_nodes)
         #self.init_pos[0:placedb.num_movable_nodes] = init_x[0:placedb.num_movable_nodes]*0.01 + (placedb.xl+placedb.xh)/2
         # y position 
         self.init_pos[placedb.num_nodes:placedb.num_nodes+placedb.num_physical_nodes] = placedb.node_y
-        if params.global_place_flag: # move to center of layout 
+        if params.global_place_flag and params.random_center_init_flag: # move to center of layout 
             self.init_pos[placedb.num_nodes:placedb.num_nodes+placedb.num_movable_nodes] = np.random.normal(loc=(placedb.yl*1.0+placedb.yh*1.0)/2, scale=(placedb.yh-placedb.yl)*0.001, size=placedb.num_movable_nodes)
         #init_y[0:placedb.num_movable_nodes] = init_y[0:placedb.num_movable_nodes]*0.01 + (placedb.yl+placedb.yh)/2
 
@@ -251,6 +252,7 @@ class BasicPlace (nn.Module):
                 netpin_start=data_collections.flat_net2pin_start_map,
                 pin2net_map=data_collections.pin2net_map, 
                 net_mask=data_collections.net_mask_all, 
+                net_weights=data_collections.net_weights, 
                 algorithm='atomic', 
                 num_threads=params.num_threads
                 )

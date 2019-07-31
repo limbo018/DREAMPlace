@@ -48,6 +48,7 @@ class PlaceDB (object):
         self.net2pin_map = None # array of 1D array, each row stores pin id
         self.flat_net2pin_map = None # flatten version of net2pin_map 
         self.flat_net2pin_start_map = None # starting index of each net in flat_net2pin_map
+        self.net_weights = None # weights for each net
 
         self.node2pin_map = None # array of 1D array, contains pin id of each node 
         self.pin2node_map = None # 1D array, contain parent node id of each pin 
@@ -293,7 +294,7 @@ class PlaceDB (object):
         hpwl_x = np.amax(x[nodes]+self.pin_offset_x[pins]) - np.amin(x[nodes]+self.pin_offset_x[pins])
         hpwl_y = np.amax(y[nodes]+self.pin_offset_y[pins]) - np.amin(y[nodes]+self.pin_offset_y[pins])
 
-        return hpwl_x+hpwl_y
+        return (hpwl_x+hpwl_y)*self.net_weights[net_id]
 
     def hpwl(self, x, y):
         """
@@ -489,6 +490,7 @@ class PlaceDB (object):
         self.net2pin_map = db.net2pin_map
         self.flat_net2pin_map = np.array(db.flat_net2pin_map, dtype=np.int32)
         self.flat_net2pin_start_map = np.array(db.flat_net2pin_start_map, dtype=np.int32)
+        self.net_weights = np.array(db.net_weights, dtype=self.dtype)
         self.node2pin_map = db.node2pin_map
         self.flat_node2pin_map = np.array(db.flat_node2pin_map, dtype=np.int32)
         self.flat_node2pin_start_map = np.array(db.flat_node2pin_start_map, dtype=np.int32)

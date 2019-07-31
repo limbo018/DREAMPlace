@@ -20,6 +20,7 @@ class Net : public Object
         typedef Object base_type;
         typedef base_type::coordinate_type coordinate_type;
         typedef coordinate_traits<coordinate_type>::index_type index_type;
+        typedef coordinate_traits<coordinate_type>::weight_type weight_type;
         typedef Point<coordinate_type> point_type;
         typedef Box<coordinate_type> box_type;
 
@@ -35,6 +36,9 @@ class Net : public Object
         box_type& bbox() {return m_bbox;}
         Net& setBbox(box_type const& b) {m_bbox = b; return *this;}
 
+        weight_type weight() const {return m_weight;}
+        Net& setWeight(weight_type w) {m_weight = w; return *this;}
+
         std::vector<index_type> const& pins() const {return m_vPinId;}
         std::vector<index_type>& pins() {return m_vPinId;}
 
@@ -44,6 +48,7 @@ class Net : public Object
         void copy(Net const& rhs);
 
         box_type m_bbox; ///< bounding box of net 
+        weight_type m_weight; ///< weight of net 
         std::vector<index_type> m_vPinId; ///< index of pins, the first one is source  
 };
 

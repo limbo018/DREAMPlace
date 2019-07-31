@@ -25,6 +25,16 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
         T* grad_x_tensor, T* grad_y_tensor // the gradient is partial total wirelength to partial pin position  
         );
 
+/// @brief add net weights to gradient 
+template <typename T>
+void integrateNetWeightsCudaLauncher(
+        const int* pin2net_map, 
+        const unsigned char* net_mask, 
+        const T* net_weights, 
+        T* grad_x_tensor, T* grad_y_tensor, 
+        int num_pins
+        );
+
 #define CHECK_FLAT(x) AT_ASSERTM(x.is_cuda() && x.ndimension() == 1, #x "must be a flat tensor on GPU")
 #define CHECK_EVEN(x) AT_ASSERTM((x.numel()&1) == 0, #x "must have even number of elements")
 #define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x "must be contiguous")
@@ -38,12 +48,14 @@ typedef int V;
 /// @param pos location of pins, x array followed by y array. 
 /// @param pin2net_map map pin to net 
 /// @param net_mask whether compute the wirelength for a net or not 
+/// @param net_weights weight of nets
 /// @param gamma gamma coefficient in weighted average wirelength. 
 /// @return total wirelength cost.
 std::vector<at::Tensor> weighted_average_wirelength_atomic_forward(
         at::Tensor pos,
         at::Tensor pin2net_map, 
         at::Tensor net_mask, 
+        at::Tensor net_weights, 
         at::Tensor gamma) 
 {
     CHECK_FLAT(pos); 
@@ -53,6 +65,8 @@ std::vector<at::Tensor> weighted_average_wirelength_atomic_forward(
     CHECK_CONTIGUOUS(pin2net_map);
     CHECK_FLAT(net_mask);
     CHECK_CONTIGUOUS(net_mask);
+    CHECK_FLAT(net_weights);
+    CHECK_CONTIGUOUS(net_weights);
 
     int num_nets = net_mask.numel();
     int num_pins = pin2net_map.numel();
@@ -91,7 +105,7 @@ std::vector<at::Tensor> weighted_average_wirelength_atomic_forward(
             });
 
     // significant speedup is achieved by using summation in ATen 
-    auto wl = at::sum(partial_wl); 
+    auto wl = partial_wl.mul_(net_weights.view({1, num_nets})).sum(); 
     return {wl, exp_xy, exp_nxy, exp_xy_sum, exp_nxy_sum, xyexp_xy_sum, xyexp_nxy_sum}; 
 }
 
@@ -106,6 +120,7 @@ std::vector<at::Tensor> weighted_average_wirelength_atomic_forward(
 /// @param xyexp_nxy_sum array of \sum(x*exp(-x/gamma)) for each net and then \sum(y*exp(-y/gamma))
 /// @param pin2net_map map pin to net 
 /// @param net_mask an array to record whether compute the where for a net or not 
+/// @param net_weights weight of nets
 /// @param gamma a scalar tensor for the parameter in the equation 
 at::Tensor weighted_average_wirelength_atomic_backward(
         at::Tensor grad_pos, 
@@ -115,6 +130,7 @@ at::Tensor weighted_average_wirelength_atomic_backward(
         at::Tensor xyexp_xy_sum, at::Tensor xyexp_nxy_sum, 
         at::Tensor pin2net_map, 
         at::Tensor net_mask, 
+        at::Tensor net_weights, 
         at::Tensor gamma) 
 {
     CHECK_FLAT(pos); 
@@ -142,6 +158,8 @@ at::Tensor weighted_average_wirelength_atomic_backward(
     CHECK_CONTIGUOUS(pin2net_map);
     CHECK_FLAT(net_mask);
     CHECK_CONTIGUOUS(net_mask);
+    CHECK_FLAT(net_weights);
+    CHECK_CONTIGUOUS(net_weights);
     at::Tensor grad_out = at::zeros_like(pos);
 
     int num_nets = net_mask.numel(); 
@@ -163,6 +181,13 @@ at::Tensor weighted_average_wirelength_atomic_backward(
                     grad_pos.data<scalar_t>(), 
                     grad_out.data<scalar_t>(), grad_out.data<scalar_t>()+num_pins
                     );
+            integrateNetWeightsCudaLauncher(
+                    pin2net_map.data<int>(), 
+                    net_mask.data<unsigned char>(), 
+                    net_weights.data<scalar_t>(), 
+                    grad_out.data<scalar_t>(), grad_out.data<scalar_t>()+num_pins,
+                    num_pins 
+                );
             });
     return grad_out; 
 }

@@ -48,7 +48,8 @@ if "${CUDA_FOUND}".upper() == 'TRUE':
         CUDAExtension('logsumexp_wirelength_cuda', 
             [
                 add_prefix('logsumexp_wirelength_cuda.cpp'),
-                add_prefix('logsumexp_wirelength_cuda_kernel.cu')
+                add_prefix('logsumexp_wirelength_cuda_kernel.cu'),
+                add_prefix('integrate_net_weights_cuda_kernel.cu')
                 ], 
             include_dirs=include_dirs, 
             library_dirs=lib_dirs,
@@ -61,7 +62,8 @@ if "${CUDA_FOUND}".upper() == 'TRUE':
         CUDAExtension('logsumexp_wirelength_cuda_atomic', 
             [
                 add_prefix('logsumexp_wirelength_cuda_atomic.cpp'),
-                add_prefix('logsumexp_wirelength_cuda_atomic_kernel.cu')
+                add_prefix('logsumexp_wirelength_cuda_atomic_kernel.cu'), 
+                add_prefix('integrate_net_weights_cuda_kernel.cu')
                 ],
             include_dirs=include_dirs, 
             library_dirs=lib_dirs,
