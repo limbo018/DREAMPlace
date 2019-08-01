@@ -19,26 +19,29 @@ import pdb
 """
 return hpwl of a net 
 """
-def net_hpwl(x, y, net2pin_map, net_id): 
+def net_hpwl(x, y, net2pin_map, net_weights, net_id): 
     pins = net2pin_map[net_id]
     hpwl_x = np.amax(x[pins]) - np.amin(x[pins])
     hpwl_y = np.amax(y[pins]) - np.amin(y[pins])
 
-    return hpwl_x+hpwl_y
+    return (hpwl_x+hpwl_y)*net_weights[net_id]
 
 """
 return hpwl of all nets
 """
-def all_hpwl(x, y, net2pin_map):
+def all_hpwl(x, y, net2pin_map, net_weights):
     wl = 0
     for net_id in range(len(net2pin_map)):
-        wl += net_hpwl(x, y, net2pin_map, net_id)
+        wl += net_hpwl(x, y, net2pin_map, net_weights, net_id)
     return wl 
 
 class HPWLOpTest(unittest.TestCase):
     def test_hpwlRandom(self):
         pin_pos = np.array([[0.0, 0.0], [1.0, 2.0], [1.5, 0.2], [0.5, 3.1], [0.6, 1.1]], dtype=np.float32)
         net2pin_map = np.array([np.array([0, 4]), np.array([1, 2, 3])])
+        # net weights 
+        net_weights = np.array([1, 2], dtype=np.float32)
+        print("net_weights = ", net_weights)
 
         pin_x = pin_pos[:, 0]
         pin_y = pin_pos[:, 1]
@@ -70,7 +73,7 @@ class HPWLOpTest(unittest.TestCase):
         net_mask = (net_degrees <= np.amax(net_degrees)).astype(np.uint8)
         print("net_mask = ", net_mask)
 
-        golden_value = all_hpwl(pin_x, pin_y, net2pin_map)
+        golden_value = all_hpwl(pin_x, pin_y, net2pin_map, net_weights)
         print("golden_value = ", golden_value)
 
         # test cpu 
@@ -84,6 +87,7 @@ class HPWLOpTest(unittest.TestCase):
                 flat_netpin=torch.from_numpy(flat_net2pin_map), 
                 netpin_start=torch.from_numpy(flat_net2pin_start_map),
                 pin2net_map=torch.from_numpy(pin2net_map), 
+                net_weights=torch.from_numpy(net_weights), 
                 net_mask=torch.from_numpy(net_mask), 
                 algorithm='net-by-net'
                 )
@@ -97,6 +101,7 @@ class HPWLOpTest(unittest.TestCase):
                     flat_netpin=torch.from_numpy(flat_net2pin_map).cuda(), 
                     netpin_start=torch.from_numpy(flat_net2pin_start_map).cuda(),
                     pin2net_map=torch.from_numpy(pin2net_map).cuda(), 
+                    net_weights=torch.from_numpy(net_weights).cuda(), 
                     net_mask=torch.from_numpy(net_mask).cuda(), 
                     algorithm='net-by-net'
                     )
@@ -109,6 +114,7 @@ class HPWLOpTest(unittest.TestCase):
                 flat_netpin=torch.from_numpy(flat_net2pin_map), 
                 netpin_start=torch.from_numpy(flat_net2pin_start_map),
                 pin2net_map=torch.from_numpy(pin2net_map), 
+                net_weights=torch.from_numpy(net_weights), 
                 net_mask=torch.from_numpy(net_mask), 
                 algorithm='atomic'
                 )
@@ -122,6 +128,7 @@ class HPWLOpTest(unittest.TestCase):
                     flat_netpin=torch.from_numpy(flat_net2pin_map).cuda(), 
                     netpin_start=torch.from_numpy(flat_net2pin_start_map).cuda(),
                     pin2net_map=torch.from_numpy(pin2net_map).cuda(), 
+                    net_weights=torch.from_numpy(net_weights).cuda(), 
                     net_mask=torch.from_numpy(net_mask).cuda(), 
                     algorithm='atomic'
                     )

@@ -23,6 +23,18 @@ int computeWeightedAverageWirelengthLauncher(
         T* grad_x_tensor, T* grad_y_tensor 
         );
 
+/// @brief add net weights to gradient 
+template <typename T>
+void integrateNetWeightsLauncher(
+        const int* flat_netpin, 
+        const int* netpin_start, 
+        const unsigned char* net_mask, 
+        const T* net_weights, 
+        T* grad_x_tensor, T* grad_y_tensor, 
+        int num_nets, 
+        int num_threads
+        );
+
 #define CHECK_FLAT(x) AT_ASSERTM(!x.is_cuda() && x.ndimension() == 1, #x " must be a flat tensor on CPU")
 #define CHECK_EVEN(x) AT_ASSERTM((x.numel()&1) == 0, #x " must have even number of elements")
 #define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x " must be contiguous")
@@ -32,12 +44,14 @@ int computeWeightedAverageWirelengthLauncher(
 /// @param pos cell locations, array of x locations and then y locations 
 /// @param flat_netpin similar to the JA array in CSR format, which is flattened from the net2pin map (array of array)
 /// @param netpin_start similar to the IA array in CSR format, IA[i+1]-IA[i] is the number of pins in each net, the length of IA is number of nets + 1
+/// @param net_weights weight of nets 
 /// @param net_mask an array to record whether compute the where for a net or not 
 /// @param gamma a scalar tensor for the parameter in the equation 
 at::Tensor weighted_average_wirelength_forward(
         at::Tensor pos,
         at::Tensor flat_netpin,
         at::Tensor netpin_start, 
+        at::Tensor net_weights, 
         at::Tensor net_mask, 
         at::Tensor gamma, 
         int num_threads
@@ -50,6 +64,10 @@ at::Tensor weighted_average_wirelength_forward(
     CHECK_CONTIGUOUS(flat_netpin);
     CHECK_FLAT(netpin_start);
     CHECK_CONTIGUOUS(netpin_start);
+    CHECK_FLAT(net_weights);
+    CHECK_CONTIGUOUS(net_weights);
+    CHECK_FLAT(net_mask); 
+    CHECK_CONTIGUOUS(net_mask);
 
     int num_nets = netpin_start.numel()-1; 
     at::Tensor wl = at::zeros({num_nets}, pos.options());
@@ -68,6 +86,10 @@ at::Tensor weighted_average_wirelength_forward(
                     nullptr, nullptr
                     );
             });
+    if (net_weights.numel())
+    {
+        wl.mul_(net_weights);
+    }
     return wl.sum(); 
 }
 
@@ -76,6 +98,7 @@ at::Tensor weighted_average_wirelength_forward(
 /// @param pos locations of pins 
 /// @param flat_netpin similar to the JA array in CSR format, which is flattened from the net2pin map (array of array)
 /// @param netpin_start similar to the IA array in CSR format, IA[i+1]-IA[i] is the number of pins in each net, the length of IA is number of nets + 1
+/// @param net_weights weight of nets 
 /// @param net_mask an array to record whether compute the where for a net or not 
 /// @param gamma a scalar tensor for the parameter in the equation 
 at::Tensor weighted_average_wirelength_backward(
@@ -83,6 +106,7 @@ at::Tensor weighted_average_wirelength_backward(
         at::Tensor pos,
         at::Tensor flat_netpin,
         at::Tensor netpin_start, 
+        at::Tensor net_weights, 
         at::Tensor net_mask, 
         at::Tensor gamma, 
         int num_threads
@@ -95,6 +119,11 @@ at::Tensor weighted_average_wirelength_backward(
     CHECK_CONTIGUOUS(flat_netpin);
     CHECK_FLAT(netpin_start);
     CHECK_CONTIGUOUS(netpin_start);
+    CHECK_FLAT(net_weights);
+    CHECK_CONTIGUOUS(net_weights);
+    CHECK_FLAT(net_mask); 
+    CHECK_CONTIGUOUS(net_mask);
+
     at::Tensor grad_out = at::zeros_like(pos);
 
     AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeWeightedAverageWirelengthLauncher", [&] {
@@ -110,6 +139,18 @@ at::Tensor weighted_average_wirelength_backward(
                     num_threads, 
                     grad_out.data<scalar_t>(), grad_out.data<scalar_t>()+pos.numel()/2
                     );
+            if (net_weights.numel())
+            {
+                integrateNetWeightsLauncher<scalar_t>(
+                    flat_netpin.data<int>(), 
+                    netpin_start.data<int>(), 
+                    net_mask.data<unsigned char>(), 
+                    net_weights.data<scalar_t>(), 
+                    grad_out.data<scalar_t>(), grad_out.data<scalar_t>()+pos.numel()/2, 
+                    netpin_start.numel()-1, 
+                    num_threads
+                    );
+            }
             });
     return grad_out; 
 }
@@ -218,11 +259,38 @@ int computeWeightedAverageWirelengthLauncher(
             T wl_x = xexp_x_sum/exp_x_sum - xexp_nx_sum/exp_nx_sum;
             T wl_y = yexp_y_sum/exp_y_sum - yexp_ny_sum/exp_ny_sum; 
             //printf("wl_x = %g, wl_y = %g\n", wl_x, wl_y);
-            wl[i] = wl_x + wl_y; 
+            wl[i] = (wl_x + wl_y); 
         }
     }
 
     return 0; 
+}
+
+template <typename T>
+void integrateNetWeightsLauncher(
+        const int* flat_netpin, 
+        const int* netpin_start, 
+        const unsigned char* net_mask, 
+        const T* net_weights, 
+        T* grad_x_tensor, T* grad_y_tensor, 
+        int num_nets, 
+        int num_threads
+        )
+{
+#pragma omp parallel for num_threads(num_threads)
+    for (int net_id = 0; net_id < num_nets; ++net_id)
+    {
+        if (net_mask[net_id])
+        {
+            T weight = net_weights[net_id]; 
+            for (int j = netpin_start[net_id]; j < netpin_start[net_id+1]; ++j)
+            {
+                int pin_id = flat_netpin[j]; 
+                grad_x_tensor[pin_id] *= weight; 
+                grad_y_tensor[pin_id] *= weight; 
+            }
+        }
+    }
 }
 
 DREAMPLACE_END_NAMESPACE

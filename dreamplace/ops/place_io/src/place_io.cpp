@@ -190,6 +190,7 @@ struct PyPlaceDB
     pybind11::list net2pin_map; // array of 1D array, each row stores pin id
     pybind11::list flat_net2pin_map; // flatten version of net2pin_map 
     pybind11::list flat_net2pin_start_map; // starting index of each net in flat_net2pin_map
+    pybind11::list net_weights; // net weight 
 
     pybind11::list node2pin_map; // array of 1D array, contains pin id of each node 
     pybind11::list flat_node2pin_map; // flatten version of node2pin_map 
@@ -275,6 +276,7 @@ struct PyPlaceDB
         for (unsigned int i = 0, ie = db.nets().size(); i < ie; ++i)
         {
             Net const& net = db.net(i); 
+            net_weights.append(net.weight());
             net_name2id_map[pybind11::str(db.netName(net))] = net.id(); 
             net_names.append(pybind11::str(db.netName(net))); 
             pybind11::list pins; 
@@ -387,6 +389,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         .def_readwrite("net2pin_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::net2pin_map)
         .def_readwrite("flat_net2pin_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::flat_net2pin_map)
         .def_readwrite("flat_net2pin_start_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::flat_net2pin_start_map)
+        .def_readwrite("net_weights", &DREAMPLACE_NAMESPACE::PyPlaceDB::net_weights)
         .def_readwrite("node2pin_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::node2pin_map)
         .def_readwrite("flat_node2pin_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::flat_node2pin_map)
         .def_readwrite("flat_node2pin_start_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::flat_node2pin_start_map)

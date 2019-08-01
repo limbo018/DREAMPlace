@@ -28,11 +28,13 @@ int computeHPWLLauncher(
 /// @param pos cell locations, array of x locations and then y locations 
 /// @param flat_netpin similar to the JA array in CSR format, which is flattened from the net2pin map (array of array)
 /// @param netpin_start similar to the IA array in CSR format, IA[i+1]-IA[i] is the number of pins in each net, the length of IA is number of nets + 1
+/// @param net_weights weight of nets 
 /// @param net_mask an array to record whether compute the where for a net or not 
 at::Tensor hpwl_forward(
         at::Tensor pos,
         at::Tensor flat_netpin,
         at::Tensor netpin_start, 
+        at::Tensor net_weights, 
         at::Tensor net_mask, 
         int num_threads
         ) 
@@ -44,6 +46,10 @@ at::Tensor hpwl_forward(
     CHECK_CONTIGUOUS(flat_netpin);
     CHECK_FLAT(netpin_start);
     CHECK_CONTIGUOUS(netpin_start);
+    CHECK_FLAT(net_weights); 
+    CHECK_CONTIGUOUS(net_weights);
+    CHECK_FLAT(net_mask);
+    CHECK_CONTIGUOUS(net_mask);
 
     int num_nets = netpin_start.numel()-1; 
     at::Tensor hpwl = at::zeros(num_nets, pos.type()); 
@@ -58,6 +64,10 @@ at::Tensor hpwl_forward(
                     hpwl.data<scalar_t>()
                     );
             });
+    if (net_weights.numel())
+    {
+        hpwl.mul_(net_weights);
+    }
     return hpwl.sum(); 
 }
 

@@ -46,6 +46,7 @@ class Params:
         self.RePlAce_ref_hpwl = 3.5e5
         self.RePlAce_LOWER_PCOF = 0.95
         self.RePlAce_UPPER_PCOF = 1.05
+        self.random_center_init_flag = True # whether perform random initialization around the center for global placement 
         self.num_threads = 8
 
     def printWelcome(self): 
@@ -94,6 +95,7 @@ plot_flag [default %d]                 | whether plot solution or not
 RePlAce_ref_hpwl [default %g]     | reference HPWL used in RePlAce for updating density weight 
 RePlAce_LOWER_PCOF [default %g]     | lower bound ratio used in RePlAce for updating density weight 
 RePlAce_UPPER_PCOF [default %g]     | upper bound ratio used in RePlAce for updating density weight 
+random_center_init_flag [default %d] | whether perform random initialization around the center for global placement 
 num_threads [default %d]            | number of CPU threads
         """ % (self.gpu, 
                 self.num_bins_x, 
@@ -117,6 +119,7 @@ num_threads [default %d]            | number of CPU threads
                 self.RePlAce_ref_hpwl, 
                 self.RePlAce_LOWER_PCOF, 
                 self.RePlAce_UPPER_PCOF, 
+                self.random_center_init_flag, 
                 self.num_threads
                 )
         print(content)
@@ -153,6 +156,7 @@ num_threads [default %d]            | number of CPU threads
         data['RePlAce_ref_hpwl'] = self.RePlAce_ref_hpwl
         data['RePlAce_LOWER_PCOF'] = self.RePlAce_LOWER_PCOF
         data['RePlAce_UPPER_PCOF'] = self.RePlAce_UPPER_PCOF
+        data['random_center_init_flag'] = self.random_center_init_flag
         data['num_threads'] = self.num_threads
         return data 
 
@@ -187,6 +191,7 @@ num_threads [default %d]            | number of CPU threads
         if 'RePlAce_ref_hpwl' in data: self.RePlAce_ref_hpwl = data['RePlAce_ref_hpwl']
         if 'RePlAce_LOWER_PCOF' in data: self.RePlAce_LOWER_PCOF = data['RePlAce_LOWER_PCOF']
         if 'RePlAce_UPPER_PCOF' in data: self.RePlAce_UPPER_PCOF = data['RePlAce_UPPER_PCOF']
+        if 'random_center_init_flag' in data: self.random_center_init_flag = data['random_center_init_flag']
         if 'num_threads' in data: self.num_threads = data['num_threads']
 
     def dump(self, filename):
