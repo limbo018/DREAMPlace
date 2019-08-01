@@ -123,9 +123,9 @@ class WeightedAverageWirelengthOpTest(unittest.TestCase):
                 flat_netpin=torch.from_numpy(flat_net2pin_map), 
                 netpin_start=torch.from_numpy(flat_net2pin_start_map),
                 pin2net_map=torch.from_numpy(pin2net_map), 
+                net_weights=torch.from_numpy(net_weights), 
                 net_mask=torch.from_numpy(net_mask), 
                 pin_mask=torch.from_numpy(pin_mask), 
-                net_weights=torch.from_numpy(net_weights), 
                 gamma=torch.tensor(gamma, dtype=dtype), 
                 algorithm='net-by-net'
                 )
@@ -144,9 +144,9 @@ class WeightedAverageWirelengthOpTest(unittest.TestCase):
                     flat_netpin=Variable(torch.from_numpy(flat_net2pin_map)).cuda(), 
                     netpin_start=Variable(torch.from_numpy(flat_net2pin_start_map)).cuda(),
                     pin2net_map=torch.from_numpy(pin2net_map).cuda(), 
+                    net_weights=torch.from_numpy(net_weights).cuda(), 
                     net_mask=torch.from_numpy(net_mask).cuda(), 
                     pin_mask=torch.from_numpy(pin_mask).cuda(), 
-                    net_weights=torch.from_numpy(net_weights).cuda(), 
                     gamma=torch.tensor(gamma, dtype=dtype).cuda(),
                     algorithm='net-by-net'
                     )
@@ -166,9 +166,9 @@ class WeightedAverageWirelengthOpTest(unittest.TestCase):
                     flat_netpin=Variable(torch.from_numpy(flat_net2pin_map)).cuda(), 
                     netpin_start=Variable(torch.from_numpy(flat_net2pin_start_map)).cuda(),
                     pin2net_map=torch.from_numpy(pin2net_map).cuda(), 
+                    net_weights=torch.from_numpy(net_weights).cuda(), 
                     net_mask=torch.from_numpy(net_mask).cuda(), 
                     pin_mask=torch.from_numpy(pin_mask).cuda(), 
-                    net_weights=torch.from_numpy(net_weights).cuda(), 
                     gamma=torch.tensor(gamma, dtype=dtype).cuda(),
                     algorithm='atomic'
                     )
@@ -188,9 +188,9 @@ class WeightedAverageWirelengthOpTest(unittest.TestCase):
                     flat_netpin=Variable(torch.from_numpy(flat_net2pin_map)).cuda(), 
                     netpin_start=Variable(torch.from_numpy(flat_net2pin_start_map)).cuda(),
                     pin2net_map=torch.from_numpy(pin2net_map).cuda(), 
+                    net_weights=torch.from_numpy(net_weights).cuda(), 
                     net_mask=torch.from_numpy(net_mask).cuda(), 
                     pin_mask=torch.from_numpy(pin_mask).cuda(), 
-                    net_weights=torch.from_numpy(net_weights).cuda(), 
                     gamma=torch.tensor(gamma, dtype=dtype).cuda(),
                     algorithm='sparse'
                     )
@@ -212,9 +212,9 @@ def eval_runtime(design):
             flat_netpin=Variable(torch.from_numpy(flat_net2pin_map)).cuda(), 
             netpin_start=Variable(torch.from_numpy(flat_net2pin_start_map)).cuda(),
             pin2net_map=torch.from_numpy(pin2net_map).cuda(), 
+            net_weights=torch.from_numpy(net_weights).cuda(), 
             net_mask=torch.from_numpy(net_mask).cuda(), 
             pin_mask=torch.from_numpy(pin_mask).cuda(), 
-            net_weights=torch.from_numpy(net_weights).cuda(), 
             gamma=torch.tensor(gamma, dtype=dtype).cuda(),
             algorithm='net-by-net'
             )
@@ -222,9 +222,9 @@ def eval_runtime(design):
             flat_netpin=Variable(torch.from_numpy(flat_net2pin_map)).cuda(), 
             netpin_start=Variable(torch.from_numpy(flat_net2pin_start_map)).cuda(),
             pin2net_map=torch.from_numpy(pin2net_map).cuda(), 
+            net_weights=torch.from_numpy(net_weights).cuda(), 
             net_mask=torch.from_numpy(net_mask).cuda(), 
             pin_mask=torch.from_numpy(pin_mask).cuda(), 
-            net_weights=torch.from_numpy(net_weights).cuda(), 
             gamma=torch.tensor(gamma, dtype=dtype).cuda(),
             algorithm='atomic'
             )
@@ -232,9 +232,9 @@ def eval_runtime(design):
             flat_netpin=Variable(torch.from_numpy(flat_net2pin_map)).cuda(), 
             netpin_start=Variable(torch.from_numpy(flat_net2pin_start_map)).cuda(),
             pin2net_map=torch.from_numpy(pin2net_map).cuda(), 
+            net_weights=torch.from_numpy(net_weights).cuda(), 
             net_mask=torch.from_numpy(net_mask).cuda(), 
             pin_mask=torch.from_numpy(pin_mask).cuda(), 
-            net_weights=torch.from_numpy(net_weights).cuda(), 
             gamma=torch.tensor(gamma, dtype=dtype).cuda(),
             algorithm='sparse'
             )

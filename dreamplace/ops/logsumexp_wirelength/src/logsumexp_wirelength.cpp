@@ -48,15 +48,15 @@ void integrateNetWeightsLauncher(
 /// @param pos cell locations, array of x locations and then y locations 
 /// @param flat_netpin similar to the JA array in CSR format, which is flattened from the net2pin map (array of array)
 /// @param netpin_start similar to the IA array in CSR format, IA[i+1]-IA[i] is the number of pins in each net, the length of IA is number of nets + 1
-/// @param net_mask an array to record whether compute the where for a net or not 
 /// @param net_weights weight of nets 
+/// @param net_mask an array to record whether compute the where for a net or not 
 /// @param gamma a scalar tensor for the parameter in the equation 
 std::vector<at::Tensor> logsumexp_wirelength_forward(
         at::Tensor pos,
         at::Tensor flat_netpin,
         at::Tensor netpin_start, 
-        at::Tensor net_mask, 
         at::Tensor net_weights, 
+        at::Tensor net_mask, 
         at::Tensor gamma, 
         int num_threads
         ) 
@@ -68,6 +68,11 @@ std::vector<at::Tensor> logsumexp_wirelength_forward(
     CHECK_CONTIGUOUS(flat_netpin);
     CHECK_FLAT(netpin_start);
     CHECK_CONTIGUOUS(netpin_start);
+    CHECK_FLAT(net_weights); 
+    CHECK_CONTIGUOUS(net_weights); 
+    CHECK_FLAT(net_mask);
+    CHECK_CONTIGUOUS(net_mask); 
+
     int num_nets = netpin_start.numel()-1;
     at::Tensor wl = at::zeros({num_nets}, pos.type());
     at::Tensor exp_xy = at::zeros_like(pos);
@@ -93,7 +98,12 @@ std::vector<at::Tensor> logsumexp_wirelength_forward(
                     );
             });
 
-    return {wl.mul_(net_weights).sum(), exp_xy, exp_nxy, exp_xy_sum, exp_nxy_sum}; 
+    if (net_weights.numel())
+    {
+        wl.mul_(net_weights);
+    }
+
+    return {wl.sum(), exp_xy, exp_nxy, exp_xy_sum, exp_nxy_sum}; 
 }
 
 /// @brief Compute gradient 
@@ -105,8 +115,8 @@ std::vector<at::Tensor> logsumexp_wirelength_forward(
 /// @param exp_nxy_sum array of \sum(exp(-x/gamma)) for each net and then \sum(exp(-y/gamma))
 /// @param flat_netpin similar to the JA array in CSR format, which is flattened from the net2pin map (array of array)
 /// @param netpin_start similar to the IA array in CSR format, IA[i+1]-IA[i] is the number of pins in each net, the length of IA is number of nets + 1
-/// @param net_mask an array to record whether compute the where for a net or not 
 /// @param net_weights weight of nets 
+/// @param net_mask an array to record whether compute the where for a net or not 
 /// @param gamma a scalar tensor for the parameter in the equation 
 at::Tensor logsumexp_wirelength_backward(
         at::Tensor grad_pos, 
@@ -115,8 +125,8 @@ at::Tensor logsumexp_wirelength_backward(
         at::Tensor exp_xy_sum, at::Tensor exp_nxy_sum, 
         at::Tensor flat_netpin,
         at::Tensor netpin_start, 
-        at::Tensor net_mask, 
         at::Tensor net_weights, 
+        at::Tensor net_mask, 
         at::Tensor gamma, // a scalar tensor 
         int num_threads
         ) 
@@ -140,6 +150,11 @@ at::Tensor logsumexp_wirelength_backward(
     CHECK_CONTIGUOUS(flat_netpin);
     CHECK_FLAT(netpin_start);
     CHECK_CONTIGUOUS(netpin_start);
+    CHECK_FLAT(net_weights); 
+    CHECK_CONTIGUOUS(net_weights); 
+    CHECK_FLAT(net_mask);
+    CHECK_CONTIGUOUS(net_mask); 
+
     at::Tensor grad_out = at::zeros_like(pos);
 
     AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeLogSumExpWirelengthLauncher", [&] {
@@ -158,15 +173,18 @@ at::Tensor logsumexp_wirelength_backward(
                     num_threads, 
                     grad_out.data<scalar_t>(), grad_out.data<scalar_t>()+pos.numel()/2
                     );
-            integrateNetWeightsLauncher<scalar_t>(
-                flat_netpin.data<int>(), 
-                netpin_start.data<int>(), 
-                net_mask.data<unsigned char>(), 
-                net_weights.data<scalar_t>(), 
-                grad_out.data<scalar_t>(), grad_out.data<scalar_t>()+pos.numel()/2, 
-                netpin_start.numel()-1, 
-                num_threads
-                );
+            if (net_weights.numel())
+            {
+                integrateNetWeightsLauncher<scalar_t>(
+                    flat_netpin.data<int>(), 
+                    netpin_start.data<int>(), 
+                    net_mask.data<unsigned char>(), 
+                    net_weights.data<scalar_t>(), 
+                    grad_out.data<scalar_t>(), grad_out.data<scalar_t>()+pos.numel()/2, 
+                    netpin_start.numel()-1, 
+                    num_threads
+                    );
+            }
             });
     return grad_out; 
 }

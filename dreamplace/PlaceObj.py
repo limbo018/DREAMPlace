@@ -154,9 +154,9 @@ class PlaceObj(nn.Module):
                 flat_netpin=data_collections.flat_net2pin_map, 
                 netpin_start=data_collections.flat_net2pin_start_map,
                 pin2net_map=data_collections.pin2net_map, 
+                net_weights=data_collections.net_weights, 
                 net_mask=data_collections.net_mask_ignore_large_degrees, 
                 pin_mask=data_collections.pin_mask_ignore_fixed_macros,
-                net_weights=data_collections.net_weights, 
                 gamma=self.gamma, 
                 algorithm='atomic', 
                 num_threads=params.num_threads

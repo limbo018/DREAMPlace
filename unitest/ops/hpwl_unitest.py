@@ -87,8 +87,8 @@ class HPWLOpTest(unittest.TestCase):
                 flat_netpin=torch.from_numpy(flat_net2pin_map), 
                 netpin_start=torch.from_numpy(flat_net2pin_start_map),
                 pin2net_map=torch.from_numpy(pin2net_map), 
-                net_mask=torch.from_numpy(net_mask), 
                 net_weights=torch.from_numpy(net_weights), 
+                net_mask=torch.from_numpy(net_mask), 
                 algorithm='net-by-net'
                 )
         hpwl_value = custom.forward(pin_pos_var)
@@ -101,8 +101,8 @@ class HPWLOpTest(unittest.TestCase):
                     flat_netpin=torch.from_numpy(flat_net2pin_map).cuda(), 
                     netpin_start=torch.from_numpy(flat_net2pin_start_map).cuda(),
                     pin2net_map=torch.from_numpy(pin2net_map).cuda(), 
-                    net_mask=torch.from_numpy(net_mask).cuda(), 
                     net_weights=torch.from_numpy(net_weights).cuda(), 
+                    net_mask=torch.from_numpy(net_mask).cuda(), 
                     algorithm='net-by-net'
                     )
             hpwl_value = custom_cuda.forward(pin_pos_var.cuda())
@@ -114,8 +114,8 @@ class HPWLOpTest(unittest.TestCase):
                 flat_netpin=torch.from_numpy(flat_net2pin_map), 
                 netpin_start=torch.from_numpy(flat_net2pin_start_map),
                 pin2net_map=torch.from_numpy(pin2net_map), 
-                net_mask=torch.from_numpy(net_mask), 
                 net_weights=torch.from_numpy(net_weights), 
+                net_mask=torch.from_numpy(net_mask), 
                 algorithm='atomic'
                 )
         hpwl_value = custom_atomic.forward(pin_pos_var)
@@ -128,8 +128,8 @@ class HPWLOpTest(unittest.TestCase):
                     flat_netpin=torch.from_numpy(flat_net2pin_map).cuda(), 
                     netpin_start=torch.from_numpy(flat_net2pin_start_map).cuda(),
                     pin2net_map=torch.from_numpy(pin2net_map).cuda(), 
-                    net_mask=torch.from_numpy(net_mask).cuda(), 
                     net_weights=torch.from_numpy(net_weights).cuda(), 
+                    net_mask=torch.from_numpy(net_mask).cuda(), 
                     algorithm='atomic'
                     )
             hpwl_value = custom_cuda_atomic.forward(pin_pos_var.cuda())

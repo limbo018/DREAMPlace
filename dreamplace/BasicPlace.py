@@ -55,7 +55,11 @@ class PlaceDataCollection (object):
         self.pin2net_map = torch.from_numpy(placedb.pin2net_map).to(device)
         self.flat_net2pin_map = torch.from_numpy(placedb.flat_net2pin_map).to(device)
         self.flat_net2pin_start_map = torch.from_numpy(placedb.flat_net2pin_start_map).to(device)
-        self.net_weights = torch.from_numpy(placedb.net_weights).to(device)
+        if np.amin(placedb.net_weights) != np.amax(placedb.net_weights): # weights are meaningful 
+            self.net_weights = torch.from_numpy(placedb.net_weights).to(device)
+        else: # an empty tensor 
+            print("[I] net weights are all the same, ignored")
+            self.net_weights = torch.Tensor().to(device)
 
         self.net_mask_all = torch.from_numpy(np.ones(placedb.num_nets, dtype=np.uint8)).to(device) # all nets included 
         net_degrees = np.array([len(net2pin) for net2pin in placedb.net2pin_map])
@@ -251,8 +255,8 @@ class BasicPlace (nn.Module):
                 flat_netpin=data_collections.flat_net2pin_map, 
                 netpin_start=data_collections.flat_net2pin_start_map,
                 pin2net_map=data_collections.pin2net_map, 
-                net_mask=data_collections.net_mask_all, 
                 net_weights=data_collections.net_weights, 
+                net_mask=data_collections.net_mask_all, 
                 algorithm='atomic', 
                 num_threads=params.num_threads
                 )

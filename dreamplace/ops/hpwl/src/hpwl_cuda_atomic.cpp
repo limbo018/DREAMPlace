@@ -27,12 +27,14 @@ int computeHPWLCudaAtomicLauncher(
 /// @brief Compute half-perimeter wirelength 
 /// @param pos cell locations, array of x locations and then y locations 
 /// @param pin2net_map map pin to net 
+/// @param net_weights weight of nets 
 /// @param net_mask an array to record whether compute the where for a net or not 
 at::Tensor hpwl_atomic_forward(
         at::Tensor pos,
         at::Tensor pin2net_map, 
-        at::Tensor net_mask, 
-        at::Tensor net_weights) 
+        at::Tensor net_weights,
+        at::Tensor net_mask
+        ) 
 {
     typedef int T; 
 
@@ -41,6 +43,10 @@ at::Tensor hpwl_atomic_forward(
     CHECK_CONTIGUOUS(pos);
     CHECK_FLAT(pin2net_map);
     CHECK_CONTIGUOUS(pin2net_map);
+    CHECK_FLAT(net_weights); 
+    CHECK_CONTIGUOUS(net_weights);
+    CHECK_FLAT(net_mask);
+    CHECK_CONTIGUOUS(net_mask);
 
     int num_nets = net_mask.numel();
     // x then y 
@@ -69,15 +75,24 @@ at::Tensor hpwl_atomic_forward(
     auto delta = partial_hpwl_max-partial_hpwl_min;
 
     const at::Type& the_type = pos.type();
+    at::Tensor hpwl; 
     switch (the_type.scalarType())
     {
         case at::ScalarType::Double:
-            return at::_cast_Double(delta, false).mul_(net_weights.view({1, num_nets})).sum().mul_(1.0/1000); 
+            hpwl = at::_cast_Double(delta, false); 
+            break; 
         case at::ScalarType::Float:
-            return at::_cast_Float(delta, false).mul_(net_weights.view({1, num_nets})).sum().mul_(1.0/1000); 
+            hpwl = at::_cast_Float(delta, false);
+            break; 
         default:
             AT_ERROR("hpwl_atomic_forward", " not implemented for '", the_type.toString(), "'"); 
     }
+
+    if (net_weights.numel())
+    {
+        hpwl.mul_(net_weights.view({1, num_nets}));
+    }
+    return hpwl.sum().mul_(1.0/1000); 
 }
 
 DREAMPLACE_END_NAMESPACE
