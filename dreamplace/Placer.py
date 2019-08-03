@@ -42,14 +42,15 @@ def place(params):
     print("[I] non-linear placement takes %.2f seconds" % (time.time()-tt))
 
     # write placement solution 
-    path = "%s/%s" % (params.result_dir, os.path.splitext(os.path.basename(params.aux_input))[0])
+    path = "%s/%s" % (params.result_dir, params.design_name())
     if not os.path.exists(path):
         os.system("mkdir -p %s" % (path))
-    gp_out_file = os.path.join(path, os.path.basename(params.aux_input).replace(".aux", ".gp.pl"))
+    gp_out_file = os.path.join(path, "%s.gp.pl" % (params.design_name()))
     placedb.write_pl(params, gp_out_file)
 
     # call external detailed placement
-    if params.detailed_place_engine and os.path.exists(params.detailed_place_engine): 
+    # TODO: support more external placers, currently only NTUplace3 with Bookshelf format 
+    if params.detailed_place_engine and os.path.exists(params.detailed_place_engine) and params.aux_input: 
         print("[I] Use external detailed placement engine %s" % (params.detailed_place_engine))
         dp_out_file = gp_out_file.replace(".gp.pl", "")
         # add target density constraint if provided 
@@ -74,7 +75,7 @@ def place(params):
             print("[I] iteration %4d, HPWL %.3E, overflow %.3E, max density %.3E" % (iteration, hpwl, density_overflow, max_density))
             placer.plot(params, placedb, iteration, pos)
     elif params.detailed_place_engine:
-        print("[W] External detailed placement engine %s NOT found" % (params.detailed_place_engine))
+        print("[W] External detailed placement engine %s or aux file NOT found" % (params.detailed_place_engine))
 
 if __name__ == "__main__":
     """

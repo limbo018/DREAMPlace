@@ -5,6 +5,7 @@
 # @brief  User parameters 
 #
 
+import os
 import json 
 import math 
 
@@ -234,10 +235,10 @@ dump_legalize_solution_flag [default %d] | whether dump intermediate legalizatio
         """
         @brief speculate the design name for dumping out intermediate solutions 
         """
-        if params.aux_input: 
-            design_name = os.path.basename(params.aux_input).replace(".aux", "").replace(".AUX", "")
-        elif params.verilog_input:
-            design_name = os.path.basename(params.verilog_input).replace(".v", "").replace(".V", "")
-        elif params.def_input: 
-            design_name = os.path.basename(params.def_input).replace(".def", "").replace(".DEF", "")
+        if self.aux_input: 
+            design_name = os.path.basename(self.aux_input).replace(".aux", "").replace(".AUX", "")
+        elif self.verilog_input:
+            design_name = os.path.basename(self.verilog_input).replace(".v", "").replace(".V", "")
+        elif self.def_input: 
+            design_name = os.path.basename(self.def_input).replace(".def", "").replace(".DEF", "")
         return design_name 
