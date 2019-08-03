@@ -12,7 +12,7 @@ class PlaceIOFunction(Function):
     @staticmethod
     def forward(params):
         args = "DREAMPlace"
-        if "aux_input" in params.__dict__:
+        if "aux_input" in params.__dict__ and params.aux_input:
             args += " --bookshelf_aux_input %s" % (params.aux_input)
         if "lef_input" in params.__dict__ and params.lef_input:
             if isinstance(params.lef_input, list): 
