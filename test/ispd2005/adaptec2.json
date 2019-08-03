@@ -18,6 +18,7 @@
 "legalize_flag" : 1,
 "detailed_place_flag" : 0,
 "detailed_place_engine" : "thirdparty/ntuplace3", 
+"detailed_place_command" : "-nolegal", 
 "stop_overflow" : 0.07, 
 "dtype" : "float32", 
 "plot_flag" : 0, 
