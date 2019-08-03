@@ -131,3 +131,11 @@ python dreamplace/Placer.py --help
 # Authors
 
 * [Yibo Lin](http://yibolin.com), supervised by [David Z. Pan](http://users.ece.utexas.edu/~dpan), composed the initial release. 
+
+# Features
+
+* LEF/DEF support as input designs
+
+* Net weighting support through .wts files in Bookshelf format
+
+* Multi-thread CPU and optional GPU acceleration support 
