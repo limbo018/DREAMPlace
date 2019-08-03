@@ -131,6 +131,7 @@ python dreamplace/Placer.py --help
 # Authors
 
 * [Yibo Lin](http://yibolin.com), supervised by [David Z. Pan](http://users.ece.utexas.edu/~dpan), composed the initial release. 
+* **Pull requests to improve the tool are more than welcome.** We appreciate all kinds of contributions from the community. 
 
 # Features
 
