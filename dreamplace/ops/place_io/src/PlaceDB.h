@@ -69,9 +69,9 @@ class PlaceDB : public DefParser::DefDataBase
         /// default constructor
         PlaceDB(); 
         /// copy constructor, forbidden
-        PlaceDB(PlaceDB const& rhs); 
+        //PlaceDB(PlaceDB const& rhs); 
         /// assignment, forbidden
-        PlaceDB& operator=(PlaceDB const& rhs);
+        //PlaceDB& operator=(PlaceDB const& rhs);
 
         /// destructor
         virtual ~PlaceDB() {}
@@ -356,7 +356,7 @@ class PlaceDB : public DefParser::DefDataBase
         virtual void reportStatsKernel();
         /// write placement solutions 
         virtual bool write(std::string const& filename) const;
-        virtual bool write(std::string const& filename, SolutionFileFormat ff) const;
+        virtual bool write(std::string const& filename, SolutionFileFormat ff, coordinate_type const* x = NULL, coordinate_type const* y = NULL) const;
 
         /// for debug 
         virtual void printNode(index_type id) const;

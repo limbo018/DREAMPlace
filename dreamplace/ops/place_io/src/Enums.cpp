@@ -101,6 +101,43 @@ PlaceStatus::enum_type PlaceStatus::str2Enum(std::string const& s) const
     return mStr2Enum.at(s);
 }
 
+std::string MultiRowAttr::enum2Str(MultiRowAttr::enum_type const& e) const
+{
+    static std::map<enum_type, std::string> mEnum2Str;
+    static bool init = true;
+
+    if (init)
+    {
+        ENUM2STR(mEnum2Str, SINGLE_ROW);
+        ENUM2STR(mEnum2Str, MULTI_ROW_ANY);
+        ENUM2STR(mEnum2Str, MULTI_ROW_N);
+        ENUM2STR(mEnum2Str, MULTI_ROW_S);
+        ENUM2STR(mEnum2Str, UNKNOWN);
+        init = false;
+    }
+
+    return mEnum2Str.at(e);
+}
+
+MultiRowAttr::enum_type MultiRowAttr::str2Enum(std::string const& s) const
+{
+    static std::map<std::string, enum_type> mStr2Enum;
+    static bool init = true;
+
+    if (init)
+    {
+        STR2ENUM(mStr2Enum, SINGLE_ROW);
+        STR2ENUM(mStr2Enum, MULTI_ROW_ANY);
+        STR2ENUM(mStr2Enum, MULTI_ROW_N);
+        STR2ENUM(mStr2Enum, MULTI_ROW_S);
+        STR2ENUM(mStr2Enum, UNKNOWN);
+
+        init = false;
+    }
+
+    return mStr2Enum.at(s);
+}
+
 std::string SignalDirect::enum2Str(SignalDirect::enum_type const& e) const
 {
     static std::map<enum_type, std::string> mEnum2Str;

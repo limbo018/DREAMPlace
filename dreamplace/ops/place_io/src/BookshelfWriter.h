@@ -26,11 +26,13 @@ class BookShelfWriter : public PlaceSolWriter
         /// write .plx file  
         /// \param outFile is plx file name
         /// \param first, last should contain components to write 
-        bool write(std::string const& outFile) const;
+        bool write(std::string const& outFile, 
+                PlaceDB::coordinate_type const* x = NULL, PlaceDB::coordinate_type const* y = NULL) const;
         /// write all files in book shelf format 
         /// \param outFile is aux file name 
         /// \param first, last should contain components to write 
-        bool writeAll(std::string const& outFile, std::string const& designName) const;
+        bool writeAll(std::string const& outFile, std::string const& designName, 
+                PlaceDB::coordinate_type const* x = NULL, PlaceDB::coordinate_type const* y = NULL) const;
 
     protected:
         bool writeAux(std::string const& outFileNoSuffix, std::string const& designName) const;
@@ -39,7 +41,8 @@ class BookShelfWriter : public PlaceSolWriter
         bool writeWts(std::string const& outFileNoSuffix) const;
         bool writeScl(std::string const& outFileNoSuffix) const;
         bool writeShapes(std::string const& outFileNoSuffix) const;
-        bool writePlx(std::string const& outFileNoSuffix) const;
+        bool writePlx(std::string const& outFileNoSuffix, 
+                PlaceDB::coordinate_type const* x = NULL, PlaceDB::coordinate_type const* y = NULL) const;
         bool writeRoute(std::string const& outFileNoSuffix) const; 
         void writeHeader(FILE* os, std::string const& fileType) const;
         FILE* openFile(std::string const& outFileNoSuffix, std::string const& fileType) const;

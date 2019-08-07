@@ -36,6 +36,8 @@ class Object
 		index_type id() const {return m_id;}
 		void setId(index_type i) {m_id = i;}
 
+        std::string toString() const {return limbo::to_string(m_id);}
+
 	protected:
 		index_type m_id; ///< index of object 
 };

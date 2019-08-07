@@ -32,7 +32,6 @@ def place(params):
     placedb = PlaceDB.PlaceDB()
     placedb(params)
     print("[I] reading database takes %.2f seconds" % (time.time()-tt))
-    #placedb.write_nets(params, "tmp.nets")
 
     # solve placement 
     tt = time.time()
@@ -45,12 +44,12 @@ def place(params):
     path = "%s/%s" % (params.result_dir, params.design_name())
     if not os.path.exists(path):
         os.system("mkdir -p %s" % (path))
-    gp_out_file = os.path.join(path, "%s.gp.pl" % (params.design_name()))
-    placedb.write_pl(params, gp_out_file)
+    gp_out_file = os.path.join(path, "%s.gp.%s" % (params.design_name(), params.solution_file_suffix()))
+    placedb.write(params, gp_out_file)
 
     # call external detailed placement
     # TODO: support more external placers, currently only NTUplace3 with Bookshelf format 
-    if params.detailed_place_engine and os.path.exists(params.detailed_place_engine) and params.aux_input: 
+    if params.detailed_place_engine and os.path.exists(params.detailed_place_engine) and params.solution_file_suffix() == "pl": 
         print("[I] Use external detailed placement engine %s" % (params.detailed_place_engine))
         dp_out_file = gp_out_file.replace(".gp.pl", "")
         # add target density constraint if provided 
