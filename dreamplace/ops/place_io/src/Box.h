@@ -26,10 +26,19 @@ class Box
         ///==== constructors ====
 		/// default constructor will result in an invalid box 
 		/// but it is more compatible with functions such as encompass()
-        Box(coordinate_type xl = std::numeric_limits<coordinate_type>::max(), 
-                coordinate_type yl = std::numeric_limits<coordinate_type>::max(), 
-				coordinate_type xh = std::numeric_limits<coordinate_type>::min(), 
-                coordinate_type yh = std::numeric_limits<coordinate_type>::min())
+        Box()
+        {
+            set(
+                    std::numeric_limits<coordinate_type>::max(), 
+                    std::numeric_limits<coordinate_type>::max(), 
+                    std::numeric_limits<coordinate_type>::min(), 
+                    std::numeric_limits<coordinate_type>::min() 
+                    );
+        }
+        Box(coordinate_type xl, 
+                coordinate_type yl, 
+				coordinate_type xh, 
+                coordinate_type yh)
         {
             set(xl, yl, xh, yh);
         }
@@ -165,6 +174,8 @@ class Box
         }
         template <typename BoxType>
         bool operator!=(const BoxType& rhs) const { return !((*this) == rhs); }
+
+        std::string toString() const {return "(" + limbo::to_string(xl()) + ", " + limbo::to_string(yl()) + ", " + limbo::to_string(xh()) + ", " + limbo::to_string(yh()) + ")";}
 	protected:
         template <typename BoxType>
         void copy(BoxType const& rhs)

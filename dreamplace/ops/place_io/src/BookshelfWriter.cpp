@@ -13,12 +13,14 @@
 
 DREAMPLACE_BEGIN_NAMESPACE
 
-bool BookShelfWriter::write(std::string const& outFile) const
+bool BookShelfWriter::write(std::string const& outFile, 
+                PlaceDB::coordinate_type const* x, PlaceDB::coordinate_type const* y) const
 {
     std::string outFileNoSuffix = limbo::trim_file_suffix(outFile);
-    return writePlx(outFileNoSuffix);
+    return writePlx(outFileNoSuffix, x, y);
 }
-bool BookShelfWriter::writeAll(std::string const& outFile, std::string const& designName) const
+bool BookShelfWriter::writeAll(std::string const& outFile, std::string const& designName, 
+                PlaceDB::coordinate_type const* x, PlaceDB::coordinate_type const* y) const
 {
     std::string outFileNoSuffix = limbo::trim_file_suffix(outFile);
 
@@ -34,7 +36,7 @@ bool BookShelfWriter::writeAll(std::string const& outFile, std::string const& de
     if (flag)
         flag = writeShapes(outFileNoSuffix);
     if (flag)
-        flag = writePlx(outFileNoSuffix);
+        flag = writePlx(outFileNoSuffix, x, y);
     if (flag)
         flag = writeRoute(outFileNoSuffix); 
 
@@ -194,7 +196,8 @@ bool BookShelfWriter::writeShapes(std::string const& outFileNoSuffix) const
     closeFile(out);
     return true;
 }
-bool BookShelfWriter::writePlx(std::string const& outFileNoSuffix) const 
+bool BookShelfWriter::writePlx(std::string const& outFileNoSuffix, 
+                PlaceDB::coordinate_type const* x, PlaceDB::coordinate_type const* y) const 
 {
     FILE* out = openFile(outFileNoSuffix, "pl");
     if (out == NULL)
@@ -206,7 +209,22 @@ bool BookShelfWriter::writePlx(std::string const& outFileNoSuffix) const
     for (std::vector<Node>::const_iterator it = vNode.begin(), ite = vNode.end(); it != ite; ++it)
     {
         Node const& node = *it; 
-        fprintf(out, "%s %d %d : %s", m_db.nodeName(node).c_str(), node.xl(), node.yl(), std::string(Orient(node.orient())).c_str());
+
+        PlaceDB::coordinate_type xx = node.xl(); 
+        PlaceDB::coordinate_type yy = node.yl(); 
+        if (node.id() < m_db.numMovable())
+        {
+            if (x)
+            {
+                xx = x[node.id()];
+            }
+            if (y)
+            {
+                yy = y[node.id()];
+            }
+        }
+
+        fprintf(out, "%s %d %d : %s", m_db.nodeName(node).c_str(), xx, yy, std::string(Orient(node.orient())).c_str());
         if (node.id() < m_db.numMovable()+m_db.numFixed() && node.status() == PlaceStatusEnum::FIXED) // fixed instance
             fprintf(out, " /FIXED"); 
         else if (node.id() >= m_db.numMovable()+m_db.numFixed()) // io pins
