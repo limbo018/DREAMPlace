@@ -5,12 +5,12 @@
     > Created Time: Thu Jun 18 23:08:28 2015
  ************************************************************************/
 
-#include "PlaceDB.h"
-#include <sstream>
-//#include <boost/timer/timer.hpp>
 //#include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
 #include <pybind11/numpy.h>
+#include <sstream>
+//#include <boost/timer/timer.hpp>
+#include "PlaceDB.h"
 #include "utility/src/torch.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
@@ -466,14 +466,14 @@ using BinRow = DREAMPLACE_NAMESPACE::BinRow;
 using PlaceDB = DREAMPLACE_NAMESPACE::PlaceDB;
 
 PYBIND11_MAKE_OPAQUE(std::vector<bool>);
-PYBIND11_MAKE_OPAQUE(std::vector<char>);
-PYBIND11_MAKE_OPAQUE(std::vector<unsigned char>);
-PYBIND11_MAKE_OPAQUE(std::vector<int>);
-PYBIND11_MAKE_OPAQUE(std::vector<unsigned int>);
-PYBIND11_MAKE_OPAQUE(std::vector<long>);
-PYBIND11_MAKE_OPAQUE(std::vector<unsigned long>);
-PYBIND11_MAKE_OPAQUE(std::vector<float>);
-PYBIND11_MAKE_OPAQUE(std::vector<double>);
+//PYBIND11_MAKE_OPAQUE(std::vector<char>);
+//PYBIND11_MAKE_OPAQUE(std::vector<unsigned char>);
+PYBIND11_MAKE_OPAQUE(std::vector<PlaceDB::coordinate_type>);
+PYBIND11_MAKE_OPAQUE(std::vector<PlaceDB::index_type>);
+//PYBIND11_MAKE_OPAQUE(std::vector<long>);
+//PYBIND11_MAKE_OPAQUE(std::vector<unsigned long>);
+//PYBIND11_MAKE_OPAQUE(std::vector<float>);
+//PYBIND11_MAKE_OPAQUE(std::vector<double>);
 PYBIND11_MAKE_OPAQUE(std::vector<std::string>);
 
 PYBIND11_MAKE_OPAQUE(PlaceDB::string2index_map_type);
@@ -496,14 +496,14 @@ PYBIND11_MAKE_OPAQUE(std::vector<BinRow>);
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
     pybind11::bind_vector<std::vector<bool> >(m, "VectorBool");
-    pybind11::bind_vector<std::vector<char> >(m, "VectorChar", pybind11::buffer_protocol());
-    pybind11::bind_vector<std::vector<unsigned char> >(m, "VectorUChar", pybind11::buffer_protocol());
-    pybind11::bind_vector<std::vector<int> >(m, "VectorInt", pybind11::buffer_protocol());
-    pybind11::bind_vector<std::vector<unsigned int> >(m, "VectorUInt", pybind11::buffer_protocol());
-    pybind11::bind_vector<std::vector<long> >(m, "VectorLong", pybind11::buffer_protocol());
-    pybind11::bind_vector<std::vector<unsigned long> >(m, "VectorULong", pybind11::buffer_protocol());
-    pybind11::bind_vector<std::vector<float> >(m, "VectorFloat", pybind11::buffer_protocol());
-    pybind11::bind_vector<std::vector<double> >(m, "VectorDouble", pybind11::buffer_protocol());
+    //pybind11::bind_vector<std::vector<char> >(m, "VectorChar", pybind11::buffer_protocol());
+    //pybind11::bind_vector<std::vector<unsigned char> >(m, "VectorUChar", pybind11::buffer_protocol());
+    pybind11::bind_vector<std::vector<PlaceDB::coordinate_type> >(m, "VectorCoordinate", pybind11::buffer_protocol());
+    pybind11::bind_vector<std::vector<PlaceDB::index_type> >(m, "VectorIndex", pybind11::buffer_protocol());
+    //pybind11::bind_vector<std::vector<long> >(m, "VectorLong", pybind11::buffer_protocol());
+    //pybind11::bind_vector<std::vector<unsigned long> >(m, "VectorULong", pybind11::buffer_protocol());
+    //pybind11::bind_vector<std::vector<float> >(m, "VectorFloat", pybind11::buffer_protocol());
+    //pybind11::bind_vector<std::vector<double> >(m, "VectorDouble", pybind11::buffer_protocol());
     pybind11::bind_vector<std::vector<std::string> >(m, "VectorString");
 
     pybind11::bind_map<DREAMPLACE_NAMESPACE::PlaceDB::string2index_map_type>(m, "MapString2Index");

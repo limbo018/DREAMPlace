@@ -29,6 +29,8 @@ class PlaceDB (object):
         initialization
         To avoid the usage of list, I flatten everything.  
         """
+        self.rawdb = None # raw placement database, a C++ object 
+
         self.num_physical_nodes = 0 # number of real nodes, including movable nodes, terminals
         self.num_terminals = 0 # number of terminals 
         self.node_name2id_map = {} # node name to id map, cell name 
@@ -82,8 +84,6 @@ class PlaceDB (object):
         self.num_filler_nodes = None
 
         self.dtype = None 
-
-        self.db = None # raw placement database, a C++ object 
 
     def scale_pl(self, scale_factor):
         """
@@ -411,8 +411,8 @@ class PlaceDB (object):
         @param params parameters 
         """
         self.dtype = datatypes[params.dtype]
-        self.db = place_io.PlaceIOFunction.read(params)
-        pydb = place_io.PlaceIOFunction.pydb(self.db)
+        self.rawdb = place_io.PlaceIOFunction.read(params)
+        pydb = place_io.PlaceIOFunction.pydb(self.rawdb)
 
         self.num_physical_nodes = pydb.num_nodes
         self.num_terminals = pydb.num_terminals
@@ -548,7 +548,7 @@ class PlaceDB (object):
             node_x = self.node_x * unscale_factor
             node_y = self.node_y * unscale_factor
 
-        place_io.PlaceIOFunction.write(self.db, filename, sol_file_format, node_x, node_y)
+        place_io.PlaceIOFunction.write(self.rawdb, filename, sol_file_format, node_x, node_y)
         print("[I] write %s takes %.3f seconds" % (str(sol_file_format), time.time()-tt))
 
     def write_pl(self, params, pl_file):
@@ -615,7 +615,7 @@ class PlaceDB (object):
             node_y = self.node_y * unscale_factor
 
         # update raw database 
-        place_io.PlaceIOFunction.apply(self.db, node_x, node_y)
+        place_io.PlaceIOFunction.apply(self.rawdb, node_x, node_y)
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
