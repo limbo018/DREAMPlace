@@ -171,9 +171,8 @@ class NonLinearPlace (BasicPlace.BasicPlace):
 
         # save results 
         cur_pos = self.pos[0].data.clone().cpu().numpy()
-        # assign solution 
-        placedb.node_x[:placedb.num_movable_nodes] = cur_pos[0:placedb.num_movable_nodes]
-        placedb.node_y[:placedb.num_movable_nodes] = cur_pos[placedb.num_nodes:placedb.num_nodes+placedb.num_movable_nodes]
+        # apply solution 
+        placedb.apply(params, cur_pos[0:placedb.num_movable_nodes], cur_pos[placedb.num_nodes:placedb.num_nodes+placedb.num_movable_nodes])
         # plot placement 
         if params.plot_flag: 
             self.plot(params, placedb, iteration, cur_pos)

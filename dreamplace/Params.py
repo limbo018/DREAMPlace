@@ -247,3 +247,12 @@ dump_legalize_solution_flag [default %d] | whether dump intermediate legalizatio
         elif self.def_input: 
             design_name = os.path.basename(self.def_input).replace(".def", "").replace(".DEF", "")
         return design_name 
+
+    def solution_file_suffix(self): 
+        """
+        @brief speculate placement solution file suffix 
+        """
+        if self.def_input is not None: # LEF/DEF 
+            return "def"
+        else: # Bookshelf
+            return "pl"

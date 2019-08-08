@@ -135,7 +135,9 @@ python dreamplace/Placer.py --help
 
 # Features
 
-* LEF/DEF support as input designs
+* Python binding and access to C++ placement database
+
+* LEF/DEF support as input/output
 
 * Net weighting support through .wts files in Bookshelf format
 
