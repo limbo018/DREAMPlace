@@ -1,24 +1,10 @@
 cmake_minimum_required(VERSION 3.0.2)
 
-project(thirdparty)
+#project(thirdparty)
 
 add_subdirectory(flute-3.1)
-find_path(FLUTE_SOURCE_DIR flute.h PATHS ${CMAKE_CURRENT_SOURCE_DIR}/*)
-string(REPLACE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} FLUTE_BINARY_DIR ${FLUTE_SOURCE_DIR})
-set(FLUTE_OUTPUT      "${FLUTE_BINARY_DIR}/flute.stamp")
-add_custom_command(OUTPUT ${FLUTE_OUTPUT}
-    COMMAND ${CMAKE_COMMAND} -E touch ${FLUTE_OUTPUT}
-    DEPENDS ${FLUTE_SOURCE_DIR}/*.c ${FLUTE_SOURCE_DIR}/*.h
-    )
 
-enable_language(Fortran)
-
-set(LIMBO_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Limbo")
-set(LIMBO_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/Limbo")
-set(LIMBO_OUTPUT      "${LIMBO_BINARY_DIR}/Limbo.stamp")
-add_custom_command(OUTPUT ${LIMBO_OUTPUT}
-    COMMAND ${CMAKE_MAKE_PROGRAM} CXX=${CMAKE_CXX_COMPILER} CC=${CMAKE_C_COMPILER} FC=${CMAKE_Fortran_COMPILER} CXXSTD=\"-std=c++11 -D_GLIBCXX_USE_CXX11_ABI=${CMAKE_CXX_ABI}\" BOOST_DIR=${Boost_DIR} -C ${LIMBO_SOURCE_DIR}
-	COMMAND ${CMAKE_MAKE_PROGRAM} install -C ${LIMBO_SOURCE_DIR} PREFIX=${LIMBO_BINARY_DIR}
-    COMMAND ${CMAKE_COMMAND} -E touch ${LIMBO_OUTPUT}
-    )
-add_custom_target(${PROJECT_NAME} ALL DEPENDS ${FLUTE_OUTPUT} ${LIMBO_OUTPUT})
+set(OPENBLAS OFF CACHE BOOL "Turn off OPENBLAS for Limbo")
+set(INSTALL_LIMBO OFF CACHE BOOL "Turn off installation for Limbo")
+set(GENERATE_DOCS OFF CACHE BOOL "Turn off documentation for Limbo")
+add_subdirectory(Limbo)

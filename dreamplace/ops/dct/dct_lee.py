@@ -23,7 +23,7 @@ def dct(x, expk, buf, out):
     if x.is_cuda:
         dct_cuda.dct(x.view([-1, x.size(-1)]), expk, buf, out)
     else:
-        dct_cpp.dct(x.view([-1, x.size(-1)]), expk, buf, out)
+        dct_cpp.dct(x.view([-1, x.size(-1)]), expk, buf, out, torch.get_num_threads())
     return out.view(x.size())  
 
 class DCTFunction(Function):
@@ -57,7 +57,7 @@ def idct(x, expk, buf, out):
     if x.is_cuda:
         dct_cuda.idct(x.view([-1, x.size(-1)]), expk, buf, out)
     else:
-        dct_cpp.idct(x.view([-1, x.size(-1)]), expk, buf, out)
+        dct_cpp.idct(x.view([-1, x.size(-1)]), expk, buf, out, torch.get_num_threads())
     return out.view(x.size())  
 
 class IDCTFunction(Function):
@@ -89,7 +89,7 @@ def dct2(x, expk0, expk1, buf, out):
     if x.is_cuda:
         dct_cuda.dct2(x, expk0, expk1, buf, out)
     else:
-        dct_cpp.dct2(x, expk0, expk1, buf, out)
+        dct_cpp.dct2(x, expk0, expk1, buf, out, torch.get_num_threads())
     return out
 
 class DCT2Function(Function):
@@ -128,7 +128,7 @@ def idct2(x, expk0, expk1, buf, out):
     if x.is_cuda:
         dct_cuda.idct2(x, expk0, expk1, buf, out)
     else:
-        dct_cpp.idct2(x, expk0, expk1, buf, out)
+        dct_cpp.idct2(x, expk0, expk1, buf, out, torch.get_num_threads())
     return out
 
 class IDCT2Function(Function):
@@ -168,7 +168,7 @@ def dst(x, expk, buf, out):
     if x.is_cuda:
         dct_cuda.dst(x.view([-1, x.size(-1)]), expk, buf, out)
     else:
-        dct_cpp.dst(x.view([-1, x.size(-1)]), expk, buf, out)
+        dct_cpp.dst(x.view([-1, x.size(-1)]), expk, buf, out, torch.get_num_threads())
     return out.view(x.size())  
 
 class DSTFunction(Function):
@@ -202,7 +202,7 @@ def idst(x, expk, buf, out):
     if x.is_cuda:
         dct_cuda.idst(x.view([-1, x.size(-1)]), expk, buf, out)
     else:
-        dct_cpp.idst(x.view([-1, x.size(-1)]), expk, buf, out)
+        dct_cpp.idst(x.view([-1, x.size(-1)]), expk, buf, out, torch.get_num_threads())
     return out.view(x.size())  
 
 class IDSTFunction(Function):
@@ -236,7 +236,7 @@ def idxct(x, expk, buf, out):
     if x.is_cuda:
         dct_cuda.idxct(x.view([-1, x.size(-1)]), expk, buf, out)
     else:
-        dct_cpp.idxct(x.view([-1, x.size(-1)]), expk, buf, out)
+        dct_cpp.idxct(x.view([-1, x.size(-1)]), expk, buf, out, torch.get_num_threads())
     #output = IDCTFunction.forward(ctx, x, expk)
     #output.add_(x[..., 0].unsqueeze(-1)).mul_(0.5)
     ##output.mul_(0.5).add_(x[..., 0].unsqueeze(-1).mul(0.5))
@@ -273,7 +273,7 @@ def idxst(x, expk, buf, out):
     if x.is_cuda:
         dct_cuda.idxst(x.view([-1, x.size(-1)]), expk, buf, out)
     else:
-        dct_cpp.idxst(x.view([-1, x.size(-1)]), expk, buf, out)
+        dct_cpp.idxst(x.view([-1, x.size(-1)]), expk, buf, out, torch.get_num_threads())
     return out.view(x.size())  
 
 class IDXSTFunction(Function):
@@ -306,7 +306,7 @@ def idcct2(x, expk0, expk1, buf0, buf1, out):
     if x.is_cuda:
         dct_cuda.idcct2(x.view([-1, x.size(-1)]), expk0, expk1, buf0, buf1, out)
     else:
-        dct_cpp.idcct2(x.view([-1, x.size(-1)]), expk0, expk1, buf0, buf1, out)
+        dct_cpp.idcct2(x.view([-1, x.size(-1)]), expk0, expk1, buf0, buf1, out, torch.get_num_threads())
     return out.view(x.size())  
 
 class IDCCT2Function(Function):
@@ -348,7 +348,7 @@ def idcst2(x, expk0, expk1, buf0, buf1, out):
     if x.is_cuda:
         dct_cuda.idcst2(x.view([-1, x.size(-1)]), expk0, expk1, buf0, buf1, out)
     else:
-        dct_cpp.idcst2(x.view([-1, x.size(-1)]), expk0, expk1, buf0, buf1, out)
+        dct_cpp.idcst2(x.view([-1, x.size(-1)]), expk0, expk1, buf0, buf1, out, torch.get_num_threads())
     return out.view(x.size())  
 
 class IDCST2Function(Function):
@@ -390,7 +390,7 @@ def idsct2(x, expk0, expk1, buf0, buf1, out):
     if x.is_cuda:
         dct_cuda.idsct2(x.view([-1, x.size(-1)]), expk0, expk1, buf0, buf1, out)
     else:
-        dct_cpp.idsct2(x.view([-1, x.size(-1)]), expk0, expk1, buf0, buf1, out)
+        dct_cpp.idsct2(x.view([-1, x.size(-1)]), expk0, expk1, buf0, buf1, out, torch.get_num_threads())
     return out.view(x.size())  
 
 class IDSCT2Function(Function):

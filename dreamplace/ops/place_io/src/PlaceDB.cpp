@@ -722,6 +722,13 @@ void PlaceDB::set_bookshelf_node_position(std::string const& name, double x, dou
     if (node.status() == PlaceStatusEnum::FIXED || node.status() == PlaceStatusEnum::DUMMY_FIXED || node.status() == PlaceStatusEnum::PLACED)
         node.setInitPos(ll(node));
 }
+void PlaceDB::set_bookshelf_net_weight(std::string const& name, double w) 
+{
+    string2index_map_type::iterator found = m_mNetName2Index.find(name);
+    dreamplaceAssertMsg(found != m_mNetName2Index.end(), "failed to find net %s", name.c_str());
+    Net& net = this->net(found->second);
+    net.setWeight(w);
+}
 void PlaceDB::set_bookshelf_design(std::string& name)
 {
     m_designName.swap(name);
@@ -805,25 +812,25 @@ bool PlaceDB::write(std::string const& filename) const
     //dreamplaceSPrint(kINFO, buf, "writing placement solution takes %%t seconds CPU, %%w seconds real\n");
 	//boost::timer::auto_cpu_timer timer (buf);
 
-    return write(filename, userParam().fileFormat);
+    return write(filename, userParam().fileFormat, NULL, NULL);
 }
 
-bool PlaceDB::write(std::string const& filename, SolutionFileFormat ff) const
+bool PlaceDB::write(std::string const& filename, SolutionFileFormat ff, PlaceDB::coordinate_type const* x, PlaceDB::coordinate_type const* y) const
 {
     bool flag = false;
     switch (ff)
     {
         case DEF:
-            flag = DefWriter(*this).write(filename, userParam().defInput, nodes().begin(), nodes().begin()+m_numMovable+m_numFixed);
+            flag = DefWriter(*this).write(filename, userParam().defInput, nodes().begin(), nodes().begin()+m_numMovable+m_numFixed, x, y);
             break;
         case DEFSIMPLE:
-            flag = DefWriter(*this).writeSimple(filename, defVersion(), designName(), nodes().begin(), nodes().begin()+m_numMovable+m_numFixed);
+            flag = DefWriter(*this).writeSimple(filename, defVersion(), designName(), nodes().begin(), nodes().begin()+m_numMovable+m_numFixed, x, y);
             break;
         case BOOKSHELF:
-            flag = BookShelfWriter(*this).write(filename);
+            flag = BookShelfWriter(*this).write(filename, x, y);
             break;
         case BOOKSHELFALL:
-            flag = BookShelfWriter(*this).writeAll(filename, designName());
+            flag = BookShelfWriter(*this).writeAll(filename, designName(), x, y);
             break;
         default:
             dreamplacePrint(kERROR, "unknown solution format at line %u\n", __LINE__);

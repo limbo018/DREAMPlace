@@ -31,9 +31,9 @@ def unsorted_segment_sum(pin_x, pin2net_map, num_nets):
         result[pin2net_map[i]] += pin_x[i]
     return result
 
-def build_wirelength(pin_x, pin_y, pin2net_map, net2pin_map, gamma, ignore_net_degree):
-    # wirelength cost
-    # weighted-average
+def build_wirelength(pin_x, pin_y, pin2net_map, net2pin_map, gamma, ignore_net_degree, net_weights):
+    # wirelength cost 
+    # weighted-average 
 
     # temporily store exp(x)
     scaled_pin_x = pin_x/gamma
@@ -66,6 +66,8 @@ def build_wirelength(pin_x, pin_y, pin2net_map, net2pin_map, gamma, ignore_net_d
         if len(net2pin_map[i]) >= ignore_net_degree:
             wl[i] = 0
 
+    wl *= net_weights
+
     wirelength = np.sum(wl)
 
     return wirelength
@@ -79,6 +81,7 @@ class WeightedAverageWirelengthOpTest(unittest.TestCase):
         for net_id, pins in enumerate(net2pin_map):
             for pin in pins:
                 pin2net_map[pin] = net_id
+        net_weights = np.array([1, 2], dtype=np.float32)
 
         pin_x = pin_pos[:, 0]
         pin_y = pin_pos[:, 1]
@@ -107,7 +110,7 @@ class WeightedAverageWirelengthOpTest(unittest.TestCase):
         print("flat_net2pin_map = ", flat_net2pin_map)
         print("flat_net2pin_start_map = ", flat_net2pin_start_map)
 
-        golden_value = np.array([build_wirelength(pin_x, pin_y, pin2net_map, net2pin_map, gamma, ignore_net_degree)])
+        golden_value = np.array([build_wirelength(pin_x, pin_y, pin2net_map, net2pin_map, gamma, ignore_net_degree, net_weights)])
         print("golden_value = ", golden_value)
 
         # test cpu
@@ -119,10 +122,11 @@ class WeightedAverageWirelengthOpTest(unittest.TestCase):
         custom = weighted_average_wirelength.WeightedAverageWirelength(
                 flat_netpin=torch.from_numpy(flat_net2pin_map),
                 netpin_start=torch.from_numpy(flat_net2pin_start_map),
-                pin2net_map=torch.from_numpy(pin2net_map),
-                net_mask=torch.from_numpy(net_mask),
-                pin_mask=torch.from_numpy(pin_mask),
-                gamma=torch.tensor(gamma, dtype=dtype),
+                pin2net_map=torch.from_numpy(pin2net_map), 
+                net_weights=torch.from_numpy(net_weights), 
+                net_mask=torch.from_numpy(net_mask), 
+                pin_mask=torch.from_numpy(pin_mask), 
+                gamma=torch.tensor(gamma, dtype=dtype), 
                 algorithm='net-by-net'
                 )
         result = custom.forward(pin_pos_var)
@@ -133,100 +137,105 @@ class WeightedAverageWirelengthOpTest(unittest.TestCase):
 
         np.testing.assert_allclose(result.data.numpy(), golden_value, atol=1e-6)
 
-        # test gpu
-        pin_pos_var.grad.zero_()
-        custom_cuda = weighted_average_wirelength.WeightedAverageWirelength(
-                flat_netpin=Variable(torch.from_numpy(flat_net2pin_map)).cuda(),
-                netpin_start=Variable(torch.from_numpy(flat_net2pin_start_map)).cuda(),
-                pin2net_map=torch.from_numpy(pin2net_map).cuda(),
-                net_mask=torch.from_numpy(net_mask).cuda(),
-                pin_mask=torch.from_numpy(pin_mask).cuda(),
-                gamma=torch.tensor(gamma, dtype=dtype).cuda(),
-                algorithm='net-by-net'
-                )
-        result_cuda = custom_cuda.forward(pin_pos_var.cuda())
-        print("custom_cuda_result = ", result_cuda.data.cpu())
-        result_cuda.backward()
-        grad_cuda = pin_pos_var.grad.clone()
-        print("custom_grad_cuda = ", grad_cuda.data.cpu())
+        # test gpu 
+        if torch.cuda.device_count(): 
+            pin_pos_var.grad.zero_()
+            custom_cuda = weighted_average_wirelength.WeightedAverageWirelength(
+                    flat_netpin=Variable(torch.from_numpy(flat_net2pin_map)).cuda(), 
+                    netpin_start=Variable(torch.from_numpy(flat_net2pin_start_map)).cuda(),
+                    pin2net_map=torch.from_numpy(pin2net_map).cuda(), 
+                    net_weights=torch.from_numpy(net_weights).cuda(), 
+                    net_mask=torch.from_numpy(net_mask).cuda(), 
+                    pin_mask=torch.from_numpy(pin_mask).cuda(), 
+                    gamma=torch.tensor(gamma, dtype=dtype).cuda(),
+                    algorithm='net-by-net'
+                    )
+            result_cuda = custom_cuda.forward(pin_pos_var.cuda())
+            print("custom_cuda_result = ", result_cuda.data.cpu())
+            result_cuda.backward()
+            grad_cuda = pin_pos_var.grad.clone()
+            print("custom_grad_cuda = ", grad_cuda.data.cpu())
 
-        np.testing.assert_allclose(result_cuda.data.cpu().numpy(), golden_value, atol=1e-6)
-        np.testing.assert_allclose(grad_cuda.data.cpu().numpy(), grad.data.numpy(), rtol=1e-6, atol=1e-7)
+            np.testing.assert_allclose(result_cuda.data.cpu().numpy(), golden_value, atol=1e-6)
+            np.testing.assert_allclose(grad_cuda.data.cpu().numpy(), grad.data.numpy(), rtol=1e-6, atol=1e-6)
 
         # test gpu atomic
-        pin_pos_var.grad.zero_()
-        custom_cuda = weighted_average_wirelength.WeightedAverageWirelength(
-                flat_netpin=Variable(torch.from_numpy(flat_net2pin_map)).cuda(),
-                netpin_start=Variable(torch.from_numpy(flat_net2pin_start_map)).cuda(),
-                pin2net_map=torch.from_numpy(pin2net_map).cuda(),
-                net_mask=torch.from_numpy(net_mask).cuda(),
-                pin_mask=torch.from_numpy(pin_mask).cuda(),
-                gamma=torch.tensor(gamma, dtype=dtype).cuda(),
-                algorithm='atomic'
-                )
-        result_cuda = custom_cuda.forward(pin_pos_var.cuda())
-        print("custom_cuda_result atomic = ", result_cuda.data.cpu())
-        result_cuda.backward()
-        grad_cuda = pin_pos_var.grad.clone()
-        print("custom_grad_cuda atomic = ", grad_cuda.data.cpu())
+        if torch.cuda.device_count(): 
+            pin_pos_var.grad.zero_()
+            custom_cuda = weighted_average_wirelength.WeightedAverageWirelength(
+                    flat_netpin=Variable(torch.from_numpy(flat_net2pin_map)).cuda(), 
+                    netpin_start=Variable(torch.from_numpy(flat_net2pin_start_map)).cuda(),
+                    pin2net_map=torch.from_numpy(pin2net_map).cuda(), 
+                    net_weights=torch.from_numpy(net_weights).cuda(), 
+                    net_mask=torch.from_numpy(net_mask).cuda(), 
+                    pin_mask=torch.from_numpy(pin_mask).cuda(), 
+                    gamma=torch.tensor(gamma, dtype=dtype).cuda(),
+                    algorithm='atomic'
+                    )
+            result_cuda = custom_cuda.forward(pin_pos_var.cuda())
+            print("custom_cuda_result atomic = ", result_cuda.data.cpu())
+            result_cuda.backward()
+            grad_cuda = pin_pos_var.grad.clone()
+            print("custom_grad_cuda atomic = ", grad_cuda.data.cpu())
 
-        np.testing.assert_allclose(result_cuda.data.cpu().numpy(), golden_value, atol=1e-6)
-        np.testing.assert_allclose(grad_cuda.data.cpu().numpy(), grad.data.numpy(), rtol=1e-6, atol=1e-7)
+            np.testing.assert_allclose(result_cuda.data.cpu().numpy(), golden_value, atol=1e-6)
+            np.testing.assert_allclose(grad_cuda.data.cpu().numpy(), grad.data.numpy(), rtol=1e-6, atol=1e-6)
 
-        # test gpu sparse
-        pin_pos_var.grad.zero_()
-        custom_cuda = weighted_average_wirelength.WeightedAverageWirelength(
-                flat_netpin=Variable(torch.from_numpy(flat_net2pin_map)).cuda(),
-                netpin_start=Variable(torch.from_numpy(flat_net2pin_start_map)).cuda(),
-                pin2net_map=torch.from_numpy(pin2net_map).cuda(),
-                net_mask=torch.from_numpy(net_mask).cuda(),
-                pin_mask=torch.from_numpy(pin_mask).cuda(),
-                gamma=torch.tensor(gamma, dtype=dtype).cuda(),
-                algorithm='sparse'
-                )
-        result_cuda = custom_cuda.forward(pin_pos_var.cuda())
-        print("custom_cuda_result sparse = ", result_cuda.data.cpu())
-        result_cuda.backward()
-        grad_cuda = pin_pos_var.grad.clone()
-        print("custom_grad_cuda sparse = ", grad_cuda.data.cpu())
+        # test gpu sparse 
+        if torch.cuda.device_count(): 
+            pin_pos_var.grad.zero_()
+            custom_cuda = weighted_average_wirelength.WeightedAverageWirelength(
+                    flat_netpin=Variable(torch.from_numpy(flat_net2pin_map)).cuda(), 
+                    netpin_start=Variable(torch.from_numpy(flat_net2pin_start_map)).cuda(),
+                    pin2net_map=torch.from_numpy(pin2net_map).cuda(), 
+                    net_weights=torch.from_numpy(net_weights).cuda(), 
+                    net_mask=torch.from_numpy(net_mask).cuda(), 
+                    pin_mask=torch.from_numpy(pin_mask).cuda(), 
+                    gamma=torch.tensor(gamma, dtype=dtype).cuda(),
+                    algorithm='sparse'
+                    )
+            result_cuda = custom_cuda.forward(pin_pos_var.cuda())
+            print("custom_cuda_result sparse = ", result_cuda.data.cpu())
+            result_cuda.backward()
+            grad_cuda = pin_pos_var.grad.clone()
+            print("custom_grad_cuda sparse = ", grad_cuda.data.cpu())
 
-        np.testing.assert_allclose(result_cuda.data.cpu().numpy(), golden_value, atol=1e-6)
-        np.testing.assert_allclose(grad_cuda.data.cpu().numpy(), grad.data.numpy(), rtol=1e-6, atol=1e-7)
+            np.testing.assert_allclose(result_cuda.data.cpu().numpy(), golden_value, atol=1e-6)
+            np.testing.assert_allclose(grad_cuda.data.cpu().numpy(), grad.data.numpy(), rtol=1e-6, atol=1e-6)
 
 def eval_runtime(design):
-    with gzip.open("../../benchmarks/ispd2005/wirelength/%s_wirelength.pklz" % (design), "rb") as f:
-        if sys.version_info[0] < 3:
-            flat_net2pin_map, flat_net2pin_start_map, pin2net_map, net_mask, pin_mask, gamma = pickle.load(f)
-        else:
-            flat_net2pin_map, flat_net2pin_start_map, pin2net_map, net_mask, pin_mask, gamma = pickle.load(f, encoding='bytes')
-
+    with gzip.open("../../../../benchmarks/ispd2005/wirelength/%s_wirelength.pklz" % (design), "rb") as f:
+        flat_net2pin_map, flat_net2pin_start_map, pin2net_map, net_mask, pin_mask, net_weights, gamma = pickle.load(f)
     dtype = torch.float64
     pin_pos_var = Variable(torch.empty(len(pin2net_map)*2, dtype=dtype).uniform_(0, 1000), requires_grad=True).cuda()
     custom_net_by_net = weighted_average_wirelength.WeightedAverageWirelength(
             flat_netpin=Variable(torch.from_numpy(flat_net2pin_map)).cuda(),
             netpin_start=Variable(torch.from_numpy(flat_net2pin_start_map)).cuda(),
-            pin2net_map=torch.from_numpy(pin2net_map).cuda(),
-            net_mask=torch.from_numpy(net_mask).cuda(),
-            pin_mask=torch.from_numpy(pin_mask).cuda(),
-            gamma=gamma.clone().detach().to(dtype).cuda(),
+            pin2net_map=torch.from_numpy(pin2net_map).cuda(), 
+            net_weights=torch.from_numpy(net_weights).cuda(), 
+            net_mask=torch.from_numpy(net_mask).cuda(), 
+            pin_mask=torch.from_numpy(pin_mask).cuda(), 
+            gamma=torch.tensor(gamma, dtype=dtype).cuda(),
             algorithm='net-by-net'
             )
     custom_atomic = weighted_average_wirelength.WeightedAverageWirelength(
             flat_netpin=Variable(torch.from_numpy(flat_net2pin_map)).cuda(),
             netpin_start=Variable(torch.from_numpy(flat_net2pin_start_map)).cuda(),
-            pin2net_map=torch.from_numpy(pin2net_map).cuda(),
-            net_mask=torch.from_numpy(net_mask).cuda(),
-            pin_mask=torch.from_numpy(pin_mask).cuda(),
-            gamma=gamma.clone().detach().to(dtype).cuda(),
+            pin2net_map=torch.from_numpy(pin2net_map).cuda(), 
+            net_weights=torch.from_numpy(net_weights).cuda(), 
+            net_mask=torch.from_numpy(net_mask).cuda(), 
+            pin_mask=torch.from_numpy(pin_mask).cuda(), 
+            gamma=torch.tensor(gamma, dtype=dtype).cuda(),
             algorithm='atomic'
             )
     custom_sparse = weighted_average_wirelength.WeightedAverageWirelength(
             flat_netpin=Variable(torch.from_numpy(flat_net2pin_map)).cuda(),
             netpin_start=Variable(torch.from_numpy(flat_net2pin_start_map)).cuda(),
-            pin2net_map=torch.from_numpy(pin2net_map).cuda(),
-            net_mask=torch.from_numpy(net_mask).cuda(),
-            pin_mask=torch.from_numpy(pin_mask).cuda(),
-            gamma=gamma.clone().detach().to(dtype).cuda(),
+            pin2net_map=torch.from_numpy(pin2net_map).cuda(), 
+            net_weights=torch.from_numpy(net_weights).cuda(), 
+            net_mask=torch.from_numpy(net_mask).cuda(), 
+            pin_mask=torch.from_numpy(pin_mask).cuda(), 
+            gamma=torch.tensor(gamma, dtype=dtype).cuda(),
             algorithm='sparse'
             )
 

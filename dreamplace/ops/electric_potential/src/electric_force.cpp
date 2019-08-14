@@ -20,6 +20,7 @@ int computeElectricForceLauncher(
         T xl, T yl, T xh, T yh, 
         T bin_size_x, T bin_size_y, 
         int num_nodes, 
+        int num_threads, 
         T* grad_x_tensor, T* grad_y_tensor
         );
 
@@ -62,7 +63,8 @@ at::Tensor electric_force(
         double xl, double yl, double xh, double yh, 
         double bin_size_x, double bin_size_y, 
         int num_movable_nodes, 
-        int num_filler_nodes
+        int num_filler_nodes, 
+        int num_threads
         ) 
 {
     CHECK_FLAT(pos); 
@@ -83,6 +85,7 @@ at::Tensor electric_force(
                     xl, yl, xh, yh, 
                     bin_size_x, bin_size_y, 
                     num_movable_nodes,
+                    num_threads, 
                     grad_out.data<scalar_t>(), grad_out.data<scalar_t>()+num_nodes
                     );
             });
@@ -100,6 +103,7 @@ at::Tensor electric_force(
                         xl, yl, xh, yh, 
                         bin_size_x, bin_size_y, 
                         num_filler_nodes,
+                        num_threads, 
                         grad_out.data<scalar_t>()+num_nodes-num_filler_nodes, grad_out.data<scalar_t>()+num_nodes*2-num_filler_nodes
                         );
                 });
@@ -121,6 +125,7 @@ int computeElectricForceLauncher(
         T xl, T yl, T xh, T yh, 
         T bin_size_x, T bin_size_y, 
         int num_nodes, 
+        int num_threads, 
         T* grad_x_tensor, T* grad_y_tensor
         )
 {
@@ -131,6 +136,7 @@ int computeElectricForceLauncher(
         // Yibo: cannot understand why negative overlap is allowed in RePlAce 
         return std::min(x+node_size, bin_center+bin_size/2) - std::max(x, bin_center-bin_size/2);
     };
+#pragma omp parallel for num_threads(num_threads)
     for (int i = 0; i < num_nodes; ++i)
     {
         // stretch node size to bin size 
@@ -168,8 +174,12 @@ int computeElectricForceLauncher(
 
                 T area = px*py*ratio; 
 
-                grad_x_tensor[i] += area*field_map_x_tensor[k*num_bins_y+h];
-                grad_y_tensor[i] += area*field_map_y_tensor[k*num_bins_y+h];
+                T& gx = grad_x_tensor[i];
+                T& gy = grad_y_tensor[i];
+#pragma omp atomic 
+                gx += area*field_map_x_tensor[k*num_bins_y+h];
+#pragma omp atomic 
+                gy += area*field_map_y_tensor[k*num_bins_y+h];
             }
         }
     }

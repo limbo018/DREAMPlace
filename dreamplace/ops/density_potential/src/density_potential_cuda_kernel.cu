@@ -98,8 +98,8 @@ __global__ void computeDensityMap(
         T px = computeDensityPotentialFunc(x_tensor[node_id], node_size_x_tensor[node_id], bin_center_x_tensor[k], bin_size_x, ax_tensor[node_id], bx_tensor[node_id], cx_tensor[node_id]);
         T py = computeDensityPotentialFunc(y_tensor[node_id], node_size_y_tensor[node_id], bin_center_y_tensor[h], bin_size_y, ay_tensor[node_id], by_tensor[node_id], cy_tensor[node_id]);
         //printf("px[%d, %d] = %g, py[%d, %d] = %g\n", k, h, px, k, h, py);
-        // still area
-        atomicAdd(&density_map_tensor[k*num_bins_y+h], px*py);
+        // still area 
+        atomicAdd(&density_map_tensor[k*num_bins_y+h], px*py); 
     }
 }
 

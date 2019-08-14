@@ -72,9 +72,9 @@ __global__ void computeElectricForceAtomic(
         // scale the total area back to node area
         T area = px * py * (node_size_x_tensor[node_id] * node_size_y_tensor[node_id] / (node_size_x * node_size_y));
 
-        // still area
-        atomicAdd(&grad_x_tensor[node_id], area * field_map_x_tensor[k * num_bins_y + h]);
-        atomicAdd(&grad_y_tensor[node_id], area * field_map_y_tensor[k * num_bins_y + h]);
+        // still area 
+        atomicAdd(&grad_x_tensor[node_id], area*field_map_x_tensor[k*num_bins_y+h]);
+        atomicAdd(&grad_y_tensor[node_id], area*field_map_y_tensor[k*num_bins_y+h]);
     }
 }
 

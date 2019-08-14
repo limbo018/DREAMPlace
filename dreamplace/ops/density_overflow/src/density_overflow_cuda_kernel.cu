@@ -54,8 +54,8 @@ __global__ void computeDensityMap(
 
         T px = computeDensityOverflowFunc(x_tensor[node_id], node_size_x_tensor[node_id], bin_center_x_tensor[k], bin_size_x);
         T py = computeDensityOverflowFunc(y_tensor[node_id], node_size_y_tensor[node_id], bin_center_y_tensor[h], bin_size_y);
-        // still area
-        atomicAdd(&density_map_tensor[k*num_bins_y+h], px*py);
+        // still area 
+        atomicAdd(&density_map_tensor[k*num_bins_y+h], px*py); 
     }
 }
 

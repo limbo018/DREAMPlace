@@ -40,7 +40,7 @@ modules.extend([
         library_dirs=lib_dirs,
         libraries=libs,
         extra_compile_args={
-            'cxx' : [torch_major_version, torch_minor_version]
+            'cxx' : [torch_major_version, torch_minor_version, '-fopenmp']
             }),
     ])
 
@@ -49,7 +49,8 @@ if "${CUDA_FOUND}".upper() == 'TRUE':
             CUDAExtension('weighted_average_wirelength_cuda', 
                 [
                     add_prefix('weighted_average_wirelength_cuda.cpp'),
-                    add_prefix('weighted_average_wirelength_cuda_kernel.cu')
+                    add_prefix('weighted_average_wirelength_cuda_kernel.cu'), 
+                    add_prefix('integrate_net_weights_cuda_kernel.cu')
                     ], 
                 include_dirs=include_dirs, 
                 library_dirs=lib_dirs,
@@ -62,7 +63,8 @@ if "${CUDA_FOUND}".upper() == 'TRUE':
             CUDAExtension('weighted_average_wirelength_cuda_atomic', 
                 [
                     add_prefix('weighted_average_wirelength_cuda_atomic.cpp'),
-                    add_prefix('weighted_average_wirelength_cuda_atomic_kernel.cu')
+                    add_prefix('weighted_average_wirelength_cuda_atomic_kernel.cu'), 
+                    add_prefix('integrate_net_weights_cuda_kernel.cu')
                     ],
                 include_dirs=include_dirs, 
                 library_dirs=lib_dirs,
@@ -74,7 +76,8 @@ if "${CUDA_FOUND}".upper() == 'TRUE':
             CUDAExtension('weighted_average_wirelength_cuda_sparse', 
                 [
                     add_prefix('weighted_average_wirelength_cuda_sparse.cpp'),
-                    add_prefix('weighted_average_wirelength_cuda_sparse_kernel.cu')
+                    add_prefix('weighted_average_wirelength_cuda_sparse_kernel.cu'), 
+                    add_prefix('integrate_net_weights_cuda_kernel.cu')
                     ],
                 include_dirs=include_dirs, 
                 library_dirs=lib_dirs,

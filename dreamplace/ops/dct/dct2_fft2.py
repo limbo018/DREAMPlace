@@ -1,5 +1,5 @@
 ##
-# @file   dct.py
+# @file   dct2_fft2.py
 # @author Zixuan Jiang, Jiaqi Gu
 # @date   Jun 2018
 # @brief  Implement 2d dct, 2d idct, idxst(idct(x)), idct(idxst(x)) based on 2d fft

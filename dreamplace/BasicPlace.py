@@ -38,6 +38,7 @@ class PlaceDataCollection (object):
         @param placedb placement database 
         @param device cpu or cuda 
         """
+        torch.set_num_threads(params.num_threads)
         # position should be parameter 
         self.pos = pos 
         # other tensors required to build ops 
@@ -54,6 +55,11 @@ class PlaceDataCollection (object):
         self.pin2net_map = torch.from_numpy(placedb.pin2net_map).to(device)
         self.flat_net2pin_map = torch.from_numpy(placedb.flat_net2pin_map).to(device)
         self.flat_net2pin_start_map = torch.from_numpy(placedb.flat_net2pin_start_map).to(device)
+        if np.amin(placedb.net_weights) != np.amax(placedb.net_weights): # weights are meaningful 
+            self.net_weights = torch.from_numpy(placedb.net_weights).to(device)
+        else: # an empty tensor 
+            print("[I] net weights are all the same, ignored")
+            self.net_weights = torch.Tensor().to(device)
 
         self.net_mask_all = torch.from_numpy(np.ones(placedb.num_nets, dtype=np.uint8)).to(device) # all nets included 
         net_degrees = np.array([len(net2pin) for net2pin in placedb.net2pin_map])
@@ -150,13 +156,13 @@ class BasicPlace (nn.Module):
         self.init_pos = np.zeros(placedb.num_nodes*2, dtype=placedb.dtype)
         # x position 
         self.init_pos[0:placedb.num_physical_nodes] = placedb.node_x
-        if params.global_place_flag: # move to center of layout 
+        if params.global_place_flag and params.random_center_init_flag: # move to center of layout 
             print("[I] move cells to the center of layout with random noise")
             self.init_pos[0:placedb.num_movable_nodes] = np.random.normal(loc=(placedb.xl*1.0+placedb.xh*1.0)/2, scale=(placedb.xh-placedb.xl)*0.001, size=placedb.num_movable_nodes)
         #self.init_pos[0:placedb.num_movable_nodes] = init_x[0:placedb.num_movable_nodes]*0.01 + (placedb.xl+placedb.xh)/2
         # y position 
         self.init_pos[placedb.num_nodes:placedb.num_nodes+placedb.num_physical_nodes] = placedb.node_y
-        if params.global_place_flag: # move to center of layout 
+        if params.global_place_flag and params.random_center_init_flag: # move to center of layout 
             self.init_pos[placedb.num_nodes:placedb.num_nodes+placedb.num_movable_nodes] = np.random.normal(loc=(placedb.yl*1.0+placedb.yh*1.0)/2, scale=(placedb.yh-placedb.yl)*0.001, size=placedb.num_movable_nodes)
         #init_y[0:placedb.num_movable_nodes] = init_y[0:placedb.num_movable_nodes]*0.01 + (placedb.yl+placedb.yh)/2
 
@@ -243,7 +249,8 @@ class BasicPlace (nn.Module):
                 data_collections.node_size_x, data_collections.node_size_y, 
                 xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
                 num_movable_nodes=placedb.num_movable_nodes, 
-                num_filler_nodes=placedb.num_filler_nodes
+                num_filler_nodes=placedb.num_filler_nodes, 
+                num_threads=params.num_threads
                 )
 
     def build_hpwl(self, params, placedb, data_collections, pin_pos_op, device):
@@ -260,8 +267,10 @@ class BasicPlace (nn.Module):
                 flat_netpin=data_collections.flat_net2pin_map, 
                 netpin_start=data_collections.flat_net2pin_start_map,
                 pin2net_map=data_collections.pin2net_map, 
+                net_weights=data_collections.net_weights, 
                 net_mask=data_collections.net_mask_all, 
-                algorithm='atomic'
+                algorithm='atomic', 
+                num_threads=params.num_threads
                 )
 
         # wirelength for position 
@@ -318,7 +327,8 @@ class BasicPlace (nn.Module):
                 num_movable_nodes=placedb.num_movable_nodes, 
                 num_terminals=placedb.num_terminals, 
                 num_filler_nodes=0,
-                algorithm='by-node'
+                algorithm='by-node', 
+                num_threads=params.num_threads
                 )
 
     def build_electric_overflow(self, params, placedb, data_collections, device):
@@ -338,8 +348,9 @@ class BasicPlace (nn.Module):
                 num_movable_nodes=placedb.num_movable_nodes, 
                 num_terminals=placedb.num_terminals, 
                 num_filler_nodes=0,
-                padding=0,
-                sorted_node_map=data_collections.sorted_node_map
+                padding=0, 
+                sorted_node_map=data_collections.sorted_node_map,
+                num_threads=params.num_threads
                 )
 
     def build_greedy_legalization(self, params, placedb, data_collections, device):

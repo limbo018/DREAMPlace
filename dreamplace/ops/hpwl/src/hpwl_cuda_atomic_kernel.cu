@@ -20,7 +20,7 @@ __global__ void computeHPWLMax(
         int net_id = pin2net_map[i];
         if (net_mask[net_id])
         {
-            atomicMax(&partial_hpwl_x_max[net_id], x[i]);
+            atomicMax(&partial_hpwl_x_max[net_id], x[i]); 
         }
     }
 }
@@ -39,7 +39,7 @@ __global__ void computeHPWLMin(
         int net_id = pin2net_map[i];
         if (net_mask[net_id])
         {
-            atomicMin(&partial_hpwl_x_min[net_id], x[i]);
+            atomicMin(&partial_hpwl_x_min[net_id], x[i]); 
         }
     }
 }

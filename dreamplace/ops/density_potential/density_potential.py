@@ -51,7 +51,8 @@ class DensityPotentialFunction(Function):
           num_bins_x, 
           num_bins_y, 
           num_impacted_bins_x, 
-          num_impacted_bins_y 
+          num_impacted_bins_y, 
+          num_threads
           ):
         if pos.is_cuda:
             output = density_potential_cuda.forward(
@@ -91,7 +92,8 @@ class DensityPotentialFunction(Function):
                     num_bins_x, 
                     num_bins_y, 
                     num_impacted_bins_x, 
-                    num_impacted_bins_y
+                    num_impacted_bins_y, 
+                    num_threads
                     ) 
 
         # output consists of (density_cost, density_map, max_density)
@@ -120,6 +122,7 @@ class DensityPotentialFunction(Function):
         ctx.num_impacted_bins_x = num_impacted_bins_x
         ctx.num_impacted_bins_y = num_impacted_bins_y
         ctx.pos = pos 
+        ctx.num_threads = num_threads 
         ctx.density_map = output[1]
 
         #global plot_count 
@@ -165,9 +168,10 @@ class DensityPotentialFunction(Function):
                     ctx.bin_size_x, ctx.bin_size_y, 
                     ctx.num_movable_nodes, 
                     ctx.num_filler_nodes, 
-                    ctx.padding
+                    ctx.padding, 
+                    ctx.num_threads
                     )
-        return output, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None
+        return output, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None
 
 class DensityPotential(nn.Module):
     """
@@ -186,7 +190,8 @@ class DensityPotential(nn.Module):
             num_filler_nodes, 
             padding, 
             sigma, 
-            delta
+            delta, 
+            num_threads=8
             ):
         """
         @brief initialization 
@@ -250,6 +255,7 @@ class DensityPotential(nn.Module):
         # parameters for initial density map 
         self.sigma = sigma 
         self.delta = delta 
+        self.num_threads = num_threads 
         # initial density_map due to fixed cells 
         self.initial_density_map = None
 
@@ -293,7 +299,8 @@ class DensityPotential(nn.Module):
                         self.num_bins_y, 
                         num_impacted_bins_x, 
                         num_impacted_bins_y, 
-                        self.sigma, self.delta
+                        self.sigma, self.delta, 
+                        self.num_threads
                         ) 
             # there exist fixed cells 
             if (self.num_movable_nodes+self.num_filler_nodes) < pos.numel()/2: 
@@ -339,7 +346,8 @@ class DensityPotential(nn.Module):
                 self.num_bins_x, 
                 self.num_bins_y, 
                 self.num_impacted_bins_x, 
-                self.num_impacted_bins_y
+                self.num_impacted_bins_y, 
+                self.num_threads
                 )
 
 def gaussian_kernel(sigma, truncate=4.0):

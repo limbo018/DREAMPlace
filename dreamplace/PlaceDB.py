@@ -29,6 +29,8 @@ class PlaceDB (object):
         initialization
         To avoid the usage of list, I flatten everything.  
         """
+        self.rawdb = None # raw placement database, a C++ object 
+
         self.num_physical_nodes = 0 # number of real nodes, including movable nodes, terminals
         self.num_terminals = 0 # number of terminals 
         self.node_name2id_map = {} # node name to id map, cell name 
@@ -48,6 +50,7 @@ class PlaceDB (object):
         self.net2pin_map = None # array of 1D array, each row stores pin id
         self.flat_net2pin_map = None # flatten version of net2pin_map 
         self.flat_net2pin_start_map = None # starting index of each net in flat_net2pin_map
+        self.net_weights = None # weights for each net
 
         self.node2pin_map = None # array of 1D array, contains pin id of each node 
         self.pin2node_map = None # 1D array, contain parent node id of each pin 
@@ -293,7 +296,7 @@ class PlaceDB (object):
         hpwl_x = np.amax(x[nodes]+self.pin_offset_x[pins]) - np.amin(x[nodes]+self.pin_offset_x[pins])
         hpwl_y = np.amax(y[nodes]+self.pin_offset_y[pins]) - np.amin(y[nodes]+self.pin_offset_y[pins])
 
-        return hpwl_x+hpwl_y
+        return (hpwl_x+hpwl_y)*self.net_weights[net_id]
 
     def hpwl(self, x, y):
         """
@@ -402,106 +405,46 @@ class PlaceDB (object):
 
         return flat_net2pin_map, flat_net2pin_start_map
 
-    def read_bookshelf(self, params): 
-        """
-        @brief read using python 
-        @param params parameters 
-        """
-        self.dtype = datatypes[params.dtype]
-        node_file = None 
-        net_file = None
-        pl_file = None 
-        scl_file = None
-
-        # read aux file 
-        aux_dir = os.path.dirname(params.aux_file)
-        with open(params.aux_file, "r") as f:
-            for line in f:
-                line = line.strip()
-                if line:
-                    files = line.split(":")[1].strip()
-                    files = files.split()
-                    for file in files:
-                        file = file.strip()
-                        if file.endswith(".nodes"):
-                            node_file = os.path.join(aux_dir, file)
-                        elif file.endswith(".nets"):
-                            net_file = os.path.join(aux_dir, file)
-                        elif file.endswith(".pl"):
-                            pl_file = os.path.join(aux_dir, file)
-                        elif file.endswith(".scl"):
-                            scl_file = os.path.join(aux_dir, file)
-                        else:
-                            print("[W] ignore files not used: %s" % (file))
-
-        if node_file:
-            self.read_nodes(node_file)
-        if net_file:
-            self.read_nets(net_file)
-        if pl_file:
-            self.read_pl(pl_file)
-        if scl_file:
-            self.read_scl(scl_file)
-
-        # convert node2pin_map to array of array 
-        for i in range(len(self.node2pin_map)):
-            self.node2pin_map[i] = np.array(self.node2pin_map[i], dtype=np.int32)
-        self.node2pin_map = np.array(self.node2pin_map)
-
-        # convert net2pin_map to array of array 
-        for i in range(len(self.net2pin_map)):
-            self.net2pin_map[i] = np.array(self.net2pin_map[i], dtype=np.int32)
-        self.net2pin_map = np.array(self.net2pin_map)
-
-        # sort nets and pins
-        #self.sort()
-
-        # construct flat_net2pin_map and flat_net2pin_start_map
-        # flat netpin map, length of #pins
-        # starting index in netpin map for each net, length of #nets+1, the last entry is #pins  
-        self.flat_net2pin_map, self.flat_net2pin_start_map = self.flatten_nested_map(self.net2pin_map)
-        # construct flat_node2pin_map and flat_node2pin_start_map
-        # flat nodepin map, length of #pins
-        # starting index in nodepin map for each node, length of #nodes+1, the last entry is #pins  
-        self.flat_node2pin_map, self.flat_node2pin_start_map = self.flatten_nested_map(self.node2pin_map)
-
     def read(self, params): 
         """
         @brief read using c++ 
         @param params parameters 
         """
         self.dtype = datatypes[params.dtype]
-        db = place_io.PlaceIOFunction.forward(params)
-        self.num_physical_nodes = db.num_nodes
-        self.num_terminals = db.num_terminals
-        self.node_name2id_map = db.node_name2id_map
-        self.node_names = np.array(db.node_names, dtype=np.string_)
-        self.node_x = np.array(db.node_x, dtype=self.dtype)
-        self.node_y = np.array(db.node_y, dtype=self.dtype)
-        self.node_orient = np.array(db.node_orient, dtype=np.string_)
-        self.node_size_x = np.array(db.node_size_x, dtype=self.dtype)
-        self.node_size_y = np.array(db.node_size_y, dtype=self.dtype)
-        self.pin_direct = np.array(db.pin_direct, dtype=np.string_)
-        self.pin_offset_x = np.array(db.pin_offset_x, dtype=self.dtype)
-        self.pin_offset_y = np.array(db.pin_offset_y, dtype=self.dtype)
-        self.net_name2id_map = db.net_name2id_map
-        self.net_names = np.array(db.net_names, dtype=np.string_)
-        self.net2pin_map = db.net2pin_map
-        self.flat_net2pin_map = np.array(db.flat_net2pin_map, dtype=np.int32)
-        self.flat_net2pin_start_map = np.array(db.flat_net2pin_start_map, dtype=np.int32)
-        self.node2pin_map = db.node2pin_map
-        self.flat_node2pin_map = np.array(db.flat_node2pin_map, dtype=np.int32)
-        self.flat_node2pin_start_map = np.array(db.flat_node2pin_start_map, dtype=np.int32)
-        self.pin2node_map = np.array(db.pin2node_map, dtype=np.int32)
-        self.pin2net_map = np.array(db.pin2net_map, dtype=np.int32)
-        self.rows = np.array(db.rows, dtype=self.dtype)
-        self.xl = float(db.xl)
-        self.yl = float(db.yl)
-        self.xh = float(db.xh)
-        self.yh = float(db.yh)
-        self.row_height = float(db.row_height)
-        self.site_width = float(db.site_width)
-        self.num_movable_pins = db.num_movable_pins
+        self.rawdb = place_io.PlaceIOFunction.read(params)
+        pydb = place_io.PlaceIOFunction.pydb(self.rawdb)
+
+        self.num_physical_nodes = pydb.num_nodes
+        self.num_terminals = pydb.num_terminals
+        self.node_name2id_map = pydb.node_name2id_map
+        self.node_names = np.array(pydb.node_names, dtype=np.string_)
+        self.node_x = np.array(pydb.node_x, dtype=self.dtype)
+        self.node_y = np.array(pydb.node_y, dtype=self.dtype)
+        self.node_orient = np.array(pydb.node_orient, dtype=np.string_)
+        self.node_size_x = np.array(pydb.node_size_x, dtype=self.dtype)
+        self.node_size_y = np.array(pydb.node_size_y, dtype=self.dtype)
+        self.pin_direct = np.array(pydb.pin_direct, dtype=np.string_)
+        self.pin_offset_x = np.array(pydb.pin_offset_x, dtype=self.dtype)
+        self.pin_offset_y = np.array(pydb.pin_offset_y, dtype=self.dtype)
+        self.net_name2id_map = pydb.net_name2id_map
+        self.net_names = np.array(pydb.net_names, dtype=np.string_)
+        self.net2pin_map = pydb.net2pin_map
+        self.flat_net2pin_map = np.array(pydb.flat_net2pin_map, dtype=np.int32)
+        self.flat_net2pin_start_map = np.array(pydb.flat_net2pin_start_map, dtype=np.int32)
+        self.net_weights = np.array(pydb.net_weights, dtype=self.dtype)
+        self.node2pin_map = pydb.node2pin_map
+        self.flat_node2pin_map = np.array(pydb.flat_node2pin_map, dtype=np.int32)
+        self.flat_node2pin_start_map = np.array(pydb.flat_node2pin_start_map, dtype=np.int32)
+        self.pin2node_map = np.array(pydb.pin2node_map, dtype=np.int32)
+        self.pin2net_map = np.array(pydb.pin2net_map, dtype=np.int32)
+        self.rows = np.array(pydb.rows, dtype=self.dtype)
+        self.xl = float(pydb.xl)
+        self.yl = float(pydb.yl)
+        self.xh = float(pydb.xh)
+        self.yh = float(pydb.yh)
+        self.row_height = float(pydb.row_height)
+        self.site_width = float(pydb.site_width)
+        self.num_movable_pins = pydb.num_movable_pins
 
         # convert node2pin_map to array of array 
         for i in range(len(self.node2pin_map)):
@@ -520,7 +463,6 @@ class PlaceDB (object):
         """
         tt = time.time()
 
-        #self.read_bookshelf(params)
         self.read(params)
 
         # scale 
@@ -583,188 +525,31 @@ class PlaceDB (object):
 
         print("[I] reading benchmark takes %g seconds" % (time.time()-tt))
 
-    def read_nodes(self, node_file): 
+    def write(self, params, filename, sol_file_format=None):
         """
-        @brief read .node file 
-        @param node_file .node filename 
+        @brief write placement solution
+        @param filename output file name 
+        @param sol_file_format solution file format, DEF|DEFSIMPLE|BOOKSHELF|BOOKSHELFALL
         """
-        print("[I] reading %s" % (node_file))
-        count = 0 
-        with open(node_file, "r") as f: 
-            for line in f:
-                line = line.strip()
-                if line.startswith("UCLA") or line.startswith("#"):
-                    continue
-                # NumNodes
-                num_physical_nodes = re.search(r"NumNodes\s*:\s*(\d+)", line)
-                if num_physical_nodes: 
-                    self.num_physical_nodes = int(num_physical_nodes.group(1))
-                    self.node_names = np.chararray(self.num_physical_nodes, itemsize=64)
-                    self.node_x = np.zeros(self.num_physical_nodes)
-                    self.node_y = np.zeros(self.num_physical_nodes)
-                    self.node_orient = np.chararray(self.num_physical_nodes, itemsize=2)
-                    self.node_size_x = np.zeros(self.num_physical_nodes)
-                    self.node_size_y = np.zeros(self.num_physical_nodes)
-                    self.node2pin_map = [None]*self.num_physical_nodes
-                # NumTerminals
-                num_terminals = re.search(r"NumTerminals\s*:\s*(\d+)", line)
-                if num_terminals:
-                    self.num_terminals = int(num_terminals.group(1))
-                # nodes and terminals 
-                node = re.search(r"(\w+)\s+([+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?)\s+([+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?)", line)
-                if node: 
-                    self.node_name2id_map[node.group(1)] = count 
-                    self.node_names[count] = node.group(1)
-                    self.node_size_x[count] = float(node.group(2))
-                    self.node_size_y[count] = float(node.group(6))
-                    count += 1
-                    # I assume the terminals append to the list, so I will not store extra information about it 
+        tt = time.time()
+        print("[I] writing to %s" % (filename))
+        if sol_file_format is None: 
+            if filename.endswith(".def"): 
+                sol_file_format = place_io.SolutionFileFormat.DEF 
+            else:
+                sol_file_format = place_io.SolutionFileFormat.BOOKSHELF
 
-    def read_nets(self, net_file): 
-        """
-        @brief read .net file 
-        @param net_file .net file 
-        """
-        print("[I] reading %s" % (net_file))
-        net_count = 0 
-        pin_count = 0
-        degree_count = 0
-        with open(net_file, "r") as f: 
-            for line in f:
-                line = line.strip()
-                if line.startswith("UCLA"):
-                    pass 
-                # NumNets 
-                elif line.startswith("NumNets"): 
-                    num_nets = re.search(r"NumNets\s*:\s*(\d+)", line)
-                    if num_nets:
-                        num_nets = int(num_nets.group(1))
-                        self.net_names = np.chararray(num_nets, itemsize=32)
-                        self.net2pin_map = [None]*num_nets 
-                # NumPins 
-                elif line.startswith("NumPins"): 
-                    num_pins = re.search(r"NumPins\s*:\s*(\d+)", line)
-                    if num_pins:
-                        num_pins = int(num_pins.group(1))
-                        self.pin_direct = np.chararray(num_pins, itemsize=1)
-                        self.pin_offset_x = np.zeros(num_pins)
-                        self.pin_offset_y = np.zeros(num_pins)
-                        self.pin2node_map = np.zeros(num_pins).astype(np.int32)
-                        self.pin2net_map = np.zeros(num_pins).astype(np.int32)
-                # NetDegree 
-                elif line.startswith("NetDegree"): 
-                    net_degree = re.search(r"NetDegree\s*:\s*(\d+)\s*(\w+)", line)
-                    if net_degree:
-                        self.net_name2id_map[net_degree.group(2)] = net_count 
-                        self.net_names[net_count] = net_degree.group(2)
-                        self.net2pin_map[net_count] = np.zeros(int(net_degree.group(1))).astype(np.int32)
-                        net_count += 1
-                        degree_count = 0
-                # net pin 
-                else: 
-                    net_pin = re.search(r"(\w+)\s*([IO])\s*:\s*([+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?)\s+([+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?)", line)
-                    if net_pin:
-                        node_id = self.node_name2id_map[net_pin.group(1)]
-                        self.pin_direct[pin_count] = net_pin.group(2)
-                        self.pin_offset_x[pin_count] = float(net_pin.group(3))
-                        self.pin_offset_y[pin_count] = float(net_pin.group(7))
-                        self.pin2node_map[pin_count] = node_id
-                        self.pin2net_map[pin_count] = net_count-1
-                        self.net2pin_map[net_count-1][degree_count] = pin_count
-                        if self.node2pin_map[node_id] is None: 
-                            self.node2pin_map[node_id] = []
-                        self.node2pin_map[node_id].append(pin_count)
-                        pin_count += 1
-                        degree_count += 1
+        # unscale locations 
+        unscale_factor = 1.0/params.scale_factor
+        if unscale_factor == 1.0:
+            node_x = self.node_x
+            node_y = self.node_y
+        else:
+            node_x = self.node_x * unscale_factor
+            node_y = self.node_y * unscale_factor
 
-    def read_scl(self, scl_file):
-        """
-        @brief read .scl file 
-        @param scl_file .scl file 
-        """
-        print("[I] reading %s" % (scl_file))
-        count = 0 
-        with open(scl_file, "r") as f:
-            for line in f:
-                line = line.strip()
-                ## CoreRow 
-                #core_row = re.search(r"CoreRow\s*(\w+)", line)
-                # End 
-                if line.startswith("UCLA"):
-                    pass
-                # NumRows 
-                elif line.startswith("NumRows"): 
-                    num_rows = re.search(r"NumRows\s*:\s*(\d+)", line)
-                    if num_rows:
-                        self.rows = np.zeros((int(num_rows.group(1)), 4))
-                elif line == "End":
-                    count += 1
-                # Coordinate 
-                elif line.startswith("Coordinate"): 
-                    coordinate = re.search(r"Coordinate\s*:\s*([+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?)", line)
-                    if coordinate:
-                        self.rows[count][1] = float(coordinate.group(1))
-                # Height 
-                elif line.startswith("Height"): 
-                    height = re.search(r"Height\s*:\s*([+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?)", line)
-                    if height:
-                        self.rows[count][3] = self.rows[count][1] + float(height.group(1))
-                # Sitewidth 
-                elif line.startswith("Sitewidth"):
-                    sitewidth = re.search(r"Sitewidth\s*:\s*([+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?)", line)
-                    if sitewidth: 
-                        self.rows[count][2] = float(sitewidth.group(1)) # temporily store to row.yh 
-                        if self.site_width is None:
-                            self.site_width = self.rows[count][2]
-                        else:
-                            assert self.site_width == self.rows[count][2]
-                # Sitespacing 
-                elif line.startswith("Sitespacing"):
-                    sitespacing = re.search(r"Sitespacing\s*:\s*([+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?)", line)
-                    if sitespacing: 
-                        sitespacing = float(sitespacing.group(1))
-                # SubrowOrigin
-                elif line.startswith("SubrowOrigin"):
-                    subrow_origin = re.search(r"SubrowOrigin\s*:\s*([+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?)\s+NumSites\s*:\s*(\d+)", line)
-                    if subrow_origin:
-                        self.rows[count][0] = float(subrow_origin.group(1))
-                        self.rows[count][2] = self.rows[count][0] + float(subrow_origin.group(5))*self.rows[count][2]
-
-            # set xl, yl, xh, yh 
-            self.xl = np.finfo(self.dtype).max
-            self.yl = np.finfo(self.dtype).max 
-            self.xh = np.finfo(self.dtype).min
-            self.yh = np.finfo(self.dtype).min
-            for row in self.rows:
-                self.xl = min(self.xl, row[0])
-                self.yl = min(self.yl, row[1])
-                self.xh = max(self.xh, row[2])
-                self.yh = max(self.yh, row[3])
-
-            # set row height 
-            self.row_height = self.rows[0][3]-self.rows[0][1]
-
-    def read_pl(self, pl_file):
-        """
-        @brief read .pl file 
-        @param pl_file .pl file 
-        """
-        print("[I] reading %s" % (pl_file))
-        count = 0 
-        with open(pl_file, "r") as f:
-            for line in f:
-                line = line.strip()
-                if line.startswith("UCLA"):
-                    continue
-                # node positions 
-                pos = re.search(r"(\w+)\s+([+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?)\s+([+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?)\s*:\s*(\w+)", line)
-                if pos: 
-                    node_id = self.node_name2id_map[pos.group(1)]
-                    self.node_x[node_id] = float(pos.group(2))
-                    self.node_y[node_id] = float(pos.group(6))
-                    #print("%g, %g" % (self.node_x[node_id], self.node_y[node_id]))
-                    self.node_orient[node_id] = pos.group(10)
-                    orient = pos.group(4)
+        place_io.PlaceIOFunction.write(self.rawdb, filename, sol_file_format, node_x, node_y)
+        print("[I] write %s takes %.3f seconds" % (str(sol_file_format), time.time()-tt))
 
     def write_pl(self, params, pl_file):
         """
@@ -811,6 +596,26 @@ class PlaceDB (object):
         with open(net_file, "w") as f:
             f.write(content)
         print("[I] write_nets takes %.3f seconds" % (time.time()-tt))
+
+    def apply(self, params, node_x, node_y):
+        """
+        @brief apply placement solution and update database 
+        """
+        # assign solution 
+        self.node_x[:self.num_movable_nodes] = node_x[:self.num_movable_nodes]
+        self.node_y[:self.num_movable_nodes] = node_y[:self.num_movable_nodes]
+
+        # unscale locations 
+        unscale_factor = 1.0/params.scale_factor
+        if unscale_factor == 1.0:
+            node_x = self.node_x
+            node_y = self.node_y
+        else:
+            node_x = self.node_x * unscale_factor
+            node_y = self.node_y * unscale_factor
+
+        # update raw database 
+        place_io.PlaceIOFunction.apply(self.rawdb, node_x, node_y)
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:

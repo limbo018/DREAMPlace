@@ -34,7 +34,7 @@ def unsorted_segment_sum(pin_x, pin2net_map, num_nets):
         result[pin2net_map[i]] += pin_x[i]
     return result
 
-def build_wirelength(pin_x, pin_y, pin2net_map, net2pin_map, gamma, ignore_net_degree):
+def build_wirelength(pin_x, pin_y, pin2net_map, net2pin_map, gamma, ignore_net_degree, net_weights):
     # wirelength cost 
     # log-sum-exp 
     # ignore_net_degree is not supported yet 
@@ -55,6 +55,7 @@ def build_wirelength(pin_x, pin_y, pin2net_map, net2pin_map, gamma, ignore_net_d
     sum_nexp_pin_y = unsorted_segment_sum(nexp_pin_y, pin2net_map, len(net2pin_map))
 
     wl = (torch.log(sum_exp_pin_x) + torch.log(sum_nexp_pin_x) + torch.log(sum_exp_pin_y) + torch.log(sum_nexp_pin_y))*gamma
+    wl *= torch.from_numpy(net_weights)
 
     wirelength = torch.sum(wl)
 
@@ -68,6 +69,7 @@ class LogSumExpWirelengthOpTest(unittest.TestCase):
         for net_id, pins in enumerate(net2pin_map):
             for pin in pins:
                 pin2net_map[pin] = net_id
+        net_weights = np.array([1, 2], dtype=np.float32)
 
         pin_x = pin_pos[:, 0]
         pin_y = pin_pos[:, 1]
@@ -100,7 +102,7 @@ class LogSumExpWirelengthOpTest(unittest.TestCase):
         #pin_pos_var = torch.nn.Parameter(torch.from_numpy(np.transpose(pin_pos)).reshape([-1]))
         print(pin_pos_var)
 
-        golden = build_wirelength(pin_pos_var[:pin_pos_var.numel()//2], pin_pos_var[pin_pos_var.numel()//2:], pin2net_map, net2pin_map, gamma, ignore_net_degree)
+        golden = build_wirelength(pin_pos_var[:pin_pos_var.numel()//2], pin_pos_var[pin_pos_var.numel()//2:], pin2net_map, net2pin_map, gamma, ignore_net_degree, net_weights)
         print("golden_value = ", golden.data)
         golden.backward()
         golden_grad = pin_pos_var.grad.clone()
@@ -110,11 +112,12 @@ class LogSumExpWirelengthOpTest(unittest.TestCase):
         # clone is very important, because the custom op cannot deep copy the data 
         pin_pos_var.grad.zero_()
         custom = logsumexp_wirelength.LogSumExpWirelength(
-                torch.from_numpy(flat_net2pin_map), 
-                torch.from_numpy(flat_net2pin_start_map),
-                torch.from_numpy(pin2net_map), 
-                torch.from_numpy(net_mask), 
-                torch.tensor(gamma), 
+                flat_netpin=torch.from_numpy(flat_net2pin_map), 
+                netpin_start=torch.from_numpy(flat_net2pin_start_map),
+                pin2net_map=torch.from_numpy(pin2net_map), 
+                net_weights=torch.from_numpy(net_weights), 
+                net_mask=torch.from_numpy(net_mask), 
+                gamma=gamma, 
                 algorithm='sparse'
                 )
         result = custom.forward(pin_pos_var)
@@ -127,42 +130,46 @@ class LogSumExpWirelengthOpTest(unittest.TestCase):
         np.testing.assert_allclose(grad.data.numpy(), golden_grad.data.numpy())
 
         # test gpu 
-        pin_pos_var.grad.zero_()
-        custom_cuda = logsumexp_wirelength.LogSumExpWirelength(
-                Variable(torch.from_numpy(flat_net2pin_map)).cuda(), 
-                Variable(torch.from_numpy(flat_net2pin_start_map)).cuda(),
-                torch.from_numpy(pin2net_map).cuda(), 
-                torch.from_numpy(net_mask).cuda(), 
-                torch.tensor(gamma).cuda(), 
-                algorithm='sparse'
-                )
-        result_cuda = custom_cuda.forward(pin_pos_var.cuda())
-        print("custom_cuda_result = ", result_cuda.data.cpu())
-        result_cuda.backward()
-        grad_cuda = pin_pos_var.grad.clone()
-        print("custom_grad_cuda = ", grad_cuda.data.cpu())
+        if torch.cuda.device_count(): 
+            pin_pos_var.grad.zero_()
+            custom_cuda = logsumexp_wirelength.LogSumExpWirelength(
+                    flat_netpin=Variable(torch.from_numpy(flat_net2pin_map)).cuda(), 
+                    netpin_start=Variable(torch.from_numpy(flat_net2pin_start_map)).cuda(),
+                    pin2net_map=torch.from_numpy(pin2net_map).cuda(), 
+                    net_weights=torch.from_numpy(net_weights).cuda(), 
+                    net_mask=torch.from_numpy(net_mask).cuda(), 
+                    gamma=gamma.cuda(), 
+                    algorithm='sparse'
+                    )
+            result_cuda = custom_cuda.forward(pin_pos_var.cuda())
+            print("custom_cuda_result = ", result_cuda.data.cpu())
+            result_cuda.backward()
+            grad_cuda = pin_pos_var.grad.clone()
+            print("custom_grad_cuda = ", grad_cuda.data.cpu())
 
-        np.testing.assert_allclose(result_cuda.data.cpu().numpy(), golden.data.detach().numpy())
-        np.testing.assert_allclose(grad_cuda.data.cpu().numpy(), grad.data.numpy(), rtol=1e-7, atol=1e-12)
+            np.testing.assert_allclose(result_cuda.data.cpu().numpy(), golden.data.detach().numpy())
+            np.testing.assert_allclose(grad_cuda.data.cpu().numpy(), grad.data.numpy(), rtol=1e-7, atol=1e-11)
 
         # test gpu atomic
-        pin_pos_var.grad.zero_()
-        custom_cuda = logsumexp_wirelength.LogSumExpWirelength(
-                Variable(torch.from_numpy(flat_net2pin_map)).cuda(), 
-                Variable(torch.from_numpy(flat_net2pin_start_map)).cuda(),
-                torch.from_numpy(pin2net_map).cuda(), 
-                torch.from_numpy(net_mask).cuda(), 
-                torch.tensor(gamma).cuda(), 
-                algorithm='atomic'
-                )
-        result_cuda = custom_cuda.forward(pin_pos_var.cuda())
-        print("custom_cuda_result atomic = ", result_cuda.data.cpu())
-        result_cuda.backward()
-        grad_cuda = pin_pos_var.grad.clone()
-        print("custom_grad_cuda atomic = ", grad_cuda.data.cpu())
+        if torch.cuda.device_count(): 
+            pin_pos_var.grad.zero_()
+            custom_cuda = logsumexp_wirelength.LogSumExpWirelength(
+                    flat_netpin=Variable(torch.from_numpy(flat_net2pin_map)).cuda(), 
+                    netpin_start=Variable(torch.from_numpy(flat_net2pin_start_map)).cuda(),
+                    pin2net_map=torch.from_numpy(pin2net_map).cuda(), 
+                    net_weights=torch.from_numpy(net_weights).cuda(), 
+                    net_mask=torch.from_numpy(net_mask).cuda(), 
+                    gamma=gamma.cuda(), 
+                    algorithm='atomic'
+                    )
+            result_cuda = custom_cuda.forward(pin_pos_var.cuda())
+            print("custom_cuda_result atomic = ", result_cuda.data.cpu())
+            result_cuda.backward()
+            grad_cuda = pin_pos_var.grad.clone()
+            print("custom_grad_cuda atomic = ", grad_cuda.data.cpu())
 
-        np.testing.assert_allclose(result_cuda.data.cpu().numpy(), golden.data.detach().numpy())
-        np.testing.assert_allclose(grad_cuda.data.cpu().numpy(), grad.data.numpy(), rtol=1e-7, atol=1e-15)
+            np.testing.assert_allclose(result_cuda.data.cpu().numpy(), golden.data.detach().numpy())
+            np.testing.assert_allclose(grad_cuda.data.cpu().numpy(), grad.data.numpy(), rtol=1e-7, atol=1e-15)
 
 
 if __name__ == '__main__':

@@ -17,13 +17,8 @@
 
 DREAMPLACE_BEGIN_NAMESPACE
 
-enum PlaceConfig
-{
-    NORMAL, // for normal placement
-    ICCAD // for iccad contest
-};
-/// placement solution format
-enum SolutionFileFormat
+/// placement solution format 
+enum SolutionFileFormat 
 {
     DEF, // full DEF format
     DEFSIMPLE, // simplified DEF format with only component positions
@@ -31,8 +26,7 @@ enum SolutionFileFormat
     BOOKSHELFALL // write .nodes, .nets, ... in bookshlef format
 };
 
-/// convert enums to string
-extern std::string toString(PlaceConfig pc);
+/// convert enums to string 
 extern std::string toString(SolutionFileFormat ff);
 
 /// an extension for UserParam
@@ -67,10 +61,7 @@ struct UserParam
     /// print welcome message
     virtual void printWelcome() const;
 
-    /// NORMAL, ICCAD
-    PlaceConfig placeConfig;
-
-    /// LEF/DEF input files
+    /// LEF/DEF input files 
     std::vector<std::string> vLefInput;
     std::string defInput;
     std::string verilogInput;
@@ -122,9 +113,6 @@ struct UserParam
     protected:
         /// read command line options
         bool readNormal(int argc, char** argv, UserParamExtHelper const& helper);
-        /// read iccad contest commands
-        bool readICCAD(int argc, char** argv, UserParamExtHelper const& helper);
-
 };
 
 DREAMPLACE_END_NAMESPACE

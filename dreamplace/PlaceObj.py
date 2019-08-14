@@ -153,11 +153,13 @@ class PlaceObj(nn.Module):
         wirelength_for_pin_op = weighted_average_wirelength.WeightedAverageWirelength(
                 flat_netpin=data_collections.flat_net2pin_map,
                 netpin_start=data_collections.flat_net2pin_start_map,
-                pin2net_map=data_collections.pin2net_map,
-                net_mask=data_collections.net_mask_ignore_large_degrees,
+                pin2net_map=data_collections.pin2net_map, 
+                net_weights=data_collections.net_weights, 
+                net_mask=data_collections.net_mask_ignore_large_degrees, 
                 pin_mask=data_collections.pin_mask_ignore_fixed_macros,
-                gamma=self.gamma,
-                algorithm='atomic'
+                gamma=self.gamma, 
+                algorithm='atomic', 
+                num_threads=params.num_threads
                 )
 
         # wirelength for position
@@ -186,10 +188,11 @@ class PlaceObj(nn.Module):
         wirelength_for_pin_op = logsumexp_wirelength.LogSumExpWirelength(
                 flat_netpin=data_collections.flat_net2pin_map,
                 netpin_start=data_collections.flat_net2pin_start_map,
-                pin2net_map=data_collections.pin2net_map,
-                net_mask=data_collections.net_mask_ignore_large_degrees,
-                gamma=torch.tensor(gamma, dtype=data_collections.pos[0].dtype, device=data_collections.pos[0].device),
-                algorithm='atomic'
+                pin2net_map=data_collections.pin2net_map, 
+                net_mask=data_collections.net_mask_ignore_large_degrees, 
+                gamma=torch.tensor(gamma, dtype=data_collections.pos[0].dtype, device=data_collections.pos[0].device), 
+                algorithm='atomic', 
+                num_threads=params.num_threads
                 )
 
         # wirelength for position
@@ -276,8 +279,9 @@ class PlaceObj(nn.Module):
                 xh=xh, yh=yh,
                 bin_size_x=bin_size_x, bin_size_y=bin_size_y,
                 padding=padding,
-                sigma=(1.0/16)*placedb.width/bin_size_x,
-                delta=2.0
+                sigma=(1.0/16)*placedb.width/bin_size_x, 
+                delta=2.0, 
+                num_threads=params.num_threads
                 )
 
     def build_electric_potential(self, params, placedb, data_collections, num_bins_x, num_bins_y, padding, name):
@@ -320,7 +324,8 @@ class PlaceObj(nn.Module):
                 num_filler_nodes=placedb.num_filler_nodes,
                 padding=padding,
                 sorted_node_map=data_collections.sorted_node_map,
-                fast_mode=True
+                fast_mode=True, 
+                num_threads=params.num_threads
                 )
 
     def initialize_density_weight(self, params, placedb):

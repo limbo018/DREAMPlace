@@ -72,11 +72,12 @@ class ElectricPotentialFunction(Function):
         inv_wu2_plus_wv2=None,  # 1.0/(wu^2 + wv^2)
         wu_by_wu2_plus_wv2_half=None,  # wu/(wu^2 + wv^2)/2
         wv_by_wu2_plus_wv2_half=None,  # wv/(wu^2 + wv^2)/2
-        fast_mode=True,  # fast mode will discard some computation
         dct2=None,
         idct2=None,
         idct_idxst=None,
-        idxst_idct=None
+        idxst_idct=None,
+        fast_mode=True,  # fast mode will discard some computation
+        num_threads=8
     ):
 
         if pos.is_cuda:
@@ -120,7 +121,8 @@ class ElectricPotentialFunction(Function):
                 num_movable_impacted_bins_x,
                 num_movable_impacted_bins_y,
                 num_filler_impacted_bins_x,
-                num_filler_impacted_bins_y
+                num_filler_impacted_bins_y,
+                num_threads
             )
 
         # output consists of (density_cost, density_map, max_density)
@@ -149,6 +151,7 @@ class ElectricPotentialFunction(Function):
         ctx.num_filler_impacted_bins_y = num_filler_impacted_bins_y
         ctx.pos = pos
         ctx.sorted_node_map = sorted_node_map
+        ctx.num_threads = num_threads
         density_map = output.view([ctx.num_bins_x, ctx.num_bins_y])
         #density_map = torch.ones([ctx.num_bins_x, ctx.num_bins_y], dtype=pos.dtype, device=pos.device)
         #ctx.field_map_x = torch.ones([ctx.num_bins_x, ctx.num_bins_y], dtype=pos.dtype, device=pos.device)
@@ -261,7 +264,8 @@ class ElectricPotentialFunction(Function):
                 ctx.xl, ctx.yl, ctx.xh, ctx.yh,
                 ctx.bin_size_x, ctx.bin_size_y,
                 ctx.num_movable_nodes,
-                ctx.num_filler_nodes
+                ctx.num_filler_nodes, 
+                ctx.num_threads
             )
 
         #global plot_count
@@ -291,8 +295,8 @@ class ElectricPotentialFunction(Function):
             None, None, None, None, \
             None, None, None, None, \
             None, None, None, None, \
-            None, None, None, None
-
+            None, None, None, None, \
+            None
 
 class ElectricPotential(nn.Module):
     """
@@ -310,7 +314,8 @@ class ElectricPotential(nn.Module):
                  num_filler_nodes,
                  padding,
                  sorted_node_map,
-                 fast_mode=False
+                 fast_mode=False, 
+                 num_threads=8
                  ):
         """
         @brief initialization
@@ -332,6 +337,7 @@ class ElectricPotential(nn.Module):
         @param num_filler_nodes number of filler cells
         @param padding bin padding to boundary of placement region
         @param fast_mode if true, only gradient is computed, while objective computation is skipped
+        @param num_threads number of threads
         """
         super(ElectricPotential, self).__init__()
         sqrt2 = math.sqrt(2)
@@ -398,6 +404,7 @@ class ElectricPotential(nn.Module):
 
         # whether really evaluate potential_map and energy or use dummy
         self.fast_mode = fast_mode
+        self.num_threads = num_threads 
 
     def forward(self, pos):
         if self.initial_density_map is None:
@@ -436,7 +443,8 @@ class ElectricPotential(nn.Module):
                     self.num_bins_x,
                     self.num_bins_y,
                     num_fixed_impacted_bins_x,
-                    num_fixed_impacted_bins_y
+                    num_fixed_impacted_bins_y, 
+                    self.num_threads
                 )
 
             # plot(0, self.initial_density_map.clone().div(self.bin_size_x*self.bin_size_y).cpu().numpy(), self.padding, 'summary/initial_potential_map')
@@ -490,8 +498,9 @@ class ElectricPotential(nn.Module):
             self.exact_expkM, self.exact_expkN,
             self.inv_wu2_plus_wv2,
             self.wu_by_wu2_plus_wv2_half, self.wv_by_wu2_plus_wv2_half,
+            self.dct2, self.idct2, self.idct_idxst, self.idxst_idct, 
             self.fast_mode,
-            self.dct2, self.idct2, self.idct_idxst, self.idxst_idct
+            self.num_threads
         )
 
 

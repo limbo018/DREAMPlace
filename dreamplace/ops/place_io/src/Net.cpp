@@ -12,6 +12,7 @@ DREAMPLACE_BEGIN_NAMESPACE
 Net::Net() 
     : Net::base_type()
     , m_bbox()
+    , m_weight(1)
     , m_vPinId()
 {
 }
@@ -32,6 +33,7 @@ Net& Net::operator=(Net const& rhs)
 void Net::copy(Net const& rhs)
 {
     m_bbox = rhs.m_bbox;
+    m_weight = rhs.m_weight; 
     m_vPinId = rhs.m_vPinId;
 }
 

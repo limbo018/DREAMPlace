@@ -9,14 +9,15 @@
 #define DREAMPLACE_UTIL_H
 
 #include <string>
+#include <limbo/string/String.h>
 #include "utility/src/Namespace.h"
 #include "utility/src/Msg.h"
 
 /// headers for hash tables 
-#include <tr1/unordered_map>
-#include <tr1/unordered_set>
+#include <unordered_map>
+#include <unordered_set>
 DREAMPLACE_BEGIN_NAMESPACE
-namespace hashspace = std::tr1;
+namespace hashspace = std;
 DREAMPLACE_END_NAMESPACE
 
 DREAMPLACE_BEGIN_NAMESPACE
@@ -72,6 +73,7 @@ struct coordinate_traits<int>
 	typedef unsigned int site_index_type; ///< site index in a row structure 
 	typedef unsigned long site_area_type; ///< number of sites for a region 
     typedef unsigned int index_type; ///< index (id) 
+    typedef double weight_type; ///< type for net or node weights 
 };
 /// specialization for unsigned int
 template <>
@@ -84,6 +86,7 @@ struct coordinate_traits<unsigned int>
 	typedef unsigned int site_index_type; ///< site index in a row structure 
 	typedef unsigned long site_area_type; ///< number of sites for a region 
     typedef unsigned int index_type; ///< index (id) 
+    typedef double weight_type; ///< type for net or node weights 
 };
 
 /// type helper for non-const/const  

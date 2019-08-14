@@ -25,8 +25,8 @@ DREAMPLACE_BEGIN_NAMESPACE
 /// @param yh top boundary 
 /// @param bin_size_x bin width 
 /// @param bin_size_y bin height 
+/// @param num_threads number of threads 
 /// @param density_map_tensor 2D density map in column-major to write 
-/// @param density_cost_tensor overall density overflow 
 template <typename T>
 int computeDensityOverflowMapLauncher(
         const T* x_tensor, const T* y_tensor, 
@@ -36,8 +36,8 @@ int computeDensityOverflowMapLauncher(
         const int num_bins_x, const int num_bins_y, 
         const T xl, const T yl, const T xh, const T yh, 
         const T bin_size_x, const T bin_size_y, 
-        const T target_density, 
-        T* density_map_tensor, T* density_cost_tensor
+        const int num_threads, 
+        T* density_map_tensor
         );
 
 #define CHECK_FLAT(x) AT_ASSERTM(!x.is_cuda() && x.ndimension() == 1, #x "must be a flat tensor on CPU")
@@ -76,7 +76,8 @@ std::vector<at::Tensor> density_overflow_forward(
         double bin_size_x, 
         double bin_size_y, 
         int num_movable_nodes, 
-        int num_filler_nodes
+        int num_filler_nodes, 
+        int num_threads
         ) 
 {
     CHECK_FLAT(pos); 
@@ -86,7 +87,6 @@ std::vector<at::Tensor> density_overflow_forward(
     int num_bins_x = int(ceil((xh-xl)/bin_size_x));
     int num_bins_y = int(ceil((yh-yl)/bin_size_y));
     at::Tensor density_map = initial_density_map.clone();
-    at::Tensor density_cost = at::zeros({1}, pos.options());
     double density_area = target_density*bin_size_x*bin_size_y;
 
     AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeDensityOverflowMapLauncher", [&] {
@@ -98,9 +98,8 @@ std::vector<at::Tensor> density_overflow_forward(
                     num_bins_x, num_bins_y, 
                     xl, yl, xh, yh, 
                     bin_size_x, bin_size_y, 
-                    density_area, 
-                    density_map.data<scalar_t>(), 
-                    density_cost.data<scalar_t>()
+                    num_threads, 
+                    density_map.data<scalar_t>()
                     );
             });
     if (num_filler_nodes)
@@ -114,13 +113,13 @@ std::vector<at::Tensor> density_overflow_forward(
                         num_bins_x, num_bins_y, 
                         xl, yl, xh, yh, 
                         bin_size_x, bin_size_y, 
-                        density_area, 
-                        density_map.data<scalar_t>(), 
-                        density_cost.data<scalar_t>()
+                        num_threads, 
+                        density_map.data<scalar_t>()
                         );
                 });
     }
 
+    auto density_cost = (density_map-density_area).clamp_min(0.0).sum();
     auto max_density = density_map.max().div(bin_size_x*bin_size_y);
 
     return {density_cost, density_map, max_density};
@@ -155,7 +154,8 @@ at::Tensor fixed_density_overflow_map(
         double bin_size_x, 
         double bin_size_y, 
         int num_movable_nodes, 
-        int num_terminals
+        int num_terminals, 
+        int num_threads
         ) 
 {
     CHECK_FLAT(pos); 
@@ -178,9 +178,8 @@ at::Tensor fixed_density_overflow_map(
                         num_bins_x, num_bins_y, 
                         xl, yl, xh, yh, 
                         bin_size_x, bin_size_y, 
-                        0, 
-                        density_map.data<scalar_t>(), 
-                        nullptr
+                        num_threads, 
+                        density_map.data<scalar_t>()
                         );
                 });
     }
@@ -197,16 +196,17 @@ int computeDensityOverflowMapLauncher(
         const int num_bins_x, const int num_bins_y, 
         const T xl, const T yl, const T xh, const T yh, 
         const T bin_size_x, const T bin_size_y, 
-        const T target_area, 
-        T* density_map_tensor, T* density_cost_tensor
+        int num_threads, 
+        T* density_map_tensor
         )
 {
-    // density_map_tensor and density_cost_tensor should be initialized outside 
+    // density_map_tensor should be initialized outside 
     
     // density overflow function 
     auto computeDensityOverflowFunc = [](T x, T node_size, T bin_center, T bin_size){
         return std::max(T(0.0), std::min(x+node_size, bin_center+bin_size/2) - std::max(x, bin_center-bin_size/2));
     };
+#pragma omp parallel for num_threads(num_threads)
     for (int i = 0; i < num_nodes; ++i)
     {
         // x direction 
@@ -230,25 +230,13 @@ int computeDensityOverflowMapLauncher(
                 //printf("px[%d, %d] = %g, py[%d, %d] = %g\n", k, h, px, k, h, py);
 
                 // still area 
-                density_map_tensor[k*num_bins_y+h] += px*py;
+                T& density = density_map_tensor[k*num_bins_y+h];
+#pragma omp atomic 
+                density += px*py;
             }
         }
     }
 
-    if (density_cost_tensor)
-    {
-        for (int i = 0; i < num_bins_x; ++i)
-        {
-            for (int j = 0; j < num_bins_y; ++j)
-            {
-                //printf("density_map[%d, %d] = %g, target_area = %g\n", i, j, density_map_tensor[i*num_bins_y+j], target_area);
-                *density_cost_tensor += std::max(density_map_tensor[i*num_bins_y+j]-target_area, T(0.0));
-            }
-        }
-        //printf("density_cost_tensor = %g\n", *density_cost_tensor);
-        // convert area to density 
-        //*density_cost_tensor /= bin_size_x*bin_size_y; 
-    }
     return 0; 
 }
 

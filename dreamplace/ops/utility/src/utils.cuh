@@ -6,10 +6,11 @@
 #ifndef _DREAMPLACE_UTILITY_UTILS_CUH
 #define _DREAMPLACE_UTILITY_UTILS_CUH
 
+#include <chrono>
 #include <cuda.h>
 #include <cuda_runtime.h>
-#include <device_launch_parameters.h>
-#include <device_functions.h>
+//#include <device_launch_parameters.h>
+//#include <device_functions.h>
 
 #define allocateCUDA(var, size, type) \
 {\

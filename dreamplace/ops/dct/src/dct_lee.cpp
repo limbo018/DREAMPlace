@@ -37,8 +37,9 @@ void dct_lee_forward(
         at::Tensor x,
         at::Tensor cos, 
         at::Tensor buf,
-        at::Tensor out 
-        ) 
+        at::Tensor out,
+		int num_threads=at::get_num_threads()
+		) 
 {
     CHECK_CPU(x);
     CHECK_CONTIGUOUS(x);
@@ -55,7 +56,8 @@ void dct_lee_forward(
                     buf.data<scalar_t>(), 
                     cos.data<scalar_t>(), 
                     M, 
-                    N
+                    N,
+					num_threads
                     );
             });
 
@@ -66,7 +68,8 @@ void idct_lee_forward(
         at::Tensor x,
         at::Tensor cos, 
         at::Tensor buf, 
-        at::Tensor out
+        at::Tensor out,
+		int num_threads=at::get_num_threads()
         ) 
 {
     CHECK_CPU(x);
@@ -84,7 +87,8 @@ void idct_lee_forward(
                     buf.data<scalar_t>(), 
                     cos.data<scalar_t>(), 
                     M, 
-                    N
+                    N,
+					num_threads
                     );
             });
 
@@ -95,7 +99,8 @@ void dst_lee_forward(
         at::Tensor x,
         at::Tensor expk, 
         at::Tensor buf, 
-        at::Tensor out
+        at::Tensor out,
+		int num_threads=at::get_num_threads()
         ) 
 {
     auto N = x.size(-1);
@@ -107,17 +112,19 @@ void dst_lee_forward(
             negateOddEntries<scalar_t>(
                     buf.data<scalar_t>(), 
                     M, 
-                    N
+                    N,
+					num_threads
                     );
 
-            dct_lee_forward(buf, expk, buf, out);
+            dct_lee_forward(buf, expk, buf, out, num_threads);
             //std::cout << "y\n" << y << "\n";
 
             computeFlip<scalar_t>(
                     out.data<scalar_t>(), 
                     M, 
                     N, 
-                    buf.data<scalar_t>()
+                    buf.data<scalar_t>(), 
+					num_threads
                     );
             });
 
@@ -128,7 +135,8 @@ void idst_lee_forward(
         at::Tensor x,
         at::Tensor expk, 
         at::Tensor buf, 
-        at::Tensor out
+        at::Tensor out, 
+		int num_threads=at::get_num_threads()
         ) 
 {
     auto N = x.size(-1);
@@ -140,16 +148,18 @@ void idst_lee_forward(
                     x.data<scalar_t>(), 
                     M, 
                     N, 
-                    buf.data<scalar_t>()
+                    buf.data<scalar_t>(), 
+					num_threads
                     );
 
-            idct_lee_forward(buf, expk, buf, out);
+            idct_lee_forward(buf, expk, buf, out, num_threads);
             //std::cout << "y\n" << y << "\n";
 
             negateOddEntries<scalar_t>(
                     out.data<scalar_t>(), 
                     M, 
-                    N
+                    N,
+					num_threads
                     );
             //std::cout << "z\n" << y << "\n";
             });
@@ -160,7 +170,8 @@ void dct2_lee_forward(
         at::Tensor cos0, 
         at::Tensor cos1, 
         at::Tensor buf, 
-        at::Tensor out
+        at::Tensor out, 
+		int num_threads=at::get_num_threads()
         ) 
 {
     CHECK_CPU(x);
@@ -179,14 +190,14 @@ void dct2_lee_forward(
     out.resize_({M, N});
     buf.resize_({M, N});
 
-    dct_lee_forward(x, cos1, out, buf); 
+    dct_lee_forward(x, cos1, out, buf, num_threads); 
 
     // 1D DCT to rows 
     out.resize_({N, M}); 
     out.copy_(buf.transpose(-2, -1)); 
     buf.resize_({N, M}); 
 
-    dct_lee_forward(out, cos0, out, buf); 
+    dct_lee_forward(out, cos0, out, buf, num_threads); 
 
     out.resize_({M, N}); 
     out.copy_(buf.transpose_(-2, -1)); 
@@ -197,7 +208,8 @@ void idct2_lee_forward(
         at::Tensor cos0, 
         at::Tensor cos1, 
         at::Tensor buf, 
-        at::Tensor out
+        at::Tensor out, 
+		int num_threads=at::get_num_threads()
         )
 {
     CHECK_CPU(x);
@@ -216,14 +228,14 @@ void idct2_lee_forward(
     out.resize_({M, N});
     buf.resize_({M, N});
 
-    idct_lee_forward(x, cos1, out, buf); 
+    idct_lee_forward(x, cos1, out, buf, num_threads); 
 
     // 1D DCT to rows 
     out.resize_({N, M}); 
     out.copy_(buf.transpose(-2, -1)); 
     buf.resize_({N, M}); 
 
-    idct_lee_forward(out, cos0, out, buf); 
+    idct_lee_forward(out, cos0, out, buf, num_threads); 
 
     out.resize_({M, N}); 
     out.copy_(buf.transpose(-2, -1)); 
@@ -233,14 +245,15 @@ void idxct_lee_forward(
         at::Tensor x,
         at::Tensor cos, 
         at::Tensor buf, 
-        at::Tensor out
+        at::Tensor out, 
+		int num_threads=at::get_num_threads()
         ) 
 {
     auto N = x.size(-1);
     auto M = x.numel()/N; 
 
     AT_DISPATCH_FLOATING_TYPES(x.type(), "idxct_lee_forward", [&] {
-            idct_lee_forward(x, cos, buf, out);
+            idct_lee_forward(x, cos, buf, out, num_threads);
 
             //std::cout << __func__ << " z\n" << z << "\n";
 
@@ -248,7 +261,8 @@ void idxct_lee_forward(
                     x.data<scalar_t>(), 
                     M, 
                     N, 
-                    out.data<scalar_t>()
+                    out.data<scalar_t>(), 
+					num_threads
                     );
     });
 }
@@ -257,7 +271,8 @@ void idxst_lee_forward(
         at::Tensor x,
         at::Tensor cos, 
         at::Tensor buf, 
-        at::Tensor out
+        at::Tensor out, 
+		int num_threads=at::get_num_threads()
         )
 {
     auto N = x.size(-1);
@@ -269,17 +284,19 @@ void idxst_lee_forward(
                     x.data<scalar_t>(), 
                     M, 
                     N, 
-                    buf.data<scalar_t>()
+                    buf.data<scalar_t>(), 
+					num_threads
                     );
 
-            idct_lee_forward(buf, cos, buf, out);
+            idct_lee_forward(buf, cos, buf, out, num_threads);
             out.mul_(0.5);
             //std::cout << "y\n" << y << "\n";
 
             negateOddEntries<scalar_t>(
                     out.data<scalar_t>(), 
                     M, 
-                    N
+                    N, 
+					num_threads
                     );
             //std::cout << "z\n" << y << "\n";
     });
@@ -291,7 +308,8 @@ void idcct2_lee_forward(
         at::Tensor cos1, 
         at::Tensor buf0, 
         at::Tensor buf1, 
-        at::Tensor out
+        at::Tensor out, 
+		int num_threads=at::get_num_threads()
         ) 
 {
     CHECK_CPU(x);
@@ -308,7 +326,7 @@ void idcct2_lee_forward(
 
     // idxct for rows 
 
-    idxct_lee_forward(x, cos1, buf0, out);
+    idxct_lee_forward(x, cos1, buf0, out, num_threads);
 
     // idxct for columns
     
@@ -317,7 +335,7 @@ void idcct2_lee_forward(
     buf1.resize_({N, M}); 
     out.resize_({N, M}); 
 
-    idxct_lee_forward(buf0, cos0, out, buf1); 
+    idxct_lee_forward(buf0, cos0, out, buf1, num_threads); 
 
     out.resize_({M, N}); 
     out.copy_(buf1.transpose(-2, -1));
@@ -329,7 +347,8 @@ void idcst2_lee_forward(
         at::Tensor cos1, 
         at::Tensor buf0, 
         at::Tensor buf1, 
-        at::Tensor out
+        at::Tensor out,
+		int num_threads=at::get_num_threads()
         ) 
 {
     CHECK_CPU(x);
@@ -346,7 +365,7 @@ void idcst2_lee_forward(
 
     // idxst for rows 
 
-    idxst_lee_forward(x, cos1, buf0, out);
+    idxst_lee_forward(x, cos1, buf0, out, num_threads);
 
     // idxct for columns
     
@@ -355,7 +374,7 @@ void idcst2_lee_forward(
     buf1.resize_({N, M}); 
     out.resize_({N, M}); 
 
-    idxct_lee_forward(buf0, cos0, out, buf1); 
+    idxct_lee_forward(buf0, cos0, out, buf1, num_threads); 
 
     out.resize_({M, N}); 
     out.copy_(buf1.transpose(-2, -1));
@@ -367,7 +386,8 @@ void idsct2_lee_forward(
         at::Tensor cos1, 
         at::Tensor buf0, 
         at::Tensor buf1, 
-        at::Tensor out
+        at::Tensor out, 
+		int num_threads=at::get_num_threads()
         ) 
 {
     CHECK_CPU(x);
@@ -384,7 +404,7 @@ void idsct2_lee_forward(
 
     // idxst for rows 
 
-    idxct_lee_forward(x, cos1, buf0, out);
+    idxct_lee_forward(x, cos1, buf0, out, num_threads);
 
     // idxct for columns
     
@@ -393,7 +413,7 @@ void idsct2_lee_forward(
     buf1.resize_({N, M}); 
     out.resize_({N, M}); 
 
-    idxst_lee_forward(buf0, cos0, out, buf1); 
+    idxst_lee_forward(buf0, cos0, out, buf1, num_threads); 
 
     out.resize_({M, N}); 
     out.copy_(buf1.transpose(-2, -1));
