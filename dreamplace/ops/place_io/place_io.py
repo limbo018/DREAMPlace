@@ -28,6 +28,8 @@ class PlaceIOFunction(Function):
             args += " --def_input %s" % (params.def_input)
         if "verilog_input" in params.__dict__ and params.verilog_input:
             args += " --verilog_input %s" % (params.verilog_input)
+        if "sort_nets_by_degree" in params.__dict__:
+            args += " --sort_nets_by_degree %s" % (params.sort_nets_by_degree)
 
         return place_io_cpp.forward(args.split(' '))
 

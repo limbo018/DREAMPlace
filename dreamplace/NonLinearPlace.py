@@ -100,12 +100,18 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                     torch.cuda.synchronize()
                 print("[I] %s initialization takes %g seconds" % (optimizer_name, (time.time()-tt)))
 
+                # as nesterov requires line search, we cannot follow the convention of other solvers
+                if optimizer_name.lower() in {"sgd", "adam", "sgd_momentum", "sgd_nesterov", "cg"}: 
+                    model.obj_and_grad_fn(model.data_collections.pos[0])
+                elif optimizer_name.lower() != "nesterov":
+                    assert 0, "unsupported optimizer %s" % (optimizer_name)
+
                 for step in range(model.iteration):
+                    t0 = time.time()
+                    
                     # metric for this iteration 
                     cur_metric = EvalMetrics.EvalMetrics(iteration)
                     metrics.append(cur_metric)
-
-                    t0 = time.time()
 
                     # move any out-of-bound cell back to placement region 
                     self.op_collections.move_boundary_op(model.data_collections.pos[0])
@@ -115,10 +121,12 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                         print("[I] density_weight = %.6E" % (model.density_weight.data))
 
                     optimizer.zero_grad()
-                    #t1 = time.time()
+                    
+                    # t1 = time.time()
                     cur_metric.evaluate(placedb, eval_ops, model.data_collections.pos[0])
-                    #print("evaluation %.3f ms" % ((time.time()-t1)*1000))
-                    #t2 = time.time()
+                    # print("evaluation %.3f ms" % ((time.time()-t1)*1000))
+                    
+                    # t2 = time.time()
                     # update density weight 
                     # gradually reduce gamma to tradeoff smoothness and accuracy 
                     if len(metrics) > 1:
@@ -126,13 +134,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                         model.op_collections.update_gamma_op(step, cur_metric.overflow)
                     cur_metric.density_weight = model.density_weight.data
                     cur_metric.gamma = model.gamma.data
-                    #print("update density weight %.3f ms" % ((time.time()-t2)*1000))
-
-                    # as nesterov requires line search, we cannot follow the convention of other solvers
-                    if optimizer_name.lower() in ["sgd", "adam", "sgd_momentum", "sgd_nesterov", "cg"]: 
-                        model.obj_and_grad_fn(model.data_collections.pos[0])
-                    elif optimizer_name.lower() != "nesterov":
-                        assert 0, "unsupported optimizer %s" % (optimizer_name)
+                    # print("update density weight %.3f ms" % ((time.time()-t2)*1000))
 
                     # stopping criteria 
                     if iteration > 100 and ((cur_metric.overflow < params.stop_overflow and cur_metric.hpwl > metrics[-2].hpwl) or cur_metric.max_density < 1.0):

@@ -2,12 +2,12 @@
 # @file   setup.py.in
 # @author Yibo Lin
 # @date   Jun 2018
-# @brief  For CMake to generate setup.py file 
+# @brief  For CMake to generate setup.py file
 #
 
-import os 
+import os
 from setuptools import setup
-import torch 
+import torch
 from torch.utils.cpp_extension import BuildExtension, CppExtension, CUDAExtension
 
 utility_dir = "${UTILITY_LIBRARY_DIRS}"
@@ -15,7 +15,7 @@ ops_dir = "${OPS_DIR}"
 
 include_dirs = [ops_dir]
 lib_dirs = [utility_dir]
-libs = ['utility'] 
+libs = ['utility']
 
 tokens = str(torch.__version__).split('.')
 torch_major_version = "-DTORCH_MAJOR_VERSION=%d" % (int(tokens[0]))
@@ -27,14 +27,14 @@ def add_prefix(filename):
 modules = []
 
 modules.extend([
-    CppExtension('dct_cpp', 
+    CppExtension('dct_cpp',
         [
             add_prefix('dct.cpp'),
             add_prefix('dst.cpp'),
-            add_prefix('dxt.cpp'), 
+            add_prefix('dxt.cpp'),
             add_prefix('dct_2N.cpp')
-            ], 
-        include_dirs=include_dirs, 
+            ],
+        include_dirs=include_dirs,
         library_dirs=lib_dirs,
         libraries=libs,
         extra_compile_args={
@@ -43,8 +43,8 @@ modules.extend([
     CppExtension('dct_lee_cpp', 
         [
             add_prefix('dct_lee.cpp')
-            ], 
-        include_dirs=include_dirs, 
+            ],
+        include_dirs=include_dirs,
         library_dirs=lib_dirs,
         libraries=libs,
         extra_compile_args={
@@ -52,36 +52,48 @@ modules.extend([
                     }),
             ])
 
-if "${CUDA_FOUND}".upper() == 'TRUE': 
+if "${CUDA_FOUND}".upper() == 'TRUE':
     modules.extend([
-            CUDAExtension('dct_cuda', 
+            CUDAExtension('dct_cuda',
                 [
                     add_prefix('dct_cuda.cpp'),
                     add_prefix('dct_cuda_kernel.cu'),
                     add_prefix('dst_cuda.cpp'),
                     add_prefix('dst_cuda_kernel.cu'),
-                    add_prefix('dxt_cuda.cpp'), 
+                    add_prefix('dxt_cuda.cpp'),
                     add_prefix('dct_2N_cuda.cpp')
-                    ], 
-                include_dirs=include_dirs, 
+                    ],
+                include_dirs=include_dirs,
                 library_dirs=lib_dirs,
                 libraries=libs,
                 extra_compile_args={
-                    'cxx' : [torch_major_version, torch_minor_version], 
+                    'cxx' : [torch_major_version, torch_minor_version],
                     'nvcc': []
                     }),
-            CUDAExtension('dct_lee_cuda', 
+            CUDAExtension('dct_lee_cuda',
                 [
                     add_prefix('dct_lee_cuda.cpp'),
-                    add_prefix('dct_lee_cuda_kernel.cu'), 
+                    add_prefix('dct_lee_cuda_kernel.cu'),
                     add_prefix('dct_cuda_kernel.cu'),
                     add_prefix('dst_cuda_kernel.cu')
-                    ], 
-                include_dirs=include_dirs, 
+                    ],
+                include_dirs=include_dirs,
                 library_dirs=lib_dirs,
                 libraries=libs,
                 extra_compile_args={
-                    'cxx' : [torch_major_version, torch_minor_version], 
+                    'cxx' : [torch_major_version, torch_minor_version],
+                    'nvcc': []
+                    }),
+            CUDAExtension('dct2_fft2_cuda',
+                [
+                    add_prefix('dct2_fft2_cuda.cpp'),
+                    add_prefix('dct2_fft2_cuda_kernel.cu')
+                    ],
+                include_dirs=include_dirs,
+                library_dirs=lib_dirs,
+                libraries=libs,
+                extra_compile_args={
+                    'cxx' : [torch_major_version, torch_minor_version],
                     'nvcc': []
                     }),
         ])

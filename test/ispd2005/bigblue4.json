@@ -2,10 +2,10 @@
 "aux_input" : "benchmarks/ispd2005/bigblue4/bigblue4.aux", 
 "gpu" : 1,
 "num_bins_x" : 2048,
-"num_bins_y" : 2048, 
+"num_bins_y" : 2048,
 "global_place_stages" : [
     {"num_bins_x" : 2048, "num_bins_y" : 2048, "iteration" : 1000, "learning_rate" : 0.01, "wirelength" : "weighted_average", "optimizer" : "nesterov"}
-], 
+],
 "target_density" : 1.0,
 "density_weight" : 8e-5,
 "gamma" : 0.1318231577,
@@ -13,8 +13,8 @@
 "scale_factor" : 1.0,
 "ignore_net_degree" : 100,
 "enable_fillers" : 1,
-"gp_noise_ratio" : 0.025, 
-"global_place_flag" : 1, 
+"gp_noise_ratio" : 0.025,
+"global_place_flag" : 1,
 "legalize_flag" : 1,
 "detailed_place_flag" : 0,
 "detailed_place_engine" : "thirdparty/ntuplace3", 
@@ -23,5 +23,6 @@
 "dtype" : "float32", 
 "plot_flag" : 0, 
 "random_center_init_flag" : 1, 
+"sort_nets_by_degree" : 0,
 "num_threads" : 8
 }

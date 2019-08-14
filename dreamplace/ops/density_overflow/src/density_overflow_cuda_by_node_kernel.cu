@@ -24,8 +24,9 @@ __global__ void computeDensityMapByNode(
         const T bin_size_x, const T bin_size_y, 
         T* density_map_tensor) 
 {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
     // rank-one update density map 
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_nodes; i += blockDim.x * gridDim.x) 
+    if (i < num_nodes) 
     {
         // density overflow function 
         auto computeDensityOverflowFunc = [](T x, T node_size, T bin_center, T bin_size){
@@ -69,8 +70,8 @@ int computeDensityOverflowMapCudaByNodeLauncher(
         T* density_map_tensor
         )
 {
-    int block_count = 32; 
-    int thread_count = 1024; 
+    int thread_count = 512;
+    int block_count = (num_nodes - 1 + thread_count) / thread_count;
 
     computeDensityMapByNode<<<block_count, thread_count>>>(
             x_tensor, y_tensor, 
