@@ -12,8 +12,9 @@ from torch import nn
 
 from dreamplace.ops.dct.discrete_spectral_transform import get_exact_expk as precompute_expk
 
+import dreamplace.ops.dct.dct2_fft2_cpp as dct2_fft2_cpp
 try:
-    import dreamplace.ops.dct.dct2_fft2_cuda as dct2_fft2
+    import dreamplace.ops.dct.dct2_fft2_cuda as dct2_fft2_cuda
 except:
     pass
 
@@ -22,20 +23,22 @@ class DCT2Function(Function):
     @staticmethod
     def forward(ctx, x, expkM, expkN, out, buf):
         if x.is_cuda:
-            dct2_fft2.dct2_fft2(x, expkM, expkN, out, buf)
+            dct2_fft2_cuda.dct2_fft2(x, expkM, expkN, out, buf)
             return out
         else:
-            assert 0, "No CPU Implementation"
+            # assert 0, "No CPU Implementation"
+            dct2_fft2_cpp.dct2_fft2(x, expkM, expkN, out, buf, torch.get_num_threads())
+            return out
 
 
 class DCT2(nn.Module):
     def __init__(self, expkM=None, expkN=None):
         super(DCT2, self).__init__()
 
-        self.expkM = expkM 
+        self.expkM = expkM
         self.expkN = expkN
-        self.out = None 
-        self.buf = None 
+        self.out = None
+        self.buf = None
 
     def forward(self, x):
         M = x.size(-2)
@@ -44,7 +47,7 @@ class DCT2(nn.Module):
             self.expkM = precompute_expk(M, dtype=x.dtype, device=x.device)
         if self.expkN is None or self.expkN.size(-1) != N or self.expkN.dtype != x.dtype:
             self.expkN = precompute_expk(N, dtype=x.dtype, device=x.device)
-        if self.out is None: 
+        if self.out is None:
             self.out = torch.empty(M, N, dtype=x.dtype, device=x.device)
             self.buf = torch.empty(M, N // 2 + 1, 2, dtype=x.dtype, device=x.device)
 
@@ -55,20 +58,22 @@ class IDCT2Function(Function):
     @staticmethod
     def forward(ctx, x, expkM, expkN, out, buf):
         if x.is_cuda:
-            dct2_fft2.idct2_fft2(x, expkM, expkN, out, buf)
+            dct2_fft2_cuda.idct2_fft2(x, expkM, expkN, out, buf)
             return out
         else:
-            assert 0, "No CPU Implementation"
+            # assert 0, "No CPU Implementation"
+            dct2_fft2_cpp.idct2_fft2(x, expkM, expkN, out, buf, torch.get_num_threads())
+            return out
 
 
 class IDCT2(nn.Module):
     def __init__(self, expkM=None, expkN=None):
         super(IDCT2, self).__init__()
 
-        self.expkM = expkM 
+        self.expkM = expkM
         self.expkN = expkN
-        self.out = None 
-        self.buf = None 
+        self.out = None
+        self.buf = None
 
     def forward(self, x):
         M = x.size(-2)
@@ -77,7 +82,7 @@ class IDCT2(nn.Module):
             self.expkM = precompute_expk(M, dtype=x.dtype, device=x.device)
         if self.expkN is None or self.expkN.size(-1) != N or self.expkN.dtype != x.dtype:
             self.expkN = precompute_expk(N, dtype=x.dtype, device=x.device)
-        if self.out is None: 
+        if self.out is None:
             self.out = torch.empty(M, N, dtype=x.dtype, device=x.device)
             self.buf = torch.empty(M, N // 2 + 1, 2, dtype=x.dtype, device=x.device)
 
@@ -88,20 +93,22 @@ class IDCT_IDXSTFunction(Function):
     @staticmethod
     def forward(ctx, x, expkM, expkN, out, buf):
         if x.is_cuda:
-            dct2_fft2.idct_idxst(x, expkM, expkN, out, buf)
+            dct2_fft2_cuda.idct_idxst(x, expkM, expkN, out, buf)
             return out
         else:
-            assert 0, "No CPU Implementation"
+            # assert 0, "No CPU Implementation"
+            dct2_fft2_cpp.idct_idxst(x, expkM, expkN, out, buf, torch.get_num_threads())
+            return out
 
 
 class IDCT_IDXST(nn.Module):
     def __init__(self, expkM=None, expkN=None):
         super(IDCT_IDXST, self).__init__()
 
-        self.expkM = expkM 
+        self.expkM = expkM
         self.expkN = expkN
-        self.out = None 
-        self.buf = None 
+        self.out = None
+        self.buf = None
 
     def forward(self, x):
         M = x.size(-2)
@@ -110,7 +117,7 @@ class IDCT_IDXST(nn.Module):
             self.expkM = precompute_expk(M, dtype=x.dtype, device=x.device)
         if self.expkN is None or self.expkN.size(-1) != N or self.expkN.dtype != x.dtype:
             self.expkN = precompute_expk(N, dtype=x.dtype, device=x.device)
-        if self.out is None: 
+        if self.out is None:
             self.out = torch.empty(M, N, dtype=x.dtype, device=x.device)
             self.buf = torch.empty(M, N // 2 + 1, 2, dtype=x.dtype, device=x.device)
 
@@ -121,20 +128,22 @@ class IDXST_IDCTFunction(Function):
     @staticmethod
     def forward(ctx, x, expkM, expkN, out, buf):
         if x.is_cuda:
-            dct2_fft2.idxst_idct(x, expkM, expkN, out, buf)
+            dct2_fft2_cuda.idxst_idct(x, expkM, expkN, out, buf)
             return out
         else:
-            assert 0, "No CPU Implementation"
+            # assert 0, "No CPU Implementation"
+            dct2_fft2_cpp.idxst_idct(x, expkM, expkN, out, buf, torch.get_num_threads())
+            return out
 
 
 class IDXST_IDCT(nn.Module):
     def __init__(self, expkM=None, expkN=None):
         super(IDXST_IDCT, self).__init__()
 
-        self.expkM = expkM 
+        self.expkM = expkM
         self.expkN = expkN
-        self.out = None 
-        self.buf = None 
+        self.out = None
+        self.buf = None
 
     def forward(self, x):
         M = x.size(-2)
@@ -143,7 +152,7 @@ class IDXST_IDCT(nn.Module):
             self.expkM = precompute_expk(M, dtype=x.dtype, device=x.device)
         if self.expkN is None or self.expkN.size(-1) != N or self.expkN.dtype != x.dtype:
             self.expkN = precompute_expk(N, dtype=x.dtype, device=x.device)
-        if self.out is None: 
+        if self.out is None:
             self.out = torch.empty(M, N, dtype=x.dtype, device=x.device)
             self.buf = torch.empty(M, N // 2 + 1, 2, dtype=x.dtype, device=x.device)
 

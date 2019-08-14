@@ -22,7 +22,7 @@ struct ComplexType
 };
 
 template <typename T>
-inline __device__ ComplexType<T> complexMul(const ComplexType<T> &x, const ComplexType<T> &y)
+inline __host__ __device__ ComplexType<T> complexMul(const ComplexType<T> &x, const ComplexType<T> &y)
 {
     ComplexType<T> res;
     res.x = x.x * y.x - x.y * y.y;
@@ -31,19 +31,19 @@ inline __device__ ComplexType<T> complexMul(const ComplexType<T> &x, const Compl
 }
 
 template <typename T>
-inline __device__ T RealPartOfMul(const ComplexType<T> &x, const ComplexType<T> &y)
+inline __host__ __device__ T RealPartOfMul(const ComplexType<T> &x, const ComplexType<T> &y)
 {
     return x.x * y.x - x.y * y.y;
 }
 
 template <typename T>
-inline __device__ T ImaginaryPartOfMul(const ComplexType<T> &x, const ComplexType<T> &y)
+inline __host__ __device__ T ImaginaryPartOfMul(const ComplexType<T> &x, const ComplexType<T> &y)
 {
     return x.x * y.y + x.y * y.x;
 }
 
 template <typename T>
-inline __device__ ComplexType<T> complexAdd(const ComplexType<T> &x, const ComplexType<T> &y)
+inline __host__ __device__ ComplexType<T> complexAdd(const ComplexType<T> &x, const ComplexType<T> &y)
 {
     ComplexType<T> res;
     res.x = x.x + y.x;
@@ -52,7 +52,7 @@ inline __device__ ComplexType<T> complexAdd(const ComplexType<T> &x, const Compl
 }
 
 template <typename T>
-inline __device__ ComplexType<T> complexSubtract(const ComplexType<T> &x, const ComplexType<T> &y)
+inline __host__ __device__ ComplexType<T> complexSubtract(const ComplexType<T> &x, const ComplexType<T> &y)
 {
     ComplexType<T> res;
     res.x = x.x - y.x;
@@ -61,7 +61,7 @@ inline __device__ ComplexType<T> complexSubtract(const ComplexType<T> &x, const 
 }
 
 template <typename T>
-inline __device__ ComplexType<T> complexConj(const ComplexType<T> &x)
+inline __host__ __device__ ComplexType<T> complexConj(const ComplexType<T> &x)
 {
     ComplexType<T> res;
     res.x = x.x;
@@ -70,7 +70,7 @@ inline __device__ ComplexType<T> complexConj(const ComplexType<T> &x)
 }
 
 template <typename T>
-inline __device__ ComplexType<T> complexMulConj(const ComplexType<T> &x, const ComplexType<T> &y)
+inline __host__ __device__ ComplexType<T> complexMulConj(const ComplexType<T> &x, const ComplexType<T> &y)
 {
     ComplexType<T> res;
     res.x = x.x * y.x - x.y * y.y;
