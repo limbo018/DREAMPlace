@@ -240,7 +240,6 @@ class WeightedAverageWirelength(nn.Module):
         self.net_mask = net_mask 
         self.pin_mask = pin_mask 
         self.gamma = gamma
-        self.inv_gamma = 1.0/gamma
         self.algorithm = algorithm
         self.num_threads = num_threads
     def forward(self, pos): 
@@ -262,7 +261,7 @@ class WeightedAverageWirelength(nn.Module):
                         self.net_weights, 
                         self.net_mask,
                         self.pin_mask,
-                        self.inv_gamma
+                        1.0/self.gamma # do not store inv_gamma as gamma is changing
                         )
             elif self.algorithm == 'sparse':
                 if self.netpin_values is None:
@@ -275,7 +274,7 @@ class WeightedAverageWirelength(nn.Module):
                         self.net_weights, 
                         self.net_mask,
                         self.pin_mask,
-                        self.inv_gamma
+                        1.0/self.gamma # do not store inv_gamma as gamma is changing
                         )
         else: # only net-by-net for CPU 
             return WeightedAverageWirelengthFunction.apply(pos, 
