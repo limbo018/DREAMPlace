@@ -10,7 +10,7 @@ DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T, typename V>
 int computeWeightedAverageWirelengthCudaAtomicLauncher(
-    const T *x, const T *y,
+    const T *pos, // x then y 
     const int *pin2net_map,
     const unsigned char *net_mask,
     int num_nets,
@@ -28,6 +28,9 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
     int thread_count = 64;
     int block_count_pins = (num_pins - 1 + thread_count) / thread_count;
     dim3 block_size(thread_count, 2, 1);
+
+    const T* x = pos; 
+    const T* y = pos + num_pins; 
 
     if (grad_tensor)
     {
@@ -62,7 +65,7 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
         // corresponding to the plus and minus a b c kernels in the DREAMPlace paper
         computeABCKernelsInterleave<<<block_count_pins, block_size>>>(
         // computeABCKernels<<<block_count_pins, thread_count>>>(
-            x, y,
+            pos, 
             pin2net_map,
             net_mask,
             num_nets,
@@ -93,7 +96,7 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
 
 #define REGISTER_KERNEL_LAUNCHER(T, V)                             \
     int instantiateComputeWeightedAverageWirelengthAtomicLauncher( \
-        const T *x, const T *y,                                    \
+        const T *pos,                                              \
         const int *pin2net_map,                                    \
         const unsigned char *net_mask,                             \
         int num_nets,                                              \
@@ -108,7 +111,7 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
         T *grad_x_tensor, T *grad_y_tensor)                        \
     {                                                              \
         return computeWeightedAverageWirelengthCudaAtomicLauncher( \
-            x, y,                                                  \
+            pos,                                                   \
             pin2net_map,                                           \
             net_mask,                                              \
             num_nets,                                              \

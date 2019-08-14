@@ -10,7 +10,7 @@ DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T, typename V>
 int computeWeightedAverageWirelengthCudaAtomicLauncher(
-    const T *x, const T *y,
+    const T *pos, 
     const int *pin2net_map,
     const unsigned char *net_mask,
     int num_nets,
@@ -88,7 +88,7 @@ std::vector<at::Tensor> weighted_average_wirelength_atomic_forward(
 
     AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeWeightedAverageWirelengthCudaAtomicLauncher", [&] {
         computeWeightedAverageWirelengthCudaAtomicLauncher<scalar_t, V>(
-            pos.data<scalar_t>(), pos.data<scalar_t>() + num_pins,
+            pos.data<scalar_t>(), // x then y
             pin2net_map.data<int>(),
             net_mask.data<unsigned char>(),
             num_nets,
@@ -171,7 +171,7 @@ at::Tensor weighted_average_wirelength_atomic_backward(
 
     AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeWeightedAverageWirelengthCudaAtomicLauncher", [&] {
             computeWeightedAverageWirelengthCudaAtomicLauncher<scalar_t, V>(
-                    pos.data<scalar_t>(), pos.data<scalar_t>()+num_pins, 
+                    pos.data<scalar_t>(), // x then y
                     pin2net_map.data<int>(), 
                     net_mask.data<unsigned char>(), 
                     num_nets, 

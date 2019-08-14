@@ -227,7 +227,7 @@ __global__ void computeABCKernels(
 
 template <typename T, typename V>
 __global__ void computeABCKernelsInterleave(
-    const T *x, const T *y,
+    const T *x, 
     const int *pin2net_map,
     const unsigned char *net_mask,
     int num_nets,
