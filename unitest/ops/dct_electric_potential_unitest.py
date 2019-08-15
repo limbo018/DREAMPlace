@@ -15,8 +15,10 @@ from dreamplace.ops.dct import dct, discrete_spectral_transform, dct2_fft2
 sys.path.pop()
 
 
-def compare_different_methods(M=1024, N=1024, dtype=torch.float64):
-    density_map = torch.empty(M, N, dtype=dtype).uniform_(0, 10.0).cuda()
+def compare_different_methods(cuda_flag, M=1024, N=1024, dtype=torch.float64):
+    density_map = torch.empty(M, N, dtype=dtype).uniform_(0, 10.0)
+    if cuda_flag:
+        density_map = density_map.cuda()
     expkM = discrete_spectral_transform.get_expk(M, dtype, density_map.device)
     expkN = discrete_spectral_transform.get_expk(N, dtype, density_map.device)
     exact_expkM = discrete_spectral_transform.get_exact_expk(M, dtype, density_map.device)
@@ -112,4 +114,6 @@ def compare_different_methods(M=1024, N=1024, dtype=torch.float64):
 
 
 if __name__ == "__main__":
-    compare_different_methods(M=1024, N=1024, dtype=torch.float64)
+    compare_different_methods(cuda_flag=False, M=1024, N=1024, dtype=torch.float64)
+    if torch.cuda.device_count(): 
+        compare_different_methods(cuda_flag=True, M=1024, N=1024, dtype=torch.float64)

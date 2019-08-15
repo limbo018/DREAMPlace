@@ -6,7 +6,7 @@
  *      Each transfrom has three steps, 1) preprocess, 2) 2d fft or 2d ifft, 3) postprocess.
  */
 
-#include "dct2_fft2.h"
+#include "dct/src/dct2_fft2.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
 

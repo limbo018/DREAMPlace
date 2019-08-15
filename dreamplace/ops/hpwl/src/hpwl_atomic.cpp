@@ -74,10 +74,10 @@ at::Tensor hpwl_atomic_forward(
     auto hpwl = (partial_hpwl_max-partial_hpwl_min);
     if (net_weights.numel())
     {
-        hpwl = hpwl.mul_(net_weights.view({1, num_nets})).sum();
+        hpwl.mul_(net_weights.view({1, num_nets}));
     }
 
-    return hpwl; 
+    return hpwl.sum(); 
 }
 
 template <typename T>

@@ -1,12 +1,12 @@
 /**
- * @file   ComplexNumber.h
+ * @file   ComplexNumber.cuh
  * @author Zixuan Jiang, Jiaqi Gu
  * @date   Aug 2019
- * @brief  Complex number for CPU
+ * @brief  Complex number for GPU
  */
 
-#ifndef DREAMPLACE_UTILITY_COMPLEXNUMBER_H
-#define DREAMPLACE_UTILITY_COMPLEXNUMBER_H
+#ifndef DREAMPLACE_UTILITY_COMPLEXNUMBER_CUH
+#define DREAMPLACE_UTILITY_COMPLEXNUMBER_CUH
 
 #include "utility/src/Namespace.h"
 
@@ -17,23 +17,23 @@ struct ComplexType
 {
     T x;
     T y;
-    ComplexType()
+    __host__ __device__ ComplexType()
     {
         x = 0;
         y = 0;
     }
 
-    ComplexType(T real, T imag)
+    __host__ __device__ ComplexType(T real, T imag)
     {
         x = real;
         y = imag;
     }
 
-    ~ComplexType() {}
+    __host__ __device__ ~ComplexType() {}
 };
 
 template <typename T>
-inline ComplexType<T> complexMul(const ComplexType<T> &x, const ComplexType<T> &y)
+inline __host__ __device__ ComplexType<T> complexMul(const ComplexType<T> &x, const ComplexType<T> &y)
 {
     ComplexType<T> res;
     res.x = x.x * y.x - x.y * y.y;
@@ -42,19 +42,19 @@ inline ComplexType<T> complexMul(const ComplexType<T> &x, const ComplexType<T> &
 }
 
 template <typename T>
-inline T RealPartOfMul(const ComplexType<T> &x, const ComplexType<T> &y)
+inline __host__ __device__ T RealPartOfMul(const ComplexType<T> &x, const ComplexType<T> &y)
 {
     return x.x * y.x - x.y * y.y;
 }
 
 template <typename T>
-inline T ImaginaryPartOfMul(const ComplexType<T> &x, const ComplexType<T> &y)
+inline __host__ __device__ T ImaginaryPartOfMul(const ComplexType<T> &x, const ComplexType<T> &y)
 {
     return x.x * y.y + x.y * y.x;
 }
 
 template <typename T>
-inline ComplexType<T> complexAdd(const ComplexType<T> &x, const ComplexType<T> &y)
+inline __host__ __device__ ComplexType<T> complexAdd(const ComplexType<T> &x, const ComplexType<T> &y)
 {
     ComplexType<T> res;
     res.x = x.x + y.x;
@@ -63,7 +63,7 @@ inline ComplexType<T> complexAdd(const ComplexType<T> &x, const ComplexType<T> &
 }
 
 template <typename T>
-inline ComplexType<T> complexSubtract(const ComplexType<T> &x, const ComplexType<T> &y)
+inline __host__ __device__ ComplexType<T> complexSubtract(const ComplexType<T> &x, const ComplexType<T> &y)
 {
     ComplexType<T> res;
     res.x = x.x - y.x;
@@ -72,7 +72,7 @@ inline ComplexType<T> complexSubtract(const ComplexType<T> &x, const ComplexType
 }
 
 template <typename T>
-inline ComplexType<T> complexConj(const ComplexType<T> &x)
+inline __host__ __device__ ComplexType<T> complexConj(const ComplexType<T> &x)
 {
     ComplexType<T> res;
     res.x = x.x;
@@ -81,7 +81,7 @@ inline ComplexType<T> complexConj(const ComplexType<T> &x)
 }
 
 template <typename T>
-inline ComplexType<T> complexMulConj(const ComplexType<T> &x, const ComplexType<T> &y)
+inline __host__ __device__ ComplexType<T> complexMulConj(const ComplexType<T> &x, const ComplexType<T> &y)
 {
     ComplexType<T> res;
     res.x = x.x * y.x - x.y * y.y;
