@@ -119,6 +119,7 @@ __global__ void __launch_bounds__(1024, 8) computeElectricForce(
         T ratio = ratio_tensor[i];
 
         // Yibo: looks very weird implementation, but this is how RePlAce implements it
+        // the common practice should be floor 
         // Zixuan and Jiaqi: use the common practice of floor
         int bin_index_xl = int((node_x - xl) * inv_bin_size_x);
         int bin_index_xh = int(((node_x + node_size_x - xl) * inv_bin_size_x)) + 1; // exclusive

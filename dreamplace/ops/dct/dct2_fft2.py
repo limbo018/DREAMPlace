@@ -25,7 +25,6 @@ class DCT2Function(Function):
         if x.is_cuda:
             dct2_fft2_cuda.dct2_fft2(x, expkM, expkN, out, buf)
         else:
-            # assert 0, "No CPU Implementation"
             dct2_fft2_cpp.dct2_fft2(x, expkM, expkN, out, buf, torch.get_num_threads())
         return out
 
@@ -59,7 +58,6 @@ class IDCT2Function(Function):
         if x.is_cuda:
             dct2_fft2_cuda.idct2_fft2(x, expkM, expkN, out, buf)
         else:
-            # assert 0, "No CPU Implementation"
             dct2_fft2_cpp.idct2_fft2(x, expkM, expkN, out, buf, torch.get_num_threads())
         return out
 
@@ -93,7 +91,6 @@ class IDCT_IDXSTFunction(Function):
         if x.is_cuda:
             dct2_fft2_cuda.idct_idxst(x, expkM, expkN, out, buf)
         else:
-            # assert 0, "No CPU Implementation"
             dct2_fft2_cpp.idct_idxst(x, expkM, expkN, out, buf, torch.get_num_threads())
         return out
 
@@ -127,7 +124,6 @@ class IDXST_IDCTFunction(Function):
         if x.is_cuda:
             dct2_fft2_cuda.idxst_idct(x, expkM, expkN, out, buf)
         else:
-            # assert 0, "No CPU Implementation"
             dct2_fft2_cpp.idxst_idct(x, expkM, expkN, out, buf, torch.get_num_threads())
         return out
 
