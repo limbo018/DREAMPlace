@@ -15,79 +15,6 @@ DREAMPLACE_BEGIN_NAMESPACE
 #define SQRT2 1.4142135623730950488016887242096980785696718753769480731766797379907324784621
 
 template <typename T>
-__global__ void computeTriangleDensityMapAtomic(
-    const T *x_tensor, const T *y_tensor,
-    const T *node_size_x_tensor, const T *node_size_y_tensor,
-    const T *bin_center_x_tensor, const T *bin_center_y_tensor,
-    const int num_nodes,
-    const int num_bins_x, const int num_bins_y,
-    const T xl, const T yl, const T xh, const T yh,
-    const T bin_size_x, const T bin_size_y,
-    const int num_impacted_bins_x, const int num_impacted_bins_y,
-    T *density_map_tensor)
-{
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    // rank-one update density map
-    if (i < num_nodes * num_impacted_bins_x * num_impacted_bins_y)
-    {
-        // density overflow function
-        auto computeDensityFunc = [](T x, T node_size, T bin_center, T bin_size) {
-            return max(T(0.0), min(x + node_size, bin_center + bin_size / 2) - max(x, bin_center - bin_size / 2));
-        };
-        int node_id = i / (num_impacted_bins_x * num_impacted_bins_y);
-        int residual_index = i - node_id * num_impacted_bins_x * num_impacted_bins_y;
-
-        // stretch node size to bin size
-        T node_size_x = max(bin_size_x * SQRT2, node_size_x_tensor[node_id]);
-        T node_size_y = max(bin_size_y * SQRT2, node_size_y_tensor[node_id]);
-        T node_x = x_tensor[node_id] + node_size_x_tensor[node_id] / 2 - node_size_x / 2;
-        T node_y = y_tensor[node_id] + node_size_y_tensor[node_id] / 2 - node_size_y / 2;
-        // boundary condition
-        //node_x = max(node_x, xl);
-        //node_x = min(node_x, xh-node_size_x);
-        //node_y = max(node_y, yl);
-        //node_y = min(node_y, yh-node_size_y);
-
-        // x direction
-        int bin_index_xl = int((node_x - xl) / bin_size_x);
-        bin_index_xl = max(bin_index_xl, 0);
-        int k = bin_index_xl + int(residual_index / num_impacted_bins_y);
-        if (k + 1 > num_bins_x || node_x + node_size_x <= bin_center_x_tensor[k] - bin_size_x / 2)
-        {
-            return;
-        }
-        // y direction
-        int bin_index_yl = int((node_y - yl) / bin_size_y);
-        bin_index_yl = max(bin_index_yl, 0);
-        int h = bin_index_yl + (residual_index % num_impacted_bins_y);
-        if (h + 1 > num_bins_y || node_y + node_size_y <= bin_center_y_tensor[h] - bin_size_y / 2)
-        {
-            return;
-        }
-
-        T px = computeDensityFunc(node_x, node_size_x, bin_center_x_tensor[k], bin_size_x);
-        T py = computeDensityFunc(node_y, node_size_y, bin_center_y_tensor[h], bin_size_y);
-        // scale the total area back to node area
-        T area = px * py * (node_size_x_tensor[node_id] * node_size_y_tensor[node_id] / (node_size_x * node_size_y));
-
-        // debug
-        //if (k == 1 && h == 3)
-        //{
-        //    printf("bin[%d, %d] (%g, %g, %g, %g) add cell %d den (%g, %g, %g, %g) area %g, orig (%g, %g, %g, %g)\n",
-        //            k, h,
-        //            bin_center_x_tensor[k]-bin_size_x/2, bin_center_y_tensor[h]-bin_size_y/2, bin_center_x_tensor[k]+bin_size_x/2, bin_center_y_tensor[h]+bin_size_y/2,
-        //            node_id,
-        //            node_x, node_y, node_x+node_size_x, node_y+node_size_y,
-        //            area,
-        //            x_tensor[node_id], y_tensor[node_id], x_tensor[node_id]+node_size_x_tensor[node_id], y_tensor[node_id]+node_size_y_tensor[node_id]
-        //            );
-        //}
-        // still area 
-        atomicAdd(&density_map_tensor[k*num_bins_y+h], area); 
-    }
-}
-
-template <typename T>
 inline __device__ T computeDensityFunc(T x, T node_size, T xl, int k, T bin_size)
 {
     T bin_xl = xl + k * bin_size;
@@ -118,7 +45,7 @@ __global__ void __launch_bounds__(1024, 8) computeTriangleDensityMap(
     int i = blockIdx.x * blockDim.z + threadIdx.z;
     if (i < num_nodes)
     {
-        // stretch node size to bin size
+        // use stretched node size 
         T node_size_x = node_size_x_clamped_tensor[i];
         T node_size_y = node_size_y_clamped_tensor[i];
         T node_x = x_tensor[i] + offset_x_tensor[i];
@@ -172,7 +99,7 @@ __global__ void __launch_bounds__(1024, 8) computeTriangleDensityMap(
     {
         int i = sorted_node_map[index];
 
-        // stretch node size to bin size
+        // use stretched node size 
         T node_size_x = node_size_x_clamped_tensor[i];
         T node_size_y = node_size_y_clamped_tensor[i];
         T node_x = x_tensor[i] + offset_x_tensor[i];
@@ -205,6 +132,7 @@ __global__ void __launch_bounds__(1024, 8) computeTriangleDensityMap(
     }
 }
 
+#if 0
 template <typename T>
 __global__ void computeTriangleDensityMapUnroll(
     const T *x_tensor, const T *y_tensor,
@@ -223,7 +151,7 @@ __global__ void computeTriangleDensityMapUnroll(
     const int i = blockIdx.x * blockDim.y + threadIdx.y;
     if (i < num_nodes)
     {
-        // stretch node size to bin size
+        // use stretched node size 
         T node_size_x = node_size_x_clamped_tensor[i];
         T node_size_y = node_size_y_clamped_tensor[i];
         T node_x = x_tensor[i] + offset_x_tensor[i];
@@ -562,6 +490,7 @@ __global__ void computeTriangleDensityMapUnroll(
         }
     }
 }
+#endif
 
 template <typename T>
 __global__ void computeExactDensityMap(

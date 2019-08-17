@@ -268,7 +268,7 @@ int computeTriangleDensityMapLauncher(
 #pragma omp parallel for num_threads(num_threads)
     for (int i = 0; i < num_nodes; ++i)
     {
-        // stretch node size to bin size
+        // use stretched node size 
         T node_size_x = node_size_x_clamped_tensor[i];
         T node_size_y = node_size_y_clamped_tensor[i];
         T node_x = x_tensor[i] + offset_x_tensor[i];
