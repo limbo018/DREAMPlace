@@ -112,6 +112,10 @@ __global__ void __launch_bounds__(1024, 8) computeElectricForce(
     }
 }
 
+/// @brief An unrolled way to compute the force. 
+/// Currently it is not as efficient as computeElectricForce, 
+/// it has the potential to be better. 
+/// It is not used for now. 
 template <typename T>
 __global__ void computeElectricForceUnroll(
     int num_bins_x, int num_bins_y,

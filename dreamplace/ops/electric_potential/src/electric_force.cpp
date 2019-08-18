@@ -99,22 +99,22 @@ at::Tensor electric_force(
 
     if (num_filler_nodes)
     {
+        int num_physical_nodes = num_nodes - num_filler_nodes;
         AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeElectricForceLauncher", [&] {
                 computeElectricForceLauncher<scalar_t>(
                         num_bins_x, num_bins_y,
                         num_filler_impacted_bins_x, num_filler_impacted_bins_y,
                         field_map_x.data<scalar_t>(), field_map_y.data<scalar_t>(),
-                        pos.data<scalar_t>()+num_nodes-num_filler_nodes, pos.data<scalar_t>()+num_nodes*2-num_filler_nodes,
-                        node_size_x_clamped.data<scalar_t>()+num_nodes-num_filler_nodes, node_size_y_clamped.data<scalar_t>()+num_nodes-num_filler_nodes,
-                        offset_x.data<scalar_t>(),
-                        offset_y.data<scalar_t>(),
-                        ratio.data<scalar_t>(),
+                        pos.data<scalar_t>()+num_physical_nodes, pos.data<scalar_t>()+num_nodes+num_physical_nodes,
+                        node_size_x_clamped.data<scalar_t>()+num_physical_nodes, node_size_y_clamped.data<scalar_t>()+num_physical_nodes,
+                        offset_x.data<scalar_t>()+num_physical_nodes, offset_y.data<scalar_t>()+num_physical_nodes,
+                        ratio.data<scalar_t>()+num_physical_nodes,
                         bin_center_x.data<scalar_t>(), bin_center_y.data<scalar_t>(),
                         xl, yl, xh, yh,
                         bin_size_x, bin_size_y,
                         num_filler_nodes,
                         num_threads,
-                        grad_out.data<scalar_t>()+num_nodes-num_filler_nodes, grad_out.data<scalar_t>()+num_nodes*2-num_filler_nodes
+                        grad_out.data<scalar_t>()+num_physical_nodes, grad_out.data<scalar_t>()+num_nodes+num_physical_nodes
                         );
                 });
     }

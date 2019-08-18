@@ -124,12 +124,13 @@ at::Tensor density_map(
 
     if (num_filler_nodes)
     {
+        int num_physical_nodes = num_nodes - num_filler_nodes;
         AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeTriangleDensityMapLauncher", [&] {
                 computeTriangleDensityMapLauncher<scalar_t>(
-                        pos.data<scalar_t>()+num_nodes-num_filler_nodes, pos.data<scalar_t>()+num_nodes*2-num_filler_nodes,
-                        node_size_x.data<scalar_t>()+num_nodes-num_filler_nodes, node_size_y.data<scalar_t>()+num_nodes-num_filler_nodes,
-                        offset_x.data<scalar_t>(), offset_y.data<scalar_t>(),
-                        ratio.data<scalar_t>(),
+                        pos.data<scalar_t>()+num_physical_nodes, pos.data<scalar_t>()+num_nodes+num_physical_nodes,
+                        node_size_x.data<scalar_t>()+num_physical_nodes, node_size_y.data<scalar_t>()+num_physical_nodes,
+                        offset_x.data<scalar_t>()+num_physical_nodes, offset_y.data<scalar_t>()+num_physical_nodes,
+                        ratio.data<scalar_t>()+num_physical_nodes,
                         bin_center_x.data<scalar_t>(), bin_center_y.data<scalar_t>(),
                         num_filler_nodes,
                         num_bins_x, num_bins_y,
