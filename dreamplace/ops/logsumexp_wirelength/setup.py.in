@@ -56,7 +56,7 @@ if "${CUDA_FOUND}".upper() == 'TRUE':
             libraries=libs,
             extra_compile_args={
                 'cxx': ['-O2', torch_major_version, torch_minor_version], 
-                'nvcc': [cuda_flags]
+                'nvcc': cuda_flags.split()
                 }
             ), 
         CUDAExtension('logsumexp_wirelength_cuda_atomic', 
@@ -70,7 +70,7 @@ if "${CUDA_FOUND}".upper() == 'TRUE':
             libraries=libs,
             extra_compile_args={
                 'cxx': ['-O2', torch_major_version, torch_minor_version], 
-                'nvcc': [cuda_flags]
+                'nvcc': cuda_flags.split()
                 })
             ])
 
