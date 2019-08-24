@@ -580,27 +580,32 @@ def plot(plot_count, density_map, padding, name):
 
 
 def eval_runtime(design):
-    with gzip.open("../../benchmarks/ispd2005/density/%s_density.pklz" % (design), "rb") as f:
+    # e.g., adaptec1_density.pklz
+    with gzip.open(design, "rb") as f:
         node_size_x, node_size_y, bin_center_x, bin_center_y, target_density, xl, yl, xh, yh, bin_size_x, bin_size_y, num_movable_nodes, num_terminals, num_filler_nodes = pickle.load(
             f)
 
     dtype = torch.float64
-    pos_var = Variable(torch.empty(len(node_size_x) * 2, dtype=dtype).uniform_(xl, xh), requires_grad=True)
-    # custom = electric_potential.ElectricPotential(
-    #             torch.tensor(node_size_x, requires_grad=False, dtype=dtype), torch.tensor(node_size_y, requires_grad=False, dtype=dtype),
-    #             torch.tensor(bin_center_x, requires_grad=False, dtype=dtype), torch.tensor(bin_center_y, requires_grad=False, dtype=dtype),
-    #             target_density=torch.tensor(target_density, requires_grad=False, dtype=dtype),
-    #             xl=xl, yl=yl, xh=xh, yh=yh,
-    #             bin_size_x=bin_size_x, bin_size_y=bin_size_y,
-    #             num_movable_nodes=num_movable_nodes,
-    #             num_terminals=num_terminals,
-    #             num_filler_nodes=num_filler_nodes,
-    #             padding=0
-    #             )
-
     movable_size_x = node_size_x[:num_movable_nodes]
     _, sorted_node_map = torch.sort(torch.tensor(movable_size_x,requires_grad=False, dtype=dtype).cuda())
     sorted_node_map = sorted_node_map.to(torch.int32).contiguous()
+
+    pos_var = Variable(torch.empty(len(node_size_x) * 2, dtype=dtype).uniform_(xl, xh), requires_grad=True)
+    custom = electric_potential.ElectricPotential(
+        torch.tensor(node_size_x, requires_grad=False, dtype=dtype).cpu(),
+        torch.tensor(node_size_y, requires_grad=False, dtype=dtype).cpu(),
+        torch.tensor(bin_center_x, requires_grad=False, dtype=dtype).cpu(),
+        torch.tensor(bin_center_y, requires_grad=False, dtype=dtype).cpu(),
+        target_density=torch.tensor(target_density, requires_grad=False, dtype=dtype).cpu(),
+        xl=xl, yl=yl, xh=xh, yh=yh,
+        bin_size_x=bin_size_x, bin_size_y=bin_size_y,
+        num_movable_nodes=num_movable_nodes,
+        num_terminals=num_terminals,
+        num_filler_nodes=num_filler_nodes,
+        padding=0,
+        sorted_node_map=sorted_node_map.cpu(), 
+        num_threads=10
+        )
 
     custom_cuda = electric_potential.ElectricPotential(
         torch.tensor(node_size_x, requires_grad=False, dtype=dtype).cuda(),
@@ -617,13 +622,13 @@ def eval_runtime(design):
         sorted_node_map=sorted_node_map)
 
     torch.cuda.synchronize()
-    iters = 10
-    # tt = time.time()
-    # for i in range(iters):
-    #     result = custom.forward(pos_var)
-    #     result.backward()
-    # torch.cuda.synchronize()
-    # print("custom takes %.3f ms" % ((time.time()-tt)/iters*1000))
+    iters = 100
+    tt = time.time()
+    for i in range(iters):
+        result = custom.forward(pos_var)
+        result.backward()
+    torch.cuda.synchronize()
+    print("custom takes %.3f ms" % ((time.time()-tt)/iters*1000))
 
     pos_var = pos_var.cuda()
     tt = time.time()
