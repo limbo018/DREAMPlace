@@ -209,7 +209,19 @@ def eval_runtime(design):
         flat_net2pin_map, flat_net2pin_start_map, pin2net_map, net_mask, pin_mask, gamma = pickle.load(f)
     dtype = torch.float64
     net_weights = torch.Tensor()
-    pin_pos_var = Variable(torch.empty(len(pin2net_map)*2, dtype=dtype).uniform_(0, 1000), requires_grad=True).cuda()
+    pin_pos_var = Variable(torch.empty(len(pin2net_map)*2, dtype=dtype).uniform_(0, 1000), requires_grad=True)
+    custom_net_by_net_cpu = weighted_average_wirelength.WeightedAverageWirelength(
+            flat_netpin=Variable(torch.from_numpy(flat_net2pin_map)),
+            netpin_start=Variable(torch.from_numpy(flat_net2pin_start_map)),
+            pin2net_map=torch.from_numpy(pin2net_map), 
+            net_weights=net_weights, 
+            net_mask=torch.from_numpy(net_mask), 
+            pin_mask=torch.from_numpy(pin_mask), 
+            gamma=torch.tensor(gamma, dtype=dtype),
+            algorithm='net-by-net', 
+            num_threads=10
+            )
+
     custom_net_by_net = weighted_average_wirelength.WeightedAverageWirelength(
             flat_netpin=Variable(torch.from_numpy(flat_net2pin_map)).cuda(),
             netpin_start=Variable(torch.from_numpy(flat_net2pin_start_map)).cuda(),
@@ -243,6 +255,15 @@ def eval_runtime(design):
 
     torch.cuda.synchronize()
     iters = 100
+    tt = time.time()
+    for i in range(iters):
+        result = custom_net_by_net_cpu.forward(pin_pos_var)
+        result.backward()
+    torch.cuda.synchronize()
+    print("custom_net_by_net cpu takes %.3f ms" % ((time.time()-tt)/iters*1000))
+
+    pin_pos_var = pin_pos_var.cuda()
+    torch.cuda.synchronize()
     tt = time.time()
     for i in range(iters):
         result = custom_net_by_net.forward(pin_pos_var)
