@@ -63,41 +63,42 @@ class DCTOpTest(unittest.TestCase):
 
         np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
 
-        # test gpu
-        custom = dct.DCT(algorithm='N')
-        dct_value = custom.forward(x.cuda()).cpu()
-        print("dct_value cuda")
-        print(dct_value.data.numpy())
+        if torch.cuda.device_count(): 
+            # test gpu
+            custom = dct.DCT(algorithm='N')
+            dct_value = custom.forward(x.cuda()).cpu()
+            print("dct_value cuda")
+            print(dct_value.data.numpy())
 
-        np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
+            np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
 
-        # test gpu
-        custom = dct.DCT(algorithm='2N')
-        dct_value = custom.forward(x.cuda()).cpu()
-        print("dct_value cuda")
-        print(dct_value.data.numpy())
+            # test gpu
+            custom = dct.DCT(algorithm='2N')
+            dct_value = custom.forward(x.cuda()).cpu()
+            print("dct_value cuda")
+            print(dct_value.data.numpy())
 
-        np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
+            np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
 
-        # test gpu
-        custom = dct_lee.DCT()
-        dct_value = custom.forward(x.cuda()).cpu()
-        print("dct_value cuda")
-        print(dct_value.data.numpy())
+            # test gpu
+            custom = dct_lee.DCT()
+            dct_value = custom.forward(x.cuda()).cpu()
+            print("dct_value cuda")
+            print(dct_value.data.numpy())
 
-        np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
+            np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
 
-        #golden_value = discrete_spectral_transform.dct2_2N(x).data.numpy()
-        #print("2D golden_value")
-        # print(golden_value)
+            #golden_value = discrete_spectral_transform.dct2_2N(x).data.numpy()
+            #print("2D golden_value")
+            # print(golden_value)
 
-        #custom = dct.DCT()
-        #dct2_value = custom.forward(dct_value.cuda().t().contiguous()).cpu()
-        #dct2_value = dct2_value.t().contiguous()
-        #print("dct2_value cuda")
-        # print(dct2_value.data.numpy())
+            #custom = dct.DCT()
+            #dct2_value = custom.forward(dct_value.cuda().t().contiguous()).cpu()
+            #dct2_value = dct2_value.t().contiguous()
+            #print("dct2_value cuda")
+            # print(dct2_value.data.numpy())
 
-        #np.testing.assert_allclose(dct2_value.data.numpy(), golden_value)
+            #np.testing.assert_allclose(dct2_value.data.numpy(), golden_value)
 
     def test_idctRandom(self):
         N = 4
@@ -141,29 +142,30 @@ class DCTOpTest(unittest.TestCase):
 
         np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-5)
 
-        # test gpu
-        custom = dct.IDCT(algorithm='N')
-        dct_value = custom.forward(y.cuda()).cpu()
-        print("idct_value cuda")
-        print(dct_value.data.numpy())
+        if torch.cuda.device_count(): 
+            # test gpu
+            custom = dct.IDCT(algorithm='N')
+            dct_value = custom.forward(y.cuda()).cpu()
+            print("idct_value cuda")
+            print(dct_value.data.numpy())
 
-        np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-5)
+            np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-5)
 
-        # test gpu
-        custom = dct.IDCT(algorithm='2N')
-        dct_value = custom.forward(y.cuda()).cpu()
-        print("idct_value cuda")
-        print(dct_value.data.numpy())
+            # test gpu
+            custom = dct.IDCT(algorithm='2N')
+            dct_value = custom.forward(y.cuda()).cpu()
+            print("idct_value cuda")
+            print(dct_value.data.numpy())
 
-        np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-5)
+            np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-5)
 
-        # test gpu
-        custom = dct_lee.IDCT()
-        dct_value = custom.forward(y.cuda()).cpu()
-        print("idct_value cuda")
-        print(dct_value.data.numpy())
+            # test gpu
+            custom = dct_lee.IDCT()
+            dct_value = custom.forward(y.cuda()).cpu()
+            print("idct_value cuda")
+            print(dct_value.data.numpy())
 
-        np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-5)
+            np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-5)
 
     def test_dct2Random(self):
         torch.manual_seed(10)
@@ -204,38 +206,46 @@ class DCTOpTest(unittest.TestCase):
 
         np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
 
-        # test gpu
-        custom = dct.DCT2(algorithm='N')
-        dct_value = custom.forward(x.cuda()).cpu()
-        print("2D dct_value cuda")
-        print(dct_value.data.numpy())
-
-        np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
-
-        # test gpu
-        custom = dct.DCT2(algorithm='2N')
-        dct_value = custom.forward(x.cuda()).cpu()
-        print("2D dct_value cuda")
-        print(dct_value.data.numpy())
-
-        np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
-
-        # test gpu
-        custom = dct_lee.DCT2()
-        dct_value = custom.forward(x.cuda()).cpu()
-        print("2D dct_value cuda")
-        print(dct_value.data.numpy())
-
-        np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
-
-        # test gpu using fft2
-        x = x.cuda()
+        # test cpu using fft2 
         custom = dct2_fft2.DCT2(expkM, expkN)
-        dct_value = custom.forward(x).cpu()
-        print("2D dct_value cuda")
+        dct_value = custom.forward(x)
+        print("2D dct_value")
         print(dct_value.data.numpy())
 
         np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
+
+        if torch.cuda.device_count(): 
+            # test gpu
+            custom = dct.DCT2(algorithm='N')
+            dct_value = custom.forward(x.cuda()).cpu()
+            print("2D dct_value cuda")
+            print(dct_value.data.numpy())
+
+            np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
+
+            # test gpu
+            custom = dct.DCT2(algorithm='2N')
+            dct_value = custom.forward(x.cuda()).cpu()
+            print("2D dct_value cuda")
+            print(dct_value.data.numpy())
+
+            np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
+
+            # test gpu
+            custom = dct_lee.DCT2()
+            dct_value = custom.forward(x.cuda()).cpu()
+            print("2D dct_value cuda")
+            print(dct_value.data.numpy())
+
+            np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
+
+            # test gpu using fft2
+            custom = dct2_fft2.DCT2(expkM, expkN)
+            dct_value = custom.forward(x.cuda()).cpu()
+            print("2D dct_value cuda")
+            print(dct_value.data.numpy())
+
+            np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
 
     def test_idct2Random(self):
         torch.manual_seed(10)
@@ -281,38 +291,46 @@ class DCTOpTest(unittest.TestCase):
 
         np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
 
-        # test gpu
-        custom = dct.IDCT2(algorithm='N')
-        dct_value = custom.forward(y.cuda()).cpu()
-        print("2D idct_value cuda")
-        print(dct_value.data.numpy())
-
-        np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
-
-        # test gpu
-        custom = dct.IDCT2(algorithm='2N')
-        dct_value = custom.forward(y.cuda()).cpu()
-        print("2D idct_value cuda")
-        print(dct_value.data.numpy())
-
-        np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
-
-        # test gpu
-        custom = dct_lee.IDCT2()
-        dct_value = custom.forward(y.cuda()).cpu()
-        print("2D idct_value cuda")
-        print(dct_value.data.numpy())
-
-        np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
-
-        # test gpu using ifft2
-        y = y.cuda()
+        # test cpu using fft2
         custom = dct2_fft2.IDCT2(expkM, expkN)
-        dct_value = custom.forward(y).cpu()
+        dct_value = custom.forward(y)
         print("2D idct_value cuda")
         print(dct_value.data.numpy())
 
         np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
+
+        if torch.cuda.device_count(): 
+            # test gpu
+            custom = dct.IDCT2(algorithm='N')
+            dct_value = custom.forward(y.cuda()).cpu()
+            print("2D idct_value cuda")
+            print(dct_value.data.numpy())
+
+            np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
+
+            # test gpu
+            custom = dct.IDCT2(algorithm='2N')
+            dct_value = custom.forward(y.cuda()).cpu()
+            print("2D idct_value cuda")
+            print(dct_value.data.numpy())
+
+            np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
+
+            # test gpu
+            custom = dct_lee.IDCT2()
+            dct_value = custom.forward(y.cuda()).cpu()
+            print("2D idct_value cuda")
+            print(dct_value.data.numpy())
+
+            np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
+
+            # test gpu using ifft2
+            custom = dct2_fft2.IDCT2(expkM, expkN)
+            dct_value = custom.forward(y.cuda()).cpu()
+            print("2D idct_value cuda")
+            print(dct_value.data.numpy())
+
+            np.testing.assert_allclose(dct_value.data.numpy(), golden_value, rtol=1e-6, atol=1e-5)
 
     def test_idxct2Random(self):
         torch.manual_seed(10)
@@ -344,21 +362,22 @@ class DCTOpTest(unittest.TestCase):
 
         np.testing.assert_allclose(dct_value.data.numpy(), golden_value, atol=1e-14)
 
-        # test gpu
-        custom = dct.IDXCT()
-        dct_value = custom.forward(x.cuda()).cpu()
-        print("dxt_value cuda")
-        print(dct_value.data.numpy())
+        if torch.cuda.device_count(): 
+            # test gpu
+            custom = dct.IDXCT()
+            dct_value = custom.forward(x.cuda()).cpu()
+            print("dxt_value cuda")
+            print(dct_value.data.numpy())
 
-        np.testing.assert_allclose(dct_value.data.numpy(), golden_value, atol=1e-14)
+            np.testing.assert_allclose(dct_value.data.numpy(), golden_value, atol=1e-14)
 
-        # test gpu
-        custom = dct_lee.IDXCT()
-        dct_value = custom.forward(x.cuda()).cpu()
-        print("dxt_value cuda")
-        print(dct_value.data.numpy())
+            # test gpu
+            custom = dct_lee.IDXCT()
+            dct_value = custom.forward(x.cuda()).cpu()
+            print("dxt_value cuda")
+            print(dct_value.data.numpy())
 
-        np.testing.assert_allclose(dct_value.data.numpy(), golden_value, atol=1e-14)
+            np.testing.assert_allclose(dct_value.data.numpy(), golden_value, atol=1e-14)
 
 
 class DSTOpTest(unittest.TestCase):
@@ -392,21 +411,22 @@ class DSTOpTest(unittest.TestCase):
 
         np.testing.assert_allclose(dst_value.data.numpy(), golden_value, rtol=1e-5)
 
-        # test gpu
-        custom = dct.DST()
-        dst_value = custom.forward(x.cuda()).cpu()
-        print("dst_value cuda")
-        print(dst_value.data.numpy())
+        if torch.cuda.device_count(): 
+            # test gpu
+            custom = dct.DST()
+            dst_value = custom.forward(x.cuda()).cpu()
+            print("dst_value cuda")
+            print(dst_value.data.numpy())
 
-        np.testing.assert_allclose(dst_value.data.numpy(), golden_value, rtol=1e-5)
+            np.testing.assert_allclose(dst_value.data.numpy(), golden_value, rtol=1e-5)
 
-        # test gpu
-        custom = dct_lee.DST()
-        dst_value = custom.forward(x.cuda()).cpu()
-        print("dst_value cuda")
-        print(dst_value.data.numpy())
+            # test gpu
+            custom = dct_lee.DST()
+            dst_value = custom.forward(x.cuda()).cpu()
+            print("dst_value cuda")
+            print(dst_value.data.numpy())
 
-        np.testing.assert_allclose(dst_value.data.numpy(), golden_value, rtol=1e-5)
+            np.testing.assert_allclose(dst_value.data.numpy(), golden_value, rtol=1e-5)
 
     def test_idstRandom(self):
         N = 4
@@ -445,21 +465,22 @@ class DSTOpTest(unittest.TestCase):
 
         np.testing.assert_allclose(dst_value.data.numpy(), golden_value, rtol=1e-5)
 
-        # test gpu
-        custom = dct.IDST()
-        dst_value = custom.forward(y.cuda()).cpu()
-        print("idst_value cuda")
-        print(dst_value.data.numpy())
+        if torch.cuda.device_count(): 
+            # test gpu
+            custom = dct.IDST()
+            dst_value = custom.forward(y.cuda()).cpu()
+            print("idst_value cuda")
+            print(dst_value.data.numpy())
 
-        np.testing.assert_allclose(dst_value.data.numpy(), golden_value, rtol=1e-5)
+            np.testing.assert_allclose(dst_value.data.numpy(), golden_value, rtol=1e-5)
 
-        # test gpu
-        custom = dct_lee.IDST()
-        dst_value = custom.forward(y.cuda()).cpu()
-        print("idst_value cuda")
-        print(dst_value.data.numpy())
+            # test gpu
+            custom = dct_lee.IDST()
+            dst_value = custom.forward(y.cuda()).cpu()
+            print("idst_value cuda")
+            print(dst_value.data.numpy())
 
-        np.testing.assert_allclose(dst_value.data.numpy(), golden_value, rtol=1e-5)
+            np.testing.assert_allclose(dst_value.data.numpy(), golden_value, rtol=1e-5)
 
     def test_idxst2Random(self):
         torch.manual_seed(10)
@@ -491,21 +512,22 @@ class DSTOpTest(unittest.TestCase):
 
         np.testing.assert_allclose(dst_value.data.numpy(), golden_value, atol=1e-14)
 
-        # test gpu
-        custom = dct.IDXST()
-        dst_value = custom.forward(x.cuda()).cpu()
-        print("dxt_value cuda")
-        print(dst_value.data.numpy())
+        if torch.cuda.device_count(): 
+            # test gpu
+            custom = dct.IDXST()
+            dst_value = custom.forward(x.cuda()).cpu()
+            print("dxt_value cuda")
+            print(dst_value.data.numpy())
 
-        np.testing.assert_allclose(dst_value.data.numpy(), golden_value, atol=1e-14)
+            np.testing.assert_allclose(dst_value.data.numpy(), golden_value, atol=1e-14)
 
-        # test gpu
-        custom = dct_lee.IDXST()
-        dst_value = custom.forward(x.cuda()).cpu()
-        print("dxt_value cuda")
-        print(dst_value.data.numpy())
+            # test gpu
+            custom = dct_lee.IDXST()
+            dst_value = custom.forward(x.cuda()).cpu()
+            print("dxt_value cuda")
+            print(dst_value.data.numpy())
 
-        np.testing.assert_allclose(dst_value.data.numpy(), golden_value, atol=1e-14)
+            np.testing.assert_allclose(dst_value.data.numpy(), golden_value, atol=1e-14)
 
 
 class DXTOpTest(unittest.TestCase):
@@ -539,21 +561,22 @@ class DXTOpTest(unittest.TestCase):
 
         np.testing.assert_allclose(dst_value.data.numpy(), golden_value, atol=1e-14)
 
-        # test gpu
-        custom = dct.IDCCT2()
-        dst_value = custom.forward(x.cuda()).cpu()
-        print("dxt_value cuda")
-        print(dst_value.data.numpy())
+        if torch.cuda.device_count(): 
+            # test gpu
+            custom = dct.IDCCT2()
+            dst_value = custom.forward(x.cuda()).cpu()
+            print("dxt_value cuda")
+            print(dst_value.data.numpy())
 
-        np.testing.assert_allclose(dst_value.data.numpy(), golden_value, atol=1e-14)
+            np.testing.assert_allclose(dst_value.data.numpy(), golden_value, atol=1e-14)
 
-        # test gpu
-        custom = dct_lee.IDCCT2()
-        dst_value = custom.forward(x.cuda()).cpu()
-        print("dxt_value cuda")
-        print(dst_value.data.numpy())
+            # test gpu
+            custom = dct_lee.IDCCT2()
+            dst_value = custom.forward(x.cuda()).cpu()
+            print("dxt_value cuda")
+            print(dst_value.data.numpy())
 
-        np.testing.assert_allclose(dst_value.data.numpy(), golden_value, atol=1e-14)
+            np.testing.assert_allclose(dst_value.data.numpy(), golden_value, atol=1e-14)
 
     def test_idcst2Random(self):
         torch.manual_seed(10)
@@ -585,21 +608,22 @@ class DXTOpTest(unittest.TestCase):
 
         np.testing.assert_allclose(dst_value.data.numpy(), golden_value, atol=1e-14)
 
-        # test gpu
-        custom = dct.IDCST2()
-        dst_value = custom.forward(x.cuda()).cpu()
-        print("dxt_value cuda")
-        print(dst_value.data.numpy())
+        if torch.cuda.device_count(): 
+            # test gpu
+            custom = dct.IDCST2()
+            dst_value = custom.forward(x.cuda()).cpu()
+            print("dxt_value cuda")
+            print(dst_value.data.numpy())
 
-        np.testing.assert_allclose(dst_value.data.numpy(), golden_value, atol=1e-14)
+            np.testing.assert_allclose(dst_value.data.numpy(), golden_value, atol=1e-14)
 
-        # test gpu
-        custom = dct_lee.IDCST2()
-        dst_value = custom.forward(x.cuda()).cpu()
-        print("dxt_value cuda")
-        print(dst_value.data.numpy())
+            # test gpu
+            custom = dct_lee.IDCST2()
+            dst_value = custom.forward(x.cuda()).cpu()
+            print("dxt_value cuda")
+            print(dst_value.data.numpy())
 
-        np.testing.assert_allclose(dst_value.data.numpy(), golden_value, atol=1e-14)
+            np.testing.assert_allclose(dst_value.data.numpy(), golden_value, atol=1e-14)
 
     def test_idsct2Random(self):
         torch.manual_seed(10)
@@ -631,21 +655,22 @@ class DXTOpTest(unittest.TestCase):
 
         np.testing.assert_allclose(dst_value.data.numpy(), golden_value, atol=1e-14)
 
-        # test gpu
-        custom = dct.IDSCT2()
-        dst_value = custom.forward(x.cuda()).cpu()
-        print("dxt_value cuda")
-        print(dst_value.data.numpy())
+        if torch.cuda.device_count(): 
+            # test gpu
+            custom = dct.IDSCT2()
+            dst_value = custom.forward(x.cuda()).cpu()
+            print("dxt_value cuda")
+            print(dst_value.data.numpy())
 
-        np.testing.assert_allclose(dst_value.data.numpy(), golden_value, atol=1e-14)
+            np.testing.assert_allclose(dst_value.data.numpy(), golden_value, atol=1e-14)
 
-        # test gpu
-        custom = dct_lee.IDSCT2()
-        dst_value = custom.forward(x.cuda()).cpu()
-        print("dxt_value cuda")
-        print(dst_value.data.numpy())
+            # test gpu
+            custom = dct_lee.IDSCT2()
+            dst_value = custom.forward(x.cuda()).cpu()
+            print("dxt_value cuda")
+            print(dst_value.data.numpy())
 
-        np.testing.assert_allclose(dst_value.data.numpy(), golden_value, atol=1e-14)
+            np.testing.assert_allclose(dst_value.data.numpy(), golden_value, atol=1e-14)
 
     def test_idct_idxstRandom(self):
         torch.manual_seed(10)
@@ -671,22 +696,31 @@ class DXTOpTest(unittest.TestCase):
         np.testing.assert_allclose(idct_idxst_value.data.numpy(), golden_value * 2, atol=1e-14)
 
         # test gpu
-        custom = dct.IDCT_IDXST()
-        idct_idxst_value = custom.forward(x.cuda()).cpu()
-        print("2D dct.idct_idxst cuda")
-        print(idct_idxst_value.data.numpy())
-
-        np.testing.assert_allclose(idct_idxst_value.data.numpy(), golden_value * 2, atol=1e-14)
-
-        # test gpu
-        x = x.cuda()
         custom = dct2_fft2.IDCT_IDXST(expkM, expkN)
-        idct_idxst_value = custom.forward(x).cpu()
+        idct_idxst_value = custom.forward(x)
         print("2D dct2_fft2.idct_idxst cuda")
         print(idct_idxst_value.data.numpy())
 
         # note the scale factor
         np.testing.assert_allclose(idct_idxst_value.data.numpy(), golden_value * 2, atol=1e-14)
+
+        if torch.cuda.device_count(): 
+            # test gpu
+            custom = dct.IDCT_IDXST()
+            idct_idxst_value = custom.forward(x.cuda()).cpu()
+            print("2D dct.idct_idxst cuda")
+            print(idct_idxst_value.data.numpy())
+
+            np.testing.assert_allclose(idct_idxst_value.data.numpy(), golden_value * 2, atol=1e-14)
+
+            # test gpu
+            custom = dct2_fft2.IDCT_IDXST(expkM, expkN)
+            idct_idxst_value = custom.forward(x.cuda()).cpu()
+            print("2D dct2_fft2.idct_idxst cuda")
+            print(idct_idxst_value.data.numpy())
+
+            # note the scale factor
+            np.testing.assert_allclose(idct_idxst_value.data.numpy(), golden_value * 2, atol=1e-14)
 
     def test_idxst_idctRandom(self):
         torch.manual_seed(10)
@@ -712,22 +746,31 @@ class DXTOpTest(unittest.TestCase):
         np.testing.assert_allclose(idxst_idct_value.data.numpy(), golden_value * 2, atol=1e-14)
 
         # test cpu
-        custom = dct.IDXST_IDCT()
-        idxst_idct_value = custom.forward(x.cuda()).cpu()
-        print("2D dct.idxst_idct cuda")
-        print(idxst_idct_value.data.numpy())
-
-        np.testing.assert_allclose(idxst_idct_value.data.numpy(), golden_value * 2, atol=1e-14)
-
-        # test gpu
-        x = x.cuda()
         custom = dct2_fft2.IDXST_IDCT(expkM, expkN)
-        idxst_idct_value = custom.forward(x).cpu()
+        idxst_idct_value = custom.forward(x)
         print("2D dct2_fft2.idxst_idct cuda")
         print(idxst_idct_value.data.numpy())
 
         # note the scale factor
         np.testing.assert_allclose(idxst_idct_value.data.numpy(), golden_value* 2, atol=1e-14)
+
+        if torch.cuda.device_count(): 
+            # test gpu
+            custom = dct.IDXST_IDCT()
+            idxst_idct_value = custom.forward(x.cuda()).cpu()
+            print("2D dct.idxst_idct cuda")
+            print(idxst_idct_value.data.numpy())
+
+            np.testing.assert_allclose(idxst_idct_value.data.numpy(), golden_value * 2, atol=1e-14)
+
+            # test gpu
+            custom = dct2_fft2.IDXST_IDCT(expkM, expkN)
+            idxst_idct_value = custom.forward(x.cuda()).cpu()
+            print("2D dct2_fft2.idxst_idct cuda")
+            print(idxst_idct_value.data.numpy())
+
+            # note the scale factor
+            np.testing.assert_allclose(idxst_idct_value.data.numpy(), golden_value* 2, atol=1e-14)
 
 
 def eval_torch_rfft2d(x, runs):

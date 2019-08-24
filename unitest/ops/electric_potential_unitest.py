@@ -443,8 +443,8 @@ class ElectricPotentialOpTest(unittest.TestCase):
 
         xl = 0.0
         yl = 0.0
-        xh = 5.0
-        yh = 5.0
+        xh = 6.0
+        yh = 6.0
         bin_size_x = 1.0
         bin_size_y = 1.0
         target_density = 0.1
@@ -489,6 +489,9 @@ class ElectricPotentialOpTest(unittest.TestCase):
             dtype = torch.float64
         elif dtype == np.float32:
             dtype = torch.float32
+        movable_size_x = node_size_x[:num_nodes]
+        _, sorted_node_map = torch.sort(torch.tensor(movable_size_x,requires_grad=False, dtype=dtype))
+        sorted_node_map = sorted_node_map.to(torch.int32).contiguous()
         # test cpu
         custom = electric_potential.ElectricPotential(
             torch.tensor(node_size_x, requires_grad=False, dtype=dtype), torch.tensor(
@@ -501,7 +504,8 @@ class ElectricPotentialOpTest(unittest.TestCase):
             num_movable_nodes=num_nodes,
             num_terminals=0,
             num_filler_nodes=0,
-            padding=0
+            padding=0,
+            sorted_node_map=sorted_node_map
         )
 
         pos = Variable(torch.from_numpy(np.concatenate([xx, yy])), requires_grad=True)
@@ -512,18 +516,19 @@ class ElectricPotentialOpTest(unittest.TestCase):
         grad = pos.grad.clone()
         print("custom_grad = ", grad)
 
-        # test cuda 
-        if torch.cuda.device_count(): 
+        # test cuda
+        if torch.cuda.device_count():
             custom_cuda = electric_potential.ElectricPotential(
-                        torch.tensor(node_size_x, requires_grad=False, dtype=dtype).cuda(), torch.tensor(node_size_y, requires_grad=False, dtype=dtype).cuda(), 
-                        torch.tensor(bin_center_x, requires_grad=False, dtype=dtype).cuda(), torch.tensor(bin_center_y, requires_grad=False, dtype=dtype).cuda(), 
-                        target_density=torch.tensor(target_density, requires_grad=False, dtype=dtype).cuda(), 
-                        xl=xl, yl=yl, xh=xh, yh=yh, 
-                        bin_size_x=bin_size_x, bin_size_y=bin_size_y, 
-                        num_movable_nodes=num_nodes, 
-                        num_terminals=0, 
-                        num_filler_nodes=0, 
-                        padding=0
+                        torch.tensor(node_size_x, requires_grad=False, dtype=dtype).cuda(), torch.tensor(node_size_y, requires_grad=False, dtype=dtype).cuda(),
+                        torch.tensor(bin_center_x, requires_grad=False, dtype=dtype).cuda(), torch.tensor(bin_center_y, requires_grad=False, dtype=dtype).cuda(),
+                        target_density=torch.tensor(target_density, requires_grad=False, dtype=dtype).cuda(),
+                        xl=xl, yl=yl, xh=xh, yh=yh,
+                        bin_size_x=bin_size_x, bin_size_y=bin_size_y,
+                        num_movable_nodes=num_nodes,
+                        num_terminals=0,
+                        num_filler_nodes=0,
+                        padding=0,
+                        sorted_node_map=sorted_node_map.cuda()
                         )
 
             pos = Variable(torch.from_numpy(np.concatenate([xx, yy])).cuda(), requires_grad=True)
@@ -640,8 +645,8 @@ def eval_runtime(design):
 
 
 if __name__ == '__main__':
-    # unittest.main()
-    # exit()
+    unittest.main()
+    exit()
 
     design = sys.argv[1]
     eval_runtime(design)

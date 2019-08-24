@@ -50,6 +50,16 @@ modules.extend([
         extra_compile_args={
                     'cxx' : [torch_major_version, torch_minor_version, '-fopenmp']
                     }),
+    CppExtension('dct2_fft2_cpp', 
+        [
+            add_prefix('dct2_fft2.cpp')
+            ],
+        include_dirs=include_dirs,
+        library_dirs=lib_dirs,
+        libraries=libs,
+        extra_compile_args={
+                    'cxx' : [torch_major_version, torch_minor_version, '-fopenmp']
+                    }),
             ])
 
 if "${CUDA_FOUND}".upper() == 'TRUE':
