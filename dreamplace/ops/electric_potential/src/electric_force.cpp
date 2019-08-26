@@ -148,7 +148,8 @@ int computeElectricForceLauncher(
         // Yibo: cannot understand why negative overlap is allowed in RePlAce
         return std::min(x+node_size, bin_center+bin_size/2) - std::max(x, bin_center-bin_size/2);
     };
-#pragma omp parallel for num_threads(num_threads)
+    int chunk_size = int(num_nodes/num_threads/16);
+#pragma omp parallel for num_threads(num_threads) schedule(dynamic, chunk_size)
     for (int i = 0; i < num_nodes; ++i)
     {
         // use stretched node size 
@@ -176,8 +177,10 @@ int computeElectricForceLauncher(
         bin_index_yh = std::min(bin_index_yh, num_bins_y);
         //int bin_index_yh = bin_index_yl+num_impacted_bins_y;
 
-        grad_x_tensor[i] = 0;
-        grad_y_tensor[i] = 0;
+        T& gx = grad_x_tensor[i]; 
+        T& gy = grad_y_tensor[i]; 
+        gx = 0;
+        gy = 0;
         // update density potential map
         for (int k = bin_index_xl; k < bin_index_xh; ++k)
         {
@@ -186,14 +189,12 @@ int computeElectricForceLauncher(
             {
                 T py = computeDensityFunc(node_y, node_size_y, bin_center_y_tensor[h], bin_size_y);
 
-                T area = px*py*ratio;
+                // px*py*ratio 
+                T area = py*px*ratio;
 
-                T& gx = grad_x_tensor[i];
-                T& gy = grad_y_tensor[i];
-#pragma omp atomic
-                gx += area*field_map_x_tensor[k*num_bins_y+h];
-#pragma omp atomic
-                gy += area*field_map_y_tensor[k*num_bins_y+h];
+                int idx = k*num_bins_y+h; 
+                gx += area*field_map_x_tensor[idx];
+                gy += area*field_map_y_tensor[idx];
             }
         }
     }

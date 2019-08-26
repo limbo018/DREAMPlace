@@ -52,6 +52,7 @@ class WeightedAverageWirelengthFunction(Function):
 
     @staticmethod
     def backward(ctx, grad_pos):
+        #tt = time.time()
         if grad_pos.is_cuda:
             output = weighted_average_wirelength_cuda.backward(
                     grad_pos, 
@@ -76,6 +77,7 @@ class WeightedAverageWirelengthFunction(Function):
                     )
         output[:output.numel()//2].masked_fill_(ctx.pin_mask, 0.0)
         output[output.numel()//2:].masked_fill_(ctx.pin_mask, 0.0)
+        #print("\t\twirelength backward takes %.3f ms" % ((time.time()-tt)*1000))
         return output, None, None, None, None, None, None, None, None
 
 class WeightedAverageWirelengthAtomicFunction(Function):

@@ -105,7 +105,6 @@ class ElectricPotentialFunction(Function):
             )
 
         else:
-
             output = electric_potential_cpp.density_map(
                 pos.view(pos.numel()),
                 node_size_x_clamped, node_size_y_clamped,
@@ -128,7 +127,6 @@ class ElectricPotentialFunction(Function):
                 num_filler_impacted_bins_y,
                 num_threads
             )
-
 
         # output consists of (density_cost, density_map, max_density)
         ctx.node_size_x_clamped = node_size_x_clamped

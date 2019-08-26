@@ -591,6 +591,9 @@ def eval_runtime(design):
             f)
 
     dtype = torch.float64
+    num_threads = 10 
+    torch.set_num_threads(num_threads)
+    print("num_threads = %d" % (torch.get_num_threads()))
     movable_size_x = node_size_x[:num_movable_nodes]
     _, sorted_node_map = torch.sort(torch.tensor(movable_size_x,requires_grad=False, dtype=dtype).cuda())
     sorted_node_map = sorted_node_map.to(torch.int32).contiguous()
@@ -609,7 +612,7 @@ def eval_runtime(design):
         num_filler_nodes=num_filler_nodes,
         padding=0,
         sorted_node_map=sorted_node_map.cpu(), 
-        num_threads=1
+        num_threads=num_threads
         )
 
     custom_cuda = electric_potential.ElectricPotential(
@@ -628,12 +631,15 @@ def eval_runtime(design):
 
     torch.cuda.synchronize()
     iters = 100
+    tbackward = 0
     tt = time.time()
     for i in range(iters):
         result = custom.forward(pos_var)
+        ttb = time.time()
         result.backward()
+        tbackward += time.time()-ttb
     torch.cuda.synchronize()
-    print("custom takes %.3f ms" % ((time.time()-tt)/iters*1000))
+    print("custom takes %.3f ms, backward %.3f ms" % ((time.time()-tt)/iters*1000, (tbackward/iters*1000)))
 
     pos_var = pos_var.cuda()
     tt = time.time()
@@ -645,7 +651,8 @@ def eval_runtime(design):
 
 
 if __name__ == '__main__':
-    #unittest.main()
-
-    design = sys.argv[1]
-    eval_runtime(design)
+    if len(sys.argv) < 2: 
+        unittest.main()
+    else:
+        design = sys.argv[1]
+        eval_runtime(design)

@@ -169,7 +169,8 @@ int computeWeightedAverageWirelengthLauncher(
         T* grad_x_tensor, T* grad_y_tensor 
         )
 {
-#pragma omp parallel for num_threads(num_threads)
+    int chunk_size = int(num_nets/num_threads/16);
+#pragma omp parallel for num_threads(num_threads) schedule(dynamic, chunk_size)
     for (int i = 0; i < num_nets; ++i)
     {
         T xexp_x_sum = 0; 

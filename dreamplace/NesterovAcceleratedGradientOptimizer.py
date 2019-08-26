@@ -102,7 +102,7 @@ class NesterovAcceleratedGradientOptimizer(Optimizer):
                 backtrack_cnt = 0
                 max_backtrack_cnt = 10
 
-                ttt = time.time()
+                #ttt = time.time()
                 while True:
                     #with torch.autograd.profiler.profile(use_cuda=True) as prof:
                     u_kp1 = v_k - alpha_k*g_k

@@ -95,8 +95,9 @@ __global__ void __launch_bounds__(1024, 8) computeElectricForce(
                 T py = computeDensityFunc(node_y, node_size_y, yl, h, bin_size_y);
                 T area = px * py;
 
-                tmp_x += area * field_map_x_tensor[k * num_bins_y + h];
-                tmp_y += area * field_map_y_tensor[k * num_bins_y + h];
+                int idx = k * num_bins_y + h;
+                tmp_x += area * field_map_x_tensor[idx];
+                tmp_y += area * field_map_y_tensor[idx];
             }
         }
 

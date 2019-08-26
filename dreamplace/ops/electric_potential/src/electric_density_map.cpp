@@ -266,7 +266,8 @@ int computeTriangleDensityMapLauncher(
         // Jiaqi Gu: keep the same as GPU code, remove std::max(0, .)
         return std::min(x+node_size, bin_center+bin_size/2) - std::max(x, bin_center-bin_size/2);
     };
-#pragma omp parallel for num_threads(num_threads)
+    int chunk_size = int(num_nodes/num_threads/16);
+#pragma omp parallel for num_threads(num_threads) schedule(dynamic, chunk_size)
     for (int i = 0; i < num_nodes; ++i)
     {
         // use stretched node size 
@@ -298,8 +299,9 @@ int computeTriangleDensityMapLauncher(
 
                 T area = px*py*ratio;
 
+                int idx = k*num_bins_y+h;
                 // still area
-                T& density = density_map_tensor[k*num_bins_y+h];
+                T& density = density_map_tensor[idx];
 #pragma omp atomic
                 density += area;
             }
