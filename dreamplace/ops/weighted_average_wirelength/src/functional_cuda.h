@@ -18,13 +18,13 @@ __global__ void computeMax(
         V* x_max
         )
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_pins; i += blockDim.x * gridDim.x) 
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_pins)
     {
         int net_id = pin2net_map[i];
         if (net_mask[net_id])
         {
             atomicMax(&x_max[net_id], (V)(x[i]));
-            __syncthreads();
         }
     }
 }
@@ -40,13 +40,13 @@ __global__ void computeMin(
         V* x_min
         )
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_pins; i += blockDim.x * gridDim.x) 
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_pins) 
     {
         int net_id = pin2net_map[i];
         if (net_mask[net_id])
         {
             atomicMin(&x_min[net_id], (V)(x[i]));
-            __syncthreads();
         }
     }
 }
@@ -63,7 +63,8 @@ __global__ void computeExp(
         T* exp_x
         )
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_pins; i += blockDim.x * gridDim.x) 
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_pins) 
     {
         int net_id = pin2net_map[i]; 
         if (net_mask[net_id])
@@ -85,12 +86,54 @@ __global__ void computeNegExp(
         T* exp_nx
         )
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_pins; i += blockDim.x * gridDim.x) 
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_pins) 
     {
         int net_id = pin2net_map[i]; 
         if (net_mask[net_id])
         {
             exp_nx[i] = exp(-(x[i]-x_min[net_id])/(*gamma)); 
+        }
+    }
+}
+
+template <typename T>
+__global__ void computeExpSum(
+    const T *exp_x,
+    const int *pin2net_map,
+    const unsigned char *net_mask,
+    int num_nets,
+    int num_pins,
+    T *exp_x_sum)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_pins)
+    {
+        int net_id = pin2net_map[i];
+        if (net_mask[net_id])
+        {
+            atomicAdd(&exp_x_sum[net_id], exp_x[i]);
+        }
+    }
+}
+
+template <typename T>
+__global__ void computeXExpSum(
+    const T *x,
+    const T *exp_x,
+    const int *pin2net_map,
+    const unsigned char *net_mask,
+    int num_nets,
+    int num_pins,
+    T *xexp_x_sum)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_pins)
+    {
+        int net_id = pin2net_map[i];
+        if (net_mask[net_id])
+        {
+            atomicAdd(&xexp_x_sum[net_id], x[i] * exp_x[i]);
         }
     }
 }
@@ -102,11 +145,10 @@ __global__ void computeXExpSumByExpSum(
         const int* pin2net_map, 
         const unsigned char* net_mask, 
         int num_nets,
-        const T* gamma, 
-        T* partial_wl 
-        )
+        T* partial_wl)
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_nets; i += blockDim.x * gridDim.x) 
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_nets) 
     {
         if (net_mask[i])
         {
@@ -121,12 +163,11 @@ __global__ void computeXNegExpSumByNegExpSum(
         const T* exp_nx_sum, 
         const int* pin2net_map, 
         const unsigned char* net_mask, 
-        int num_nets,
-        const T* gamma, 
-        T* partial_wl 
-        )
+        int num_nets, 
+        T* partial_wl)
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_nets; i += blockDim.x * gridDim.x) 
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_nets) 
     {
         if (net_mask[i])
         {
@@ -150,7 +191,8 @@ __global__ void computeWeightedAverageWirelengthGrad(
         T* grad_x_tensor
         )
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_pins; i += blockDim.x * gridDim.x) 
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_pins) 
     {
         int net_id = pin2net_map[i]; 
         if (net_mask[net_id])

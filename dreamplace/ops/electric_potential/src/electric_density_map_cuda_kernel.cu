@@ -99,7 +99,8 @@ __global__ void computeTriangleDensityMap(
         const int num_impacted_bins_x, const int num_impacted_bins_y, 
         T* density_map_tensor) 
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_nodes; i += blockDim.x * gridDim.x) 
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_nodes)
     {
         auto computeDensityFunc = [](T x, T node_size, T bin_center, T bin_size){
             return max(T(0.0), min(x+node_size, bin_center+bin_size/2) - max(x, bin_center-bin_size/2));
@@ -152,8 +153,9 @@ __global__ void computeExactDensityMap(
         bool fixed_node_flag, 
         T* density_map_tensor) 
 {
-    // rank-one update density map 
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_nodes*num_impacted_bins_x*num_impacted_bins_y; i += blockDim.x * gridDim.x) 
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    // rank-one update density map
+    if (i < num_nodes * num_impacted_bins_x * num_impacted_bins_y)
     {
         // density overflow function 
         auto computeDensityFunc = [](T x, T node_size, T bin_center, T bin_size, T l, T h, bool flag){
@@ -181,7 +183,7 @@ __global__ void computeExactDensityMap(
         int k = bin_index_xl+int(residual_index / num_impacted_bins_y); 
         if (k+1 > num_bins_x)
         {
-            continue; 
+            return; 
         }
         // y direction 
         int bin_index_yl = int((y_tensor[node_id]-yl)/bin_size_y);
@@ -189,14 +191,13 @@ __global__ void computeExactDensityMap(
         int h = bin_index_yl+(residual_index % num_impacted_bins_y); 
         if (h+1 > num_bins_y)
         {
-            continue; 
+            return; 
         }
 
         T px = computeDensityFunc(x_tensor[node_id], node_size_x_tensor[node_id], bin_center_x_tensor[k], bin_size_x, xl, xh, fixed_node_flag);
         T py = computeDensityFunc(y_tensor[node_id], node_size_y_tensor[node_id], bin_center_y_tensor[h], bin_size_y, yl, yh, fixed_node_flag);
         // still area 
         atomicAdd(&density_map_tensor[k*num_bins_y+h], px*py); 
-        //__syncthreads();
     }
 }
 
@@ -215,8 +216,8 @@ int computeTriangleDensityMapCudaLauncher(
         T* density_map_tensor
         )
 {
-    int block_count = 32; 
     int thread_count = 1024; 
+    int block_count; 
 
     cudaError_t status; 
     cudaStream_t stream_movable; 
@@ -228,7 +229,8 @@ int computeTriangleDensityMapCudaLauncher(
         fflush(stdout);
         return 1; 
     }
-
+    
+    block_count = (num_movable_nodes - 1 + thread_count) / thread_count;
     computeTriangleDensityMap<<<block_count, thread_count, 0, stream_movable>>>(
             x_tensor, y_tensor, 
             node_size_x_tensor, node_size_y_tensor, 
@@ -250,6 +252,7 @@ int computeTriangleDensityMapCudaLauncher(
             return 1; 
         }
 
+        block_count = (num_filler_nodes - 1 + thread_count) / thread_count;
         computeTriangleDensityMap<<<block_count, thread_count, 0, stream_filler>>>(
                 x_tensor+num_nodes-num_filler_nodes, y_tensor+num_nodes-num_filler_nodes, 
                 node_size_x_tensor+num_nodes-num_filler_nodes, node_size_y_tensor+num_nodes-num_filler_nodes, 
@@ -297,8 +300,8 @@ int computeExactDensityMapCudaLauncher(
         T* density_map_tensor
         )
 {
-    int block_count = 32; 
-    int thread_count = 1024; 
+    int thread_count = 512;
+    int block_count = (num_nodes * num_impacted_bins_x * num_impacted_bins_y - 1 + thread_count) / thread_count;
 
     computeExactDensityMap<<<block_count, thread_count>>>(
             x_tensor, y_tensor, 

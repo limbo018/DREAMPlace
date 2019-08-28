@@ -93,7 +93,8 @@ __global__ void computeElectricForce(
         T* grad_x_tensor, T* grad_y_tensor
         ) 
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_nodes; i += blockDim.x * gridDim.x) 
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_nodes)
     {
         auto computeDensityFunc = [](T x, T node_size, T bin_center, T bin_size){
             //return max(T(0.0), min(x+node_size, bin_center+bin_size/2) - max(x, bin_center-bin_size/2));
@@ -172,8 +173,8 @@ int computeElectricForceCudaLauncher(
         T* grad_x_tensor, T* grad_y_tensor
         )
 {
-    int block_count = 32; 
     int thread_count = 1024; 
+    int block_count; 
 
     cudaError_t status; 
     cudaStream_t stream_movable; 
@@ -184,8 +185,9 @@ int computeElectricForceCudaLauncher(
         printf("cudaStreamCreate failed for stream_movable\n");
         fflush(stdout);
         return 1; 
-    }
+    }    
 
+    block_count = (num_movable_nodes + thread_count - 1) / thread_count;
     computeElectricForce<<<block_count, thread_count, 0, stream_movable>>>(
             num_bins_x, num_bins_y, 
             num_movable_impacted_bins_x, num_movable_impacted_bins_y, 
@@ -209,6 +211,7 @@ int computeElectricForceCudaLauncher(
             return 1; 
         }
 
+        block_count = (num_filler_nodes + thread_count - 1) / thread_count;
         computeElectricForce<<<block_count, thread_count, 0, stream_filler>>>(
                 num_bins_x, num_bins_y, 
                 num_filler_impacted_bins_x, num_filler_impacted_bins_y, 

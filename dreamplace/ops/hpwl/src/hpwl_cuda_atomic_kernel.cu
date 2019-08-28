@@ -15,7 +15,8 @@ __global__ void computeHPWLMax(
         T* partial_hpwl_x_max 
         )
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_pins; i += blockDim.x * gridDim.x)
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_pins)
     {
         int net_id = pin2net_map[i];
         if (net_mask[net_id])
@@ -35,7 +36,8 @@ __global__ void computeHPWLMin(
         T* partial_hpwl_x_min 
         )
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_pins; i += blockDim.x * gridDim.x)
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_pins)
     {
         int net_id = pin2net_map[i];
         if (net_mask[net_id])
@@ -58,7 +60,7 @@ int computeHPWLCudaAtomicLauncher(
         )
 {
     const int thread_count = 1024; 
-    const int block_count = 32; 
+    const int block_count = (num_pins + thread_count - 1) / thread_count;
 
     cudaError_t status; 
     cudaStream_t stream_x_max; 

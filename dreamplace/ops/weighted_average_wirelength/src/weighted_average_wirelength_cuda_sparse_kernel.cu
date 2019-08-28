@@ -12,7 +12,8 @@ DREAMPLACE_BEGIN_NAMESPACE
 template <typename T>
 __global__ void multiply(const T* a, const T* b, int n, T* c)
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) 
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n)
     {
         c[i] = a[i]*b[i]; 
     }
@@ -108,7 +109,8 @@ int computeWeightedAverageWirelengthCudaSparseLauncher(
         )
 {
     int thread_count = 1024; 
-    int block_count = 32; // separate x and y
+    int block_count_pins = (num_pins - 1 + thread_count) / thread_count; // separate x and y
+    int block_count_nets = (num_nets - 1 + thread_count) / thread_count;
 
     cudaError_t status; 
     cudaStream_t stream_x_exp; 
@@ -132,7 +134,7 @@ int computeWeightedAverageWirelengthCudaSparseLauncher(
 
     if (grad_tensor)
     {
-        computeWeightedAverageWirelengthGrad<<<block_count, thread_count, 0, stream_x_exp>>>(
+        computeWeightedAverageWirelengthGrad<<<block_count_pins, thread_count, 0, stream_x_exp>>>(
                 x, 
                 exp_xy, exp_nxy, 
                 exp_xy_sum, exp_nxy_sum, 
@@ -145,7 +147,7 @@ int computeWeightedAverageWirelengthCudaSparseLauncher(
                 grad_tensor, 
                 grad_x_tensor
                 );
-        computeWeightedAverageWirelengthGrad<<<block_count, thread_count, 0, stream_y_exp>>>(
+        computeWeightedAverageWirelengthGrad<<<block_count_pins, thread_count, 0, stream_y_exp>>>(
                 y, 
                 exp_xy+num_pins, exp_nxy+num_pins, 
                 exp_xy_sum+num_nets, exp_nxy_sum+num_nets, 
@@ -194,7 +196,7 @@ int computeWeightedAverageWirelengthCudaSparseLauncher(
         }
 
         // compute max/min 
-        computeMax<<<block_count, thread_count, 0, stream_x_exp>>>(
+        computeMax<<<block_count_pins, thread_count, 0, stream_x_exp>>>(
                 x, 
                 pin2net_map, 
                 net_mask, 
@@ -202,7 +204,7 @@ int computeWeightedAverageWirelengthCudaSparseLauncher(
                 num_pins, 
                 xy_max
                 );
-        computeMin<<<block_count, thread_count, 0, stream_nx_exp>>>(
+        computeMin<<<block_count_pins, thread_count, 0, stream_nx_exp>>>(
                 x, 
                 pin2net_map, 
                 net_mask, 
@@ -210,7 +212,7 @@ int computeWeightedAverageWirelengthCudaSparseLauncher(
                 num_pins, 
                 xy_min
                 );
-        computeMax<<<block_count, thread_count, 0, stream_y_exp>>>(
+        computeMax<<<block_count_pins, thread_count, 0, stream_y_exp>>>(
                 y, 
                 pin2net_map, 
                 net_mask, 
@@ -218,7 +220,7 @@ int computeWeightedAverageWirelengthCudaSparseLauncher(
                 num_pins, 
                 xy_max+num_nets
                 );
-        computeMin<<<block_count, thread_count, 0, stream_ny_exp>>>(
+        computeMin<<<block_count_pins, thread_count, 0, stream_ny_exp>>>(
                 y, 
                 pin2net_map, 
                 net_mask, 
@@ -228,7 +230,7 @@ int computeWeightedAverageWirelengthCudaSparseLauncher(
                 );
 
         // compute exp and negative exp 
-        computeExp<<<block_count, thread_count, 0, stream_x_exp>>>(
+        computeExp<<<block_count_pins, thread_count, 0, stream_x_exp>>>(
                 x, 
                 pin2net_map, 
                 net_mask, 
@@ -238,7 +240,7 @@ int computeWeightedAverageWirelengthCudaSparseLauncher(
                 xy_max, 
                 exp_xy
                 );
-        computeNegExp<<<block_count, thread_count, 0, stream_nx_exp>>>(
+        computeNegExp<<<block_count_pins, thread_count, 0, stream_nx_exp>>>(
                 x, 
                 pin2net_map, 
                 net_mask, 
@@ -248,7 +250,7 @@ int computeWeightedAverageWirelengthCudaSparseLauncher(
                 xy_min, 
                 exp_nxy
                 );
-        computeExp<<<block_count, thread_count, 0, stream_y_exp>>>(
+        computeExp<<<block_count_pins, thread_count, 0, stream_y_exp>>>(
                 y, 
                 pin2net_map, 
                 net_mask, 
@@ -258,7 +260,7 @@ int computeWeightedAverageWirelengthCudaSparseLauncher(
                 xy_max+num_nets, 
                 exp_xy+num_pins
                 );
-        computeNegExp<<<block_count, thread_count, 0, stream_ny_exp>>>(
+        computeNegExp<<<block_count_pins, thread_count, 0, stream_ny_exp>>>(
                 y, 
                 pin2net_map, 
                 net_mask, 
@@ -270,25 +272,25 @@ int computeWeightedAverageWirelengthCudaSparseLauncher(
                 );
 
         // compute x*exp and x*negative exp 
-        multiply<<<block_count, thread_count, 0, stream_x_exp>>>(
+        multiply<<<block_count_pins, thread_count, 0, stream_x_exp>>>(
                 x, 
                 exp_xy, 
                 num_pins, 
                 xyexp_xy
                 );
-        multiply<<<block_count, thread_count, 0, stream_nx_exp>>>(
+        multiply<<<block_count_pins, thread_count, 0, stream_nx_exp>>>(
                 x, 
                 exp_nxy, 
                 num_pins, 
                 xyexp_nxy
                 );
-        multiply<<<block_count, thread_count, 0, stream_y_exp>>>(
+        multiply<<<block_count_pins, thread_count, 0, stream_y_exp>>>(
                 y, 
                 exp_xy+num_pins, 
                 num_pins, 
                 xyexp_xy+num_pins
                 );
-        multiply<<<block_count, thread_count, 0, stream_ny_exp>>>(
+        multiply<<<block_count_pins, thread_count, 0, stream_ny_exp>>>(
                 y, 
                 exp_nxy+num_pins, 
                 num_pins, 
@@ -329,41 +331,37 @@ int computeWeightedAverageWirelengthCudaSparseLauncher(
         delete [] net_sum_x_arrays; 
 
         // compute log sum exp 
-        computeXExpSumByExpSum<<<block_count, thread_count, 0, stream_x_exp>>>(
+        computeXExpSumByExpSum<<<block_count_nets, thread_count, 0, stream_x_exp>>>(
                 xyexp_xy_sum, 
                 exp_xy_sum, 
                 pin2net_map, 
                 net_mask, 
                 num_nets,
-                gamma, 
                 partial_wl
                 );
-        computeXNegExpSumByNegExpSum<<<block_count, thread_count, 0, stream_nx_exp>>>(
+        computeXNegExpSumByNegExpSum<<<block_count_nets, thread_count, 0, stream_nx_exp>>>(
                 xyexp_nxy_sum, 
                 exp_nxy_sum, 
                 pin2net_map, 
                 net_mask, 
                 num_nets,
-                gamma, 
                 partial_wl+num_nets
                 );
 
-        computeXExpSumByExpSum<<<block_count, thread_count, 0, stream_y_exp>>>(
+        computeXExpSumByExpSum<<<block_count_nets, thread_count, 0, stream_y_exp>>>(
                 xyexp_xy_sum+num_nets, 
                 exp_xy_sum+num_nets, 
                 pin2net_map, 
                 net_mask, 
                 num_nets,
-                gamma, 
                 partial_wl+2*num_nets
                 );
-        computeXNegExpSumByNegExpSum<<<block_count, thread_count, 0, stream_ny_exp>>>(
+        computeXNegExpSumByNegExpSum<<<block_count_nets, thread_count, 0, stream_ny_exp>>>(
                 xyexp_nxy_sum+num_nets, 
                 exp_nxy_sum+num_nets, 
                 pin2net_map, 
                 net_mask, 
                 num_nets,
-                gamma, 
                 partial_wl+3*num_nets
                 );
 

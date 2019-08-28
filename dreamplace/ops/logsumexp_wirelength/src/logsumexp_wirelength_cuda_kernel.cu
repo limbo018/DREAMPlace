@@ -47,7 +47,8 @@ __global__ void computeMaxAndExp(
         T* exp_x
         )
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_nets; i += blockDim.x * gridDim.x) 
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_nets) 
     {
         x_max[i] = -FLT_MAX; 
         if (net_mask[i])
@@ -80,7 +81,8 @@ __global__ void computeMinAndNegExp(
         T* exp_nx
         )
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_nets; i += blockDim.x * gridDim.x) 
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_nets) 
     {
         x_min[i] = FLT_MAX; 
         if (net_mask[i])
@@ -113,7 +115,8 @@ __global__ void computeLogSumExp(
         T* partial_wl 
         )
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_nets; i += blockDim.x * gridDim.x) 
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_nets) 
     {
         if (net_mask[i])
         {
@@ -138,7 +141,8 @@ __global__ void computeLogSumNegExp(
         T* partial_wl 
         )
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_nets; i += blockDim.x * gridDim.x) 
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_nets) 
     {
         if (net_mask[i])
         {
@@ -178,7 +182,8 @@ __global__ void computeLogSumExpWirelengthGrad(
         T* grad_x_tensor
         )
 {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_nets; i += blockDim.x * gridDim.x) 
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_nets) 
     {
         if (net_mask[i])
         {
@@ -211,8 +216,8 @@ int computeLogSumExpWirelengthCudaLauncher(
         T* grad_x_tensor, T* grad_y_tensor // the gradient is partial total wirelength to partial pin position  
         )
 {
-    int thread_count = 1024; 
-    int block_count = 32; // separate x and y
+    int thread_count = 512; 
+    int block_count_nets = (num_nets + thread_count - 1) / thread_count; // separate x and y
 
     cudaError_t status; 
     cudaStream_t stream_x_exp; 
@@ -236,7 +241,7 @@ int computeLogSumExpWirelengthCudaLauncher(
 
     if (grad_tensor)
     {
-        computeLogSumExpWirelengthGrad<<<block_count, thread_count, 0, stream_x_exp>>>(
+        computeLogSumExpWirelengthGrad<<<block_count_nets, thread_count, 0, stream_x_exp>>>(
                 exp_xy, exp_nxy, 
                 exp_xy_sum, exp_nxy_sum, 
                 flat_netpin, 
@@ -247,7 +252,7 @@ int computeLogSumExpWirelengthCudaLauncher(
                 grad_tensor, 
                 grad_x_tensor
                 );
-        computeLogSumExpWirelengthGrad<<<block_count, thread_count, 0, stream_y_exp>>>(
+        computeLogSumExpWirelengthGrad<<<block_count_nets, thread_count, 0, stream_y_exp>>>(
                 exp_xy+num_pins, exp_nxy+num_pins, 
                 exp_xy_sum+num_nets, exp_nxy_sum+num_nets, 
                 flat_netpin, 
@@ -306,7 +311,7 @@ int computeLogSumExpWirelengthCudaLauncher(
         T alpha = 1.0; 
         T beta = 0.0; 
 
-        computeMaxAndExp<<<block_count, thread_count, 0, stream_x_exp>>>(
+        computeMaxAndExp<<<block_count_nets, thread_count, 0, stream_x_exp>>>(
                 x, 
                 flat_netpin, 
                 netpin_start, 
@@ -316,7 +321,7 @@ int computeLogSumExpWirelengthCudaLauncher(
                 xy_max,
                 exp_xy
                 );
-        computeMinAndNegExp<<<block_count, thread_count, 0, stream_nx_exp>>>(
+        computeMinAndNegExp<<<block_count_nets, thread_count, 0, stream_nx_exp>>>(
                 x, 
                 flat_netpin, 
                 netpin_start, 
@@ -326,7 +331,7 @@ int computeLogSumExpWirelengthCudaLauncher(
                 xy_min, 
                 exp_nxy
                 );
-        computeMaxAndExp<<<block_count, thread_count, 0, stream_y_exp>>>(
+        computeMaxAndExp<<<block_count_nets, thread_count, 0, stream_y_exp>>>(
                 y, 
                 flat_netpin, 
                 netpin_start, 
@@ -336,7 +341,7 @@ int computeLogSumExpWirelengthCudaLauncher(
                 xy_max+num_nets,
                 exp_xy+num_pins
                 );
-        computeMinAndNegExp<<<block_count, thread_count, 0, stream_ny_exp>>>(
+        computeMinAndNegExp<<<block_count_nets, thread_count, 0, stream_ny_exp>>>(
                 y, 
                 flat_netpin, 
                 netpin_start, 
@@ -449,7 +454,7 @@ int computeLogSumExpWirelengthCudaLauncher(
                 exp_nxy_sum+num_nets
                 ); 
 
-        computeLogSumExp<<<block_count, thread_count, 0, stream_x_exp>>>(
+        computeLogSumExp<<<block_count_nets, thread_count, 0, stream_x_exp>>>(
                 exp_xy_sum, 
                 xy_max, 
                 flat_netpin, 
@@ -459,7 +464,7 @@ int computeLogSumExpWirelengthCudaLauncher(
                 gamma, 
                 partial_wl
                 );
-        computeLogSumNegExp<<<block_count, thread_count, 0, stream_nx_exp>>>(
+        computeLogSumNegExp<<<block_count_nets, thread_count, 0, stream_nx_exp>>>(
                 exp_nxy_sum, 
                 xy_min, 
                 flat_netpin, 
@@ -470,7 +475,7 @@ int computeLogSumExpWirelengthCudaLauncher(
                 partial_wl+num_nets
                 );
 
-        computeLogSumExp<<<block_count, thread_count, 0, stream_y_exp>>>(
+        computeLogSumExp<<<block_count_nets, thread_count, 0, stream_y_exp>>>(
                 exp_xy_sum+num_nets, 
                 xy_max+num_nets, 
                 flat_netpin, 
@@ -480,7 +485,7 @@ int computeLogSumExpWirelengthCudaLauncher(
                 gamma, 
                 partial_wl+2*num_nets
                 );
-        computeLogSumNegExp<<<block_count, thread_count, 0, stream_ny_exp>>>(
+        computeLogSumNegExp<<<block_count_nets, thread_count, 0, stream_ny_exp>>>(
                 exp_nxy_sum+num_nets, 
                 xy_min+num_nets, 
                 flat_netpin, 
@@ -557,15 +562,13 @@ int computeLogSumExpWirelengthCudaLauncher(
         fflush(stdout);
 
         status = cudaStreamDestroy(stream_nx_exp); 
-        stream_nx_exp = 0;
         if (status != cudaSuccess) 
         {
             printf("stream_nx_exp destroy failed\n");
             fflush(stdout);
             return 1;
         }   
-        status = cudaStreamDestroy(stream_ny_exp); 
-        stream_ny_exp = 0; 
+        status = cudaStreamDestroy(stream_ny_exp);  
         if (status != cudaSuccess) 
         {
             printf("stream_ny_exp destroy failed\n");
@@ -576,7 +579,6 @@ int computeLogSumExpWirelengthCudaLauncher(
 
     /* destroy stream */
     status = cudaStreamDestroy(stream_x_exp); 
-    stream_x_exp = 0;
     if (status != cudaSuccess) 
     {
         printf("stream_x_exp destroy failed\n");
@@ -584,7 +586,6 @@ int computeLogSumExpWirelengthCudaLauncher(
         return 1;
     }   
     status = cudaStreamDestroy(stream_y_exp); 
-    stream_y_exp = 0; 
     if (status != cudaSuccess) 
     {
         printf("stream_y_exp destroy failed\n");
