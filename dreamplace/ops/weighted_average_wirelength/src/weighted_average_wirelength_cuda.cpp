@@ -140,78 +140,9 @@ std::vector<at::Tensor> weighted_average_wirelength_forward(
     return {wl, exp_xy, exp_nxy, exp_xy_sum, exp_nxy_sum, xyexp_xy_sum, xyexp_nxy_sum};
 }
 
-/// @brief Compute gradient
-/// @param grad_pos input gradient from backward propagation
-/// @param pos locations of pins
-/// @param flat_netpin similar to the JA array in CSR format, which is flattened from the net2pin map (array of array)
-/// @param netpin_start similar to the IA array in CSR format, IA[i+1]-IA[i] is the number of pins in each net, the length of IA is number of nets + 1
-/// @param net_weights weight of nets
-/// @param net_mask an array to record whether compute the where for a net or not
-/// @param inv_gamma a scalar tensor for the parameter in the equation
-at::Tensor weighted_average_wirelength_backward(
-    at::Tensor grad_pos,
-    at::Tensor pos,
-    at::Tensor exp_xy, at::Tensor exp_nxy,
-    at::Tensor exp_xy_sum, at::Tensor exp_nxy_sum,
-    at::Tensor xyexp_xy_sum, at::Tensor xyexp_nxy_sum,
-    at::Tensor flat_netpin,
-    at::Tensor netpin_start,
-    at::Tensor pin2net_map,
-    at::Tensor net_weights,
-    at::Tensor net_mask,
-    at::Tensor inv_gamma)
-{
-    CHECK_FLAT(pos);
-    CHECK_EVEN(pos);
-    CHECK_CONTIGUOUS(pos);
-    CHECK_FLAT(flat_netpin);
-    CHECK_CONTIGUOUS(flat_netpin);
-    CHECK_FLAT(netpin_start);
-    CHECK_CONTIGUOUS(netpin_start);
-    CHECK_FLAT(net_weights);
-    CHECK_CONTIGUOUS(net_weights);
-    CHECK_FLAT(net_mask);
-    CHECK_CONTIGUOUS(net_mask);
-    CHECK_FLAT(pin2net_map);
-    CHECK_CONTIGUOUS(pin2net_map);
-
-    at::Tensor grad_out = at::zeros_like(pos);
-    int num_nets = netpin_start.numel() - 1;
-    int num_pins = pos.numel() / 2;
-
-    AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeWeightedAverageWirelengthCudaLauncher", [&] {
-        computeWeightedAverageWirelengthCudaLauncher<scalar_t>(
-            pos.data<scalar_t>(), pos.data<scalar_t>() + num_pins,
-            pin2net_map.data<int>(),
-            flat_netpin.data<int>(),
-            netpin_start.data<int>(),
-            net_mask.data<unsigned char>(),
-            num_nets,
-            num_pins,
-            inv_gamma.data<scalar_t>(),
-            exp_xy.data<scalar_t>(), exp_nxy.data<scalar_t>(),
-            exp_xy_sum.data<scalar_t>(), exp_nxy_sum.data<scalar_t>(),
-            xyexp_xy_sum.data<scalar_t>(), xyexp_nxy_sum.data<scalar_t>(),
-            nullptr,
-            grad_pos.data<scalar_t>(),
-            grad_out.data<scalar_t>(), grad_out.data<scalar_t>() + num_pins);
-        if (net_weights.numel())
-        {
-            integrateNetWeightsCudaLauncher(
-                pin2net_map.data<int>(),
-                net_mask.data<unsigned char>(),
-                net_weights.data<scalar_t>(),
-                grad_out.data<scalar_t>(), grad_out.data<scalar_t>() + num_pins,
-                num_pins);
-        }
-    });
-    return grad_out;
-}
-
 DREAMPLACE_END_NAMESPACE
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)
 {
     m.def("forward", &DREAMPLACE_NAMESPACE::weighted_average_wirelength_forward, "WeightedAverageWirelength forward (CUDA)");
-    m.def("backward", &DREAMPLACE_NAMESPACE::weighted_average_wirelength_backward, "WeightedAverageWirelength backward (CUDA)");
 }

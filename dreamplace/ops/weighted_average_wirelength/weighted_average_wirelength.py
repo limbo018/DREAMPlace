@@ -61,14 +61,12 @@ class WeightedAverageWirelengthFunction(Function):
     def backward(ctx, grad_pos):
         #tt = time.time()
         if grad_pos.is_cuda:
-            output = weighted_average_wirelength_cuda.backward(
+            output = weighted_average_wirelength_cuda_atomic.backward(
                     grad_pos, 
                     ctx.pos, 
                     ctx.exp_xy.view([-1]), ctx.exp_nxy.view([-1]), 
                     ctx.exp_xy_sum.view([-1]), ctx.exp_nxy_sum.view([-1]), 
-                    ctx.xyexp_xy_sum.view([-1]), ctx.xyexp_nxy_sum.view([-1]),                      
-                    ctx.flat_netpin, 
-                    ctx.netpin_start, 
+                    ctx.xyexp_xy_sum.view([-1]), ctx.xyexp_nxy_sum.view([-1]), 
                     ctx.pin2net_map, 
                     ctx.net_weights, 
                     ctx.net_mask, 
