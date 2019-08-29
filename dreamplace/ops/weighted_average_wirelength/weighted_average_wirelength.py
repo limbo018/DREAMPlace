@@ -24,7 +24,7 @@ class WeightedAverageWirelengthFunction(Function):
     @brief compute weighted average wirelength.
     """
     @staticmethod
-    def forward(ctx, pos, flat_netpin, netpin_start, pin2net_map, net_weights, net_mask, pin_mask, gamma, num_threads):
+    def forward(ctx, pos, flat_netpin, netpin_start, pin2net_map, net_weights, net_mask, pin_mask, inv_gamma, num_threads):
         """
         @param pos pin location (x array, y array), not cell location 
         @param flat_netpin flat netpin map, length of #pins 
@@ -33,22 +33,29 @@ class WeightedAverageWirelengthFunction(Function):
         @param net_weights weight of nets 
         @param net_mask whether to compute wirelength, 1 means to compute, 0 means to ignore  
         @param pin_mask whether compute gradient for a pin, 1 means to fill with zero, 0 means to compute
-        @param gamma the smaller, the closer to HPWL
+        @param inv_gamma 1/gamma, the larger, the closer to HPWL
         """
         if pos.is_cuda:
-            output = weighted_average_wirelength_cuda.forward(pos.view(pos.numel()), flat_netpin, netpin_start, pin2net_map, net_weights, net_mask, gamma)
+            output = weighted_average_wirelength_cuda.forward(pos.view(pos.numel()), flat_netpin, netpin_start, pin2net_map, net_weights, net_mask, inv_gamma)
         else:
-            output = weighted_average_wirelength_cpp.forward(pos.view(pos.numel()), flat_netpin, netpin_start, net_weights, net_mask, gamma, num_threads)
+            output = weighted_average_wirelength_cpp.forward(pos.view(pos.numel()), flat_netpin, netpin_start, net_weights, net_mask, inv_gamma, num_threads)
         ctx.flat_netpin = flat_netpin
         ctx.netpin_start = netpin_start
         ctx.pin2net_map = pin2net_map
         ctx.net_weights = net_weights
         ctx.net_mask = net_mask 
         ctx.pin_mask = pin_mask
-        ctx.gamma = gamma
+        ctx.inv_gamma = inv_gamma
         ctx.pos = pos
         ctx.num_threads = num_threads
-        return output 
+        ctx.exp_xy = output[1]
+        ctx.exp_nxy = output[2]
+        ctx.exp_xy_sum = output[3]
+        ctx.exp_nxy_sum = output[4]
+        ctx.xyexp_xy_sum = output[5]
+        ctx.xyexp_nxy_sum = output[6]
+        
+        return output[0]
 
     @staticmethod
     def backward(ctx, grad_pos):
@@ -57,22 +64,29 @@ class WeightedAverageWirelengthFunction(Function):
             output = weighted_average_wirelength_cuda.backward(
                     grad_pos, 
                     ctx.pos, 
+                    ctx.exp_xy.view([-1]), ctx.exp_nxy.view([-1]), 
+                    ctx.exp_xy_sum.view([-1]), ctx.exp_nxy_sum.view([-1]), 
+                    ctx.xyexp_xy_sum.view([-1]), ctx.xyexp_nxy_sum.view([-1]),                      
                     ctx.flat_netpin, 
                     ctx.netpin_start, 
                     ctx.pin2net_map, 
                     ctx.net_weights, 
                     ctx.net_mask, 
-                    ctx.gamma
+                    ctx.inv_gamma
                     )
         else:
             output = weighted_average_wirelength_cpp.backward(
                     grad_pos, 
                     ctx.pos, 
+                    ctx.exp_xy.view([-1]), ctx.exp_nxy.view([-1]), 
+                    ctx.exp_xy_sum.view([-1]), ctx.exp_nxy_sum.view([-1]), 
+                    ctx.xyexp_xy_sum.view([-1]), ctx.xyexp_nxy_sum.view([-1]),
                     ctx.flat_netpin, 
                     ctx.netpin_start, 
+                    ctx.pin2net_map,
                     ctx.net_weights, 
                     ctx.net_mask, 
-                    ctx.gamma, 
+                    ctx.inv_gamma, 
                     ctx.num_threads
                     )
         output[:output.numel()//2].masked_fill_(ctx.pin_mask, 0.0)
@@ -254,7 +268,7 @@ class WeightedAverageWirelength(nn.Module):
                         self.net_weights, 
                         self.net_mask, 
                         self.pin_mask, 
-                        self.gamma, 
+                        1.0/self.gamma, # do not store inv_gamma as gamma is changing
                         self.num_threads
                         )
             elif self.algorithm == 'atomic':
@@ -286,6 +300,6 @@ class WeightedAverageWirelength(nn.Module):
                     self.net_weights, 
                     self.net_mask, 
                     self.pin_mask, 
-                    self.gamma, 
+                    1.0/self.gamma, # do not store inv_gamma as gamma is changing
                     self.num_threads
                     )
