@@ -106,8 +106,7 @@ std::vector<at::Tensor> weighted_average_wirelength_forward(
         wl.mul_(net_weights);
     }
 
-    auto wl_sum = wl.sum();
-    return {wl_sum, exp_xy, exp_nxy, exp_xy_sum, exp_nxy_sum, xyexp_xy_sum, xyexp_nxy_sum};
+    return {wl.sum(), exp_xy, exp_nxy, exp_xy_sum, exp_nxy_sum, xyexp_xy_sum, xyexp_nxy_sum};
 }
 
 /// @brief Compute gradient
@@ -264,7 +263,7 @@ int computeWeightedAverageWirelengthLauncher(
                 exp_xy_sum[y_index] += exp_xy[pin_id];
                 exp_nxy_sum[y_index] += exp_nxy[pin_id];
                 xyexp_xy_sum[y_index] += x[pin_id] * exp_xy[pin_id];
-                xyexp_nxy_sum[y_index] += x[pin_id] * exp_xy[pin_id];
+                xyexp_nxy_sum[y_index] += x[pin_id] * exp_nxy[pin_id];
             }
 
             wl[i] = xyexp_xy_sum[x_index] / exp_xy_sum[x_index] - xyexp_nxy_sum[x_index] / exp_nxy_sum[x_index] +

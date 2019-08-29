@@ -356,7 +356,7 @@ __global__ void computeWeightedAverageWirelength(
         {
             int pin_id = flat_netpin[j];
             exp_xy[pin_id] = exp((x[pin_id] - x_max) * (*inv_gamma));
-            exp_nxy[pin_id] = exp(-(x[pin_id] - x_min) * (*inv_gamma));
+            exp_nxy[pin_id] = exp((x_min - x[pin_id]) * (*inv_gamma));
             exp_xy_sum[x_index] += exp_xy[pin_id];
             exp_nxy_sum[x_index] += exp_nxy[pin_id];
             xyexp_xy_sum[x_index] += x[pin_id] * exp_xy[pin_id];
@@ -364,11 +364,11 @@ __global__ void computeWeightedAverageWirelength(
 
             pin_id += num_pins;
             exp_xy[pin_id] = exp((x[pin_id] - y_max) * (*inv_gamma));
-            exp_nxy[pin_id] = exp(-(x[pin_id] - y_min) * (*inv_gamma));
+            exp_nxy[pin_id] = exp((y_min - x[pin_id]) * (*inv_gamma));
             exp_xy_sum[y_index] += exp_xy[pin_id];
             exp_nxy_sum[y_index] += exp_nxy[pin_id];
             xyexp_xy_sum[y_index] += x[pin_id] * exp_xy[pin_id];
-            xyexp_nxy_sum[y_index] += x[pin_id] * exp_xy[pin_id];
+            xyexp_nxy_sum[y_index] += x[pin_id] * exp_nxy[pin_id];
         }
 
         partial_wl[i] = xyexp_xy_sum[x_index] / exp_xy_sum[x_index] - xyexp_nxy_sum[x_index] / exp_nxy_sum[x_index] +
