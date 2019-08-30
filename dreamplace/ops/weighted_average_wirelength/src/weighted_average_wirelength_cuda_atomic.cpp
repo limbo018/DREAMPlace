@@ -10,8 +10,10 @@ DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T, typename V>
 int computeWeightedAverageWirelengthCudaAtomicLauncher(
-    const T *pos, 
+    const T *pos,
     const int *pin2net_map,
+    const int *flat_netpin,
+    const int *netpin_start,
     const unsigned char *net_mask,
     int num_nets,
     int num_pins,
@@ -25,13 +27,13 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
     T *grad_x_tensor, T *grad_y_tensor // the gradient is partial total wirelength to partial pin position
 );
 
-/// @brief add net weights to gradient 
+/// @brief add net weights to gradient
 template <typename T>
 void integrateNetWeightsCudaLauncher(
-        const int* pin2net_map, 
-        const unsigned char* net_mask, 
-        const T* net_weights, 
-        T* grad_x_tensor, T* grad_y_tensor, 
+        const int* pin2net_map,
+        const unsigned char* net_mask,
+        const T* net_weights,
+        T* grad_x_tensor, T* grad_y_tensor,
         int num_pins
         );
 
@@ -44,25 +46,31 @@ typedef int V;
 /// @brief Compute weighted average wirelength and gradient.
 /// WL = \sum_i x_i*exp(x_i/gamma) / \sum_i exp(x_i/gamma) - \sum_i x_i*exp(-x_i/gamma) / \sum_i x_i*exp(-x_i/gamma),
 /// where x_i is pin location.
-/// 
-/// @param pos location of pins, x array followed by y array. 
-/// @param pin2net_map map pin to net 
+///
+/// @param pos location of pins, x array followed by y array.
+/// @param pin2net_map map pin to net
 /// @param net_weights weight of nets
-/// @param net_mask whether compute the wirelength for a net or not 
-/// @param inv_gamma inverse of gamma coefficient in weighted average wirelength. 
+/// @param net_mask whether compute the wirelength for a net or not
+/// @param inv_gamma inverse of gamma coefficient in weighted average wirelength.
 /// @return total wirelength cost.
 std::vector<at::Tensor> weighted_average_wirelength_atomic_forward(
         at::Tensor pos,
-        at::Tensor pin2net_map, 
-        at::Tensor net_weights, 
-        at::Tensor net_mask, 
-        at::Tensor inv_gamma) 
+        at::Tensor pin2net_map,
+        at::Tensor flat_netpin,
+        at::Tensor netpin_start,
+        at::Tensor net_weights,
+        at::Tensor net_mask,
+        at::Tensor inv_gamma)
 {
     CHECK_FLAT(pos);
     CHECK_EVEN(pos);
     CHECK_CONTIGUOUS(pos);
     CHECK_FLAT(pin2net_map);
     CHECK_CONTIGUOUS(pin2net_map);
+    CHECK_FLAT(flat_netpin);
+    CHECK_CONTIGUOUS(flat_netpin);
+    CHECK_FLAT(netpin_start);
+    CHECK_CONTIGUOUS(netpin_start);
     CHECK_FLAT(net_mask);
     CHECK_CONTIGUOUS(net_mask);
     CHECK_FLAT(net_weights);
@@ -90,6 +98,8 @@ std::vector<at::Tensor> weighted_average_wirelength_atomic_forward(
         computeWeightedAverageWirelengthCudaAtomicLauncher<scalar_t, V>(
             pos.data<scalar_t>(), // x then y
             pin2net_map.data<int>(),
+            flat_netpin.data<int>(),
+            netpin_start.data<int>(),
             net_mask.data<unsigned char>(),
             num_nets,
             num_pins,
@@ -107,9 +117,9 @@ std::vector<at::Tensor> weighted_average_wirelength_atomic_forward(
     {
         partial_wl.mul_(net_weights.view({1, num_nets}));
     }
-    // significant speedup is achieved by using summation in ATen 
-    auto wl = partial_wl.sum(); 
-    return {wl, exp_xy, exp_nxy, exp_xy_sum, exp_nxy_sum, xyexp_xy_sum, xyexp_nxy_sum}; 
+    // significant speedup is achieved by using summation in ATen
+    auto wl = partial_wl.sum();
+    return {wl, exp_xy, exp_nxy, exp_xy_sum, exp_nxy_sum, xyexp_xy_sum, xyexp_nxy_sum};
 }
 
 /// @brief Compute gradient
@@ -121,20 +131,22 @@ std::vector<at::Tensor> weighted_average_wirelength_atomic_forward(
 /// @param exp_nxy_sum array of \sum(exp(-x/gamma)) for each net and then \sum(exp(-y/gamma))
 /// @param xyexp_xy_sum array of \sum(x*exp(x/gamma)) for each net and then \sum(y*exp(y/gamma))
 /// @param xyexp_nxy_sum array of \sum(x*exp(-x/gamma)) for each net and then \sum(y*exp(-y/gamma))
-/// @param pin2net_map map pin to net 
+/// @param pin2net_map map pin to net
 /// @param net_weights weight of nets
-/// @param net_mask an array to record whether compute the where for a net or not 
-/// @param inv_gamma inverse of gamma, a scalar tensor for the parameter in the equation 
+/// @param net_mask an array to record whether compute the where for a net or not
+/// @param inv_gamma inverse of gamma, a scalar tensor for the parameter in the equation
 at::Tensor weighted_average_wirelength_atomic_backward(
-        at::Tensor grad_pos, 
+        at::Tensor grad_pos,
         at::Tensor pos,
-        at::Tensor exp_xy, at::Tensor exp_nxy, 
-        at::Tensor exp_xy_sum, at::Tensor exp_nxy_sum, 
-        at::Tensor xyexp_xy_sum, at::Tensor xyexp_nxy_sum, 
-        at::Tensor pin2net_map, 
-        at::Tensor net_weights, 
-        at::Tensor net_mask, 
-        at::Tensor inv_gamma) 
+        at::Tensor exp_xy, at::Tensor exp_nxy,
+        at::Tensor exp_xy_sum, at::Tensor exp_nxy_sum,
+        at::Tensor xyexp_xy_sum, at::Tensor xyexp_nxy_sum,
+        at::Tensor pin2net_map,
+        at::Tensor flat_netpin,
+        at::Tensor netpin_start,
+        at::Tensor net_weights,
+        at::Tensor net_mask,
+        at::Tensor inv_gamma)
 {
     CHECK_FLAT(pos);
     CHECK_EVEN(pos);
@@ -159,6 +171,10 @@ at::Tensor weighted_average_wirelength_atomic_backward(
     CHECK_CONTIGUOUS(xyexp_nxy_sum);
     CHECK_FLAT(pin2net_map);
     CHECK_CONTIGUOUS(pin2net_map);
+    CHECK_FLAT(flat_netpin);
+    CHECK_CONTIGUOUS(flat_netpin);
+    CHECK_FLAT(netpin_start);
+    CHECK_CONTIGUOUS(netpin_start);
     CHECK_FLAT(net_mask);
     CHECK_CONTIGUOUS(net_mask);
     CHECK_FLAT(net_weights);
@@ -172,31 +188,33 @@ at::Tensor weighted_average_wirelength_atomic_backward(
     AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeWeightedAverageWirelengthCudaAtomicLauncher", [&] {
             computeWeightedAverageWirelengthCudaAtomicLauncher<scalar_t, V>(
                     pos.data<scalar_t>(), // x then y
-                    pin2net_map.data<int>(), 
-                    net_mask.data<unsigned char>(), 
-                    num_nets, 
-                    num_pins, 
-                    inv_gamma.data<scalar_t>(), 
-                    exp_xy.data<scalar_t>(), exp_nxy.data<scalar_t>(), 
+                    pin2net_map.data<int>(),
+                    flat_netpin.data<int>(),
+                    netpin_start.data<int>(),
+                    net_mask.data<unsigned char>(),
+                    num_nets,
+                    num_pins,
+                    inv_gamma.data<scalar_t>(),
+                    exp_xy.data<scalar_t>(), exp_nxy.data<scalar_t>(),
                     exp_xy_sum.data<scalar_t>(), exp_nxy_sum.data<scalar_t>(),
                     xyexp_xy_sum.data<scalar_t>(), xyexp_nxy_sum.data<scalar_t>(),
-                    nullptr, nullptr, 
-                    nullptr, 
-                    grad_pos.data<scalar_t>(), 
+                    nullptr, nullptr,
+                    nullptr,
+                    grad_pos.data<scalar_t>(),
                     grad_out.data<scalar_t>(), grad_out.data<scalar_t>()+num_pins
                     );
             if (net_weights.numel())
             {
                 integrateNetWeightsCudaLauncher(
-                        pin2net_map.data<int>(), 
-                        net_mask.data<unsigned char>(), 
-                        net_weights.data<scalar_t>(), 
+                        pin2net_map.data<int>(),
+                        net_mask.data<unsigned char>(),
+                        net_weights.data<scalar_t>(),
                         grad_out.data<scalar_t>(), grad_out.data<scalar_t>()+num_pins,
-                        num_pins 
+                        num_pins
                     );
             }
             });
-    return grad_out; 
+    return grad_out;
 }
 
 DREAMPLACE_END_NAMESPACE

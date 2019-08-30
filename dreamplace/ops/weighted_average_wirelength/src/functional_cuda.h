@@ -49,7 +49,7 @@ __global__ void computeMin(
 
 // V has to be int, or long long int
 template <typename T, typename V>
-__global__ void computeMaxMin(
+__global__ void computeMaxMinPinByPin(
     const T *x, const T *y,
     const int *pin2net_map,
     const unsigned char *net_mask,
@@ -76,7 +76,7 @@ __global__ void computeMaxMin(
 
 // V has to be int, or long long int
 template <typename T, typename V>
-__global__ void computeMaxMinInterleave(
+__global__ void computeMaxMinInterleavePinByPin(
     const T *x, const T *y,
     const int *pin2net_map,
     const unsigned char *net_mask,
@@ -97,6 +97,75 @@ __global__ void computeMaxMinInterleave(
             atomicMax(&x_max[net_id], (V)(x[pin_id]));
             atomicMin(&x_min[net_id], (V)(x[pin_id]));
         }
+    }
+}
+
+// V has to be int, or long long int
+template <typename T, typename V>
+__global__ void computeMaxMinNetByNet(
+    const T *x, const T *y,
+    const int *flat_netpin,
+    const int *netpin_start,
+    const unsigned char *net_mask,
+    int num_nets,
+    V *x_max_ptr,
+    V *x_min_ptr)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_nets && net_mask[i])
+    {
+        const int x_index = i;
+        const int y_index = i + num_nets;
+        T x_max = -FLT_MAX;
+        T x_min = FLT_MAX;
+        T y_max = -FLT_MAX;
+        T y_min = FLT_MAX;
+
+        for (int j = netpin_start[i]; j < netpin_start[i + 1]; ++j)
+        {
+            T xx = x[flat_netpin[j]];
+            x_max = max((V)xx, x_max);
+            x_min = min((V)xx, x_min);
+
+            T yy = y[flat_netpin[j]];
+            y_max = max((V)yy, y_max);
+            y_min = min((V)yy, y_min);
+
+        }
+        x_max_ptr[x_index] = x_max;
+        x_min_ptr[x_index] = x_min;
+        y_max_ptr[y_index] = y_max;
+        y_min_ptr[y_index] = y_min;
+
+    }
+}
+
+// V has to be int, or long long int
+template <typename T, typename V>
+__global__ void computeMaxMinInterleaveNetByNet(
+    const T *x, const T *y,
+    const int *flat_netpin,
+    const int *netpin_start,
+    const unsigned char *net_mask,
+    int num_nets,
+    V *pos_max_ptr,
+    V *pos_min_ptr)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if(i < num_nets && net_mask[i])
+    {
+        T* pos_ptr = threadIdx.y == 0 ? x : y;
+        T pos_max = -FLT_MAX;
+        T pos_min = FLT_MAX;
+
+        for (int j = netpin_start[i]; j < netpin_start[i + 1]; ++j)
+        {
+            T pos = pos_ptr[flat_netpin[j]];
+            pos_max = max((V)pos, pos_max);
+            pos_min = min((V)pos, pos_min);
+        }
+        pos_max_ptr[i] = pos_max;
+        pos_min_ptr[i] = pos_min;
     }
 }
 
@@ -186,7 +255,7 @@ __global__ void computeXExpSum(
 }
 
 template <typename T, typename V>
-__global__ void computeABCKernels(
+__global__ void computeABCKernelsPinByPin(
     const T *x, const T *y,
     const int *pin2net_map,
     const unsigned char *net_mask,
@@ -226,7 +295,7 @@ __global__ void computeABCKernels(
 }
 
 template <typename T, typename V>
-__global__ void computeABCKernelsInterleave(
+__global__ void computeABCKernelsInterleavePinByPin(
     const T *x,
     const int *pin2net_map,
     const unsigned char *net_mask,
@@ -254,6 +323,78 @@ __global__ void computeABCKernelsInterleave(
             atomicAdd(&exp_nx_sum[net_id], exp_nx[pin_id]);
             atomicAdd(&xexp_x_sum[net_id], x[pin_id] * exp_x[pin_id]);
             atomicAdd(&xexp_nx_sum[net_id], x[pin_id] * exp_nx[pin_id]);
+        }
+    }
+}
+
+template <typename T, typename V>
+__global__ void computeABCKernelsNetByNet(
+    const T *x,
+    const int *flat_netpin,
+    const int *netpin_start,
+    const unsigned char *net_mask,
+    int num_nets,
+    int num_pins,
+    const T *inv_gamma,
+    V *pos_max, V *pos_min,
+    T *exp_x, T *exp_nx,
+    T *exp_x_sum, T *exp_nx_sum,
+    T *xexp_x_sum, T *xexp_nx_sum)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_nets && net_mask[i])
+    {
+        int x_index = i;
+        int y_index = i + num_nets;
+        for (int j = netpin_start[i]; j < netpin_start[i + 1]; ++j)
+        {
+            int pin_id = flat_netpin[j];
+            exp_xy[pin_id] = exp((x[pin_id] - pos_max[x_index]) * (*inv_gamma));
+            exp_nxy[pin_id] = exp((pos_min[x_index] - x[pin_id]) * (*inv_gamma));
+            exp_xy_sum[x_index] += exp_xy[pin_id];
+            exp_nxy_sum[x_index] += exp_nxy[pin_id];
+            xyexp_xy_sum[x_index] += x[pin_id] * exp_xy[pin_id];
+            xyexp_nxy_sum[x_index] += x[pin_id] * exp_nxy[pin_id];
+
+            pin_id += num_pins;
+            exp_xy[pin_id] = exp((x[pin_id] - pos_max[y_index]) * (*inv_gamma));
+            exp_nxy[pin_id] = exp((pos_min[y_index] - x[pin_id]) * (*inv_gamma));
+            exp_xy_sum[y_index] += exp_xy[pin_id];
+            exp_nxy_sum[y_index] += exp_nxy[pin_id];
+            xyexp_xy_sum[y_index] += x[pin_id] * exp_xy[pin_id];
+            xyexp_nxy_sum[y_index] += x[pin_id] * exp_nxy[pin_id];
+        }
+    }
+}
+
+template <typename T, typename V>
+__global__ void computeABCKernelsInterleaveNetByNet(
+    const T *x,
+    const int *flat_netpin,
+    const int *netpin_start,
+    const unsigned char *net_mask,
+    int num_nets,
+    int num_pins,
+    const T *inv_gamma,
+    V *x_max, V *x_min,
+    T *exp_x, T *exp_nx,
+    T *exp_x_sum, T *exp_nx_sum,
+    T *xexp_x_sum, T *xexp_nx_sum)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_nets && net_mask[i])
+    {
+        int net_id = i + threadIdx.y * num_nets;
+        for (int j = netpin_start[i]; j < netpin_start[i + 1]; ++j)
+        {
+            int pin_id = flat_netpin[j] + threadIdx.y * num_pins;
+
+            exp_xy[pin_id] = exp((x[pin_id] - pos_max[net_id]) * (*inv_gamma));
+            exp_nxy[pin_id] = exp((pos_min[net_id] - x[pin_id]) * (*inv_gamma));
+            exp_xy_sum[net_id] += exp_xy[pin_id];
+            exp_nxy_sum[net_id] += exp_nxy[pin_id];
+            xyexp_xy_sum[net_id] += x[pin_id] * exp_xy[pin_id];
+            xyexp_nxy_sum[net_id] += x[pin_id] * exp_nxy[pin_id];
         }
     }
 }
@@ -396,14 +537,14 @@ __global__ void computeWeightedAverageWirelengthGrad(
         int net_id = pin2net_map[i];
         if (net_mask[net_id])
         {
-            grad_x_tensor[i] = (*grad_tensor) * 
-                               (((1 + (*inv_gamma) * x[i]) * exp_x_sum[net_id] - (*inv_gamma) * xexp_x_sum[net_id]) / (exp_x_sum[net_id] * exp_x_sum[net_id]) * exp_x[i] 
+            grad_x_tensor[i] = (*grad_tensor) *
+                               (((1 + (*inv_gamma) * x[i]) * exp_x_sum[net_id] - (*inv_gamma) * xexp_x_sum[net_id]) / (exp_x_sum[net_id] * exp_x_sum[net_id]) * exp_x[i]
                               - ((1 - (*inv_gamma) * x[i]) * exp_nx_sum[net_id] + (*inv_gamma) * xexp_nx_sum[net_id]) / (exp_nx_sum[net_id] * exp_nx_sum[net_id]) * exp_nx[i]);
 
             net_id += num_nets;
             int pin_id = i + num_pins;
-            grad_y_tensor[i] = (*grad_tensor) * 
-                               (((1 + (*inv_gamma) * y[i]) * exp_x_sum[net_id] - (*inv_gamma) * xexp_x_sum[net_id]) / (exp_x_sum[net_id] * exp_x_sum[net_id]) * exp_x[pin_id] 
+            grad_y_tensor[i] = (*grad_tensor) *
+                               (((1 + (*inv_gamma) * y[i]) * exp_x_sum[net_id] - (*inv_gamma) * xexp_x_sum[net_id]) / (exp_x_sum[net_id] * exp_x_sum[net_id]) * exp_x[pin_id]
                               - ((1 - (*inv_gamma) * y[i]) * exp_nx_sum[net_id] + (*inv_gamma) * xexp_nx_sum[net_id]) / (exp_nx_sum[net_id] * exp_nx_sum[net_id]) * exp_nx[pin_id]);
         }
     }
@@ -432,8 +573,8 @@ __global__ void computeWeightedAverageWirelengthGradInterleave(
             net_id += threadIdx.y * num_nets;
             int pin_id = i + threadIdx.y * num_pins;
 
-            grad_x_tensor[pin_id] = (*grad_tensor) * 
-                                    (((1 + (*inv_gamma) * x[pin_id]) * exp_x_sum[net_id] - (*inv_gamma) * xexp_x_sum[net_id]) / (exp_x_sum[net_id] * exp_x_sum[net_id]) * exp_x[pin_id] 
+            grad_x_tensor[pin_id] = (*grad_tensor) *
+                                    (((1 + (*inv_gamma) * x[pin_id]) * exp_x_sum[net_id] - (*inv_gamma) * xexp_x_sum[net_id]) / (exp_x_sum[net_id] * exp_x_sum[net_id]) * exp_x[pin_id]
                                    - ((1 - (*inv_gamma) * x[pin_id]) * exp_nx_sum[net_id] + (*inv_gamma) * xexp_nx_sum[net_id]) / (exp_nx_sum[net_id] * exp_nx_sum[net_id]) * exp_nx[pin_id]);
         }
     }

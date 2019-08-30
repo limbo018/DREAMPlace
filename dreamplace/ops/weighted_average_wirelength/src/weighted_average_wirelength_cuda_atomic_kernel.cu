@@ -10,8 +10,10 @@ DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T, typename V>
 int computeWeightedAverageWirelengthCudaAtomicLauncher(
-    const T *pos, // x then y 
+    const T *pos, // x then y
     const int *pin2net_map,
+    const int *flat_netpin,
+    const int *netpin_start,
     const unsigned char *net_mask,
     int num_nets,
     int num_pins,
@@ -27,10 +29,11 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
 {
     int thread_count = 64;
     int block_count_pins = (num_pins - 1 + thread_count) / thread_count;
+    int block_count_nets = (num_nets - 1 + thread_count) / thread_count;
     dim3 block_size(thread_count, 2, 1);
 
-    const T* x = pos; 
-    const T* y = pos + num_pins; 
+    const T* x = pos;
+    const T* y = pos + num_pins;
 
     if (grad_tensor)
     {
@@ -50,9 +53,9 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
     }
     else
     {
-        // compute max and min in one kernel
-        // computeMaxMinInterleave<<<block_count_pins, block_size>>>(        
-        computeMaxMin<<<block_count_pins, thread_count>>>(
+        // compute max and min in one kernel (pin by pin)
+        // computeMaxMinInterleavePinByPin<<<block_count_pins, block_size>>>(
+        computeMaxMinPinByPin<<<block_count_pins, thread_count>>>(
             x, y,
             pin2net_map,
             net_mask,
@@ -61,11 +64,23 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
             xy_max,
             xy_min);
 
-        // compute plus-minus exp, sum of plus-minus exp, sum of x*exp in one CUDA kernels
+        // compute max and min in one kernel (net by net)
+        // computeMaxMinInterleaveNetByNet<<<block_count_nets, block_size>>>(
+        // computeMaxMinNetByNet<<<block_count_nets, thread_count>>>(
+        //     x, y,
+        //     flat_netpin,
+        //     netpin_start,
+        //     net_mask,
+        //     num_nets,
+        //     xy_max,
+        //     xy_min);
+
+
+        // compute plus-minus exp, sum of plus-minus exp, sum of x*exp in one CUDA kernels (pin by pin)
         // corresponding to the plus and minus a b c kernels in the DREAMPlace paper
-        computeABCKernelsInterleave<<<block_count_pins, block_size>>>(
-        // computeABCKernels<<<block_count_pins, thread_count>>>(
-            pos, 
+        computeABCKernelsInterleavePinByPin<<<block_count_pins, block_size>>>(
+        // computeABCKernelsPinByPin<<<block_count_pins, thread_count>>>(
+            pos,
             pin2net_map,
             net_mask,
             num_nets,
@@ -76,8 +91,27 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
             exp_xy_sum, exp_nxy_sum,
             xyexp_xy_sum, xyexp_nxy_sum);
 
+
+        // compute plus-minus exp, sum of plus-minus exp, sum of x*exp in one CUDA kernels (net by net)
+        // corresponding to the plus and minus a b c kernels in the DREAMPlace paper
+        // computeABCKernelsInterleaveNetByNet<<<block_count_nets, block_size>>>(
+        // computeABCKernelsNetByNet<<<block_count_nets, thread_count>>>(
+            // pos,
+            // flat_netpin,
+            // netpin_start,
+            // net_mask,
+            // num_nets,
+            // num_pins,
+            // inv_gamma,
+            // xy_max, xy_min,
+            // exp_xy, exp_nxy,
+            // exp_xy_sum, exp_nxy_sum,
+            // xyexp_xy_sum, xyexp_nxy_sum);
+
+
+
         // compute log sum exp
-        int block_count_nets = (num_nets - 1 + thread_count) / thread_count;
+
         computeXExpSumByExpSumXY<<<block_count_nets, thread_count>>>(
             xyexp_xy_sum, xyexp_nxy_sum,
             exp_xy_sum, exp_nxy_sum,
@@ -93,6 +127,7 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
 
     return 0;
 }
+
 
 #define REGISTER_KERNEL_LAUNCHER(T, V)                             \
     int instantiateComputeWeightedAverageWirelengthAtomicLauncher( \
