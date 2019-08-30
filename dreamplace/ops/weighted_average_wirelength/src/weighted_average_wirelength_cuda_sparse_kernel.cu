@@ -126,7 +126,7 @@ int computeWeightedAverageWirelengthCudaSparseLauncher(
 
     if (grad_tensor)
     {
-        computeWeightedAverageWirelengthGrad<<<block_count_pins, thread_count>>>(
+        computeWeightedAverageWirelengthGradPinByPin<<<block_count_pins, thread_count>>>(
                 x, y,
                 exp_xy, exp_nxy,
                 exp_xy_sum, exp_nxy_sum,

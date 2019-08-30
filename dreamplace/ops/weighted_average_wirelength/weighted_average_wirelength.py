@@ -61,15 +61,17 @@ class WeightedAverageWirelengthFunction(Function):
     def backward(ctx, grad_pos):
         tt = time.time()
         if grad_pos.is_cuda:
-            output = weighted_average_wirelength_cuda_atomic.backward(
-                    grad_pos,
-                    ctx.pos,
-                    ctx.exp_xy.view([-1]), ctx.exp_nxy.view([-1]),
-                    ctx.exp_xy_sum.view([-1]), ctx.exp_nxy_sum.view([-1]),
-                    ctx.xyexp_xy_sum.view([-1]), ctx.xyexp_nxy_sum.view([-1]),
-                    ctx.pin2net_map,
-                    ctx.net_weights,
-                    ctx.net_mask,
+            output = weighted_average_wirelength_cuda.backward(
+                    grad_pos, 
+                    ctx.pos, 
+                    ctx.exp_xy.view([-1]), ctx.exp_nxy.view([-1]), 
+                    ctx.exp_xy_sum.view([-1]), ctx.exp_nxy_sum.view([-1]), 
+                    ctx.xyexp_xy_sum.view([-1]), ctx.xyexp_nxy_sum.view([-1]),                      
+                    ctx.flat_netpin, 
+                    ctx.netpin_start, 
+                    ctx.pin2net_map, 
+                    ctx.net_weights, 
+                    ctx.net_mask, 
                     ctx.inv_gamma
                     )
         else:
@@ -185,10 +187,10 @@ class WeightedAverageWirelengthSparseFunction(Function):
         ctx.inv_gamma = inv_gamma
         ctx.exp_xy = output[1]
         ctx.exp_nxy = output[2]
-        ctx.exp_xy_sum = output[3];
-        ctx.exp_nxy_sum = output[4];
-        ctx.xyexp_xy_sum = output[5];
-        ctx.xyexp_nxy_sum = output[6];
+        ctx.exp_xy_sum = output[3]
+        ctx.exp_nxy_sum = output[4]
+        ctx.xyexp_xy_sum = output[5]
+        ctx.xyexp_nxy_sum = output[6]
         ctx.pos = pos
         #if torch.isnan(ctx.exp_xy).any() or torch.isnan(ctx.exp_nxy).any() or torch.isnan(ctx.exp_xy_sum).any() or torch.isnan(ctx.exp_nxy_sum).any() or torch.isnan(output[0]).any():
         #    pdb.set_trace()

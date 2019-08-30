@@ -37,8 +37,8 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
 
     if (grad_tensor)
     {
-        // computeWeightedAverageWirelengthGradInterleave<<<block_count_pins, block_size>>>(
-        computeWeightedAverageWirelengthGrad<<<block_count_pins, thread_count>>>(
+        // computeWeightedAverageWirelengthGradInterleavePinByPin<<<block_count_pins, block_size>>>(
+        computeWeightedAverageWirelengthGradPinByPin<<<block_count_pins, thread_count>>>(
             x, y,
             exp_xy, exp_nxy,
             exp_xy_sum, exp_nxy_sum,
@@ -91,7 +91,6 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
             exp_xy_sum, exp_nxy_sum,
             xyexp_xy_sum, xyexp_nxy_sum);
 
-
         // compute plus-minus exp, sum of plus-minus exp, sum of x*exp in one CUDA kernels (net by net)
         // corresponding to the plus and minus a b c kernels in the DREAMPlace paper
         // computeABCKernelsInterleaveNetByNet<<<block_count_nets, block_size>>>(
@@ -108,10 +107,7 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
             // exp_xy_sum, exp_nxy_sum,
             // xyexp_xy_sum, xyexp_nxy_sum);
 
-
-
-        // compute log sum exp
-
+        // compute partial wirelength
         computeXExpSumByExpSumXY<<<block_count_nets, thread_count>>>(
             xyexp_xy_sum, xyexp_nxy_sum,
             exp_xy_sum, exp_nxy_sum,

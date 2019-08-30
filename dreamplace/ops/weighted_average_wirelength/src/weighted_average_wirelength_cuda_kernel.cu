@@ -8,7 +8,7 @@
 
 DREAMPLACE_BEGIN_NAMESPACE
 
-template <typename T>
+template <typename T, typename V>
 int computeWeightedAverageWirelengthCudaLauncher(
     const T *x, const T *y,
     const int *pin2net_map,
@@ -21,22 +21,26 @@ int computeWeightedAverageWirelengthCudaLauncher(
     T *exp_xy, T *exp_nxy,
     T *exp_xy_sum, T *exp_nxy_sum,
     T *xyexp_xy_sum, T *xyexp_nxy_sum,
+    V *xy_max, V *xy_min,
     T *partial_wl,
     const T *grad_tensor,
     T *grad_x_tensor, T *grad_y_tensor)
 {
+    int thread_count = 64;
+    int block_count_pins = (num_pins - 1 + thread_count) / thread_count;
+    int block_count_nets = (num_nets - 1 + thread_count) / thread_count;
+    dim3 block_size(thread_count, 2, 1);
+
     if (grad_tensor)
     {
-        int thread_count = 64;
-        int block_count_pins = (num_pins - 1 + thread_count) / thread_count;
-        dim3 block_size(thread_count, 2, 1);
-        // computeWeightedAverageWirelengthGradInterleave<<<block_count_pins, block_size>>>(
-        computeWeightedAverageWirelengthGrad<<<block_count_pins, thread_count>>>(
+        // computeWeightedAverageWirelengthGradInterleaveNetByNet<<<block_count_pins, block_size>>>(
+        computeWeightedAverageWirelengthGradNetByNet<<<block_count_pins, thread_count>>>(
             x, y,
             exp_xy, exp_nxy,
             exp_xy_sum, exp_nxy_sum,
             xyexp_xy_sum, xyexp_nxy_sum,
-            pin2net_map,
+            flat_netpin,
+            netpin_start,
             net_mask,
             num_nets,
             num_pins,
@@ -45,27 +49,48 @@ int computeWeightedAverageWirelengthCudaLauncher(
             grad_x_tensor, grad_y_tensor);
     }
     else
-    {
-        int thread_count = 64;
-        int block_count_nets = (num_nets + thread_count - 1) / thread_count;
-        computeWeightedAverageWirelength<<<block_count_nets, thread_count>>>(
+    {   
+        // compute max and min in one kernel (net by net)
+        // computeMaxMinInterleaveNetByNet<<<block_count_nets, block_size>>>(
+        computeMaxMinNetByNet<<<block_count_nets, thread_count>>>(
             x, y,
+            flat_netpin,
+            netpin_start,
+            net_mask,
+            num_nets,
+            xy_max,
+            xy_min);
+        
+        // compute plus-minus exp, sum of plus-minus exp, sum of x*exp in one CUDA kernels (net by net)
+        // corresponding to the plus and minus a b c kernels in the DREAMPlace paper
+        computeABCKernelsInterleaveNetByNet<<<block_count_nets, block_size>>>(
+        // computeABCKernelsNetByNet<<<block_count_nets, thread_count>>>(
+            x,
             flat_netpin,
             netpin_start,
             net_mask,
             num_nets,
             num_pins,
             inv_gamma,
+            xy_max, xy_min,
             exp_xy, exp_nxy,
             exp_xy_sum, exp_nxy_sum,
+            xyexp_xy_sum, xyexp_nxy_sum);
+        
+        // compute partial wirelength
+        computeXExpSumByExpSumXY<<<block_count_nets, thread_count>>>(
             xyexp_xy_sum, xyexp_nxy_sum,
+            exp_xy_sum, exp_nxy_sum,
+            pin2net_map,
+            net_mask,
+            num_nets,
             partial_wl);
     }
 
     return 0;
 }
 
-#define REGISTER_KERNEL_LAUNCHER(T)                          \
+#define REGISTER_KERNEL_LAUNCHER(T, V)                       \
     int instantiateComputeWeightedAverageWirelengthLauncher( \
         const T *x, const T *y,                              \
         const int *pin2net_map,                              \
@@ -78,6 +103,7 @@ int computeWeightedAverageWirelengthCudaLauncher(
         T *exp_xy, T *exp_nxy,                               \
         T *exp_xy_sum, T *exp_nxy_sum,                       \
         T *xyexp_xy_sum, T *xyexp_nxy_sum,                   \
+        V *xy_max, V *xy_min,                                \
         T *partial_wl,                                       \
         const T *grad_tensor,                                \
         T *grad_x_tensor, T *grad_y_tensor)                  \
@@ -94,11 +120,12 @@ int computeWeightedAverageWirelengthCudaLauncher(
             exp_xy, exp_nxy,                                 \
             exp_xy_sum, exp_nxy_sum,                         \
             xyexp_xy_sum, xyexp_nxy_sum,                     \
+            xy_max, xy_min,                                  \
             partial_wl,                                      \
             grad_tensor,                                     \
             grad_x_tensor, grad_y_tensor);                   \
     }
-REGISTER_KERNEL_LAUNCHER(float);
-REGISTER_KERNEL_LAUNCHER(double);
+REGISTER_KERNEL_LAUNCHER(float, int);
+REGISTER_KERNEL_LAUNCHER(double, int);
 
 DREAMPLACE_END_NAMESPACE
