@@ -133,6 +133,8 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
     int instantiateComputeWeightedAverageWirelengthAtomicLauncher( \
         const T *pos,                                              \
         const int *pin2net_map,                                    \
+        const int *flat_netpin,                                    \
+        const int *netpin_start,                                   \
         const unsigned char *net_mask,                             \
         int num_nets,                                              \
         int num_pins,                                              \
@@ -148,6 +150,8 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
         return computeWeightedAverageWirelengthCudaAtomicLauncher( \
             pos,                                                   \
             pin2net_map,                                           \
+            flat_netpin,                                           \
+            netpin_start,                                          \
             net_mask,                                              \
             num_nets,                                              \
             num_pins,                                              \
