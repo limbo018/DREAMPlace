@@ -235,7 +235,7 @@ class ElectricPotentialFunction(Function):
 
     @staticmethod
     def backward(ctx, grad_pos):
-        #tt = time.time()
+        tt = time.time()
         if grad_pos.is_cuda:
             output = -electric_potential_cuda.electric_force(
                 grad_pos,
@@ -288,9 +288,9 @@ class ElectricPotentialFunction(Function):
         #pgrad = np.concatenate([np.array(pgradx), np.array(pgrady)])
 
         #output = torch.empty_like(ctx.pos).uniform_(0.0, 0.1)
-        #if grad_pos.is_cuda:
-        #    torch.cuda.synchronize()
-        #print("\t\tdensity backward %.3f ms" % ((time.time()-tt)*1000))
+        if grad_pos.is_cuda:
+            torch.cuda.synchronize()
+        print("\t\tdensity backward %.3f ms" % ((time.time()-tt)*1000))
         return output, \
             None, None, None, None, \
             None, None, None, None, \
