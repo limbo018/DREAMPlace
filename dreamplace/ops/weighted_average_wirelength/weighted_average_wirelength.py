@@ -59,7 +59,7 @@ class WeightedAverageWirelengthFunction(Function):
 
     @staticmethod
     def backward(ctx, grad_pos):
-        #tt = time.time()
+        tt = time.time()
         if grad_pos.is_cuda:
             output = weighted_average_wirelength_cuda_atomic.backward(
                     grad_pos,
@@ -89,7 +89,9 @@ class WeightedAverageWirelengthFunction(Function):
                     )
         output[:output.numel()//2].masked_fill_(ctx.pin_mask, 0.0)
         output[output.numel()//2:].masked_fill_(ctx.pin_mask, 0.0)
-        #print("\t\twirelength backward takes %.3f ms" % ((time.time()-tt)*1000))
+        if grad_pos.is_cuda:
+            torch.cuda.synchronize()
+        print("\t\twirelength backward takes %.3f ms" % ((time.time()-tt)*1000))
         return output, None, None, None, None, None, None, None, None
 
 class WeightedAverageWirelengthAtomicFunction(Function):
@@ -133,7 +135,7 @@ class WeightedAverageWirelengthAtomicFunction(Function):
 
     @staticmethod
     def backward(ctx, grad_pos):
-        #tt = time.time()
+        tt = time.time()
         if grad_pos.is_cuda:
             output = weighted_average_wirelength_cuda_atomic.backward(
                     grad_pos,
@@ -152,10 +154,9 @@ class WeightedAverageWirelengthAtomicFunction(Function):
             assert 0, "CPU version NOT IMPLEMENTED"
         output[:int(output.numel()//2)].masked_fill_(ctx.pin_mask, 0.0)
         output[int(output.numel()//2):].masked_fill_(ctx.pin_mask, 0.0)
-        #if torch.isnan(output).any():
-        #    pdb.set_trace()
-        #torch.cuda.synchronize()
-        #print("\t\twirelength backward kernel %.3f ms" % ((time.time()-tt)*1000))
+        if grad_pos.is_cuda:
+            torch.cuda.synchronize()
+        print("\t\twirelength backward kernel %.3f ms" % ((time.time()-tt)*1000))
         return output, None, None, None, None, None, None, None
 
 class WeightedAverageWirelengthSparseFunction(Function):

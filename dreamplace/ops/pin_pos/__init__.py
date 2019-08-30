@@ -1,5 +1,4 @@
 ##
 # @file   __init__.py
-# @author Zixuan Jiang, Jiaqi Gu
+# @author Yibo Lin
 # @date   Aug 2019
-#
