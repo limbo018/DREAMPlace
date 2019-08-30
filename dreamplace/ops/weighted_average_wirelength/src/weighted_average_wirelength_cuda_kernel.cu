@@ -63,8 +63,9 @@ int computeWeightedAverageWirelengthCudaLauncher(
         
         // compute plus-minus exp, sum of plus-minus exp, sum of x*exp in one CUDA kernels (net by net)
         // corresponding to the plus and minus a b c kernels in the DREAMPlace paper
-        computeABCKernelsInterleaveNetByNet<<<block_count_nets, block_size>>>(
-        // computeABCKernelsNetByNet<<<block_count_nets, thread_count>>>(
+        // compute partial wirelength at the same time
+        computeABCKernelsInterleaveAndWLNetByNet<<<block_count_nets, block_size>>>(
+        // computeABCKernelsAndWLNetByNet<<<block_count_nets, thread_count>>>(
             x,
             flat_netpin,
             netpin_start,
@@ -75,15 +76,7 @@ int computeWeightedAverageWirelengthCudaLauncher(
             xy_max, xy_min,
             exp_xy, exp_nxy,
             exp_xy_sum, exp_nxy_sum,
-            xyexp_xy_sum, xyexp_nxy_sum);
-        
-        // compute partial wirelength
-        computeXExpSumByExpSumXY<<<block_count_nets, thread_count>>>(
             xyexp_xy_sum, xyexp_nxy_sum,
-            exp_xy_sum, exp_nxy_sum,
-            pin2net_map,
-            net_mask,
-            num_nets,
             partial_wl);
     }
 

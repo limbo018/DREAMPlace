@@ -400,6 +400,83 @@ __global__ void computeABCKernelsInterleaveNetByNet(
     }
 }
 
+template <typename T, typename V>
+__global__ void computeABCKernelsAndWLNetByNet(
+    const T *x,
+    const int *flat_netpin,
+    const int *netpin_start,
+    const unsigned char *net_mask,
+    int num_nets,
+    int num_pins,
+    const T *inv_gamma,
+    V *x_max, V *x_min,
+    T *exp_xy, T *exp_nxy,
+    T *exp_xy_sum, T *exp_nxy_sum,
+    T *xyexp_xy_sum, T *xyexp_nxy_sum,
+    T * partial_wl)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_nets && net_mask[i])
+    {
+        int x_index = i;
+        int y_index = i + num_nets;
+        for (int j = netpin_start[i]; j < netpin_start[i + 1]; ++j)
+        {
+            int pin_id = flat_netpin[j];
+            exp_xy[pin_id] = exp((x[pin_id] - x_max[x_index]) * (*inv_gamma));
+            exp_nxy[pin_id] = exp((x_min[x_index] - x[pin_id]) * (*inv_gamma));
+            exp_xy_sum[x_index] += exp_xy[pin_id];
+            exp_nxy_sum[x_index] += exp_nxy[pin_id];
+            xyexp_xy_sum[x_index] += x[pin_id] * exp_xy[pin_id];
+            xyexp_nxy_sum[x_index] += x[pin_id] * exp_nxy[pin_id];
+
+            pin_id += num_pins;
+            exp_xy[pin_id] = exp((x[pin_id] - x_max[y_index]) * (*inv_gamma));
+            exp_nxy[pin_id] = exp((x_min[y_index] - x[pin_id]) * (*inv_gamma));
+            exp_xy_sum[y_index] += exp_xy[pin_id];
+            exp_nxy_sum[y_index] += exp_nxy[pin_id];
+            xyexp_xy_sum[y_index] += x[pin_id] * exp_xy[pin_id];
+            xyexp_nxy_sum[y_index] += x[pin_id] * exp_nxy[pin_id];
+        }
+        partial_wl[i] = xyexp_xy_sum[x_index] / exp_xy_sum[x_index] - xyexp_nxy_sum[x_index] / exp_nxy_sum[x_index] +
+                        xyexp_xy_sum[y_index] / exp_xy_sum[y_index] - xyexp_nxy_sum[y_index] / exp_nxy_sum[y_index];
+    }
+}
+
+template <typename T, typename V>
+__global__ void computeABCKernelsInterleaveAndWLNetByNet(
+    const T *x,
+    const int *flat_netpin,
+    const int *netpin_start,
+    const unsigned char *net_mask,
+    int num_nets,
+    int num_pins,
+    const T *inv_gamma,
+    V *x_max, V *x_min,
+    T *exp_xy, T *exp_nxy,
+    T *exp_xy_sum, T *exp_nxy_sum,
+    T *xyexp_xy_sum, T *xyexp_nxy_sum,
+    T *partial_wl)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_nets && net_mask[i])
+    {
+        int net_id = i + threadIdx.y * num_nets;
+        for (int j = netpin_start[i]; j < netpin_start[i + 1]; ++j)
+        {
+            int pin_id = flat_netpin[j] + threadIdx.y * num_pins;
+
+            exp_xy[pin_id] = exp((x[pin_id] - x_max[net_id]) * (*inv_gamma));
+            exp_nxy[pin_id] = exp((x_min[net_id] - x[pin_id]) * (*inv_gamma));
+            exp_xy_sum[net_id] += exp_xy[pin_id];
+            exp_nxy_sum[net_id] += exp_nxy[pin_id];
+            xyexp_xy_sum[net_id] += x[pin_id] * exp_xy[pin_id];
+            xyexp_nxy_sum[net_id] += x[pin_id] * exp_nxy[pin_id];
+        }
+        atomicAdd(&partial_wl[i], xyexp_xy_sum[net_id] / exp_xy_sum[net_id] - xyexp_nxy_sum[net_id] / exp_nxy_sum[net_id]);
+    }
+}
+
 template <typename T>
 __global__ void computeXExpSumByExpSum(
     const T *xexp_x_sum,

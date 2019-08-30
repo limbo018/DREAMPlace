@@ -53,6 +53,7 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
     }
     else
     {
+        #if 1
         // compute max and min in one kernel (pin by pin)
         // computeMaxMinInterleavePinByPin<<<block_count_pins, block_size>>>(
         computeMaxMinPinByPin<<<block_count_pins, thread_count>>>(
@@ -63,19 +64,20 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
             num_nets,
             xy_max,
             xy_min);
-
+        #else
         // compute max and min in one kernel (net by net)
         // computeMaxMinInterleaveNetByNet<<<block_count_nets, block_size>>>(
-        // computeMaxMinNetByNet<<<block_count_nets, thread_count>>>(
-        //     x, y,
-        //     flat_netpin,
-        //     netpin_start,
-        //     net_mask,
-        //     num_nets,
-        //     xy_max,
-        //     xy_min);
+        computeMaxMinNetByNet<<<block_count_nets, thread_count>>>(
+            x, y,
+            flat_netpin,
+            netpin_start,
+            net_mask,
+            num_nets,
+            xy_max,
+            xy_min);
+        #endif
 
-
+        #if 1
         // compute plus-minus exp, sum of plus-minus exp, sum of x*exp in one CUDA kernels (pin by pin)
         // corresponding to the plus and minus a b c kernels in the DREAMPlace paper
         computeABCKernelsInterleavePinByPin<<<block_count_pins, block_size>>>(
@@ -89,24 +91,8 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
             xy_max, xy_min,
             exp_xy, exp_nxy,
             exp_xy_sum, exp_nxy_sum,
-            xyexp_xy_sum, xyexp_nxy_sum);
-
-        // compute plus-minus exp, sum of plus-minus exp, sum of x*exp in one CUDA kernels (net by net)
-        // corresponding to the plus and minus a b c kernels in the DREAMPlace paper
-        // computeABCKernelsInterleaveNetByNet<<<block_count_nets, block_size>>>(
-        // computeABCKernelsNetByNet<<<block_count_nets, thread_count>>>(
-            // pos,
-            // flat_netpin,
-            // netpin_start,
-            // net_mask,
-            // num_nets,
-            // num_pins,
-            // inv_gamma,
-            // xy_max, xy_min,
-            // exp_xy, exp_nxy,
-            // exp_xy_sum, exp_nxy_sum,
-            // xyexp_xy_sum, xyexp_nxy_sum);
-
+            xyexp_xy_sum, xyexp_nxy_sum);        
+        
         // compute partial wirelength
         computeXExpSumByExpSumXY<<<block_count_nets, thread_count>>>(
             xyexp_xy_sum, xyexp_nxy_sum,
@@ -115,7 +101,27 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
             net_mask,
             num_nets,
             partial_wl);
-
+        #else
+        // compute plus-minus exp, sum of plus-minus exp, sum of x*exp in one CUDA kernels (net by net)
+        // corresponding to the plus and minus a b c kernels in the DREAMPlace paper
+        // compute partial wirelength at the same time
+        // computeABCKernelsInterleaveAndWLNetByNet<<<block_count_nets, block_size>>>(
+        computeABCKernelsAndWLNetByNet<<<block_count_nets, thread_count>>>(
+            pos,
+            flat_netpin,
+            netpin_start,
+            net_mask,
+            num_nets,
+            num_pins,
+            inv_gamma,
+            xy_max, xy_min,
+            exp_xy, exp_nxy,
+            exp_xy_sum, exp_nxy_sum,
+            xyexp_xy_sum, xyexp_nxy_sum,
+            partial_wl);
+        
+        #endif
+        
         // Yibo: move out the summation to use ATen
         // significant speedup is observed
         //sumArray<<<1, 1>>>(partial_wl, num_nets, wl);
