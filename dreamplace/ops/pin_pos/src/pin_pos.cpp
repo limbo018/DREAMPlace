@@ -78,7 +78,7 @@ at::Tensor pin_pos_forward(
     CHECK_EVEN(pos);
     CHECK_CONTIGUOUS(pos);
 
-    auto out = torch::zeros(pin_offset_x.numel()*2, pos.options());
+    auto out = at::zeros(pin_offset_x.numel()*2, pos.options());
     int num_nodes = pos.numel()/2;
     int num_pins = pin_offset_x.numel();
 
@@ -118,7 +118,7 @@ at::Tensor pin_pos_backward(
     CHECK_EVEN(grad_out);
     CHECK_CONTIGUOUS(grad_out);
 
-    auto out = torch::zeros_like(pos);
+    auto out = at::zeros_like(pos);
     int num_nodes = pos.numel()/2;
     int num_pins = pin_offset_x.numel();
 
