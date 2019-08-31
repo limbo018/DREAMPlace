@@ -15,6 +15,7 @@ try:
     import dreamplace.ops.weighted_average_wirelength.weighted_average_wirelength_cuda as weighted_average_wirelength_cuda
     import dreamplace.ops.weighted_average_wirelength.weighted_average_wirelength_cuda_atomic as weighted_average_wirelength_cuda_atomic
     import dreamplace.ops.weighted_average_wirelength.weighted_average_wirelength_cuda_sparse as weighted_average_wirelength_cuda_sparse
+    import dreamplace.ops.weighted_average_wirelength.weighted_average_wirelength_cuda_reduce as weighted_average_wirelength_cuda_reduce
 except:
     pass 
 import pdb 
@@ -202,11 +203,61 @@ class WeightedAverageWirelengthSparseFunction(Function):
         #print("\t\twirelength backward kernel %.3f ms" % ((time.time()-tt)*1000))
         return output, None, None, None, None, None, None, None, None, None
 
+class WeightedAverageWirelengthReduceFunction(Function):
+    """
+    @brief compute weighted average wirelength
+    """
+    @staticmethod
+    def forward(ctx, pos, pin2net_map, net_weights, net_mask, pin_mask, gamma):
+        if pos.is_cuda:
+            output = weighted_average_wirelength_cuda_reduce.forward(pos.view(pos.numel()), pin2net_map, net_weights, net_mask, gamma)
+        else:
+            assert 0, "CPU version NOT IMPLEMENTED"
+        ctx.pin2net_map = pin2net_map
+        ctx.net_weights = net_weights
+        ctx.net_mask = net_mask
+        ctx.pin_mask = pin_mask
+        ctx.gamma = gamma
+        ctx.exp_xy = output[1]
+        ctx.exp_nxy = output[2]
+        ctx.exp_xy_sum = output[3]
+        ctx.exp_nxy_sum = output[4]
+        ctx.xyexp_xy_sum = output[5]
+        ctx.xyexp_nxy_sum = output[6]
+        ctx.pos = pos
+
+        torch.cuda.synchronize()
+
+        return output[0]
+    
+    @staticmethod
+    def backward(ctx, grad_pos):
+        if grad_pos.is_cuda:
+            output = weighted_average_wirelength_cuda_reduce.backward(
+                    grad_pos, 
+                    ctx.pos, 
+                    ctx.exp_xy.view([-1]), ctx.exp_nxy.view([-1]), 
+                    ctx.exp_xy_sum.view([-1]), ctx.exp_nxy_sum.view([-1]), 
+                    ctx.xyexp_xy_sum.view([-1]), ctx.xyexp_nxy_sum.view([-1]), 
+                    ctx.pin2net_map, 
+                    ctx.net_weights, 
+                    ctx.net_mask, 
+                    ctx.gamma
+                    )
+        else:
+            assert 0, "CPU version NOT IMPLEMENTED"
+        output[:output.numel()//2].masked_fill_(ctx.pin_mask, 0.0)
+        output[output.numel()//2:].masked_fill_(ctx.pin_mask, 0.0)
+
+        torch.cuda.synchronize()
+
+        return output, None, None, None, None, None
+
 class WeightedAverageWirelength(nn.Module):
     """ 
     @brief Compute weighted average wirelength. 
     CPU only supports net-by-net algorithm. 
-    GPU supports three algorithms: net-by-net, atomic, sparse. 
+    GPU supports four algorithms: net-by-net, atomic, sparse, reduce. 
     Different parameters are required for different algorithms. 
     """
     def __init__(self, flat_netpin=None, netpin_start=None, pin2net_map=None, net_weights=None, net_mask=None, pin_mask=None, gamma=None, algorithm='atomic', num_threads=8):
@@ -232,6 +283,8 @@ class WeightedAverageWirelength(nn.Module):
             assert pin2net_map is not None, "pin2net_map is required for algorithm atomic"
         elif algorithm == 'sparse':
             assert flat_netpin is not None and netpin_start is not None and pin2net_map is not None, "flat_netpin, netpin_start, pin2net_map are requried parameters for algorithm sparse"
+        elif algorithm == 'reduce':
+            assert pin2net_map is not None, "pin2net_map is required for algorithm reduce"
         self.flat_netpin = flat_netpin 
         self.netpin_start = netpin_start
         self.netpin_values = None 
@@ -270,6 +323,14 @@ class WeightedAverageWirelength(nn.Module):
                         self.flat_netpin, 
                         self.netpin_start, 
                         self.netpin_values, 
+                        self.pin2net_map, 
+                        self.net_weights, 
+                        self.net_mask,
+                        self.pin_mask, 
+                        self.gamma
+                        )
+            elif self.algorithm == 'reduce':
+                return WeightedAverageWirelengthReduceFunction.apply(pos, 
                         self.pin2net_map, 
                         self.net_weights, 
                         self.net_mask,
