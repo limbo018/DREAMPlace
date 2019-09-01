@@ -86,6 +86,20 @@ if "${CUDA_FOUND}".upper() == 'TRUE':
                     'cxx': ['-O2', torch_major_version, torch_minor_version], 
                     'nvcc': [cuda_flags]
                     }),
+            CUDAExtension('weighted_average_wirelength_cuda_merged', 
+                [
+                    add_prefix('weighted_average_wirelength_cuda_merged.cpp'),
+                    add_prefix('weighted_average_wirelength_cuda_merged_kernel.cu'), 
+                    add_prefix('integrate_net_weights_cuda_kernel.cu')
+                    ], 
+                include_dirs=include_dirs, 
+                library_dirs=lib_dirs,
+                libraries=libs,
+                extra_compile_args={
+                    'cxx': ['-O2', torch_major_version, torch_minor_version], 
+                    'nvcc': [cuda_flags]
+                    }
+                ),
         ])
 
 setup(

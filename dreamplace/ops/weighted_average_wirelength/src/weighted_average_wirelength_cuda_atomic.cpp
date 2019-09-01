@@ -115,7 +115,7 @@ std::vector<at::Tensor> weighted_average_wirelength_atomic_forward(
 
     if (net_weights.numel())
     {
-        partial_wl.mul_(net_weights.view({1, num_nets}));
+        partial_wl.mul_(net_weights.view({num_nets}));
     }
     // significant speedup is achieved by using summation in ATen
     auto wl = partial_wl.sum();

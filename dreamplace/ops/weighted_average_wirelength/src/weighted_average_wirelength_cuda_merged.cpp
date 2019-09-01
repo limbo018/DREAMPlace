@@ -1,7 +1,7 @@
 /**
- * @file   hpwl_cuda.cpp
+ * @file   weighted_average_wirelength_cuda_merged.cpp
  * @author Yibo Lin
- * @date   Jun 2018
+ * @date   Sep 2019
  * @brief  Compute weighted-average wirelength and gradient according to e-place
  */
 #include "utility/src/torch.h"
@@ -26,23 +26,17 @@ DREAMPLACE_BEGIN_NAMESPACE
 /// @param grad_x_tensor gradient in x direction.
 /// @param grad_y_tensor gradient in y direction.
 /// @return 0 if successfully done.
-template <typename T, typename V>
-int computeWeightedAverageWirelengthCudaLauncher(
-    const T *x, const T *y,
-    const int *pin2net_map,
-    const int *flat_netpin,
-    const int *netpin_start,
-    const unsigned char *net_mask,
-    int num_nets,
-    int num_pins,
-    const T *inv_gamma,
-    T *exp_xy, T *exp_nxy,
-    T *exp_xy_sum, T *exp_nxy_sum,
-    T *xyexp_xy_sum, T *xyexp_nxy_sum,
-    V *xy_max, V *xy_min,
-    T *partial_wl,
-    const T *grad_tensor,
-    T *grad_x_tensor, T *grad_y_tensor);
+template <typename T>
+int computeWeightedAverageWirelengthCudaMergedLauncher(
+        const T* x, const T* y, 
+        const int* flat_netpin, 
+        const int* netpin_start, 
+        const unsigned char* net_mask, 
+        int num_nets,
+        const T* inv_gamma, 
+        T* partial_wl,
+        T* grad_intermediate_x, T* grad_intermediate_y
+    );
 
 /// @brief add net weights to gradient
 template <typename T>
@@ -56,8 +50,6 @@ void integrateNetWeightsCudaLauncher(
 #define CHECK_FLAT(x) AT_ASSERTM(x.is_cuda() && x.ndimension() == 1, #x "must be a flat tensor on GPU")
 #define CHECK_EVEN(x) AT_ASSERTM((x.numel() & 1) == 0, #x "must have even number of elements")
 #define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x "must be contiguous")
-
-typedef int V;
 
 /// @brief Compute weighted average wirelength and gradient.
 /// WL = \sum_i x_i*exp(x_i/gamma) / \sum_i exp(x_i/gamma) - \sum_i x_i*exp(-x_i/gamma) / \sum_i x_i*exp(-x_i/gamma),
@@ -96,45 +88,30 @@ std::vector<at::Tensor> weighted_average_wirelength_forward(
     int num_nets = netpin_start.numel() - 1;
     int num_pins = pos.numel() / 2;
     
-    at::Tensor exp_xy = at::empty_like(pos);
-    at::Tensor exp_nxy = at::empty_like(pos);
-    at::Tensor exp_xy_sum = at::zeros({2, num_nets}, pos.options());
-    at::Tensor exp_nxy_sum = at::zeros({2, num_nets}, pos.options());
-    at::Tensor xyexp_xy_sum = at::zeros({2, num_nets}, pos.options());
-    at::Tensor xyexp_nxy_sum = at::zeros({2, num_nets}, pos.options());
-    at::Tensor partial_wl = at::zeros({num_nets}, pos.options());
+    // x, y interleave 
+    at::Tensor partial_wl = at::zeros({num_nets, 2}, pos.options());
+    // timed with grad_in yet 
+    at::Tensor grad_intermediate = at::zeros_like(pos);
 
-    // it is ok for xy_max and xy_min to be integer
-    // we do not really need accurate max/min, just some values to scale x/y
-    // therefore, there is no need to scale xy_max and xy_min to improve accuracy
-    at::Tensor xy_max = at::full({2, num_nets}, std::numeric_limits<V>::min(), at::CUDA(at::kInt));
-    at::Tensor xy_min = at::full({2, num_nets}, std::numeric_limits<V>::max(), at::CUDA(at::kInt));
-
-    AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeWeightedAverageWirelengthCudaLauncher", [&] {
-        computeWeightedAverageWirelengthCudaLauncher<scalar_t, V>(
+    AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeWeightedAverageWirelengthCudaMergedLauncher", [&] {
+        computeWeightedAverageWirelengthCudaMergedLauncher<scalar_t>(
             pos.data<scalar_t>(), pos.data<scalar_t>() + num_pins,
-            nullptr,
             flat_netpin.data<int>(),
             netpin_start.data<int>(),
             net_mask.data<unsigned char>(),
             num_nets,
-            num_pins,
             inv_gamma.data<scalar_t>(),
-            exp_xy.data<scalar_t>(), exp_nxy.data<scalar_t>(),
-            exp_xy_sum.data<scalar_t>(), exp_nxy_sum.data<scalar_t>(),
-            xyexp_xy_sum.data<scalar_t>(), xyexp_nxy_sum.data<scalar_t>(),
-            xy_max.data<V>(), xy_min.data<V>(),
             partial_wl.data<scalar_t>(),
-            nullptr,
-            nullptr, nullptr);
+            grad_intermediate.data<scalar_t>(), grad_intermediate.data<scalar_t>() + num_pins
+            );
         if (net_weights.numel())
         {
-            partial_wl.mul_(net_weights.view({num_nets}));
+            partial_wl.mul_(net_weights.view({num_nets, 1}));
         }
     });
 
     auto wl = partial_wl.sum();
-    return {wl, exp_xy, exp_nxy, exp_xy_sum, exp_nxy_sum, xyexp_xy_sum, xyexp_nxy_sum};
+    return {wl, grad_intermediate};
 }
 
 /// @brief Compute gradient
@@ -148,9 +125,7 @@ std::vector<at::Tensor> weighted_average_wirelength_forward(
 at::Tensor weighted_average_wirelength_backward(
     at::Tensor grad_pos,
     at::Tensor pos,
-    at::Tensor exp_xy, at::Tensor exp_nxy,
-    at::Tensor exp_xy_sum, at::Tensor exp_nxy_sum,
-    at::Tensor xyexp_xy_sum, at::Tensor xyexp_nxy_sum,
+    at::Tensor grad_intermediate, 
     at::Tensor flat_netpin,
     at::Tensor netpin_start,
     at::Tensor pin2net_map,
@@ -171,28 +146,15 @@ at::Tensor weighted_average_wirelength_backward(
     CHECK_CONTIGUOUS(net_mask);
     CHECK_FLAT(pin2net_map);
     CHECK_CONTIGUOUS(pin2net_map);
+    CHECK_FLAT(grad_intermediate);
+    CHECK_EVEN(grad_intermediate);
+    CHECK_CONTIGUOUS(grad_intermediate);
 
-    at::Tensor grad_out = at::zeros_like(pos);
-    int num_nets = netpin_start.numel() - 1;
+    at::Tensor grad_out = grad_intermediate.mul_(grad_pos);
+    //int num_nets = netpin_start.numel() - 1;
     int num_pins = pos.numel() / 2;
 
-    AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeWeightedAverageWirelengthCudaLauncher", [&] {
-        computeWeightedAverageWirelengthCudaLauncher<scalar_t, V>(
-            pos.data<scalar_t>(), pos.data<scalar_t>() + num_pins,
-            pin2net_map.data<int>(),
-            flat_netpin.data<int>(),
-            netpin_start.data<int>(),
-            net_mask.data<unsigned char>(),
-            num_nets,
-            num_pins,
-            inv_gamma.data<scalar_t>(),
-            exp_xy.data<scalar_t>(), exp_nxy.data<scalar_t>(),
-            exp_xy_sum.data<scalar_t>(), exp_nxy_sum.data<scalar_t>(),
-            xyexp_xy_sum.data<scalar_t>(), xyexp_nxy_sum.data<scalar_t>(),
-            nullptr, nullptr,
-            nullptr,
-            grad_pos.data<scalar_t>(),
-            grad_out.data<scalar_t>(), grad_out.data<scalar_t>() + num_pins);
+    AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeWeightedAverageWirelengthCudaMergedLauncher", [&] {
         if (net_weights.numel())
         {
             integrateNetWeightsCudaLauncher(

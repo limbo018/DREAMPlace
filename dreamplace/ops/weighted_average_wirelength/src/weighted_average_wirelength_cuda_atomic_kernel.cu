@@ -53,7 +53,7 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
     }
     else
     {
-        #if 1
+        #if 0
         // compute max and min in one kernel (pin by pin)
         // computeMaxMinInterleavePinByPin<<<block_count_pins, block_size>>>(
         computeMaxMinPinByPin<<<block_count_pins, thread_count>>>(
@@ -66,8 +66,8 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
             xy_min);
         #else
         // compute max and min in one kernel (net by net)
-        // computeMaxMinInterleaveNetByNet<<<block_count_nets, block_size>>>(
-        computeMaxMinNetByNet<<<block_count_nets, thread_count>>>(
+        computeMaxMinInterleaveNetByNet<<<block_count_nets, block_size>>>(
+        // computeMaxMinNetByNet<<<block_count_nets, thread_count>>>(
             x, y,
             flat_netpin,
             netpin_start,
@@ -80,9 +80,10 @@ int computeWeightedAverageWirelengthCudaAtomicLauncher(
         #if 1
         // compute plus-minus exp, sum of plus-minus exp, sum of x*exp in one CUDA kernels (pin by pin)
         // corresponding to the plus and minus a b c kernels in the DREAMPlace paper
-        computeABCKernelsInterleavePinByPin<<<block_count_pins, block_size>>>(
-        // computeABCKernelsPinByPin<<<block_count_pins, thread_count>>>(
-            pos,
+        // computeABCKernelsInterleavePinByPin<<<block_count_pins, block_size>>>(
+        computeABCKernelsPinByPin<<<block_count_pins, thread_count>>>(
+            // pos,
+            x, y, 
             pin2net_map,
             net_mask,
             num_nets,

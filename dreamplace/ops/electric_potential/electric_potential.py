@@ -80,6 +80,7 @@ class ElectricPotentialFunction(Function):
         num_threads=8
     ):
 
+        tt = time.time()
         if pos.is_cuda:
             output = electric_potential_cuda.density_map(
                 pos.view(pos.numel()),
@@ -231,6 +232,9 @@ class ElectricPotentialFunction(Function):
         #    plot(plot_count, ctx.field_map_y.clone().cpu().numpy(), padding, "summary/%d.field_map_y" % (plot_count))
         #plot_count += 1
 
+        if pos.is_cuda:
+            torch.cuda.synchronize()
+        print("\t\tdensity forward %.3f ms" % ((time.time()-tt)*1000))
         return energy
 
     @staticmethod

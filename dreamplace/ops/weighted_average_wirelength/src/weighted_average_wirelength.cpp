@@ -199,7 +199,7 @@ int computeWeightedAverageWirelengthLauncher(
 {
     if (grad_tensor)
     {
-        int chunk_size = int(num_pins / num_threads / 16);
+        int chunk_size = std::max(int(num_pins / num_threads / 16), 1);
 #pragma omp parallel for num_threads(num_threads) schedule(dynamic, chunk_size)
         for (int i = 0; i < num_pins; ++i)
         {
@@ -220,7 +220,7 @@ int computeWeightedAverageWirelengthLauncher(
     }
     else
     {
-        int chunk_size = int(num_nets / num_threads / 16);
+        int chunk_size = std::max(int(num_nets / num_threads / 16), 1);
 #pragma omp parallel for num_threads(num_threads) schedule(dynamic, chunk_size)
         for (int i = 0; i < num_nets; ++i)
         {
