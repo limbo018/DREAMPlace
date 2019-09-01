@@ -75,10 +75,8 @@ __global__ void computeWeightedAverageWirelength(
             T xx = values[flat_netpin[j]]; 
             T exp_x = exp((xx-x_max)*(*inv_gamma)); 
             T exp_nx = exp(-(xx-x_min)*(*inv_gamma)); 
-            T xexp_x = xx*exp_x; 
-            T xexp_nx = xx*exp_nx;
 
-            grads[flat_netpin[j]] = ((a_x*exp_x + b_x*xexp_x) - (a_nx*exp_nx + b_nx*xexp_nx)); 
+            grads[flat_netpin[j]] = (a_x + b_x * xx) * exp_x - (a_nx + b_nx * xx) * exp_nx; 
             //grads[flat_netpin[j]] = ( (1+(*inv_gamma)/xx)/exp_x_sum - (*inv_gamma)/xexp_x_sum/(exp_x_sum*exp_x_sum) ) * exp_x \
             //                        - ( (1-(*inv_gamma)/xx)/exp_nx_sum + (*inv_gamma)/xexp_nx_sum/(exp_nx_sum*exp_nx_sum) ) * exp_nx ; 
         }
