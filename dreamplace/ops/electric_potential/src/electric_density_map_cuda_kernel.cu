@@ -12,8 +12,6 @@
 
 DREAMPLACE_BEGIN_NAMESPACE
 
-#define SQRT2 1.4142135623730950488016887242096980785696718753769480731766797379907324784621
-
 template <typename T>
 inline __device__ T computeDensityFunc(T x, T node_size, T xl, int k, T bin_size)
 {
