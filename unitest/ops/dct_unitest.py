@@ -772,6 +772,26 @@ class DXTOpTest(unittest.TestCase):
             # note the scale factor
             np.testing.assert_allclose(idxst_idct_value.data.numpy(), golden_value* 2, atol=1e-14)
 
+def eval_torch_rfft1d(x, runs):
+    for i in range(100):
+        a = torch.rfft(x, signal_ndim=1, onesided=True)
+    torch.cuda.synchronize()
+    tt = time.time()
+    for i in range(runs):
+        a = torch.rfft(x, signal_ndim=1, onesided=True)
+    torch.cuda.synchronize()
+    print("torch.rfft1d takes %.7f ms" % ((time.time()-tt)/runs*1000))
+
+    b = torch.irfft(a, signal_ndim=1, onesided=True, signal_sizes=x.shape[1:])
+    torch.cuda.synchronize()
+    tt = time.time()
+    for i in range(runs):
+        b = torch.irfft(a, signal_ndim=1, onesided=True, signal_sizes=x.shape[1:])
+    torch.cuda.synchronize()
+    print("torch.irfft1d takes %.7f ms" % ((time.time()-tt)/runs*1000))
+
+    print("")
+
 
 def eval_torch_rfft2d(x, runs):
     for i in range(100):
@@ -1049,6 +1069,7 @@ def eval_runtime():
     expkM = discrete_spectral_transform.get_exact_expk(M, dtype=x.dtype, device=x.device)
     expkN = discrete_spectral_transform.get_exact_expk(N, dtype=x.dtype, device=x.device)
 
+    eval_torch_rfft1d(x, runs)
     eval_torch_rfft2d(x, runs)
     eval_dct2d(x, expk0, expk1, expkM, expkN, runs)
     eval_idct2d(x, expk0, expk1, expkM, expkN, runs)
