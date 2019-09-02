@@ -41,9 +41,9 @@ class DCT2(nn.Module):
     def forward(self, x):
         M = x.size(-2)
         N = x.size(-1)
-        if self.expkM is None or self.expkM.size(-1) != M or self.expkM.dtype != x.dtype:
+        if self.expkM is None or self.expkM.size(-2) != M or self.expkM.dtype != x.dtype:
             self.expkM = precompute_expk(M, dtype=x.dtype, device=x.device)
-        if self.expkN is None or self.expkN.size(-1) != N or self.expkN.dtype != x.dtype:
+        if self.expkN is None or self.expkN.size(-2) != N or self.expkN.dtype != x.dtype:
             self.expkN = precompute_expk(N, dtype=x.dtype, device=x.device)
         if self.out is None:
             self.out = torch.empty(M, N, dtype=x.dtype, device=x.device)
@@ -74,9 +74,9 @@ class IDCT2(nn.Module):
     def forward(self, x):
         M = x.size(-2)
         N = x.size(-1)
-        if self.expkM is None or self.expkM.size(-1) != M or self.expkM.dtype != x.dtype:
+        if self.expkM is None or self.expkM.size(-2) != M or self.expkM.dtype != x.dtype:
             self.expkM = precompute_expk(M, dtype=x.dtype, device=x.device)
-        if self.expkN is None or self.expkN.size(-1) != N or self.expkN.dtype != x.dtype:
+        if self.expkN is None or self.expkN.size(-2) != N or self.expkN.dtype != x.dtype:
             self.expkN = precompute_expk(N, dtype=x.dtype, device=x.device)
         if self.out is None:
             self.out = torch.empty(M, N, dtype=x.dtype, device=x.device)
@@ -107,9 +107,9 @@ class IDCT_IDXST(nn.Module):
     def forward(self, x):
         M = x.size(-2)
         N = x.size(-1)
-        if self.expkM is None or self.expkM.size(-1) != M or self.expkM.dtype != x.dtype:
+        if self.expkM is None or self.expkM.size(-2) != M or self.expkM.dtype != x.dtype:
             self.expkM = precompute_expk(M, dtype=x.dtype, device=x.device)
-        if self.expkN is None or self.expkN.size(-1) != N or self.expkN.dtype != x.dtype:
+        if self.expkN is None or self.expkN.size(-2) != N or self.expkN.dtype != x.dtype:
             self.expkN = precompute_expk(N, dtype=x.dtype, device=x.device)
         if self.out is None:
             self.out = torch.empty(M, N, dtype=x.dtype, device=x.device)
@@ -140,9 +140,9 @@ class IDXST_IDCT(nn.Module):
     def forward(self, x):
         M = x.size(-2)
         N = x.size(-1)
-        if self.expkM is None or self.expkM.size(-1) != M or self.expkM.dtype != x.dtype:
+        if self.expkM is None or self.expkM.size(-2) != M or self.expkM.dtype != x.dtype:
             self.expkM = precompute_expk(M, dtype=x.dtype, device=x.device)
-        if self.expkN is None or self.expkN.size(-1) != N or self.expkN.dtype != x.dtype:
+        if self.expkN is None or self.expkN.size(-2) != N or self.expkN.dtype != x.dtype:
             self.expkN = precompute_expk(N, dtype=x.dtype, device=x.device)
         if self.out is None:
             self.out = torch.empty(M, N, dtype=x.dtype, device=x.device)
