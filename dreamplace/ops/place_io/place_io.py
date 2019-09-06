@@ -7,7 +7,7 @@
 from torch.autograd import Function
 
 import dreamplace.ops.place_io.place_io_cpp as place_io_cpp
-from place_io_cpp import SolutionFileFormat, Direction1DType, Direction2DType
+from dreamplace.ops.place_io.place_io_cpp import SolutionFileFormat, Direction1DType, Direction2DType
 
 class PlaceIOFunction(Function):
     @staticmethod
