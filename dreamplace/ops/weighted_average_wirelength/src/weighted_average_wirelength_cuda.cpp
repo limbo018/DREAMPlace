@@ -39,15 +39,6 @@ int computeWeightedAverageWirelengthCudaLauncher(
         T* grad_x_tensor, T* grad_y_tensor 
         );
 
-/// @brief add net weights to WL 
-template <typename T>
-void integrateNetWeightsforWLCudaLauncher(
-        const int* pin2net_map, 
-        const unsigned char* net_mask, 
-        const T* net_weights, 
-        T* partial_wl, ///< 2*number of pins 
-        int num_pins
-        );
 /// @brief add net weights to gradient 
 template <typename T>
 void integrateNetWeightsCudaLauncher(
