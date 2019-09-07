@@ -286,7 +286,8 @@ def eval_runtime(design):
 
 
 if __name__ == '__main__':
-    unittest.main()
-
-    #design = sys.argv[1]
-    #eval_runtime(design)
+    if len(sys.argv) < 2:
+        unittest.main()
+    else:
+        design = sys.argv[1]
+        eval_runtime(design)
