@@ -56,6 +56,11 @@ message("-- LIMBO_SOURCE_DIR ${LIMBO_SOURCE_DIR}")
 set(LIMBO_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/thirdparty/Limbo)
 message("-- LIMBO_BINARY_DIR ${LIMBO_BINARY_DIR}")
 
+set(CUB_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/cub)
+message("-- CUB_SOURCE_DIR ${CUB_SOURCE_DIR}")
+set(CUB_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/thirdparty/cub)
+message("-- CUB_BINARY_DIR ${CUB_BINARY_DIR}")
+
 add_subdirectory(thirdparty)
 add_subdirectory(dreamplace)
 add_subdirectory(unitest)
