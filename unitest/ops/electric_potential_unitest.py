@@ -11,7 +11,6 @@ import unittest
 import torch
 from torch.autograd import Function, Variable
 import os
-import imp 
 import sys
 import gzip 
 
@@ -426,6 +425,9 @@ class ElectricPotentialOpTest(unittest.TestCase):
         #node_size_x = np.array([1.0]).astype(dtype)
         #node_size_y = np.array([1.0]).astype(dtype)
         num_nodes = len(xx)
+        num_movable_nodes = len(xx)-1
+        num_terminals = 1 
+        num_filler_nodes = 0
 
         scale_factor = 1.0
         
@@ -484,9 +486,9 @@ class ElectricPotentialOpTest(unittest.TestCase):
                     target_density=torch.tensor(target_density, requires_grad=False, dtype=dtype), 
                     xl=xl, yl=yl, xh=xh, yh=yh, 
                     bin_size_x=bin_size_x, bin_size_y=bin_size_y, 
-                    num_movable_nodes=num_nodes, 
-                    num_terminals=0, 
-                    num_filler_nodes=0, 
+                    num_movable_nodes=num_movable_nodes, 
+                    num_terminals=num_terminals, 
+                    num_filler_nodes=num_filler_nodes, 
                     padding=0
                     )
 
@@ -506,22 +508,49 @@ class ElectricPotentialOpTest(unittest.TestCase):
                         target_density=torch.tensor(target_density, requires_grad=False, dtype=dtype).cuda(), 
                         xl=xl, yl=yl, xh=xh, yh=yh, 
                         bin_size_x=bin_size_x, bin_size_y=bin_size_y, 
-                        num_movable_nodes=num_nodes, 
-                        num_terminals=0, 
-                        num_filler_nodes=0, 
-                        padding=0
+                        num_movable_nodes=num_movable_nodes, 
+                        num_terminals=num_terminals, 
+                        num_filler_nodes=num_filler_nodes, 
+                        padding=0,
+                        algorithm='atomic'
                         )
 
             pos = Variable(torch.from_numpy(np.concatenate([xx, yy])).cuda(), requires_grad=True)
             #pos.grad.zero_()
             result_cuda = custom_cuda.forward(pos)
-            print("custom_result_cuda = ", result_cuda.data.cpu())
+            print("custom_result_cuda atomic = ", result_cuda.data.cpu())
             print(result_cuda.type())
             result_cuda.backward()
             grad_cuda = pos.grad.clone()
-            print("custom_grad_cuda = ", grad_cuda.data.cpu())
+            print("custom_grad_cuda atomic = ", grad_cuda.data.cpu())
 
-            #np.testing.assert_allclose(result.detach().numpy(), result_cuda.data.cpu().detach().numpy())
+            np.testing.assert_allclose(result.detach().numpy(), result_cuda.data.cpu().detach().numpy())
+            np.testing.assert_allclose(grad.detach().numpy(), grad_cuda.data.cpu().detach().numpy())
+
+            custom_cuda = electric_potential.ElectricPotential(
+                        torch.tensor(node_size_x, requires_grad=False, dtype=dtype).cuda(), torch.tensor(node_size_y, requires_grad=False, dtype=dtype).cuda(), 
+                        torch.tensor(bin_center_x, requires_grad=False, dtype=dtype).cuda(), torch.tensor(bin_center_y, requires_grad=False, dtype=dtype).cuda(), 
+                        target_density=torch.tensor(target_density, requires_grad=False, dtype=dtype).cuda(), 
+                        xl=xl, yl=yl, xh=xh, yh=yh, 
+                        bin_size_x=bin_size_x, bin_size_y=bin_size_y, 
+                        num_movable_nodes=num_movable_nodes, 
+                        num_terminals=num_terminals, 
+                        num_filler_nodes=num_filler_nodes, 
+                        padding=0,
+                        algorithm='reduce'
+                        )
+
+            pos = Variable(torch.from_numpy(np.concatenate([xx, yy])).cuda(), requires_grad=True)
+            #pos.grad.zero_()
+            result_cuda = custom_cuda.forward(pos)
+            print("custom_result_cuda reduce = ", result_cuda.data.cpu())
+            print(result_cuda.type())
+            result_cuda.backward()
+            grad_cuda = pos.grad.clone()
+            print("custom_grad_cuda reduce = ", grad_cuda.data.cpu())
+
+            np.testing.assert_allclose(result.detach().numpy(), result_cuda.data.cpu().detach().numpy())
+            np.testing.assert_allclose(grad.detach().numpy(), grad_cuda.data.cpu().detach().numpy())
 
 def plot(plot_count, density_map, padding, name):
     """

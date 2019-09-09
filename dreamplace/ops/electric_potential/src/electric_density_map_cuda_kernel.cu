@@ -9,12 +9,13 @@
 #include "cuda_runtime.h"
 #include "utility/src/print.h"
 #include "utility/src/Msg.h"
+#include "electric_potential/src/density_ops.cuh"
 
 DREAMPLACE_BEGIN_NAMESPACE
 
 #define SQRT2 1.4142135623730950488016887242096980785696718753769480731766797379907324784621
 
-template <typename T>
+template <typename T, typename DensityOp>
 __global__ void computeTriangleDensityMapAtomic(
         const T* x_tensor, const T* y_tensor, 
         const T* node_size_x_tensor, const T* node_size_y_tensor, 
@@ -24,15 +25,12 @@ __global__ void computeTriangleDensityMapAtomic(
         const T xl, const T yl, const T xh, const T yh, 
         const T bin_size_x, const T bin_size_y, 
         const int num_impacted_bins_x, const int num_impacted_bins_y, 
+        DensityOp computeDensityFunc, ///< use TriangleDensity
         T* density_map_tensor) 
 {
     // rank-one update density map 
     for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_nodes*num_impacted_bins_x*num_impacted_bins_y; i += blockDim.x * gridDim.x) 
     {
-        // density overflow function 
-        auto computeDensityFunc = [](T x, T node_size, T bin_center, T bin_size){
-            return max(T(0.0), min(x+node_size, bin_center+bin_size/2) - max(x, bin_center-bin_size/2));
-        };
         int node_id = i/(num_impacted_bins_x*num_impacted_bins_y);
         int residual_index = i-node_id*num_impacted_bins_x*num_impacted_bins_y;
 
@@ -86,7 +84,7 @@ __global__ void computeTriangleDensityMapAtomic(
     }
 }
 
-template <typename T>
+template <typename T, typename DensityOp>
 __global__ void computeTriangleDensityMap(
         const T* x_tensor, const T* y_tensor, 
         const T* node_size_x_tensor, const T* node_size_y_tensor, 
@@ -96,13 +94,11 @@ __global__ void computeTriangleDensityMap(
         const T xl, const T yl, const T xh, const T yh, 
         const T bin_size_x, const T bin_size_y, 
         const int num_impacted_bins_x, const int num_impacted_bins_y, 
+        DensityOp computeDensityFunc, 
         T* density_map_tensor) 
 {
     for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_nodes; i += blockDim.x * gridDim.x) 
     {
-        auto computeDensityFunc = [](T x, T node_size, T bin_center, T bin_size){
-            return max(T(0.0), min(x+node_size, bin_center+bin_size/2) - max(x, bin_center-bin_size/2));
-        };
         // stretch node size to bin size 
         T node_size_x = max(bin_size_x*SQRT2, node_size_x_tensor[i]); 
         T node_size_y = max(bin_size_y*SQRT2, node_size_y_tensor[i]); 
@@ -138,7 +134,7 @@ __global__ void computeTriangleDensityMap(
     }
 }
 
-template <typename T>
+template <typename T, typename DensityOp>
 __global__ void computeExactDensityMap(
         const T* x_tensor, const T* y_tensor, 
         const T* node_size_x_tensor, const T* node_size_y_tensor, 
@@ -149,29 +145,12 @@ __global__ void computeExactDensityMap(
         const T bin_size_x, const T bin_size_y, 
         const int num_impacted_bins_x, const int num_impacted_bins_y, 
         bool fixed_node_flag, 
+        DensityOp computeDensityFunc, 
         T* density_map_tensor) 
 {
     // rank-one update density map 
     for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_nodes*num_impacted_bins_x*num_impacted_bins_y; i += blockDim.x * gridDim.x) 
     {
-        // density overflow function 
-        auto computeDensityFunc = [](T x, T node_size, T bin_center, T bin_size, T l, T h, bool flag){
-            T bin_xl = bin_center-bin_size/2;
-            T bin_xh = bin_center+bin_size/2;
-            if (!flag) // only for movable nodes 
-            {
-                // if a node is out of boundary, count in the nearest bin 
-                if (bin_xl <= l) // left most bin 
-                {
-                    bin_xl = min(bin_xl, x); 
-                }
-                if (bin_xh >= h) // right most bin 
-                {
-                    bin_xh = max(bin_xh, x+node_size); 
-                }
-            }
-            return max(T(0.0), min(x+node_size, bin_xh) - max(x, bin_xl));
-        };
         int node_id = i/(num_impacted_bins_x*num_impacted_bins_y);
         int residual_index = i-node_id*num_impacted_bins_x*num_impacted_bins_y;
         // x direction 
@@ -236,6 +215,7 @@ int computeTriangleDensityMapCudaLauncher(
             xl, yl, xh, yh, 
             bin_size_x, bin_size_y, 
             num_movable_impacted_bins_x, num_movable_impacted_bins_y, 
+            TriangleDensity<T>(), 
             density_map_tensor);
 
     if (num_filler_nodes)
@@ -257,6 +237,7 @@ int computeTriangleDensityMapCudaLauncher(
                 xl, yl, xh, yh, 
                 bin_size_x, bin_size_y, 
                 num_filler_impacted_bins_x, num_filler_impacted_bins_y, 
+                TriangleDensity<T>(), 
                 density_map_tensor);
 
         status = cudaStreamDestroy(stream_filler); 
@@ -308,6 +289,7 @@ int computeExactDensityMapCudaLauncher(
             bin_size_x, bin_size_y, 
             num_impacted_bins_x, num_impacted_bins_y, 
             fixed_node_flag, 
+            ExactDensity<T>(), 
             density_map_tensor);
 
     return 0; 

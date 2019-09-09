@@ -27,7 +27,7 @@ void printArray(const T* x, const int n, const char* str)
 }
 
 template <typename T>
-void printScalar(const T& x, const char* str)
+void printScalar(const T* x, const char* str)
 {
     printf("%s = ", str); 
     T* host_x = (T*)malloc(sizeof(T));
@@ -36,7 +36,7 @@ void printScalar(const T& x, const char* str)
         printf("failed to allocate memory on CPU\n");
         return;
     }
-    cudaMemcpy(host_x, &x, sizeof(T), cudaMemcpyDeviceToHost);
+    cudaMemcpy(host_x, x, sizeof(T), cudaMemcpyDeviceToHost);
     printf("%g\n", double(*host_x));
 
     free(host_x);

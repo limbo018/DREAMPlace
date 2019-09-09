@@ -337,6 +337,7 @@ class BasicPlace (nn.Module):
                 num_terminals=placedb.num_terminals, 
                 num_filler_nodes=0,
                 padding=0, 
+                algorithm='reduce', 
                 num_threads=params.num_threads
                 )
 

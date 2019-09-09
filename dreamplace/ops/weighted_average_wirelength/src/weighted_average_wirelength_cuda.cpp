@@ -39,15 +39,6 @@ int computeWeightedAverageWirelengthCudaLauncher(
         T* grad_x_tensor, T* grad_y_tensor 
         );
 
-/// @brief add net weights to WL 
-template <typename T>
-void integrateNetWeightsforWLCudaLauncher(
-        const int* pin2net_map, 
-        const unsigned char* net_mask, 
-        const T* net_weights, 
-        T* partial_wl, ///< 2*number of pins 
-        int num_pins
-        );
 /// @brief add net weights to gradient 
 template <typename T>
 void integrateNetWeightsCudaLauncher(
@@ -96,10 +87,11 @@ at::Tensor weighted_average_wirelength_forward(
     CHECK_FLAT(net_mask); 
     CHECK_CONTIGUOUS(net_mask);
 
-    at::Tensor partial_wl = at::zeros_like(pos);
-
     int num_nets = netpin_start.numel()-1;
     int num_pins = pos.numel()/2;
+
+    at::Tensor partial_wl = at::zeros({num_nets, 2}, pos.options());
+
     AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeWeightedAverageWirelengthCudaLauncher", [&] {
             computeWeightedAverageWirelengthCudaLauncher<scalar_t>(
                     pos.data<scalar_t>(), pos.data<scalar_t>()+num_pins, 
@@ -114,13 +106,7 @@ at::Tensor weighted_average_wirelength_forward(
                     );
             if (net_weights.numel())
             {
-                integrateNetWeightsforWLCudaLauncher(
-                        pin2net_map.data<int>(), 
-                        net_mask.data<unsigned char>(), 
-                        net_weights.data<scalar_t>(), 
-                        partial_wl.data<scalar_t>(), 
-                        num_pins 
-                    );
+                partial_wl.mul_(net_weights.view({num_nets, 1}));
             }
             });
 
