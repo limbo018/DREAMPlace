@@ -76,13 +76,13 @@ class PlaceObj(nn.Module):
         """
         #tt = time.time()
         wirelength = self.op_collections.wirelength_op(pos)
-        if self.gpu: 
-            torch.cuda.synchronize()
+        #if self.gpu: 
+        #    torch.cuda.synchronize()
         #print("\t\twirelength forward %.3f ms" % ((time.time()-tt)*1000))
         #tt = time.time()
         density = self.op_collections.density_op(pos)
-        if self.gpu: 
-            torch.cuda.synchronize()
+        #if self.gpu: 
+        #    torch.cuda.synchronize()
         #print("\t\tdensity forward %.3f ms" % ((time.time()-tt)*1000))
         return wirelength + self.density_weight*density
 
@@ -98,8 +98,8 @@ class PlaceObj(nn.Module):
 
         if pos.grad is not None:
             pos.grad.zero_()
-        if self.gpu: 
-            torch.cuda.synchronize()
+        #if self.gpu: 
+        #    torch.cuda.synchronize()
 
         #tt = time.time()
         obj.backward()
@@ -158,7 +158,7 @@ class PlaceObj(nn.Module):
                 net_mask=data_collections.net_mask_ignore_large_degrees, 
                 pin_mask=data_collections.pin_mask_ignore_fixed_macros,
                 gamma=self.gamma, 
-                algorithm='atomic', 
+                algorithm='reduce', 
                 num_threads=params.num_threads
                 )
 
@@ -324,6 +324,7 @@ class PlaceObj(nn.Module):
                 num_filler_nodes=placedb.num_filler_nodes,
                 padding=padding,
                 fast_mode=True, 
+                algorithm='reduce', 
                 num_threads=params.num_threads
                 )
 

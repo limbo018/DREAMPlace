@@ -21,6 +21,7 @@ import dreamplace.ops.dct.discrete_spectral_transform as discrete_spectral_trans
 import dreamplace.ops.electric_potential.electric_potential_cpp as electric_potential_cpp
 try: 
     import dreamplace.ops.electric_potential.electric_potential_cuda as electric_potential_cuda 
+    import dreamplace.ops.electric_potential.electric_potential_cuda_reduce as electric_potential_cuda_reduce
 except:
     pass 
 
@@ -66,29 +67,52 @@ class ElectricPotentialFunction(Function):
           wu_by_wu2_plus_wv2_2X=None, # 2*wu/(wu^2 + wv^2)
           wv_by_wu2_plus_wv2_2X=None, # 2*wv/(wu^2 + wv^2)
           fast_mode=True, # fast mode will discard some computation  
+          algorithm='atomic',
           num_threads=8
           ):
         
+        tt = time.time()
         if pos.is_cuda:
-            output = electric_potential_cuda.density_map(
-                    pos.view(pos.numel()), 
-                    node_size_x, node_size_y,
-                    bin_center_x, bin_center_y, 
-                    initial_density_map, 
-                    target_density, 
-                    xl, yl, xh, yh, 
-                    bin_size_x, bin_size_y, 
-                    num_movable_nodes, 
-                    num_filler_nodes, 
-                    padding, 
-                    padding_mask, 
-                    num_bins_x, 
-                    num_bins_y, 
-                    num_movable_impacted_bins_x, 
-                    num_movable_impacted_bins_y,
-                    num_filler_impacted_bins_x, 
-                    num_filler_impacted_bins_y
-                    ) 
+            if algorithm == 'atomic': 
+                output = electric_potential_cuda.density_map(
+                        pos.view(pos.numel()), 
+                        node_size_x, node_size_y,
+                        bin_center_x, bin_center_y, 
+                        initial_density_map, 
+                        target_density, 
+                        xl, yl, xh, yh, 
+                        bin_size_x, bin_size_y, 
+                        num_movable_nodes, 
+                        num_filler_nodes, 
+                        padding, 
+                        padding_mask, 
+                        num_bins_x, 
+                        num_bins_y, 
+                        num_movable_impacted_bins_x, 
+                        num_movable_impacted_bins_y,
+                        num_filler_impacted_bins_x, 
+                        num_filler_impacted_bins_y
+                        ) 
+            else:
+                output = electric_potential_cuda_reduce.density_map(
+                        pos.view(pos.numel()), 
+                        node_size_x, node_size_y,
+                        bin_center_x, bin_center_y, 
+                        initial_density_map, 
+                        target_density, 
+                        xl, yl, xh, yh, 
+                        bin_size_x, bin_size_y, 
+                        num_movable_nodes, 
+                        num_filler_nodes, 
+                        padding, 
+                        padding_mask, 
+                        num_bins_x, 
+                        num_bins_y, 
+                        num_movable_impacted_bins_x, 
+                        num_movable_impacted_bins_y,
+                        num_filler_impacted_bins_x, 
+                        num_filler_impacted_bins_y
+                        )             
         else:
             output = electric_potential_cpp.density_map(
                     pos.view(pos.numel()), 
@@ -216,11 +240,12 @@ class ElectricPotentialFunction(Function):
 
         if pos.is_cuda: 
             torch.cuda.synchronize()
+        print("\t\tdensity forward %.3f ms" % ((time.time()-tt)*1000))
         return energy 
 
     @staticmethod
     def backward(ctx, grad_pos):
-        #tt = time.time()
+        tt = time.time()
         if grad_pos.is_cuda:
             output = -electric_potential_cuda.electric_force(
                     grad_pos, 
@@ -270,7 +295,7 @@ class ElectricPotentialFunction(Function):
         #output = torch.empty_like(ctx.pos).uniform_(0.0, 0.1)
         if grad_pos.is_cuda: 
             torch.cuda.synchronize()
-        #print("\t\tdensity backward %.3f ms" % ((time.time()-tt)*1000))
+        print("\t\tdensity backward %.3f ms" % ((time.time()-tt)*1000))
         return output, \
                 None, None, None, None, \
                 None, None, None, None, \
@@ -279,11 +304,13 @@ class ElectricPotentialFunction(Function):
                 None, None, None, None, \
                 None, None, None, None, \
                 None, None, None, None, \
-                None, None, None
+                None, None, None, None
 
 class ElectricPotential(nn.Module):
     """
     @brief Compute electric potential according to e-place 
+    CPU only supports cpu algorithm
+    GPU supports two algorithms: atomic, reduce
     """
     def __init__(self, 
             node_size_x, node_size_y,
@@ -296,6 +323,7 @@ class ElectricPotential(nn.Module):
             num_filler_nodes, 
             padding, 
             fast_mode=False, 
+            algorithm='atomic',
             num_threads=8
             ):
         """ 
@@ -318,6 +346,7 @@ class ElectricPotential(nn.Module):
         @param num_filler_nodes number of filler cells 
         @param padding bin padding to boundary of placement region 
         @param fast_mode if true, only gradient is computed, while objective computation is skipped 
+        @param algorithm must be cpu | atomic | reduce
         """
         super(ElectricPotential, self).__init__()
         self.node_size_x = node_size_x
@@ -365,6 +394,7 @@ class ElectricPotential(nn.Module):
 
         # whether really evaluate potential_map and energy or use dummy 
         self.fast_mode = fast_mode 
+        self.algorithm = algorithm
         self.num_threads = num_threads 
 
     def forward(self, pos): 
@@ -376,19 +406,34 @@ class ElectricPotential(nn.Module):
                 num_fixed_impacted_bins_x = int(((self.node_size_x[self.num_movable_nodes:self.num_movable_nodes+self.num_terminals].max()+self.bin_size_x)/self.bin_size_x).ceil().clamp(max=self.num_bins_x))
                 num_fixed_impacted_bins_y = int(((self.node_size_y[self.num_movable_nodes:self.num_movable_nodes+self.num_terminals].max()+self.bin_size_y)/self.bin_size_y).ceil().clamp(max=self.num_bins_y))
             if pos.is_cuda:
-                self.initial_density_map = electric_potential_cuda.fixed_density_map(
-                        pos.view(pos.numel()), 
-                        self.node_size_x, self.node_size_y,
-                        self.bin_center_x, self.bin_center_y, 
-                        self.xl, self.yl, self.xh, self.yh, 
-                        self.bin_size_x, self.bin_size_y, 
-                        self.num_movable_nodes, 
-                        self.num_terminals, 
-                        self.num_bins_x, 
-                        self.num_bins_y, 
-                        num_fixed_impacted_bins_x, 
-                        num_fixed_impacted_bins_y
-                        ) 
+                if self.algorithm == 'atomic':
+                    self.initial_density_map = electric_potential_cuda.fixed_density_map(
+                            pos.view(pos.numel()), 
+                            self.node_size_x, self.node_size_y,
+                            self.bin_center_x, self.bin_center_y, 
+                            self.xl, self.yl, self.xh, self.yh, 
+                            self.bin_size_x, self.bin_size_y, 
+                            self.num_movable_nodes, 
+                            self.num_terminals, 
+                            self.num_bins_x, 
+                            self.num_bins_y, 
+                            num_fixed_impacted_bins_x, 
+                            num_fixed_impacted_bins_y
+                            ) 
+                else:
+                    self.initial_density_map = electric_potential_cuda_reduce.fixed_density_map(
+                            pos.view(pos.numel()), 
+                            self.node_size_x, self.node_size_y,
+                            self.bin_center_x, self.bin_center_y, 
+                            self.xl, self.yl, self.xh, self.yh, 
+                            self.bin_size_x, self.bin_size_y, 
+                            self.num_movable_nodes, 
+                            self.num_terminals, 
+                            self.num_bins_x, 
+                            self.num_bins_y, 
+                            num_fixed_impacted_bins_x, 
+                            num_fixed_impacted_bins_y
+                            ) 
             else:
                 self.initial_density_map = electric_potential_cpp.fixed_density_map(
                         pos.view(pos.numel()), 
@@ -446,7 +491,9 @@ class ElectricPotential(nn.Module):
                 self.expk_M, self.expk_N, 
                 self.inv_wu2_plus_wv2_2X, 
                 self.wu_by_wu2_plus_wv2_2X, self.wv_by_wu2_plus_wv2_2X, 
-                self.fast_mode
+                self.fast_mode,
+                self.algorithm,
+                self.num_threads
                 )
 
 def plot(plot_count, density_map, padding, name):

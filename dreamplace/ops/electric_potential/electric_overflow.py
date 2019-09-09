@@ -14,6 +14,7 @@ from torch.nn import functional as F
 import dreamplace.ops.electric_potential.electric_potential_cpp as electric_potential_cpp
 try: 
     import dreamplace.ops.electric_potential.electric_potential_cuda as electric_potential_cuda 
+    import dreamplace.ops.electric_potential.electric_potential_cuda_reduce as electric_potential_cuda_reduce
 except:
     pass
 
@@ -47,29 +48,51 @@ class ElectricOverflowFunction(Function):
           num_movable_impacted_bins_y, 
           num_filler_impacted_bins_x, 
           num_filler_impacted_bins_y, 
+          algorithm, 
           num_threads
           ):
         
         if pos.is_cuda:
-            output = electric_potential_cuda.density_map(
-                    pos.view(pos.numel()), 
-                    node_size_x, node_size_y,
-                    bin_center_x, bin_center_y, 
-                    initial_density_map, 
-                    target_density, 
-                    xl, yl, xh, yh, 
-                    bin_size_x, bin_size_y, 
-                    num_movable_nodes, 
-                    num_filler_nodes, 
-                    padding, 
-                    padding_mask, 
-                    num_bins_x, 
-                    num_bins_y, 
-                    num_movable_impacted_bins_x, 
-                    num_movable_impacted_bins_y,
-                    num_filler_impacted_bins_x, 
-                    num_filler_impacted_bins_y
-                    ) 
+            if algorithm == 'atomic': 
+                output = electric_potential_cuda.density_map(
+                        pos.view(pos.numel()), 
+                        node_size_x, node_size_y,
+                        bin_center_x, bin_center_y, 
+                        initial_density_map, 
+                        target_density, 
+                        xl, yl, xh, yh, 
+                        bin_size_x, bin_size_y, 
+                        num_movable_nodes, 
+                        num_filler_nodes, 
+                        padding, 
+                        padding_mask, 
+                        num_bins_x, 
+                        num_bins_y, 
+                        num_movable_impacted_bins_x, 
+                        num_movable_impacted_bins_y,
+                        num_filler_impacted_bins_x, 
+                        num_filler_impacted_bins_y
+                        ) 
+            else:
+                output = electric_potential_cuda_reduce.density_map(
+                        pos.view(pos.numel()), 
+                        node_size_x, node_size_y,
+                        bin_center_x, bin_center_y, 
+                        initial_density_map, 
+                        target_density, 
+                        xl, yl, xh, yh, 
+                        bin_size_x, bin_size_y, 
+                        num_movable_nodes, 
+                        num_filler_nodes, 
+                        padding, 
+                        padding_mask, 
+                        num_bins_x, 
+                        num_bins_y, 
+                        num_movable_impacted_bins_x, 
+                        num_movable_impacted_bins_y,
+                        num_filler_impacted_bins_x, 
+                        num_filler_impacted_bins_y
+                        )             
         else:
             output = electric_potential_cpp.density_map(
                     pos.view(pos.numel()), 
@@ -115,6 +138,7 @@ class ElectricOverflow(nn.Module):
             num_terminals, 
             num_filler_nodes,
             padding, 
+            algorithm, 
             num_threads=8
             ):
         super(ElectricOverflow, self).__init__()
@@ -151,6 +175,7 @@ class ElectricOverflow(nn.Module):
         else:
             self.padding_mask = torch.zeros(self.num_bins_x, self.num_bins_y, dtype=torch.uint8, device=node_size_x.device)
 
+        self.algorithm = algorithm
         self.num_threads = num_threads
 
         # initial density_map due to fixed cells 
@@ -165,19 +190,34 @@ class ElectricOverflow(nn.Module):
                 num_fixed_impacted_bins_x = ((self.node_size_x[self.num_movable_nodes:self.num_movable_nodes+self.num_terminals].max()+self.bin_size_x)/self.bin_size_x).ceil().clamp(max=self.num_bins_x)
                 num_fixed_impacted_bins_y = ((self.node_size_y[self.num_movable_nodes:self.num_movable_nodes+self.num_terminals].max()+self.bin_size_y)/self.bin_size_y).ceil().clamp(max=self.num_bins_y)
             if pos.is_cuda:
-                self.initial_density_map = electric_potential_cuda.fixed_density_map(
-                        pos.view(pos.numel()), 
-                        self.node_size_x, self.node_size_y,
-                        self.bin_center_x, self.bin_center_y, 
-                        self.xl, self.yl, self.xh, self.yh, 
-                        self.bin_size_x, self.bin_size_y, 
-                        self.num_movable_nodes, 
-                        self.num_terminals, 
-                        self.num_bins_x, 
-                        self.num_bins_y, 
-                        num_fixed_impacted_bins_x, 
-                        num_fixed_impacted_bins_y
-                        ) 
+                if self.algorithm == 'atomic': 
+                    self.initial_density_map = electric_potential_cuda.fixed_density_map(
+                            pos.view(pos.numel()), 
+                            self.node_size_x, self.node_size_y,
+                            self.bin_center_x, self.bin_center_y, 
+                            self.xl, self.yl, self.xh, self.yh, 
+                            self.bin_size_x, self.bin_size_y, 
+                            self.num_movable_nodes, 
+                            self.num_terminals, 
+                            self.num_bins_x, 
+                            self.num_bins_y, 
+                            num_fixed_impacted_bins_x, 
+                            num_fixed_impacted_bins_y
+                            ) 
+                else:
+                    self.initial_density_map = electric_potential_cuda_reduce.fixed_density_map(
+                            pos.view(pos.numel()), 
+                            self.node_size_x, self.node_size_y,
+                            self.bin_center_x, self.bin_center_y, 
+                            self.xl, self.yl, self.xh, self.yh, 
+                            self.bin_size_x, self.bin_size_y, 
+                            self.num_movable_nodes, 
+                            self.num_terminals, 
+                            self.num_bins_x, 
+                            self.num_bins_y, 
+                            num_fixed_impacted_bins_x, 
+                            num_fixed_impacted_bins_y
+                            ) 
             else:
                 self.initial_density_map = electric_potential_cpp.fixed_density_map(
                         pos.view(pos.numel()), 
@@ -215,6 +255,7 @@ class ElectricOverflow(nn.Module):
                 self.num_movable_impacted_bins_y, 
                 self.num_filler_impacted_bins_x, 
                 self.num_filler_impacted_bins_y, 
+                self.algorithm, 
                 self.num_threads
                 )
 
