@@ -15,6 +15,7 @@ else:
     import _pickle as pickle
 import re 
 import numpy as np 
+import logging
 import torch 
 import torch.nn as nn
 import dreamplace.ops.move_boundary.move_boundary as move_boundary 
@@ -58,7 +59,7 @@ class PlaceDataCollection (object):
         if np.amin(placedb.net_weights) != np.amax(placedb.net_weights): # weights are meaningful 
             self.net_weights = torch.from_numpy(placedb.net_weights).to(device)
         else: # an empty tensor 
-            print("[I] net weights are all the same, ignored")
+            logging.warning("net weights are all the same, ignored")
             self.net_weights = torch.Tensor().to(device)
 
         self.net_mask_all = torch.from_numpy(np.ones(placedb.num_nets, dtype=np.uint8)).to(device) # all nets included 
@@ -140,12 +141,12 @@ class BasicPlace (nn.Module):
         torch.manual_seed(params.random_seed)
         super(BasicPlace, self).__init__()
 
-        #tt = time.time()
+        tt = time.time()
         self.init_pos = np.zeros(placedb.num_nodes*2, dtype=placedb.dtype)
         # x position 
         self.init_pos[0:placedb.num_physical_nodes] = placedb.node_x
         if params.global_place_flag and params.random_center_init_flag: # move to center of layout 
-            print("[I] move cells to the center of layout with random noise")
+            logging.info("move cells to the center of layout with random noise")
             self.init_pos[0:placedb.num_movable_nodes] = np.random.normal(loc=(placedb.xl*1.0+placedb.xh*1.0)/2, scale=(placedb.xh-placedb.xl)*0.001, size=placedb.num_movable_nodes)
         #self.init_pos[0:placedb.num_movable_nodes] = init_x[0:placedb.num_movable_nodes]*0.01 + (placedb.xl+placedb.xh)/2
         # y position 
@@ -158,26 +159,26 @@ class BasicPlace (nn.Module):
             self.init_pos[placedb.num_physical_nodes:placedb.num_nodes] = np.random.uniform(low=placedb.xl, high=placedb.xh-placedb.node_size_x[-placedb.num_filler_nodes], size=placedb.num_filler_nodes)
             self.init_pos[placedb.num_nodes+placedb.num_physical_nodes:placedb.num_nodes*2] = np.random.uniform(low=placedb.yl, high=placedb.yh-placedb.node_size_y[-placedb.num_filler_nodes], size=placedb.num_filler_nodes)
 
-        #print("prepare init_pos takes %.2f seconds" % (time.time()-tt))
+        logging.debug("prepare init_pos takes %.2f seconds" % (time.time()-tt))
 
         self.device = torch.device("cuda" if params.gpu else "cpu")
 
         # position should be parameter 
         # must be defined in BasicPlace 
-        #tt = time.time()
+        tt = time.time()
         self.pos = nn.ParameterList([nn.Parameter(torch.from_numpy(self.init_pos).to(self.device))])
-        #print("build pos takes %.2f seconds" % (time.time()-tt))
+        logging.debug("build pos takes %.2f seconds" % (time.time()-tt))
         # shared data on device for building ops  
         # I do not want to construct the data from placedb again and again for each op 
-        #tt = time.time()
+        tt = time.time()
         self.data_collections = PlaceDataCollection(self.pos, params, placedb, self.device)
-        #print("build data_collections takes %.2f seconds" % (time.time()-tt))
+        logging.debug("build data_collections takes %.2f seconds" % (time.time()-tt))
         # similarly I wrap all ops 
-        #tt = time.time()
+        tt = time.time()
         self.op_collections = PlaceOpCollection()
-        #print("build op_collections takes %.2f seconds" % (time.time()-tt))
+        logging.debug("build op_collections takes %.2f seconds" % (time.time()-tt))
 
-        #tt = time.time()
+        tt = time.time()
         # position to pin position
         self.op_collections.pin_pos_op = self.build_pin_pos(params, placedb, self.data_collections, self.device)
         # bound nodes to layout region 
@@ -198,7 +199,7 @@ class BasicPlace (nn.Module):
         # can only read once 
         self.read_lut_flag = True
 
-        #print("build BasicPlace ops takes %.2f seconds" % (time.time()-tt))
+        logging.debug("build BasicPlace ops takes %.2f seconds" % (time.time()-tt))
 
     def __call__(self, params, placedb):
         """
@@ -279,8 +280,8 @@ class BasicPlace (nn.Module):
 
         POWVFILE = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../thirdparty/flute-3.1/POWV9.dat"))
         POSTFILE = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../thirdparty/flute-3.1/POST9.dat"))
-        print("POWVFILE = %s" % (POWVFILE))
-        print("POSTFILE = %s" % (POSTFILE))
+        logging.info("POWVFILE = %s" % (POWVFILE))
+        logging.info("POSTFILE = %s" % (POSTFILE))
         wirelength_for_pin_op = rmst_wl.RMSTWL(
                 flat_netpin=torch.from_numpy(placedb.flat_net2pin_map).to(device), 
                 netpin_start=torch.from_numpy(placedb.flat_net2pin_start_map).to(device),
@@ -396,4 +397,4 @@ class BasicPlace (nn.Module):
         if isinstance(pos, np.ndarray):
             pos = torch.from_numpy(pos)
         self.op_collections.draw_place_op(pos, figname)
-        print("[I] plotting to %s takes %.3f seconds" % (figname, time.time()-tt))
+        logging.info("plotting to %s takes %.3f seconds" % (figname, time.time()-tt))

@@ -10,6 +10,7 @@ import sys
 import time 
 import numpy as np 
 import itertools
+import logging
 import torch 
 import torch.autograd as autograd
 import torch.nn as nn
@@ -74,16 +75,8 @@ class PlaceObj(nn.Module):
         @param pos locations of cells 
         @return objective value 
         """
-        #tt = time.time()
         wirelength = self.op_collections.wirelength_op(pos)
-        if self.gpu: 
-            torch.cuda.synchronize()
-        #print("\t\twirelength forward %.3f ms" % ((time.time()-tt)*1000))
-        #tt = time.time()
         density = self.op_collections.density_op(pos)
-        if self.gpu: 
-            torch.cuda.synchronize()
-        #print("\t\tdensity forward %.3f ms" % ((time.time()-tt)*1000))
         return wirelength + self.density_weight*density
 
     def obj_and_grad_fn(self, pos): 
@@ -101,11 +94,7 @@ class PlaceObj(nn.Module):
         if self.gpu: 
             torch.cuda.synchronize()
 
-        #tt = time.time()
         obj.backward()
-        #if self.gpu: 
-        #    torch.cuda.synchronize()
-        #print("\tobj backward takes %.3f ms" % ((time.time()-tt)*1000))
 
         self.op_collections.precondition_op(pos.grad)
 
@@ -134,10 +123,8 @@ class PlaceObj(nn.Module):
         density.backward()
         density_grad = pos.grad.clone()
 
-        print("wirelength_grad")
-        print(wirelength_grad.view([2, -1]).t())
-        print("density_grad")
-        print(density_grad.view([2, -1]).t())
+        logging.debug("wirelength_grad\n%s" % (wirelength_grad.view([2, -1]).t()))
+        logging.debug("density_grad\n%s" % (density_grad.view([2, -1]).t()))
         pos.grad.zero_()
 
     def build_weighted_average_wl(self, params, placedb, data_collections, pin_pos_op):
@@ -170,7 +157,7 @@ class PlaceObj(nn.Module):
         base_gamma = self.base_gamma(params, placedb)
         def build_update_gamma_op(iteration, overflow):
             self.update_gamma(iteration, overflow, base_gamma)
-            #print("[I] update gamma to %g" % (wirelength_for_pin_op.gamma.data))
+            #logging.debug("update gamma to %g" % (wirelength_for_pin_op.gamma.data))
 
         return build_wirelength_op, build_update_gamma_op
 
@@ -183,7 +170,7 @@ class PlaceObj(nn.Module):
         @param pin_pos_op the op to compute pin locations according to cell locations 
         """
         gamma = 10*self.base_gamma(params, placedb)
-        print("[I] gamma = %g" % (gamma))
+        logging.info("gamma = %g" % (gamma))
 
         wirelength_for_pin_op = logsumexp_wirelength.LogSumExpWirelength(
                 flat_netpin=data_collections.flat_net2pin_map, 
@@ -204,7 +191,7 @@ class PlaceObj(nn.Module):
         base_gamma = self.base_gamma(params, placedb)
         def build_update_gamma_op(iteration, overflow):
             self.update_gamma(iteration, overflow, base_gamma)
-            #print("[I] update gamma to %g" % (wirelength_for_pin_op.gamma.data))
+            #logging.debug("update gamma to %g" % (wirelength_for_pin_op.gamma.data))
 
         return build_wirelength_op, build_update_gamma_op
 
@@ -231,11 +218,11 @@ class PlaceObj(nn.Module):
         max_num_bins_x = np.ceil((np.amax(placedb.node_size_x)+4*bin_size_x) / bin_size_x)
         max_num_bins_y = np.ceil((np.amax(placedb.node_size_y)+4*bin_size_y) / bin_size_y)
         max_num_bins = max(int(max_num_bins_x), int(max_num_bins_y))
-        print("[I] %s #bins %dx%d, bin sizes %gx%g, max_num_bins = %d, padding = %d" % (name, local_num_bins_x, local_num_bins_y, bin_size_x/placedb.row_height, bin_size_y/placedb.row_height, max_num_bins, padding))
+        logging.info("%s #bins %dx%d, bin sizes %gx%g, max_num_bins = %d, padding = %d" % (name, local_num_bins_x, local_num_bins_y, bin_size_x/placedb.row_height, bin_size_y/placedb.row_height, max_num_bins, padding))
         if local_num_bins_x < max_num_bins:
-            print("[W] local_num_bins_x (%d) < max_num_bins (%d)" % (local_num_bins_x, max_num_bins))
+            logging.warning("local_num_bins_x (%d) < max_num_bins (%d)" % (local_num_bins_x, max_num_bins))
         if local_num_bins_y < max_num_bins:
-            print("[W] local_num_bins_y (%d) < max_num_bins (%d)" % (local_num_bins_y, max_num_bins))
+            logging.warning("local_num_bins_y (%d) < max_num_bins (%d)" % (local_num_bins_y, max_num_bins))
 
         node_size_x = placedb.node_size_x
         node_size_y = placedb.node_size_y
@@ -307,11 +294,11 @@ class PlaceObj(nn.Module):
         max_num_bins_x = np.ceil((np.amax(placedb.node_size_x[0:placedb.num_movable_nodes])+2*bin_size_x) / bin_size_x)
         max_num_bins_y = np.ceil((np.amax(placedb.node_size_y[0:placedb.num_movable_nodes])+2*bin_size_y) / bin_size_y)
         max_num_bins = max(int(max_num_bins_x), int(max_num_bins_y))
-        print("[I] %s #bins %dx%d, bin sizes %gx%g, max_num_bins = %d, padding = %d" % (name, local_num_bins_x, local_num_bins_y, bin_size_x/placedb.row_height, bin_size_y/placedb.row_height, max_num_bins, padding))
+        logging.info("%s #bins %dx%d, bin sizes %gx%g, max_num_bins = %d, padding = %d" % (name, local_num_bins_x, local_num_bins_y, bin_size_x/placedb.row_height, bin_size_y/placedb.row_height, max_num_bins, padding))
         if local_num_bins_x < max_num_bins:
-            print("[W] local_num_bins_x (%d) < max_num_bins (%d)" % (local_num_bins_x, max_num_bins))
+            logging.warning("local_num_bins_x (%d) < max_num_bins (%d)" % (local_num_bins_x, max_num_bins))
         if local_num_bins_y < max_num_bins:
-            print("[W] local_num_bins_y (%d) < max_num_bins (%d)" % (local_num_bins_y, max_num_bins))
+            logging.warning("local_num_bins_y (%d) < max_num_bins (%d)" % (local_num_bins_y, max_num_bins))
 
         return electric_potential.ElectricPotential(
                 node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
@@ -429,9 +416,9 @@ class PlaceObj(nn.Module):
             grad[placedb.num_nodes:placedb.num_nodes*2].div_(precond)
             #for p in pos:
             #    grad_norm = p.grad.norm(p=2)
-            #    print("grad_norm = %g" % (grad_norm.data))
+            #    logging.debug("grad_norm = %g" % (grad_norm.data))
             #    p.grad.div_(grad_norm.data)
-            #    print("grad_norm = %g" % (p.grad.norm(p=2).data))
+            #    logging.debug("grad_norm = %g" % (p.grad.norm(p=2).data))
             #grad.data[0:placedb.num_movable_nodes].div_(grad[0:placedb.num_movable_nodes].norm(p=2))
             #grad.data[placedb.num_nodes:placedb.num_nodes+placedb.num_movable_nodes].div_(grad[placedb.num_nodes:placedb.num_nodes+placedb.num_movable_nodes].norm(p=2))
 

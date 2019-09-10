@@ -34,7 +34,7 @@ class EvalMetrics (object):
         """
         content = ""
         if self.iteration is not None:
-            content = "[I] iteration %4d" % (self.iteration)
+            content = "iteration %4d" % (self.iteration)
         if self.wirelength is not None:
             content += ", wirelength %.3E" % (self.wirelength)
         if self.density is not None: 

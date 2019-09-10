@@ -9,6 +9,7 @@ import time
 import torch
 from torch import nn
 from torch.autograd import Function
+import logging
 
 import dreamplace.ops.weighted_average_wirelength.weighted_average_wirelength_cpp as weighted_average_wirelength_cpp
 try: 
@@ -18,6 +19,8 @@ try:
 except:
     pass 
 import pdb 
+
+logger = logging.getLogger(__name__)
 
 class WeightedAverageWirelengthFunction(Function):
     """
@@ -35,6 +38,7 @@ class WeightedAverageWirelengthFunction(Function):
         @param pin_mask whether compute gradient for a pin, 1 means to fill with zero, 0 means to compute
         @param gamma the smaller, the closer to HPWL 
         """
+        tt = time.time()
         if pos.is_cuda:
             output = weighted_average_wirelength_cuda.forward(pos.view(pos.numel()), flat_netpin, netpin_start, pin2net_map, net_weights, net_mask, gamma)
         else:
@@ -48,10 +52,14 @@ class WeightedAverageWirelengthFunction(Function):
         ctx.gamma = gamma
         ctx.pos = pos
         ctx.num_threads = num_threads
+        if pos.is_cuda: 
+            torch.cuda.synchronize()
+        logger.debug("wirelength forward %.3f ms" % ((time.time()-tt)*1000))
         return output 
 
     @staticmethod
     def backward(ctx, grad_pos):
+        tt = time.time()
         if grad_pos.is_cuda:
             output = weighted_average_wirelength_cuda.backward(
                     grad_pos, 
@@ -76,6 +84,9 @@ class WeightedAverageWirelengthFunction(Function):
                     )
         output[:output.numel()//2].masked_fill_(ctx.pin_mask, 0.0)
         output[output.numel()//2:].masked_fill_(ctx.pin_mask, 0.0)
+        if grad_pos.is_cuda: 
+            torch.cuda.synchronize()
+        logger.debug("wirelength backward %.3f ms" % ((time.time()-tt)*1000))
         return output, None, None, None, None, None, None, None, None
 
 class WeightedAverageWirelengthAtomicFunction(Function):
@@ -92,7 +103,7 @@ class WeightedAverageWirelengthAtomicFunction(Function):
         @param pin_mask whether compute gradient for a pin, 1 means to fill with zero, 0 means to compute
         @param gamma the smaller, the closer to HPWL 
         """
-        #tt = time.time()
+        tt = time.time()
         if pos.is_cuda:
             output = weighted_average_wirelength_cuda_atomic.forward(pos.view(pos.numel()), pin2net_map, net_weights, net_mask, gamma)
         else:
@@ -111,13 +122,14 @@ class WeightedAverageWirelengthAtomicFunction(Function):
         ctx.pos = pos 
         #if torch.isnan(ctx.exp_xy).any() or torch.isnan(ctx.exp_nxy).any() or torch.isnan(ctx.exp_xy_sum).any() or torch.isnan(ctx.exp_nxy_sum).any() or torch.isnan(output[0]).any():
         #    pdb.set_trace()
-        torch.cuda.synchronize()
-        #print("\t\twirelength forward kernel takes %.3f ms" % ((time.time()-tt)*1000))
+        if pos.is_cuda: 
+            torch.cuda.synchronize()
+        logger.debug("wirelength forward %.3f ms" % ((time.time()-tt)*1000))
         return output[0]
 
     @staticmethod
     def backward(ctx, grad_pos):
-        #tt = time.time()
+        tt = time.time()
         if grad_pos.is_cuda:
             output = weighted_average_wirelength_cuda_atomic.backward(
                     grad_pos, 
@@ -136,8 +148,9 @@ class WeightedAverageWirelengthAtomicFunction(Function):
         output[int(output.numel()//2):].masked_fill_(ctx.pin_mask, 0.0)
         #if torch.isnan(output).any():
         #    pdb.set_trace()
-        torch.cuda.synchronize()
-        #print("\t\twirelength backward kernel %.3f ms" % ((time.time()-tt)*1000))
+        if grad_pos.is_cuda:
+            torch.cuda.synchronize()
+        logger.debug("wirelength backward kernel %.3f ms" % ((time.time()-tt)*1000))
         return output, None, None, None, None, None
 
 class WeightedAverageWirelengthSparseFunction(Function):
@@ -154,7 +167,7 @@ class WeightedAverageWirelengthSparseFunction(Function):
         @param pin_mask whether compute gradient for a pin, 1 means to fill with zero, 0 means to compute
         @param gamma the smaller, the closer to HPWL 
         """
-        #tt = time.time()
+        tt = time.time()
         if pos.is_cuda:
             output = weighted_average_wirelength_cuda_sparse.forward(pos.view(pos.numel()), flat_netpin, netpin_start, netpin_values, pin2net_map, net_weights, net_mask, gamma)
         else:
@@ -173,13 +186,14 @@ class WeightedAverageWirelengthSparseFunction(Function):
         ctx.pos = pos 
         #if torch.isnan(ctx.exp_xy).any() or torch.isnan(ctx.exp_nxy).any() or torch.isnan(ctx.exp_xy_sum).any() or torch.isnan(ctx.exp_nxy_sum).any() or torch.isnan(output[0]).any():
         #    pdb.set_trace()
-        torch.cuda.synchronize()
-        #print("\t\twirelength forward kernel takes %.3f ms" % ((time.time()-tt)*1000))
+        if pos.is_cuda: 
+            torch.cuda.synchronize()
+        logger.debug("wirelength forward kernel takes %.3f ms" % ((time.time()-tt)*1000))
         return output[0]
 
     @staticmethod
     def backward(ctx, grad_pos):
-        #tt = time.time()
+        tt = time.time()
         if grad_pos.is_cuda:
             output = weighted_average_wirelength_cuda_sparse.backward(
                     grad_pos, 
@@ -198,8 +212,9 @@ class WeightedAverageWirelengthSparseFunction(Function):
         output[output.numel()//2:].masked_fill_(ctx.pin_mask, 0.0)
         #if torch.isnan(output).any():
         #    pdb.set_trace()
-        torch.cuda.synchronize()
-        #print("\t\twirelength backward kernel %.3f ms" % ((time.time()-tt)*1000))
+        if grad_pos.is_cuda:
+            torch.cuda.synchronize()
+        logger.debug("wirelength backward kernel %.3f ms" % ((time.time()-tt)*1000))
         return output, None, None, None, None, None, None, None, None, None
 
 class WeightedAverageWirelength(nn.Module):

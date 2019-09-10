@@ -10,6 +10,7 @@ import os
 import re
 import time 
 import numpy as np 
+import logging
 import Params
 import dreamplace 
 import dreamplace.ops.place_io.place_io as place_io 
@@ -98,7 +99,7 @@ class PlaceDB (object):
         @brief scale distances
         @param scale_factor scale factor 
         """
-        print("[I] scale coordinate system by %g" % (scale_factor))
+        logging.info("scale coordinate system by %g" % (scale_factor))
         self.scale_pl(scale_factor)
         self.node_size_x *= scale_factor
         self.node_size_y *= scale_factor
@@ -116,7 +117,7 @@ class PlaceDB (object):
         @brief Sort net by degree. 
         Sort pin array such that pins belonging to the same net is abutting each other
         """
-        print("\t[I] sort nets by degree and pins by net")
+        logging.info("sort nets by degree and pins by net")
 
         # sort nets by degree 
         net_degrees = np.array([len(pins) for pins in self.net2pin_map])
@@ -361,29 +362,29 @@ class PlaceDB (object):
         @brief print node information 
         @param node_id cell index 
         """
-        print("node %s(%d), size (%g, %g), pos (%g, %g)" % (self.node_names[node_id], node_id, self.node_size_x[node_id], self.node_size_y[node_id], self.node_x[node_id], self.node_y[node_id]))
+        logging.debug("node %s(%d), size (%g, %g), pos (%g, %g)" % (self.node_names[node_id], node_id, self.node_size_x[node_id], self.node_size_y[node_id], self.node_x[node_id], self.node_y[node_id]))
         pins = "pins "
         for pin_id in self.node2pin_map[node_id]:
             pins += "%s(%s, %d) " % (self.node_names[self.pin2node_map[pin_id]], self.net_names[self.pin2net_map[pin_id]], pin_id)
-        print(pins)
+        logging.debug(pins)
 
     def print_net(self, net_id):
         """
         @brief print net information
         @param net_id net index 
         """
-        print("net %s(%d)" % (self.net_names[net_id], net_id))
+        logging.debug("net %s(%d)" % (self.net_names[net_id], net_id))
         pins = "pins "
         for pin_id in self.net2pin_map[net_id]:
             pins += "%s(%s, %d) " % (self.node_names[self.pin2node_map[pin_id]], self.net_names[self.pin2net_map[pin_id]], pin_id)
-        print(pins)
+        logging.debug(pins)
 
     def print_row(self, row_id):
         """
         @brief print row information 
         @param row_id row index 
         """
-        print("row %d %s" % (row_id, self.rows[row_id]))
+        logging.debug("row %d %s" % (row_id, self.rows[row_id]))
 
     def flatten_nested_map(self, net2pin_map): 
         """
@@ -468,10 +469,16 @@ class PlaceDB (object):
         # scale 
         self.scale(params.scale_factor)
 
-        print("=============== Benchmark Statistics ===============")
-        print("\t#nodes = %d, #terminals = %d, #movable = %d, #nets = %d" % (self.num_physical_nodes, self.num_terminals, self.num_movable_nodes, len(self.net_names)))
-        print("\tdie area = (%g, %g, %g, %g) %g" % (self.xl, self.yl, self.xh, self.yh, self.area))
-        print("\trow height = %g, site width = %g" % (self.row_height, self.site_width))
+        content = """
+=============== Benchmark Statistics ===============
+#nodes = %d, #terminals = %d, #movable = %d, #nets = %d
+die area = (%g, %g, %g, %g) %g
+row height = %g, site width = %g
+""" % (
+                self.num_physical_nodes, self.num_terminals, self.num_movable_nodes, len(self.net_names), 
+                self.xl, self.yl, self.xh, self.yh, self.area, 
+                self.row_height, self.site_width
+                )
 
         # set number of bins 
         self.num_bins_x = params.num_bins_x #self.num_bins(self.xl, self.xh, self.bin_size_x)
@@ -484,7 +491,7 @@ class PlaceDB (object):
         self.bin_center_x = self.bin_centers(self.xl, self.xh, self.bin_size_x)
         self.bin_center_y = self.bin_centers(self.yl, self.yh, self.bin_size_y)
 
-        print("\tnum_bins = %dx%d, bin sizes = %gx%g" % (self.num_bins_x, self.num_bins_y, self.bin_size_x/self.row_height, self.bin_size_y/self.row_height))
+        content += "num_bins = %dx%d, bin sizes = %gx%g\n" % (self.num_bins_x, self.num_bins_y, self.bin_size_x/self.row_height, self.bin_size_y/self.row_height)
 
         # set num_movable_pins 
         if self.num_movable_pins is None:
@@ -492,7 +499,7 @@ class PlaceDB (object):
             for node_id in self.pin2node_map:
                 if node_id < self.num_movable_nodes:
                     self.num_movable_pins += 1
-        print("\t#pins = %d, #movable_pins = %d" % (self.num_pins, self.num_movable_pins))
+        content += "#pins = %d, #movable_pins = %d\n" % (self.num_pins, self.num_movable_pins)
         # set total cell area 
         self.total_movable_node_area = float(np.sum(self.node_size_x[:self.num_movable_nodes]*self.node_size_y[:self.num_movable_nodes]))
         # total fixed node area should exclude the area outside the layout 
@@ -506,7 +513,7 @@ class PlaceDB (object):
                         0.0)
                 ))
         #self.total_fixed_node_area = float(np.sum(self.node_size_x[self.num_movable_nodes:]*self.node_size_y[self.num_movable_nodes:]))
-        print("\ttotal_movable_node_area = %g, total_fixed_node_area = %g" % (self.total_movable_node_area, self.total_fixed_node_area))
+        content += "total_movable_node_area = %g, total_fixed_node_area = %g\n" % (self.total_movable_node_area, self.total_fixed_node_area)
 
         # insert filler nodes 
         if params.enable_fillers: 
@@ -520,10 +527,11 @@ class PlaceDB (object):
         else:
             self.total_filler_node_area = 0 
             self.num_filler_nodes = 0
-        print("\ttotal_filler_node_area = %g, #fillers = %g, filler sizes = %gx%g" % (self.total_filler_node_area, self.num_filler_nodes, filler_size_x, filler_size_y))
-        print("====================================================")
+        content += "total_filler_node_area = %g, #fillers = %g, filler sizes = %gx%g\n" % (self.total_filler_node_area, self.num_filler_nodes, filler_size_x, filler_size_y)
+        content += "====================================================\n"
 
-        print("[I] reading benchmark takes %g seconds" % (time.time()-tt))
+        logging.info(content)
+        logging.info("reading benchmark takes %g seconds" % (time.time()-tt))
 
     def write(self, params, filename, sol_file_format=None):
         """
@@ -532,7 +540,7 @@ class PlaceDB (object):
         @param sol_file_format solution file format, DEF|DEFSIMPLE|BOOKSHELF|BOOKSHELFALL
         """
         tt = time.time()
-        print("[I] writing to %s" % (filename))
+        logging.info("writing to %s" % (filename))
         if sol_file_format is None: 
             if filename.endswith(".def"): 
                 sol_file_format = place_io.SolutionFileFormat.DEF 
@@ -549,7 +557,7 @@ class PlaceDB (object):
             node_y = self.node_y * unscale_factor
 
         place_io.PlaceIOFunction.write(self.rawdb, filename, sol_file_format, node_x, node_y)
-        print("[I] write %s takes %.3f seconds" % (str(sol_file_format), time.time()-tt))
+        logging.info("write %s takes %.3f seconds" % (str(sol_file_format), time.time()-tt))
 
     def write_pl(self, params, pl_file):
         """
@@ -557,7 +565,7 @@ class PlaceDB (object):
         @param pl_file .pl file 
         """
         tt = time.time()
-        print("[I] writing to %s" % (pl_file))
+        logging.info("writing to %s" % (pl_file))
         content = "UCLA pl 1.0\n"
         str_node_names = np.array(self.node_names).astype(np.str)
         str_node_orient = np.array(self.node_orient).astype(np.str)
@@ -572,7 +580,7 @@ class PlaceDB (object):
                 content += " /FIXED"
         with open(pl_file, "w") as f:
             f.write(content)
-        print("[I] write_pl takes %.3f seconds" % (time.time()-tt))
+        logging.info("write_pl takes %.3f seconds" % (time.time()-tt))
 
     def write_nets(self, params, net_file):
         """
@@ -581,7 +589,7 @@ class PlaceDB (object):
         @param net_file .net file 
         """
         tt = time.time()
-        print("[I] writing to %s" % (net_file))
+        logging.info("writing to %s" % (net_file))
         content = "UCLA nets 1.0\n"
         content += "\nNumNets : %d" % (len(self.net2pin_map))
         content += "\nNumPins : %d" % (len(self.pin2net_map))
@@ -595,7 +603,7 @@ class PlaceDB (object):
 
         with open(net_file, "w") as f:
             f.write(content)
-        print("[I] write_nets takes %.3f seconds" % (time.time()-tt))
+        logging.info("write_nets takes %.3f seconds" % (time.time()-tt))
 
     def apply(self, params, node_x, node_y):
         """
@@ -619,11 +627,11 @@ class PlaceDB (object):
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("[E] One input parameters in json format in required")
+        logging.error("One input parameters in json format in required")
 
     params = Params.Params()
     params.load(sys.argv[sys.argv[1]])
-    print("[I] parameters = %s" % (params))
+    logging.info("parameters = %s" % (params))
 
     db = PlaceDB()
     db(params)

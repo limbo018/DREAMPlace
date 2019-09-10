@@ -75,15 +75,15 @@ int dreamplaceSPrintPrefix(MessageType m, char* prefix)
 		case kNONE:
             return sprintf(prefix, "%c", '\0');
 		case kINFO:
-			return sprintf(prefix, "(I) ");
+			return sprintf(prefix, "[INFO   ] ");
 		case kWARN:
-            return sprintf(prefix, "(W) ");
+            return sprintf(prefix, "[WARNING] ");
 		case kERROR:
-            return sprintf(prefix, "(E) ");
+            return sprintf(prefix, "[ERROR  ] ");
 		case kDEBUG:
-            return sprintf(prefix, "(D) ");
+            return sprintf(prefix, "[DEBUG  ] ");
         case kASSERT:
-            return sprintf(prefix, "(A) ");
+            return sprintf(prefix, "[ASSERT ] ");
 		default:
 			dreamplaceAssertMsg(0, "unknown message type");
 	}

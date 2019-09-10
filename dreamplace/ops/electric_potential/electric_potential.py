@@ -14,6 +14,7 @@ import torch
 from torch import nn
 from torch.autograd import Function
 from torch.nn import functional as F
+import logging
 
 import dreamplace.ops.dct.dct as dct 
 import dreamplace.ops.dct.discrete_spectral_transform as discrete_spectral_transform
@@ -29,6 +30,8 @@ import matplotlib
 matplotlib.use('Agg')
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt 
+
+logger = logging.getLogger(__name__)
 
 # global variable for plot 
 plot_count = 0
@@ -69,6 +72,7 @@ class ElectricPotentialFunction(Function):
           num_threads=8
           ):
         
+        tt = time.time()
         if pos.is_cuda:
             output = electric_potential_cuda.density_map(
                     pos.view(pos.numel()), 
@@ -216,11 +220,12 @@ class ElectricPotentialFunction(Function):
 
         if pos.is_cuda: 
             torch.cuda.synchronize()
+        logger.debug("density forward %.3f ms" % ((time.time()-tt)*1000))
         return energy 
 
     @staticmethod
     def backward(ctx, grad_pos):
-        #tt = time.time()
+        tt = time.time()
         if grad_pos.is_cuda:
             output = -electric_potential_cuda.electric_force(
                     grad_pos, 
@@ -270,7 +275,7 @@ class ElectricPotentialFunction(Function):
         #output = torch.empty_like(ctx.pos).uniform_(0.0, 0.1)
         if grad_pos.is_cuda: 
             torch.cuda.synchronize()
-        #print("\t\tdensity backward %.3f ms" % ((time.time()-tt)*1000))
+        logger.debug("density backward %.3f ms" % ((time.time()-tt)*1000))
         return output, \
                 None, None, None, None, \
                 None, None, None, None, \
