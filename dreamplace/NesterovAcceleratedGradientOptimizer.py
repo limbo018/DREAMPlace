@@ -118,12 +118,12 @@ class NesterovAcceleratedGradientOptimizer(Optimizer):
                     alpha_kp1 = torch.dist(v_kp1.data, v_k.data, p=2) / torch.dist(g_kp1.data, g_k.data, p=2) 
                     backtrack_cnt += 1
                     group['obj_eval_count'] += 1
-                    #print("\t\talpha_kp1 %.3f ms" % ((time.time()-tt)*1000))
+                    #logging.debug("\t\talpha_kp1 %.3f ms" % ((time.time()-tt)*1000))
                     #torch.cuda.synchronize()
-                    #print(prof)
+                    #logging.debug(prof)
 
-                    #print("alpha_kp1 = %g, line_search_count = %d, obj_eval_count = %d" % (alpha_kp1, backtrack_cnt, group['obj_eval_count']))
-                    #print("|g_k| = %.6E, |g_kp1| = %.6E" % (g_k.norm(p=2), g_kp1.norm(p=2)))
+                    #logging.debug("alpha_kp1 = %g, line_search_count = %d, obj_eval_count = %d" % (alpha_kp1, backtrack_cnt, group['obj_eval_count']))
+                    #logging.debug("|g_k| = %.6E, |g_kp1| = %.6E" % (g_k.norm(p=2), g_kp1.norm(p=2)))
                     if alpha_kp1 > 0.95*alpha_k or backtrack_cnt >= max_backtrack_cnt:
                         alpha_k.data.copy_(alpha_kp1.data)
                         break 
@@ -131,7 +131,7 @@ class NesterovAcceleratedGradientOptimizer(Optimizer):
                         alpha_k.data.copy_(alpha_kp1.data)
                 if v_k.is_cuda: 
                     torch.cuda.synchronize()
-                #print("\tline search %.3f ms" % ((time.time()-ttt)*1000))
+                #logging.debug("\tline search %.3f ms" % ((time.time()-ttt)*1000))
 
                 v_k_1.data.copy_(v_k.data)
                 g_k_1.data.copy_(g_k.data)
