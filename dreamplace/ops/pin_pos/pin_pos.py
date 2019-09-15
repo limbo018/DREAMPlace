@@ -92,7 +92,8 @@ class PinPos(nn.Module):
         @brief API 
         @param pos cell locations. The array consists of x locations of movable cells, fixed cells, and filler cells, then y locations of them 
         """
-        num_nodes = pos.numel()/2;
+        assert pos.numel() % 2 == 0
+        num_nodes = pos.numel() // 2
         if pos.is_cuda: 
             pin_x = self.pin_offset_x.add(torch.index_select(pos[0:self.num_physical_nodes], dim=0, index=self.pin2node_map))
             pin_y = self.pin_offset_y.add(torch.index_select(pos[num_nodes:num_nodes+self.num_physical_nodes], dim=0, index=self.pin2node_map))
