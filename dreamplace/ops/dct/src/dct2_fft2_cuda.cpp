@@ -32,7 +32,7 @@ void dct2_fft2_forward(
     auto N = x.size(-1);
     auto M = x.numel() / N;
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "dct2_fft2_forward", [&] {
+    AT_DISPATCH_FLOATING_TYPES(x.type().scalarType(), "dct2_fft2_forward", [&] {
         dct2dPreprocessCudaLauncher<scalar_t>(
             x.data<scalar_t>(),
             out.data<scalar_t>(),
@@ -73,7 +73,7 @@ void idct2_fft2_forward(
     auto N = x.size(-1);
     auto M = x.numel() / N;
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "idct2_fft2_forward", [&] {
+    AT_DISPATCH_FLOATING_TYPES(x.type().scalarType(), "idct2_fft2_forward", [&] {
         idct2_fft2PreprocessCudaLauncher<scalar_t>(
             x.data<scalar_t>(),
             buf.data<scalar_t>(),
@@ -114,7 +114,7 @@ void idct_idxst_forward(
     auto N = x.size(-1);
     auto M = x.numel() / N;
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "idct_idxst_forward", [&] {
+    AT_DISPATCH_FLOATING_TYPES(x.type().scalarType(), "idct_idxst_forward", [&] {
         idct_idxstPreprocessCudaLauncher<scalar_t>(
             x.data<scalar_t>(),
             buf.data<scalar_t>(),
@@ -155,7 +155,7 @@ void idxst_idct_forward(
     auto N = x.size(-1);
     auto M = x.numel() / N;
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "idxst_idct_forward", [&] {
+    AT_DISPATCH_FLOATING_TYPES(x.type().scalarType(), "idxst_idct_forward", [&] {
         idxst_idctPreprocessCudaLauncher<scalar_t>(
             x.data<scalar_t>(),
             buf.data<scalar_t>(),

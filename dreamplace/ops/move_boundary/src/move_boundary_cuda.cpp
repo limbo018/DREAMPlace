@@ -40,7 +40,7 @@ at::Tensor move_boundary_forward(
     CHECK_CONTIGUOUS(pos);
 
     // Call the cuda kernel launcher
-    AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeMoveBoundaryMapCudaLauncher", [&] {
+    AT_DISPATCH_FLOATING_TYPES(pos.type().scalarType(), "computeMoveBoundaryMapCudaLauncher", [&] {
             computeMoveBoundaryMapCudaLauncher<scalar_t>(
                     pos.data<scalar_t>(), pos.data<scalar_t>()+pos.numel()/2, 
                     node_size_x.data<scalar_t>(), node_size_y.data<scalar_t>(), 

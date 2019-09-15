@@ -51,7 +51,7 @@ int rmst_wl_forward(
     CHECK_CONTIGUOUS(rmst_wl);
 
     int ret = 0; 
-    AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeRMSTWLLauncher", [&] {
+    AT_DISPATCH_FLOATING_TYPES(pos.type().scalarType(), "computeRMSTWLLauncher", [&] {
             computeRMSTWLLauncher<scalar_t>(
                     pos.data<scalar_t>(), pos.data<scalar_t>()+pos.numel()/2, 
                     flat_netpin.data<int>(), 

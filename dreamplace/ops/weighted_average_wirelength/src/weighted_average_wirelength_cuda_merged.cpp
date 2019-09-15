@@ -93,7 +93,7 @@ std::vector<at::Tensor> weighted_average_wirelength_forward(
     // timed with grad_in yet 
     at::Tensor grad_intermediate = at::zeros_like(pos);
 
-    AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeWeightedAverageWirelengthCudaMergedLauncher", [&] {
+    AT_DISPATCH_FLOATING_TYPES(pos.type().scalarType(), "computeWeightedAverageWirelengthCudaMergedLauncher", [&] {
         computeWeightedAverageWirelengthCudaMergedLauncher<scalar_t>(
             pos.data<scalar_t>(), pos.data<scalar_t>() + num_pins,
             flat_netpin.data<int>(),
@@ -154,7 +154,7 @@ at::Tensor weighted_average_wirelength_backward(
     //int num_nets = netpin_start.numel() - 1;
     int num_pins = pos.numel() / 2;
 
-    AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeWeightedAverageWirelengthCudaMergedLauncher", [&] {
+    AT_DISPATCH_FLOATING_TYPES(pos.type().scalarType(), "computeWeightedAverageWirelengthCudaMergedLauncher", [&] {
         if (net_weights.numel())
         {
             integrateNetWeightsCudaLauncher(

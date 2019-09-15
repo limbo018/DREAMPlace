@@ -53,7 +53,7 @@ at::Tensor hpwl_forward(
     int num_nets = net_mask.numel();
     at::Tensor partial_wl = at::zeros({2, num_nets}, pos.type()); 
 
-    AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeHPWLCudaLauncher", [&] {
+    AT_DISPATCH_FLOATING_TYPES(pos.type().scalarType(), "computeHPWLCudaLauncher", [&] {
             computeHPWLCudaLauncher<scalar_t>(
                     pos.data<scalar_t>(), pos.data<scalar_t>()+pos.numel()/2, 
                     flat_netpin.data<int>(), 

@@ -24,7 +24,7 @@ at::Tensor dct_forward(
     //auto x_reorder = at::empty_like(x);
     auto x_reorder = at::empty({M, N}, x.options());
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "dct_forward", [&] {
+    AT_DISPATCH_FLOATING_TYPES(x.type().scalarType(), "dct_forward", [&] {
             computeReorder<scalar_t>(
                     x.data<scalar_t>(), 
                     M, 
@@ -74,7 +74,7 @@ at::Tensor idct_forward(
     // vk is hermitian symmetric, only fill in half 
     auto v = at::empty({M*N+std::max(M, N)}, x.options()).resize_({M, N/2+1, 2});
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "idct_forward", [&] {
+    AT_DISPATCH_FLOATING_TYPES(x.type().scalarType(), "idct_forward", [&] {
             computeVk<scalar_t>(
                     x.data<scalar_t>(), 
                     expk.data<scalar_t>(), 
@@ -131,7 +131,7 @@ at::Tensor dct2_forward(
     auto M = x.numel()/N; 
     auto x_reorder = at::empty({M, N}, x.options());
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "dct2_forward", [&] {
+    AT_DISPATCH_FLOATING_TYPES(x.type().scalarType(), "dct2_forward", [&] {
             computeReorder<scalar_t>(
                     x.data<scalar_t>(), 
                     M, 
@@ -219,7 +219,7 @@ at::Tensor idct2_forward(
     // vk is hermitian symmetric, only fill in half 
     auto v = at::empty({M*N+std::max(M, N)}, x.options()).resize_({M, N/2+1, 2});
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "idct2_forward", [&] {
+    AT_DISPATCH_FLOATING_TYPES(x.type().scalarType(), "idct2_forward", [&] {
             computeVk<scalar_t>(
                     x.data<scalar_t>(), 
                     expk1.data<scalar_t>(), 

@@ -87,7 +87,7 @@ at::Tensor electric_force(
     at::Tensor grad_out = at::zeros_like(pos);
     int num_nodes = pos.numel()/2; 
 
-    AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeElectricForceCudaLauncher", [&] {
+    AT_DISPATCH_FLOATING_TYPES(pos.type().scalarType(), "computeElectricForceCudaLauncher", [&] {
             computeElectricForceCudaLauncher<scalar_t>(
                     num_bins_x, num_bins_y, 
                     num_movable_impacted_bins_x, num_movable_impacted_bins_y, 

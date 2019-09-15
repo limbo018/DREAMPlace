@@ -80,7 +80,7 @@ std::vector<at::Tensor> logsumexp_wirelength_forward(
     at::Tensor exp_xy_sum = at::zeros({2*(netpin_start.numel()-1)}, pos.type());
     at::Tensor exp_nxy_sum = at::zeros({2*(netpin_start.numel()-1)}, pos.type());
 
-    AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeLogSumExpWirelengthLauncher", [&] {
+    AT_DISPATCH_FLOATING_TYPES(pos.type().scalarType(), "computeLogSumExpWirelengthLauncher", [&] {
             computeLogSumExpWirelengthLauncher<scalar_t>(
                     pos.data<scalar_t>(), pos.data<scalar_t>()+pos.numel()/2, 
                     flat_netpin.data<int>(), 
@@ -157,7 +157,7 @@ at::Tensor logsumexp_wirelength_backward(
 
     at::Tensor grad_out = at::zeros_like(pos);
 
-    AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeLogSumExpWirelengthLauncher", [&] {
+    AT_DISPATCH_FLOATING_TYPES(pos.type().scalarType(), "computeLogSumExpWirelengthLauncher", [&] {
             computeLogSumExpWirelengthLauncher<scalar_t>(
                     pos.data<scalar_t>(), pos.data<scalar_t>()+pos.numel()/2, 
                     flat_netpin.data<int>(), 

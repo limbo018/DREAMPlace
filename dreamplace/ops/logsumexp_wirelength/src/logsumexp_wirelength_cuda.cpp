@@ -85,7 +85,7 @@ std::vector<at::Tensor> logsumexp_wirelength_forward(
         netpin_values = at::ones({flat_netpin.numel()}, pos.type());
     }
 
-    AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeLogSumExpWirelengthCudaLauncher", [&] {
+    AT_DISPATCH_FLOATING_TYPES(pos.type().scalarType(), "computeLogSumExpWirelengthCudaLauncher", [&] {
             computeLogSumExpWirelengthCudaLauncher<scalar_t>(
                     pos.data<scalar_t>(), pos.data<scalar_t>()+pos.numel()/2, 
                     flat_netpin.data<int>(), 
@@ -166,7 +166,7 @@ at::Tensor logsumexp_wirelength_backward(
     int num_nets = netpin_start.numel()-1;
     int num_pins = pos.numel()/2;
 
-    AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeLogSumExpWirelengthCudaLauncher", [&] {
+    AT_DISPATCH_FLOATING_TYPES(pos.type().scalarType(), "computeLogSumExpWirelengthCudaLauncher", [&] {
             computeLogSumExpWirelengthCudaLauncher<scalar_t>(
                     pos.data<scalar_t>(), pos.data<scalar_t>()+num_pins, 
                     flat_netpin.data<int>(), 

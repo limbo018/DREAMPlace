@@ -88,7 +88,7 @@ std::vector<at::Tensor> density_overflow_forward(
     int num_nodes = pos.numel()/2; 
 
     // Call the cuda kernel launcher
-    AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeDensityOverflowMapCudaByNodeLauncher", [&] {
+    AT_DISPATCH_FLOATING_TYPES(pos.type().scalarType(), "computeDensityOverflowMapCudaByNodeLauncher", [&] {
             computeDensityOverflowMapCudaByNodeLauncher<scalar_t>(
                     pos.data<scalar_t>(), pos.data<scalar_t>()+num_nodes, 
                     node_size_x.data<scalar_t>(), node_size_y.data<scalar_t>(), 
@@ -102,7 +102,7 @@ std::vector<at::Tensor> density_overflow_forward(
             });
     if (num_filler_nodes)
     {
-        AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeDensityOverflowMapCudaByNodeLauncher", [&] {
+        AT_DISPATCH_FLOATING_TYPES(pos.type().scalarType(), "computeDensityOverflowMapCudaByNodeLauncher", [&] {
                 computeDensityOverflowMapCudaByNodeLauncher<scalar_t>(
                         pos.data<scalar_t>()+num_nodes-num_filler_nodes, pos.data<scalar_t>()+num_nodes*2-num_filler_nodes, 
                         node_size_x.data<scalar_t>()+num_nodes-num_filler_nodes, node_size_y.data<scalar_t>()+num_nodes-num_filler_nodes, 

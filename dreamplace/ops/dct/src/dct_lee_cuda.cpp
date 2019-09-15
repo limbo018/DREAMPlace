@@ -13,7 +13,7 @@ void dct_lee_precompute_dct_cos(int N, at::Tensor out)
 {
     out.resize_(N);
 
-    AT_DISPATCH_FLOATING_TYPES(out.type(), "dct_lee_precompute_dct_cos", [&] {
+    AT_DISPATCH_FLOATING_TYPES(out.type().scalarType(), "dct_lee_precompute_dct_cos", [&] {
             lee::precompute_dct_cos<scalar_t>(
                     out.data<scalar_t>(), 
                     N
@@ -25,7 +25,7 @@ void dct_lee_precompute_idct_cos(int N, at::Tensor out)
 {
     out.resize_(N);
 
-    AT_DISPATCH_FLOATING_TYPES(out.type(), "dct_lee_precompute_idct_cos", [&] {
+    AT_DISPATCH_FLOATING_TYPES(out.type().scalarType(), "dct_lee_precompute_idct_cos", [&] {
             lee::precompute_idct_cos<scalar_t>(
                     out.data<scalar_t>(), 
                     N
@@ -48,7 +48,7 @@ inline void dct_lee_forward(
     auto N = x.size(-1);
     auto M = x.numel()/N; 
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "dct_lee_forward", [&] {
+    AT_DISPATCH_FLOATING_TYPES(x.type().scalarType(), "dct_lee_forward", [&] {
             lee::dct(
                     x.data<scalar_t>(), 
                     out.data<scalar_t>(), 
@@ -77,7 +77,7 @@ inline void idct_lee_forward(
     auto N = x.size(-1);
     auto M = x.numel()/N; 
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "idct_lee_forward", [&] {
+    AT_DISPATCH_FLOATING_TYPES(x.type().scalarType(), "idct_lee_forward", [&] {
             lee::idct(
                     x.data<scalar_t>(), 
                     out.data<scalar_t>(), 
@@ -101,7 +101,7 @@ void dst_lee_forward(
     auto N = x.size(-1);
     auto M = x.numel()/N; 
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "dst_lee_forward", [&] {
+    AT_DISPATCH_FLOATING_TYPES(x.type().scalarType(), "dst_lee_forward", [&] {
             //std::cout << "x\n" << x << "\n";
             buf.copy_(x);
             negateOddEntriesCudaLauncher<scalar_t>(
@@ -134,7 +134,7 @@ void idst_lee_forward(
     auto N = x.size(-1);
     auto M = x.numel()/N; 
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "idst_lee_forward", [&] {
+    AT_DISPATCH_FLOATING_TYPES(x.type().scalarType(), "idst_lee_forward", [&] {
             //std::cout << "x\n" << x << "\n";
             computeFlipCudaLauncher<scalar_t>(
                     x.data<scalar_t>(), 
@@ -239,7 +239,7 @@ void idxct_lee_forward(
     auto N = x.size(-1);
     auto M = x.numel()/N; 
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "idxct_lee_forward", [&] {
+    AT_DISPATCH_FLOATING_TYPES(x.type().scalarType(), "idxct_lee_forward", [&] {
             idct_lee_forward(x, cos, buf, out);
 
             //std::cout << __func__ << " z\n" << z << "\n";
@@ -263,7 +263,7 @@ void idxst_lee_forward(
     auto N = x.size(-1);
     auto M = x.numel()/N; 
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "idxst_lee_forward", [&] {
+    AT_DISPATCH_FLOATING_TYPES(x.type().scalarType(), "idxst_lee_forward", [&] {
             //std::cout << "x\n" << x << "\n";
             computeFlipAndShiftCudaLauncher<scalar_t>(
                     x.data<scalar_t>(), 

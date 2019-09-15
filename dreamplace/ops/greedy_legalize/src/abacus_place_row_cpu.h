@@ -38,18 +38,18 @@ bool abacusPlaceRowCPU(
     // merge two clusters 
     // the second cluster will be invalid 
     auto merge_cluster = [&](int dst_cluster_id, int src_cluster_id){
-        assert(dst_cluster_id < num_row_nodes); 
+        dreamplaceAssert(dst_cluster_id < num_row_nodes); 
         AbacusCluster<T>& dst_cluster = clusters[dst_cluster_id]; 
-        assert(src_cluster_id < num_row_nodes); 
+        dreamplaceAssert(src_cluster_id < num_row_nodes); 
         AbacusCluster<T>& src_cluster = clusters[src_cluster_id]; 
 
-        assert(dst_cluster.valid() && src_cluster.valid()); 
+        dreamplaceAssert(dst_cluster.valid() && src_cluster.valid()); 
         for (int i = dst_cluster_id+1; i < src_cluster_id; ++i)
         {
-            assert(!clusters[i].valid());
+            dreamplaceAssert(!clusters[i].valid());
         }
         dst_cluster.end_row_node_id = src_cluster.end_row_node_id; 
-        assert(dst_cluster.e < M && src_cluster.e < M); 
+        dreamplaceAssert(dst_cluster.e < M && src_cluster.e < M); 
         dst_cluster.e += src_cluster.e; 
         dst_cluster.q += src_cluster.q - src_cluster.e*dst_cluster.w; 
         dst_cluster.w += src_cluster.w; 
@@ -67,21 +67,21 @@ bool abacusPlaceRowCPU(
     // compute the locations and merge clusters 
     auto collapse = [&](int cluster_id, T range_xl, T range_xh){
         int cur_cluster_id = cluster_id; 
-        assert(cur_cluster_id < num_row_nodes); 
+        dreamplaceAssert(cur_cluster_id < num_row_nodes); 
         int prev_cluster_id = clusters[cur_cluster_id].prev_cluster_id; 
         AbacusCluster<T>* cluster = nullptr;
         AbacusCluster<T>* prev_cluster = nullptr;
 
         while (true)
         {
-            assert(cur_cluster_id < num_row_nodes); 
+            dreamplaceAssert(cur_cluster_id < num_row_nodes); 
             cluster = &clusters[cur_cluster_id]; 
             cluster->x = cluster->q/cluster->e; 
             // make sure cluster >= range_xl, so fixed nodes will not be moved 
             // in illegal case, cluster+w > range_xh may occur, but it is OK. 
             // We can collect failed clusters later 
             cluster->x = std::max(std::min(cluster->x, range_xh-cluster->w), range_xl);
-            assert(cluster->x >= range_xl && cluster->x+cluster->w <= range_xh);
+            dreamplaceAssert(cluster->x >= range_xl && cluster->x+cluster->w <= range_xh);
 
             prev_cluster_id = cluster->prev_cluster_id; 
             if (prev_cluster_id >= 0)
@@ -136,7 +136,7 @@ bool abacusPlaceRowCPU(
         }
         else 
         {
-            assert(node_size_y[row_nodes[j]] == row_height);
+            dreamplaceAssert(node_size_y[row_nodes[j]] == row_height);
         }
     }
     for (int i = 0; i < num_row_nodes; ++i)
@@ -144,7 +144,7 @@ bool abacusPlaceRowCPU(
         const AbacusCluster<T>& cluster = clusters[i]; 
         if (cluster.e < M)
         {
-            assert(node_size_y[row_nodes[i]] == row_height);
+            dreamplaceAssert(node_size_y[row_nodes[i]] == row_height);
             collapse(i, range_xl, range_xh); 
         }
         else // set range xl/xh according to fixed nodes 

@@ -97,7 +97,7 @@ at::Tensor greedy_legalization_forward(
     int num_nodes = init_pos.numel()/2;
 
     // Call the cuda kernel launcher
-    AT_DISPATCH_FLOATING_TYPES(pos.type(), "greedyLegalizationLauncher", [&] {
+    AT_DISPATCH_FLOATING_TYPES(pos.type().scalarType(), "greedyLegalizationLauncher", [&] {
             greedyLegalizationLauncher<scalar_t>(
                     init_pos.data<scalar_t>(), init_pos.data<scalar_t>()+num_nodes, 
                     node_size_x.data<scalar_t>(), node_size_y.data<scalar_t>(), 

@@ -194,13 +194,13 @@ void legalizeBinCPU(
                 // update cell position and blank 
                 for (int row_offset = 0; row_offset < num_node_rows; ++row_offset)
                 {
-                    assert(best_blank_bi[row_offset] >= 0); 
+                    dreamplaceAssert(best_blank_bi[row_offset] >= 0); 
                     // blanks in this bin 
                     int best_blank_bin_id = bin_id_x*blank_num_bins_y+best_blank_bin_id_y+row_offset; 
                     std::vector<Blank<T> >& blanks = bin_blanks.at(best_blank_bin_id);
                     Blank<T>& blank = blanks.at(best_blank_bi[row_offset]); 
-                    assert(best_xl >= blank.xl && best_xl+width <= blank.xh);
-                    assert(best_yl+row_height*row_offset == blank.yl);
+                    dreamplaceAssert(best_xl >= blank.xl && best_xl+width <= blank.xh);
+                    dreamplaceAssert(best_yl+row_height*row_offset == blank.yl);
                     if (best_xl == blank.xl)
                     {
                         // update blank 

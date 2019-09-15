@@ -13,10 +13,10 @@
 #include <fstream>
 
 #if DRAWPLACE == 1
-#include <cairo/cairo.h>
-#include <cairo/cairo-pdf.h>
-#include <cairo/cairo-ps.h>
-#include <cairo/cairo-svg.h>
+#include <cairo.h>
+#include <cairo-pdf.h>
+#include <cairo-ps.h>
+#include <cairo-svg.h>
 #endif
 
 #include<cstdio>

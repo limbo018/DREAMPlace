@@ -110,7 +110,7 @@ std::vector<at::Tensor> weighted_average_wirelength_forward(
     at::Tensor xy_max = at::full({2, num_nets}, std::numeric_limits<V>::min(), at::CUDA(at::kInt));
     at::Tensor xy_min = at::full({2, num_nets}, std::numeric_limits<V>::max(), at::CUDA(at::kInt));
 
-    AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeWeightedAverageWirelengthCudaLauncher", [&] {
+    AT_DISPATCH_FLOATING_TYPES(pos.type().scalarType(), "computeWeightedAverageWirelengthCudaLauncher", [&] {
         computeWeightedAverageWirelengthCudaLauncher<scalar_t, V>(
             pos.data<scalar_t>(), pos.data<scalar_t>() + num_pins,
             nullptr,
@@ -176,7 +176,7 @@ at::Tensor weighted_average_wirelength_backward(
     int num_nets = netpin_start.numel() - 1;
     int num_pins = pos.numel() / 2;
 
-    AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeWeightedAverageWirelengthCudaLauncher", [&] {
+    AT_DISPATCH_FLOATING_TYPES(pos.type().scalarType(), "computeWeightedAverageWirelengthCudaLauncher", [&] {
         computeWeightedAverageWirelengthCudaLauncher<scalar_t, V>(
             pos.data<scalar_t>(), pos.data<scalar_t>() + num_pins,
             pin2net_map.data<int>(),
