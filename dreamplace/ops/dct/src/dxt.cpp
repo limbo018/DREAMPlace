@@ -416,4 +416,222 @@ at::Tensor idcst2_forward(
     return z.contiguous(); 
 }
 
+at::Tensor idxst_idct_forward(
+        at::Tensor x,
+        at::Tensor expk0, 
+        at::Tensor expk1, 
+        int num_threads
+        ) 
+{
+    CHECK_CPU(x);
+    CHECK_CONTIGUOUS(x);
+    CHECK_CPU(expk0);
+    CHECK_CONTIGUOUS(expk0);
+    CHECK_CPU(expk1);
+    CHECK_CONTIGUOUS(expk1);
+
+    auto N = x.size(-1);
+    auto M = x.numel()/N; 
+
+    // idxct for rows 
+
+    //std::cout << "x\n" << x << "\n";
+    // vk = 0.5*W_{4N}^{k} (c[k] - c[N-k])
+    // vk is hermitian symmetric, only fill in half 
+    auto v = at::empty({M*N+std::max(M, N)}, x.type()).resize_({M, N/2+1, 2});
+    auto z = at::empty({M, N}, x.options());
+
+    AT_DISPATCH_FLOATING_TYPES(x.type(), "idsct2_forward", [&] {
+            computeVk<scalar_t>(
+                    x.data<scalar_t>(), 
+                    expk1.data<scalar_t>(), 
+                    M, 
+                    N, 
+                    v.data<scalar_t>(), 
+                    num_threads
+                    );
+
+            //std::cout << "v\n" << v << "\n";
+
+            // y is real now 
+            auto y = at::irfft(v, 1, false, true, {N});
+
+            //std::cout << "y\n" << y << "\n";
+
+            //std::cout << "expk\n" << expk << "\n";
+            //auto z = at::empty_like(x);
+            computeReorderReverse(
+                    y.data<scalar_t>(), 
+                    M, 
+                    N, 
+                    z.data<scalar_t>(), 
+                    num_threads
+                    );
+            //std::cout << "z\n" << z << "\n";
+
+            // idxst for columns
+
+            auto xt = z.transpose(-2, -1).contiguous();
+            //std::cout << "x\n" << x << "\n";
+            z = z.view_as(xt);
+            computeFlipAndShift<scalar_t>(
+                    xt.data<scalar_t>(), 
+                    N, 
+                    M, 
+                    z.data<scalar_t>(), 
+                    num_threads
+                    );
+
+            //std::cout << "x\n" << x << "\n";
+            // vk = 0.5*W_{4N}^{k} (c[k] - c[N-k])
+            v.resize_({N, M/2+1, 2});
+            computeVk<scalar_t>(
+                    z.data<scalar_t>(), 
+                    expk0.data<scalar_t>(), 
+                    N, 
+                    M, 
+                    v.data<scalar_t>(), 
+                    num_threads
+                    );
+
+            //std::cout << "v\n" << v << "\n";
+
+            y = at::irfft(v, 1, false, true, {M});
+
+            //std::cout << "y\n" << y << "\n";
+
+            //std::cout << "expk\n" << expk << "\n";
+            computeReorderReverse(
+                    y.data<scalar_t>(), 
+                    N, 
+                    M, 
+                    z.data<scalar_t>(), 
+                    num_threads
+                    );
+            //std::cout << "z\n" << z << "\n";
+            // normalized to match dct2_fft2 implementation 
+            z.mul_(0.25*M*N); 
+
+            negateOddEntries<scalar_t>(
+                    z.data<scalar_t>(), 
+                    N, 
+                    M, 
+                    num_threads
+                    );
+            //std::cout << "z\n" << y << "\n";
+
+            z.transpose_(-2, -1);
+    });
+
+    return z.contiguous(); 
+}
+
+at::Tensor idct_idxst_forward(
+        at::Tensor x,
+        at::Tensor expk0, 
+        at::Tensor expk1, 
+        int num_threads) 
+{
+    CHECK_CPU(x);
+    CHECK_CONTIGUOUS(x);
+    CHECK_CPU(expk0);
+    CHECK_CONTIGUOUS(expk0);
+    CHECK_CPU(expk1);
+    CHECK_CONTIGUOUS(expk1);
+
+    auto N = x.size(-1);
+    auto M = x.numel()/N; 
+
+    // idxst for rows 
+    //std::cout << "x\n" << x << "\n";
+    //auto z = at::empty_like(x);
+    auto z = at::empty({M, N}, x.options());
+
+    AT_DISPATCH_FLOATING_TYPES(x.type(), "idcst2_forward", [&] {
+            computeFlipAndShift<scalar_t>(
+                    x.data<scalar_t>(), 
+                    M, 
+                    N, 
+                    z.data<scalar_t>(), 
+                    num_threads
+                    );
+
+            //std::cout << "x\n" << x << "\n";
+            // vk = 0.5*W_{4N}^{k} (c[k] - c[N-k])
+            auto v = at::empty({M*N+std::max(M, N)}, x.options()).resize_({M, N/2+1, 2});
+            computeVk<scalar_t>(
+                    z.data<scalar_t>(), 
+                    expk1.data<scalar_t>(), 
+                    M, 
+                    N, 
+                    v.data<scalar_t>(), 
+                    num_threads
+                    );
+
+            //std::cout << "v\n" << v << "\n";
+
+            auto y = at::irfft(v, 1, false, true, {N});
+
+            //std::cout << "y\n" << y << "\n";
+
+            //std::cout << "expk\n" << expk << "\n";
+            computeReorderReverse(
+                    y.data<scalar_t>(), 
+                    M, 
+                    N, 
+                    z.data<scalar_t>(), 
+                    num_threads
+                    );
+            //std::cout << "z\n" << z << "\n";
+            // normalized to match dct2_fft2 implementation 
+            z.mul_(0.25*N*M); 
+
+            negateOddEntries<scalar_t>(
+                    z.data<scalar_t>(), 
+                    M, 
+                    N, 
+                    num_threads
+                    );
+            //std::cout << __func__ << " z\n" << z << "\n";
+
+            // idxct for columns
+
+            auto xt = z.transpose(-2, -1).contiguous();
+
+            //std::cout << "x\n" << x << "\n";
+            // vk = 0.5*W_{4N}^{k} (c[k] - c[N-k])
+            // vk = 0.5*W_{4N}^{k} (c[k] - c[N-k])
+            v.resize_({N, M/2+1, 2});
+            computeVk<scalar_t>(
+                    xt.data<scalar_t>(), 
+                    expk0.data<scalar_t>(), 
+                    N, 
+                    M, 
+                    v.data<scalar_t>(), 
+                    num_threads
+                    );
+
+            //std::cout << "v\n" << v << "\n";
+
+            y = at::irfft(v, 1, false, true, {M});
+
+            //std::cout << "y\n" << y << "\n";
+
+            //std::cout << "expk\n" << expk << "\n";
+            z = z.view_as(xt);
+            computeReorderReverse(
+                    y.data<scalar_t>(), 
+                    N, 
+                    M, 
+                    z.data<scalar_t>(), 
+                    num_threads
+                    );
+            //std::cout << "z\n" << z << "\n";
+
+            z.transpose_(-2, -1);
+    });
+
+    return z.contiguous(); 
+}
+
 DREAMPLACE_END_NAMESPACE

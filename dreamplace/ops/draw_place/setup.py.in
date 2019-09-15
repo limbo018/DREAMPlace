@@ -17,8 +17,13 @@ limbo_binary_dir = "${LIMBO_BINARY_DIR}"
 ops_dir = "${OPS_DIR}"
 
 include_dirs = [os.path.abspath(limbo_source_dir), ops_dir, '${Boost_INCLUDE_DIRS}', '${ZLIB_INCLUDE_DIRS}']
-lib_dirs = [os.path.join(os.path.abspath(limbo_binary_dir), 'limbo/parsers/gdsii/stream'), '${Boost_LIBRARY_DIRS}', os.path.dirname('${ZLIB_LIBRARIES}'), '${UTILITY_LIBRARY_DIRS}']
-libs = ['gdsparser', 'boost_iostreams', 'z', 'utility'] 
+lib_dirs = [os.path.join(os.path.abspath(limbo_binary_dir), 'limbo/parsers/gdsii/stream'), 
+            os.path.join(os.path.abspath(limbo_binary_dir), 'limbo/thirdparty/gzstream'), 
+            '${Boost_LIBRARY_DIRS}', 
+            os.path.dirname('${ZLIB_LIBRARIES}'), 
+            '${UTILITY_LIBRARY_DIRS}'
+            ]
+libs = ['gdsparser', 'gzstream', 'z', 'utility'] 
 
 if "${CAIRO_FOUND}".upper() == 'TRUE': 
     print("found Cairo and enable")

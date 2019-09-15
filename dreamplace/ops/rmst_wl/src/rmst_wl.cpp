@@ -47,7 +47,7 @@ int rmst_wl_forward(
     CHECK_CONTIGUOUS(flat_netpin);
     CHECK_FLAT(netpin_start);
     CHECK_CONTIGUOUS(netpin_start);
-    CHECK_FLAT(rmst_wl)
+    CHECK_FLAT(rmst_wl);
     CHECK_CONTIGUOUS(rmst_wl);
 
     int ret = 0; 

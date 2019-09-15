@@ -528,7 +528,7 @@ row height = %g, site width = %g
             self.total_filler_node_area = 0 
             self.num_filler_nodes = 0
         content += "total_filler_node_area = %g, #fillers = %g, filler sizes = %gx%g\n" % (self.total_filler_node_area, self.num_filler_nodes, filler_size_x, filler_size_y)
-        content += "====================================================\n"
+        content += "===================================================="
 
         logging.info(content)
         logging.info("reading benchmark takes %g seconds" % (time.time()-tt))

@@ -21,8 +21,11 @@ lib_dirs = [os.path.join(os.path.abspath(limbo_binary_dir), 'limbo/parsers/lef/a
         os.path.join(os.path.abspath(limbo_binary_dir), 'limbo/parsers/verilog/bison'), 
         os.path.join(os.path.abspath(limbo_binary_dir), 'limbo/parsers/gdsii/stream'), 
         os.path.join(os.path.abspath(limbo_binary_dir), 'limbo/programoptions'), 
+        os.path.join(os.path.abspath(limbo_binary_dir), 'limbo/thirdparty/gzstream'), 
         '${Boost_LIBRARY_DIRS}', os.path.dirname('${ZLIB_LIBRARIES}'), '${UTILITY_LIBRARY_DIRS}']
-libs = ['lefparseradapt', 'defparseradapt', 'verilogparser', 'gdsparser', 'bookshelfparser', 'programoptions', 'boost_system', 'boost_timer', 'boost_chrono', 'boost_iostreams', 'z', 'utility'] 
+libs = ['lefparseradapt', 'defparseradapt', 'verilogparser', 'gdsparser', 'bookshelfparser', 'programoptions', 
+#'boost_system', 'boost_timer', 'boost_chrono', 
+'gzstream', 'z', 'utility'] 
 
 tokens = str(torch.__version__).split('.')
 torch_major_version = "-DTORCH_MAJOR_VERSION=%d" % (int(tokens[0]))

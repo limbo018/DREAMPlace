@@ -25,6 +25,7 @@ import dreamplace.ops.electric_potential.electric_overflow as electric_overflow
 import dreamplace.ops.rmst_wl.rmst_wl as rmst_wl 
 import dreamplace.ops.greedy_legalize.greedy_legalize as greedy_legalize 
 import dreamplace.ops.draw_place.draw_place as draw_place 
+import dreamplace.ops.pin_pos.pin_pos as pin_pos
 import pdb 
 
 class PlaceDataCollection (object):
@@ -74,6 +75,18 @@ class PlaceDataCollection (object):
         self.bin_center_x = torch.from_numpy(placedb.bin_center_x).to(device)
         self.bin_center_y = torch.from_numpy(placedb.bin_center_y).to(device)
 
+        # sort nodes by size, return their sorted indices, designed for memory coalesce in electrical force
+        movable_size_x = self.node_size_x[:placedb.num_movable_nodes]
+        _, self.sorted_node_map = torch.sort(movable_size_x)
+        self.sorted_node_map = self.sorted_node_map.to(torch.int32) 
+        # self.sorted_node_map = torch.arange(0, placedb.num_movable_nodes, dtype=torch.int32, device=device)
+
+        # print(self.node_size_x[placedb.num_movable_nodes//2 :placedb.num_movable_nodes//2+20])
+        # print(self.sorted_node_map[placedb.num_movable_nodes//2 :placedb.num_movable_nodes//2+20])
+        # print(self.node_size_x[self.sorted_node_map[0: 10].long()])
+        # print(self.node_size_x[self.sorted_node_map[-10:].long()])
+
+        
     def bin_center_x_padded(self, placedb, padding): 
         """
         @brief compute array of bin center horizontal coordinates with padding 
@@ -218,13 +231,26 @@ class BasicPlace (nn.Module):
         @param data_collections a collection of all data and variables required for constructing the ops 
         @param device cpu or cuda 
         """
-        def build_pin_pos_op(pos): 
-            pin_x = data_collections.pin_offset_x.add(torch.index_select(pos[0:placedb.num_physical_nodes], dim=0, index=data_collections.pin2node_map.long()))
-            pin_y = data_collections.pin_offset_y.add(torch.index_select(pos[placedb.num_nodes:placedb.num_nodes+placedb.num_physical_nodes], dim=0, index=data_collections.pin2node_map.long()))
-            pin_pos = torch.cat([pin_x, pin_y], dim=0)
+        # Yibo: I found CPU version of this is super slow, more than 2s for ISPD2005 bigblue4 with 10 threads. 
+        # So I implemented a custom CPU version, which is around 20ms
+        #pin2node_map = data_collections.pin2node_map.long()
+        #def build_pin_pos_op(pos): 
+        #    pin_x = data_collections.pin_offset_x.add(torch.index_select(pos[0:placedb.num_physical_nodes], dim=0, index=pin2node_map))
+        #    pin_y = data_collections.pin_offset_y.add(torch.index_select(pos[placedb.num_nodes:placedb.num_nodes+placedb.num_physical_nodes], dim=0, index=pin2node_map))
+        #    pin_pos = torch.cat([pin_x, pin_y], dim=0)
 
-            return pin_pos 
-        return build_pin_pos_op
+        #    return pin_pos 
+        #return build_pin_pos_op
+
+        return pin_pos.PinPos(
+                pin_offset_x=data_collections.pin_offset_x, 
+                pin_offset_y=data_collections.pin_offset_y, 
+                pin2node_map=data_collections.pin2node_map, 
+                flat_node2pin_map=data_collections.flat_node2pin_map, 
+                flat_node2pin_start_map=data_collections.flat_node2pin_start_map, 
+                num_physical_nodes=placedb.num_physical_nodes, 
+                num_threads=params.num_threads
+                )
 
     def build_move_boundary(self, params, placedb, data_collections, device):
         """
@@ -338,6 +364,7 @@ class BasicPlace (nn.Module):
                 num_terminals=placedb.num_terminals, 
                 num_filler_nodes=0,
                 padding=0, 
+                sorted_node_map=data_collections.sorted_node_map,
                 num_threads=params.num_threads
                 )
 

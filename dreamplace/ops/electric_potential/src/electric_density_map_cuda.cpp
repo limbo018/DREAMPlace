@@ -14,7 +14,9 @@ DREAMPLACE_BEGIN_NAMESPACE
 template <typename T>
 int computeTriangleDensityMapCudaLauncher(
         const T* x_tensor, const T* y_tensor, 
-        const T* node_size_x_tensor, const T* node_size_y_tensor, 
+        const T* node_size_x_clamped_tensor, const T* node_size_y_clamped_tensor, 
+        const T* offset_x_tensor, const T* offset_y_tensor,
+        const T* ratio_tensor,
         const T* bin_center_x_tensor, const T* bin_center_y_tensor, 
         int num_nodes, int num_movable_nodes, int num_filler_nodes, 
         const int num_bins_x, const int num_bins_y, 
@@ -22,7 +24,8 @@ int computeTriangleDensityMapCudaLauncher(
         int num_filler_impacted_bins_x, int num_filler_impacted_bins_y, 
         const T xl, const T yl, const T xh, const T yh, 
         const T bin_size_x, const T bin_size_y, 
-        T* density_map_tensor
+        T* density_map_tensor,
+        const int* sorted_node_map
         );
 
 // The exact density model
@@ -47,8 +50,11 @@ int computeExactDensityMapCudaLauncher(
 
 /// @brief compute density map for movable and filler cells 
 /// @param pos cell locations. The array consists of all x locations and then y locations. 
-/// @param node_size_x cell width array
-/// @param node_size_y cell height array 
+/// @param node_size_x_clamped cell width array clamp(min = sqrt2 * bin_size_x)
+/// @param node_size_y_clamped cell height array clamp(min = sqrt2 * bin_size_y)
+/// @param offset_x (node_size_x - node_size_x_clamped)/2
+/// @param offset_y (node_size_y - node_size_y_clamped)/2
+/// @param ratio (node_size_x * node_size_y)  / (node_size_x_clamped * node_size_y_clamped)
 /// @param bin_center_x bin center x locations 
 /// @param bin_center_y bin center y locations 
 /// @param initial_density_map initial density map for fixed cells 
@@ -69,9 +75,12 @@ int computeExactDensityMapCudaLauncher(
 /// @param num_movable_impacted_bins_y number of impacted bins for any movable cell in y direction 
 /// @param num_filler_impacted_bins_x number of impacted bins for any filler cell in x direction 
 /// @param num_filler_impacted_bins_y number of impacted bins for any filler cell in y direction 
+/// @param sorted_node_map the indices of the movable node map
 at::Tensor density_map(
         at::Tensor pos,
-        at::Tensor node_size_x, at::Tensor node_size_y,
+        at::Tensor node_size_x_clamped, at::Tensor node_size_y_clamped,
+        at::Tensor offset_x, at::Tensor offset_y,
+        at::Tensor ratio,
         at::Tensor bin_center_x, 
         at::Tensor bin_center_y, 
         at::Tensor initial_density_map, 
@@ -88,7 +97,8 @@ at::Tensor density_map(
         at::Tensor padding_mask, 
         int num_bins_x, int num_bins_y, 
         int num_movable_impacted_bins_x, int num_movable_impacted_bins_y, 
-        int num_filler_impacted_bins_x, int num_filler_impacted_bins_y
+        int num_filler_impacted_bins_x, int num_filler_impacted_bins_y,
+        at::Tensor sorted_node_map
         ) 
 {
     CHECK_FLAT(pos); 
@@ -102,7 +112,9 @@ at::Tensor density_map(
     AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeTriangleDensityMapCudaLauncher", [&] {
             computeTriangleDensityMapCudaLauncher<scalar_t>(
                     pos.data<scalar_t>(), pos.data<scalar_t>()+num_nodes, 
-                    node_size_x.data<scalar_t>(), node_size_y.data<scalar_t>(), 
+                    node_size_x_clamped.data<scalar_t>(), node_size_y_clamped.data<scalar_t>(),
+                    offset_x.data<scalar_t>(), offset_y.data<scalar_t>(),
+                    ratio.data<scalar_t>(),
                     bin_center_x.data<scalar_t>(), bin_center_y.data<scalar_t>(), 
                     num_nodes, num_movable_nodes, num_filler_nodes, 
                     num_bins_x, num_bins_y, 
@@ -111,7 +123,8 @@ at::Tensor density_map(
                     xl, yl, xh, yh, 
                     bin_size_x, bin_size_y, 
                     //false, 
-                    density_map.data<scalar_t>()
+                    density_map.data<scalar_t>(),
+                    sorted_node_map.data<int>()
                     );
             });
 
@@ -183,8 +196,11 @@ at::Tensor fixed_density_map(
 /// @param field_map_x electric field map in x direction 
 /// @param field_map_y electric field map in y direction 
 /// @param pos cell locations. The array consists of all x locations and then y locations. 
-/// @param node_size_x cell width array
-/// @param node_size_y cell height array 
+/// @param node_size_x_clamped cell width array clamp(min = sqrt2 * bin_size_x)
+/// @param node_size_y_clamped cell height array clamp(min = sqrt2 * bin_size_y)
+/// @param offset_x (node_size_x - node_size_x_clamped)/2
+/// @param offset_y (node_size_y - node_size_y_clamped)/2
+/// @param ratio (node_size_x * node_size_y)  / (node_size_x_clamped * node_size_y_clamped)
 /// @param bin_center_x bin center x locations 
 /// @param bin_center_y bin center y locations 
 /// @param xl left boundary 
@@ -202,12 +218,15 @@ at::Tensor electric_force(
         int num_filler_impacted_bins_x, int num_filler_impacted_bins_y, 
         at::Tensor field_map_x, at::Tensor field_map_y, 
         at::Tensor pos, 
-        at::Tensor node_size_x, at::Tensor node_size_y, 
+        at::Tensor node_size_x_clamped, at::Tensor node_size_y_clamped, 
+        at::Tensor offset_x, at::Tensor offset_y,
+        at::Tensor ratio,
         at::Tensor bin_center_x, at::Tensor bin_center_y, 
         double xl, double yl, double xh, double yh, 
         double bin_size_x, double bin_size_y, 
         int num_movable_nodes, 
-        int num_filler_nodes
+        int num_filler_nodes,
+        at::Tensor sorted_node_map
         );
 
 DREAMPLACE_END_NAMESPACE

@@ -117,7 +117,7 @@ class DensityOverflowFunction(Function):
         # output consists of (overflow, density_map, max_density)
         return output[0], output[2]
 
-class DensityOverflow(Function):
+class DensityOverflow(object):
     """
     @brief Compute density overflow for both movable and fixed cells.
     The density map for fixed cells is pre-computed. 
@@ -182,7 +182,7 @@ class DensityOverflow(Function):
             self.thread2bin_y_map = None
         self.initial_density_map = None
         self.num_threads = num_threads
-    def forward(self, pos): 
+    def __call__(self, pos): 
         """
         @brief API 
         @param pos cell locations. The array consists of x locations of movable cells, fixed cells, and filler cells, then y locations of them 
