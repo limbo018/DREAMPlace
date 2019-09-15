@@ -60,7 +60,7 @@ int draw_place_forward(
 
     // Call the kernel launcher
     int ret = 0; 
-    AT_DISPATCH_FLOATING_TYPES(pos.type().scalarType(), "drawPlaceLauncher", [&] {
+    AT_DISPATCH_FLOATING_TYPES(pos.type(), "drawPlaceLauncher", [&] {
             ret = drawPlaceLauncher<scalar_t>(
                     pos.data<scalar_t>(), pos.data<scalar_t>()+num_nodes, 
                     node_size_x.data<scalar_t>(), node_size_y.data<scalar_t>(), 

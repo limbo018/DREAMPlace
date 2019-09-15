@@ -78,7 +78,7 @@ at::Tensor electric_force(
     at::Tensor grad_out = at::zeros_like(pos);
     int num_nodes = pos.numel()/2;
 
-    AT_DISPATCH_FLOATING_TYPES(pos.type().scalarType(), "computeElectricForceLauncher", [&] {
+    AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeElectricForceLauncher", [&] {
             computeElectricForceLauncher<scalar_t>(
                     num_bins_x, num_bins_y,
                     num_movable_impacted_bins_x, num_movable_impacted_bins_y,
@@ -100,7 +100,7 @@ at::Tensor electric_force(
     if (num_filler_nodes)
     {
         int num_physical_nodes = num_nodes - num_filler_nodes;
-        AT_DISPATCH_FLOATING_TYPES(pos.type().scalarType(), "computeElectricForceLauncher", [&] {
+        AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeElectricForceLauncher", [&] {
                 computeElectricForceLauncher<scalar_t>(
                         num_bins_x, num_bins_y,
                         num_filler_impacted_bins_x, num_filler_impacted_bins_y,

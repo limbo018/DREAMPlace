@@ -82,7 +82,7 @@ std::vector<at::Tensor> logsumexp_wirelength_atomic_forward(
     at::Tensor xy_max = at::full({2, num_nets}, std::numeric_limits<V>::min(), at::CUDA(at::kInt)); 
     at::Tensor xy_min = at::full({2, num_nets}, std::numeric_limits<V>::max(), at::CUDA(at::kInt)); 
 
-    AT_DISPATCH_FLOATING_TYPES(pos.type().scalarType(), "computeLogSumExpWirelengthCudaAtomicLauncher", [&] {
+    AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeLogSumExpWirelengthCudaAtomicLauncher", [&] {
             computeLogSumExpWirelengthCudaAtomicLauncher<scalar_t, V>(
                     pos.data<scalar_t>(), pos.data<scalar_t>()+num_pins, 
                     pin2net_map.data<int>(), 
@@ -157,7 +157,7 @@ at::Tensor logsumexp_wirelength_atomic_backward(
     int num_nets = net_mask.numel(); 
     int num_pins = pin2net_map.numel();
 
-    AT_DISPATCH_FLOATING_TYPES(pos.type().scalarType(), "computeLogSumExpWirelengthCudaAtomicLauncher", [&] {
+    AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeLogSumExpWirelengthCudaAtomicLauncher", [&] {
             computeLogSumExpWirelengthCudaAtomicLauncher<scalar_t, V>(
                     pos.data<scalar_t>(), pos.data<scalar_t>()+num_pins, 
                     pin2net_map.data<int>(), 

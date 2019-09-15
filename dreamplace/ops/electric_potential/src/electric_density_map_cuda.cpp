@@ -109,7 +109,7 @@ at::Tensor density_map(
     int num_nodes = pos.numel()/2; 
 
     // Call the cuda kernel launcher
-    AT_DISPATCH_FLOATING_TYPES(pos.type().scalarType(), "computeTriangleDensityMapCudaLauncher", [&] {
+    AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeTriangleDensityMapCudaLauncher", [&] {
             computeTriangleDensityMapCudaLauncher<scalar_t>(
                     pos.data<scalar_t>(), pos.data<scalar_t>()+num_nodes, 
                     node_size_x_clamped.data<scalar_t>(), node_size_y_clamped.data<scalar_t>(),
@@ -166,7 +166,7 @@ at::Tensor fixed_density_map(
     // Call the cuda kernel launcher
     if (num_terminals && num_fixed_impacted_bins_x && num_fixed_impacted_bins_y)
     {
-        AT_DISPATCH_FLOATING_TYPES(pos.type().scalarType(), "computeExactDensityMapCudaLauncher", [&] {
+        AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeExactDensityMapCudaLauncher", [&] {
                 computeExactDensityMapCudaLauncher<scalar_t>(
                         pos.data<scalar_t>()+num_movable_nodes, pos.data<scalar_t>()+num_nodes+num_movable_nodes, 
                         node_size_x.data<scalar_t>()+num_movable_nodes, node_size_y.data<scalar_t>()+num_movable_nodes, 

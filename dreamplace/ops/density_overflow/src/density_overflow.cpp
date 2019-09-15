@@ -89,7 +89,7 @@ std::vector<at::Tensor> density_overflow_forward(
     at::Tensor density_map = initial_density_map.clone();
     double density_area = target_density*bin_size_x*bin_size_y;
 
-    AT_DISPATCH_FLOATING_TYPES(pos.type().scalarType(), "computeDensityOverflowMapLauncher", [&] {
+    AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeDensityOverflowMapLauncher", [&] {
             computeDensityOverflowMapLauncher<scalar_t>(
                     pos.data<scalar_t>(), pos.data<scalar_t>()+pos.numel()/2, 
                     node_size_x.data<scalar_t>(), node_size_y.data<scalar_t>(), 
@@ -104,7 +104,7 @@ std::vector<at::Tensor> density_overflow_forward(
             });
     if (num_filler_nodes)
     {
-        AT_DISPATCH_FLOATING_TYPES(pos.type().scalarType(), "computeDensityOverflowMapLauncher", [&] {
+        AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeDensityOverflowMapLauncher", [&] {
                 computeDensityOverflowMapLauncher<scalar_t>(
                         pos.data<scalar_t>()+pos.numel()/2-num_filler_nodes, pos.data<scalar_t>()+pos.numel()-num_filler_nodes, 
                         node_size_x.data<scalar_t>()+pos.numel()/2-num_filler_nodes, node_size_y.data<scalar_t>()+pos.numel()/2-num_filler_nodes, 
@@ -169,7 +169,7 @@ at::Tensor fixed_density_overflow_map(
     if (num_terminals)
     {
         // Call the cuda kernel launcher
-        AT_DISPATCH_FLOATING_TYPES(pos.type().scalarType(), "computeDensityOverflowMapLauncher", [&] {
+        AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeDensityOverflowMapLauncher", [&] {
                 computeDensityOverflowMapLauncher<scalar_t>(
                         pos.data<scalar_t>()+num_movable_nodes, pos.data<scalar_t>()+pos.numel()/2+num_movable_nodes, 
                         node_size_x.data<scalar_t>()+num_movable_nodes, node_size_y.data<scalar_t>()+num_movable_nodes, 

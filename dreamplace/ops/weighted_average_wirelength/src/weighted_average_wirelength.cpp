@@ -82,7 +82,7 @@ std::vector<at::Tensor> weighted_average_wirelength_forward(
     at::Tensor xyexp_nxy_sum = at::zeros({2, num_nets}, pos.options());
     at::Tensor wl = at::zeros({num_nets}, pos.options());
 
-    AT_DISPATCH_FLOATING_TYPES(pos.type().scalarType(), "computeWeightedAverageWirelengthLauncher", [&] {
+    AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeWeightedAverageWirelengthLauncher", [&] {
         computeWeightedAverageWirelengthLauncher<scalar_t>(
             pos.data<scalar_t>(), pos.data<scalar_t>() + pos.numel() / 2,
             nullptr,
@@ -147,7 +147,7 @@ at::Tensor weighted_average_wirelength_backward(
 
     at::Tensor grad_out = at::zeros_like(pos);
 
-    AT_DISPATCH_FLOATING_TYPES(pos.type().scalarType(), "computeWeightedAverageWirelengthLauncher", [&] {
+    AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeWeightedAverageWirelengthLauncher", [&] {
         computeWeightedAverageWirelengthLauncher<scalar_t>(
             pos.data<scalar_t>(), pos.data<scalar_t>() + pos.numel() / 2,
             pin2net_map.data<int>(),
