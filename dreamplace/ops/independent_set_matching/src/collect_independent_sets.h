@@ -6,6 +6,7 @@
 #ifndef _DREAMPLACE_INDEPENDENT_SET_MATCHING_COLLECT_INDEPENDENT_SETS_H
 #define _DREAMPLACE_INDEPENDENT_SET_MATCHING_COLLECT_INDEPENDENT_SETS_H
 
+#include <random>
 #include "independent_set_matching/src/construct_selected_node2bin_map.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
