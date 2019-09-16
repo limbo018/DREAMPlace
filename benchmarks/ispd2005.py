@@ -16,7 +16,7 @@ else:
 
 baseURL = "http://www.cerc.utexas.edu/~zixuan/"
 target_dir = os.path.dirname(os.path.abspath(__file__))
-filename = "ispd2005.tar.xz"
+filename = "ispd2005dp.tar.xz"
 file_url = baseURL + filename
 path_to_file = os.path.join(target_dir, filename)
 

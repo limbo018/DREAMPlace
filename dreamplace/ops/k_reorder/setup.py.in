@@ -1,0 +1,74 @@
+##
+# @file   setup.py.in
+# @author Yibo Lin
+# @date   Apr 2019
+# @brief  For CMake to generate setup.py file 
+#
+
+from setuptools import setup
+import torch 
+from torch.utils.cpp_extension import BuildExtension, CppExtension, CUDAExtension
+
+import os 
+import sys
+
+os.environ["CC"] = "${CMAKE_C_COMPILER}"
+os.environ["CXX"] = "${CMAKE_CXX_COMPILER}"
+
+limbo_source_dir = "${LIMBO_SOURCE_DIR}"
+limbo_binary_dir = "${LIMBO_BINARY_DIR}"
+ops_dir = "${OPS_DIR}"
+cub_dir = "${CUB_DIR}"
+
+cuda_flags = '${CMAKE_CUDA_FLAGS}'
+print("cuda_flags = %s" % (cuda_flags))
+
+include_dirs = [ops_dir, os.path.abspath(limbo_source_dir), cub_dir, '${Boost_INCLUDE_DIRS}']
+lib_dirs = [os.path.join(os.path.abspath(limbo_binary_dir), 'limbo/parsers/gdsii/stream'), '${Boost_LIBRARY_DIRS}', os.path.dirname('${ZLIB_LIBRARIES}'), '${UTILITY_LIBRARY_DIRS}', '${CMAKE_CURRENT_BINARY_DIR}']
+libs = ['gdsparser', 'boost_iostreams', 'z', 'utility'] 
+
+tokens = str(torch.__version__).split('.')
+torch_major_version = "-DTORCH_MAJOR_VERSION=%d" % (int(tokens[0]))
+torch_minor_version = "-DTORCH_MINOR_VERSION=%d" % (int(tokens[1]))
+
+def add_prefix(filename):
+    return os.path.join('${CMAKE_CURRENT_SOURCE_DIR}/src', filename)
+
+modules = []
+
+modules.extend([
+    CppExtension('k_reorder_cpp', 
+        [
+            add_prefix('k_reorder.cpp')
+            ], 
+        include_dirs=include_dirs, 
+        library_dirs=lib_dirs,
+        libraries=libs + ['gomp'],
+        extra_compile_args={
+            'cxx' : [torch_major_version, torch_minor_version, '-fopenmp']
+            }),
+    ])
+
+
+if "${CUDA_FOUND}".upper() == 'TRUE': 
+    modules.extend([
+            CUDAExtension('k_reorder_cuda', 
+                [
+                    add_prefix('k_reorder_cuda.cpp'),
+                    ], 
+                include_dirs=include_dirs, 
+                library_dirs=lib_dirs,
+                libraries=['${CUDA_LINKED}', 'curand', 'culibos', 'cudadevrt'] + libs,
+                extra_compile_args={
+                    'cxx': ['-O2', torch_major_version, torch_minor_version, '-fopenmp'], 
+                    'nvcc': [cuda_flags]
+                    }
+                ),
+        ])
+
+setup(
+        name='k_reorder',
+        ext_modules=modules,
+        cmdclass={
+            'build_ext': BuildExtension
+            })

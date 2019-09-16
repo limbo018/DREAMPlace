@@ -22,6 +22,10 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
   "**DREAMPlace: Deep Learning Toolkit-Enabled GPU Acceleration for Modern VLSI Placement**", 
   IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems (TCAD), 2020 (in submission)
 
+* [Yibo Lin](http://yibolin.com), Jiaqi Gu, [Wuxi Li](http://wuxili.net), Haoxing Ren, Brucek Khailany and [David Z. Pan](http://users.ece.utexas.edu/~dpan), 
+  "**ABCDPlace: Accelerated Batch-based Concurrent Detailed Placement on Multi-threaded CPUs and GPUs**", 
+  IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems (TCAD), 2020 (in submission)
+
 # Dependency 
 
 - Pytorch 1.0.0
@@ -40,6 +44,12 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
 
 - [Flute](https://doi.org/10.1109/TCAD.2007.907068)
     - Integrated as a submodule
+
+- [CUB](https://github.com/NVlabs/cub)
+    - Integrated as a git submodule
+
+- [munkres-cpp](https://github.com/saebyn/munkres-cpp)
+    - Integrated as a git submodule
 
 - [CUDA 9.1 or later](https://developer.nvidia.com/cuda-toolkit) (Optional)
     - If installed and found, GPU acceleration will be enabled. 
@@ -136,12 +146,13 @@ python dreamplace/Placer.py --help
 
 * [Yibo Lin](http://yibolin.com), supervised by [David Z. Pan](http://users.ece.utexas.edu/~dpan), composed the initial release. 
 * [Zixuan Jiang](https://github.com/ZixuanJiang) and [Jiaqi Gu](https://github.com/JeremieMelo) improved the efficiency of the wirelength and density operators on GPU. 
+* [Yibo Lin](http://yibolin.com) and [Jiaqi Gu](https://github.com/JeremieMelo) developed and integrated ABCDPlace for detailed placement. 
 * **Pull requests to improve the tool are more than welcome.** We appreciate all kinds of contributions from the community. 
 
 # Features
 
 * [0.0.2](https://github.com/limbo018/DREAMPlace/releases/tag/0.0.2)
-    - Multi-thread CPU and optional GPU acceleration support 
+    - Multi-threaded CPU and optional GPU acceleration support 
 
 * [0.0.5](https://github.com/limbo018/DREAMPlace/releases/tag/0.0.5)
     - Net weighting support through .wts files in Bookshelf format
@@ -153,3 +164,7 @@ python dreamplace/Placer.py --help
 
 * [1.0.0](https://github.com/limbo018/DREAMPlace/releases/tag/1.0.0)
     - Improved efficiency for wirelength and density operators from TCAD extension
+
+* [1.1.0](https://github.com/limbo018/DREAMPlace/releases/tag/1.1.0)
+    - Integrate ABCDPlace: multi-threaded CPU and GPU acceleration for detailed placement
+    - Support independent set matching, local reordering, and global swap

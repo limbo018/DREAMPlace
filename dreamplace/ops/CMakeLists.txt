@@ -1,5 +1,3 @@
-cmake_minimum_required(VERSION 3.0.2)
-
 add_subdirectory(utility)
 add_subdirectory(dct)
 add_subdirectory(pin_pos)
@@ -14,6 +12,10 @@ add_subdirectory(move_boundary)
 add_subdirectory(weighted_average_wirelength)
 add_subdirectory(rmst_wl)
 add_subdirectory(place_io)
+# detailed placement operators 
+add_subdirectory(global_swap)
+add_subdirectory(independent_set_matching)
+add_subdirectory(k_reorder)
 
 file(GLOB INSTALL_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/*.py")
 install(

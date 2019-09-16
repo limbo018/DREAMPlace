@@ -12,6 +12,9 @@ from torch.utils.cpp_extension import BuildExtension, CppExtension, CUDAExtensio
 import os 
 import sys
 
+os.environ["CC"] = "${CMAKE_C_COMPILER}"
+os.environ["CXX"] = "${CMAKE_CXX_COMPILER}"
+
 limbo_source_dir = "${LIMBO_SOURCE_DIR}"
 limbo_binary_dir = "${LIMBO_BINARY_DIR}"
 ops_dir = "${OPS_DIR}"

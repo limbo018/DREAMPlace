@@ -82,7 +82,7 @@ if __name__ == "__main__":
     @brief main function to invoke the entire placement flow. 
     """
     logging.root.name = 'DREAMPlace'
-    logging.basicConfig(level=logging.INFO, format='[%(levelname)-7s] %(name)s - %(message)s')
+    logging.basicConfig(level=logging.INFO, format='[%(levelname)-7s] %(name)s - %(message)s', stream=sys.stdout)
     params = Params.Params()
     params.printWelcome()
     if len(sys.argv) == 1 or '-h' in sys.argv[1:] or '--help' in sys.argv[1:]:

@@ -133,10 +133,10 @@ class ElectricOverflowFunction(Function):
         density_cost = (density_map-target_density*bin_area).clamp_(min=0.0).sum()
 
         #torch.set_printoptions(precision=10)
-        #print("initial_density_map")
-        #print(initial_density_map/bin_area)
-        #print("density_map")
-        #print(density_map/bin_area)
+        # logger.debug("initial_density_map")
+        # logger.debug(initial_density_map/bin_area)
+        # logger.debug("density_map")
+        # logger.debug(density_map/bin_area)
 
         return density_cost, density_map.max()/bin_area
 
