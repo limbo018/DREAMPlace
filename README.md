@@ -151,3 +151,5 @@ python dreamplace/Placer.py --help
     - LEF/DEF support as input/output
     - Python binding and access to C++ placement database
 
+* [1.0.0](https://github.com/limbo018/DREAMPlace/releases/tag/1.0.0)
+    - Improved efficiency for wirelength and density operators from TCAD extension
