@@ -88,7 +88,7 @@ void assignCells2BinsCPU(
                     {
                         dy = init_yl - (bin_yl+bin_size_y-node_size_y[node_id]); 
                     }
-                    assert(dx >= 0 && dy >= 0);
+                    dreamplaceAssert(dx >= 0 && dy >= 0);
 
                     T cost = dx + dy; 
                     T ratio = (demand+1.0e-3)/(capacity+1.0e-3);

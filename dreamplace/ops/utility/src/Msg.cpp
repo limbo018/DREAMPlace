@@ -35,7 +35,7 @@ int dreamplacePrintStream(MessageType m, FILE* stream, const char* format, ...)
 int dreamplaceVPrintStream(MessageType m, FILE* stream, const char* format, va_list args)
 {
 	// print prefix 
-    char prefix[8];
+    char prefix[16];
     dreamplaceSPrintPrefix(m, prefix);
 	fprintf(stream, "%s", prefix);
 
@@ -58,7 +58,7 @@ int dreamplaceSPrint(MessageType m, char* buf, const char* format, ...)
 int dreamplaceVSPrint(MessageType m, char* buf, const char* format, va_list args)
 {
 	// print prefix 
-    char prefix[8];
+    char prefix[16];
     dreamplaceSPrintPrefix(m, prefix);
 	sprintf(buf, "%s", prefix);
 

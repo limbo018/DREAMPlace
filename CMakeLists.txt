@@ -59,3 +59,4 @@ add_subdirectory(test)
 install(
     CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_INSTALL_PREFIX}/__init__.py)"
     )
+

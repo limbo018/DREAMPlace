@@ -18,9 +18,13 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
   ACM/IEEE Design Automation Conference (DAC), Las Vegas, NV, Jun 2-6, 2019
   ([preprint](http://yibolin.com/publications/papers/PLACE_DAC2019_Lin.pdf)) ([slides](http://yibolin.com/publications/papers/PLACE_DAC2019_Lin.slides.pptx))
 
+* [Yibo Lin](http://yibolin.com), Zixuan Jiang, Jiaqi Gu, [Wuxi Li](http://wuxili.net), Shounak Dhar, Haoxing Ren, Brucek Khailany and [David Z. Pan](http://users.ece.utexas.edu/~dpan), 
+  "**DREAMPlace: Deep Learning Toolkit-Enabled GPU Acceleration for Modern VLSI Placement**", 
+  IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems (TCAD), 2020 (in submission)
+
 # Dependency 
 
-- Pytorch 0.4.1 or 1.0.0
+- Pytorch 1.0.0
 
 - Python 2.7 or Python 3.5
 
@@ -132,14 +136,21 @@ python dreamplace/Placer.py --help
 # Authors
 
 * [Yibo Lin](http://yibolin.com), supervised by [David Z. Pan](http://users.ece.utexas.edu/~dpan), composed the initial release. 
+* [Zixuan Jiang](https://github.com/ZixuanJiang) and [Jiaqi Gu](https://github.com/JeremieMelo) improved the efficiency of the wirelength and density operators on GPU. 
 * **Pull requests to improve the tool are more than welcome.** We appreciate all kinds of contributions from the community. 
 
 # Features
 
-* Python binding and access to C++ placement database
+* [0.0.2](https://github.com/limbo018/DREAMPlace/releases/tag/0.0.2)
+    - Multi-thread CPU and optional GPU acceleration support 
 
-* LEF/DEF support as input/output
+* [0.0.5](https://github.com/limbo018/DREAMPlace/releases/tag/0.0.5)
+    - Net weighting support through .wts files in Bookshelf format
+    - Incremental placement support
 
-* Net weighting support through .wts files in Bookshelf format
+* [0.0.6](https://github.com/limbo018/DREAMPlace/releases/tag/0.0.6)
+    - LEF/DEF support as input/output
+    - Python binding and access to C++ placement database
 
-* Multi-thread CPU and optional GPU acceleration support 
+* [1.0.0](https://github.com/limbo018/DREAMPlace/releases/tag/1.0.0)
+    - Improved efficiency for wirelength and density operators from TCAD extension

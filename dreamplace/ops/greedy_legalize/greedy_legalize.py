@@ -64,7 +64,7 @@ class GreedyLegalizeFunction(Function):
                     )
         return output
 
-class GreedyLegalize(Function):
+class GreedyLegalize(object):
     """ Legalize cells with greedy approach 
     """
     def __init__(self, node_size_x, node_size_y, xl, yl, xh, yh, site_width, row_height, num_bins_x, num_bins_y, num_movable_nodes, num_filler_nodes):
@@ -81,7 +81,7 @@ class GreedyLegalize(Function):
         self.num_bins_y = num_bins_y
         self.num_movable_nodes = num_movable_nodes
         self.num_filler_nodes = num_filler_nodes
-    def forward(self, pos): 
+    def __call__(self, pos): 
         return GreedyLegalizeFunction.forward(
                 pos,
                 node_size_x=self.node_size_x,

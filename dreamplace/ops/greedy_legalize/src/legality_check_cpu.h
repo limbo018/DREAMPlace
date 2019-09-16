@@ -51,7 +51,7 @@ bool legalityCheckKernelCPU(
 {
     bool legal_flag = true; 
     int num_rows = ceil((yh-yl)/row_height);
-    assert(num_rows > 0); 
+    dreamplaceAssert(num_rows > 0); 
     fflush(stdout);
     std::vector<std::vector<int> > row_nodes (num_rows);
 

@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.0.2)
 
 add_subdirectory(utility)
 add_subdirectory(dct)
+add_subdirectory(pin_pos)
 add_subdirectory(density_overflow)
 add_subdirectory(density_potential)
 add_subdirectory(logsumexp_wirelength)

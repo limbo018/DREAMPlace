@@ -101,12 +101,18 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                     torch.cuda.synchronize()
                 logging.info("%s initialization takes %g seconds" % (optimizer_name, (time.time()-tt)))
 
+                # as nesterov requires line search, we cannot follow the convention of other solvers
+                if optimizer_name.lower() in {"sgd", "adam", "sgd_momentum", "sgd_nesterov", "cg"}: 
+                    model.obj_and_grad_fn(model.data_collections.pos[0])
+                elif optimizer_name.lower() != "nesterov":
+                    assert 0, "unsupported optimizer %s" % (optimizer_name)
+
                 for step in range(model.iteration):
+                    t0 = time.time()
+                    
                     # metric for this iteration 
                     cur_metric = EvalMetrics.EvalMetrics(iteration)
                     metrics.append(cur_metric)
-
-                    t0 = time.time()
 
                     # move any out-of-bound cell back to placement region 
                     self.op_collections.move_boundary_op(model.data_collections.pos[0])
@@ -116,7 +122,8 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                         logging.info("density_weight = %.6E" % (model.density_weight.data))
 
                     optimizer.zero_grad()
-                    #t1 = time.time()
+                    
+                    # t1 = time.time()
                     cur_metric.evaluate(placedb, eval_ops, model.data_collections.pos[0])
                     #logging.debug("evaluation %.3f ms" % ((time.time()-t1)*1000))
                     #t2 = time.time()
