@@ -24,8 +24,13 @@ cuda_flags = '${CMAKE_CUDA_FLAGS}'
 print("cuda_flags = %s" % (cuda_flags))
 
 include_dirs = [ops_dir, os.path.abspath(limbo_source_dir), cub_dir, '${Boost_INCLUDE_DIRS}']
-lib_dirs = [os.path.join(os.path.abspath(limbo_binary_dir), 'limbo/parsers/gdsii/stream'), '${Boost_LIBRARY_DIRS}', os.path.dirname('${ZLIB_LIBRARIES}'), '${UTILITY_LIBRARY_DIRS}', '${CMAKE_CURRENT_BINARY_DIR}']
-libs = ['gdsparser', 'boost_iostreams', 'z', 'utility'] 
+lib_dirs = [os.path.join(os.path.abspath(limbo_binary_dir), 'limbo/parsers/gdsii/stream'), 
+        os.path.join(os.path.abspath(limbo_binary_dir), 'limbo/thirdparty/gzstream'), 
+        os.path.dirname('${ZLIB_LIBRARIES}'), 
+        '${UTILITY_LIBRARY_DIRS}', 
+        '${CMAKE_CURRENT_BINARY_DIR}'
+        ]
+libs = ['gdsparser', 'gzstream', 'z', 'utility'] 
 
 tokens = str(torch.__version__).split('.')
 torch_major_version = "-DTORCH_MAJOR_VERSION=%d" % (int(tokens[0]))
@@ -69,7 +74,7 @@ if "${CUDA_FOUND}".upper() == 'TRUE':
                     ], 
                 include_dirs=include_dirs, 
                 library_dirs=lib_dirs,
-                libraries=['${CUDA_LINKED}', 'curand', 'culibos', 'cudadevrt'] + libs,
+                libraries=['${CUDA_LINKED}', 'curand', 'culibos', 'cudadevrt', 'cudart'] + libs,
                 extra_compile_args={
                     'cxx': ['-O2', torch_major_version, torch_minor_version], 
                     'nvcc': [cuda_flags]
