@@ -12,7 +12,13 @@ endif(NOT CMAKE_BUILD_TYPE)
 message("-- CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 
 if (NOT CMAKE_CUDA_FLAGS)
-    set(CMAKE_CUDA_FLAGS "-gencode=arch=compute_60,code=sm_60")
+    set(CMAKE_CUDA_FLAGS "-arch=sm_60"
+        "-gencode=arch=compute_60,code=sm_60"
+        "-gencode=arch=compute_61,code=sm_61"
+        "-gencode=arch=compute_70,code=sm_70"
+        "-gencode=arch=compute_75,code=sm_75"
+        "-gencode=arch=compute_75,code=compute_75"
+)
 endif()
 message("-- CMAKE_CUDA_FLAGS: ${CMAKE_CUDA_FLAGS}")
 
@@ -34,6 +40,7 @@ find_package(Boost 1.62.0 REQUIRED)
 get_filename_component(Boost_DIR ${Boost_INCLUDE_DIRS}/../ ABSOLUTE)
 find_package(CUDA 9.0)
 find_package(Cairo)
+message("-- Cairo: ${CAIRO_INCLUDE_DIRS}")
 
 get_filename_component(OPS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/dreamplace/ops ABSOLUTE)
 get_filename_component(UTILITY_LIBRARY_DIRS ${CMAKE_CURRENT_BINARY_DIR}/dreamplace/ops/utility ABSOLUTE)

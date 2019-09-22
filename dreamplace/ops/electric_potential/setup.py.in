@@ -17,8 +17,8 @@ os.environ["CXX"] = "${CMAKE_CXX_COMPILER}"
 utility_dir = "${UTILITY_LIBRARY_DIRS}"
 ops_dir = "${OPS_DIR}"
 
-cuda_arch = '${CMAKE_CUDA_FLAGS}'
-print("cuda_arch = %s" % (cuda_arch))
+cuda_flags = '${CMAKE_CUDA_FLAGS}'.split(';')
+print("cuda_flags = %s" % (' '.join(cuda_flags)))
 
 include_dirs = [ops_dir]
 lib_dirs = [utility_dir]
@@ -61,7 +61,7 @@ if "${CUDA_FOUND}".upper() == 'TRUE':
                 libraries=['cusparse', 'culibos'] + libs,
                 extra_compile_args={
                     'cxx': ['-O2', torch_major_version, torch_minor_version], 
-                    'nvcc': [cuda_arch, '-use_fast_math', '-prec-div=false', '-ftz=true']
+                    'nvcc': cuda_flags #+ ['-use_fast_math', '-prec-div=false', '-ftz=true']
                     }
                 ),
         ])
