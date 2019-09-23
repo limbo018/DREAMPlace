@@ -11,17 +11,6 @@ if(NOT CMAKE_BUILD_TYPE)
 endif(NOT CMAKE_BUILD_TYPE)
 message("-- CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 
-if (NOT CMAKE_CUDA_FLAGS)
-    set(CMAKE_CUDA_FLAGS "-arch=sm_60"
-        "-gencode=arch=compute_60,code=sm_60"
-        "-gencode=arch=compute_61,code=sm_61"
-        "-gencode=arch=compute_70,code=sm_70"
-        "-gencode=arch=compute_75,code=sm_75"
-        "-gencode=arch=compute_75,code=compute_75"
-)
-endif()
-message("-- CMAKE_CUDA_FLAGS: ${CMAKE_CUDA_FLAGS}")
-
 if(NOT CMAKE_CXX_ABI)
     set(CMAKE_CXX_ABI 0 CACHE STRING
         "Choose the value for _GLIBCXX_USE_CXX11_ABI, options are: 0|1."
@@ -78,6 +67,21 @@ list(APPEND LEMON_INCLUDE_DIRS "${LEMON_BINARY_DIR}")
 set(LEMON_LINK_DIRS ${LEMON_BINARY_DIR}/lemon)
 message("-- LEMON_INCLUDE_DIRS ${LEMON_INCLUDE_DIRS}")
 message("-- LEMON_LINK_DIRS ${LEMON_LINK_DIRS}")
+
+if (NOT CMAKE_CUDA_FLAGS)
+    set(CMAKE_CUDA_FLAGS "-arch=sm_60"
+        "-gencode=arch=compute_60,code=sm_60"
+        "-gencode=arch=compute_61,code=sm_61"
+        "-gencode=arch=compute_70,code=sm_70"
+        )
+    if (${CUDA_VERSION_MAJOR} VERSION_GREATER "9")
+        list(APPEND CMAKE_CUDA_FLAGS 
+            "-gencode=arch=compute_75,code=sm_75"
+            "-gencode=arch=compute_75,code=compute_75"
+            )
+    endif(${CUDA_VERSION_MAJOR} VERSION_GREATER "9")
+endif(NOT CMAKE_CUDA_FLAGS)
+message("-- CMAKE_CUDA_FLAGS: ${CMAKE_CUDA_FLAGS}")
 
 add_subdirectory(thirdparty)
 add_subdirectory(dreamplace)
