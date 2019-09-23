@@ -3,9 +3,10 @@
 Deep learning toolkit-enabled VLSI placement. 
 With the analogy between nonlinear VLSI placement and deep learning training problem, this tool is developed with deep learning toolkit for flexibility and efficiency. 
 The tool runs on both CPU and GPU. 
-Over 30X speedup over the CPU implementation ([RePlAce](https://doi.org/10.1109/TCAD.2018.2859220)) is achieved in global placement and legalization on ISPD 2005 contest benchmarks with a Nvidia Tesla V100 GPU. 
+Over ```30X``` speedup over the CPU implementation ([RePlAce](https://doi.org/10.1109/TCAD.2018.2859220)) is achieved in global placement and legalization on ISPD 2005 contest benchmarks with a Nvidia Tesla V100 GPU. 
+DREAMPlace also integrates a GPU-accelerated detailed placer, **ABCDPlace**, which can achieve around ```16X``` speedup on million-size benchmarks over the widely-adopted sequential placer [NTUPlace3](https://doi.org/10.1109/TCAD.2008.923063) on CPU.
 
-DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU, only CPU support will be enabled. 
+DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU, only CPU support will be enabled with multi-threading. 
 
 | Bigblue4 | Density Map | Electric Potential | Electric Field |
 | -------- | ----------- | ------------------ | -------------- |
@@ -28,9 +29,10 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
 
 # Dependency 
 
-- Pytorch 1.0.0
+- Python 2.7 or Python 3.5/3.6/3.7
 
-- Python 2.7 or Python 3.5
+- [Pytorch](https://pytorch.org/) 1.0.0
+    - Other version around 1.0.0 may also work, but not tested
 
 - [GCC](https://gcc.gnu.org/)
     - Recommend GCC 5.1 or later. 
@@ -66,7 +68,7 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
     - Otherwise, python implementation is used. 
 
 - [NTUPlace3](http://eda.ee.ntu.edu.tw/research.htm) (Optional)
-    - If the binary is provided, it can be used to perform detailed placement 
+    - If the binary is provided, it can be used to perform detailed placement.
 
 To pull git submodules in the root directory
 ```
@@ -87,6 +89,35 @@ pip install -r requirements.txt
 ```
 
 # How to Build 
+
+Two options are provided for building: with and without [Docker](https://hub.docker.com). 
+
+## Build with Docker
+
+You can use the Docker container to avoid building all the dependencies yourself. 
+1. Install Docker on [Windows](https://docs.docker.com/docker-for-windows/), [Mac](https://docs.docker.com/docker-for-mac/) or [Linux](https://docs.docker.com/install/).
+2. To enable the GPU features, install [NVIDIA-docker](https://github.com/NVIDIA/nvidia-docker); otherwise, skip this step.  
+3. Navigate to the repository. 
+4. Get the docker container with either of the following options. 
+    - Option 1: pull from the cloud. 
+    ```
+    docker pull limbo018/dreamplace:cuda
+    ```
+    - Option 2: build the container. 
+    ```
+    docker build . --file Dockerfile --tag limbo018/dreamplace:cuda
+    ```
+5. Enter bash environment of the container. 
+```
+# with GPU 
+docker run --gpus 1 -it -v $(pwd):/DREAMPlace limbo018/dreamplace:cuda bash
+# without GPU 
+docker run -it -v $(pwd):/DREAMPlace limbo018/dreamplace:cuda bash
+```
+6. Navigate to ```/DREAMPlace```. 
+7. Go to next section to complete building. 
+
+## Build without Docker
 
 [CMake](https://cmake.org) is adopted as the makefile system. 
 To build, go to the root directory. 
@@ -168,3 +199,4 @@ python dreamplace/Placer.py --help
 * [1.1.0](https://github.com/limbo018/DREAMPlace/releases/tag/1.1.0)
     - Integrate ABCDPlace: multi-threaded CPU and GPU acceleration for detailed placement
     - Support independent set matching, local reordering, and global swap
+    - Docker container for building environment
