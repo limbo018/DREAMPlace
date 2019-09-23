@@ -4,7 +4,7 @@ Deep learning toolkit-enabled VLSI placement.
 With the analogy between nonlinear VLSI placement and deep learning training problem, this tool is developed with deep learning toolkit for flexibility and efficiency. 
 The tool runs on both CPU and GPU. 
 Over ```30X``` speedup over the CPU implementation ([RePlAce](https://doi.org/10.1109/TCAD.2018.2859220)) is achieved in global placement and legalization on ISPD 2005 contest benchmarks with a Nvidia Tesla V100 GPU. 
-DREAMPlace also integrates a GPU-accelerated detailed placer, **ABCDPlace**, which can achieve around ```16X``` speedup on million-size benchmarks over the widely-adopted sequential placer [NTUPlace3](https://doi.org/10.1109/TCAD.2008.923063) on CPU.
+DREAMPlace also integrates a GPU-accelerated detailed placer, *ABCDPlace*, which can achieve around ```16X``` speedup on million-size benchmarks over the widely-adopted sequential placer [NTUPlace3](https://doi.org/10.1109/TCAD.2008.923063) on CPU.
 
 DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU, only CPU support will be enabled with multi-threading. 
 
