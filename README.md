@@ -99,7 +99,7 @@ You can use the Docker container to avoid building all the dependencies yourself
 2. To enable the GPU features, install [NVIDIA-docker](https://github.com/NVIDIA/nvidia-docker); otherwise, skip this step.  
 3. Navigate to the repository. 
 4. Get the docker container with either of the following options. 
-    - Option 1: pull from the cloud. 
+    - Option 1: pull from the cloud [limbo018/dreamplace](https://hub.docker.com/r/limbo018/dreamplace). 
     ```
     docker pull limbo018/dreamplace:cuda
     ```
