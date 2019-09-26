@@ -1,0 +1,59 @@
+##
+# @file   setup.py.in
+# @author Xiaohan Gao
+# @date   Sep 2019
+# @brief  For CMake to generate setup.py file 
+#
+
+from setuptools import setup
+import torch
+from torch.utils.cpp_extension import BuildExtension, CppExtension, CUDAExtension
+
+import os
+import sys
+
+utility_dir = "${UTILITY_LIBRARY_DIRS}"
+ops_dir = "${OPS_DIR}"
+
+cuda_flags = '${CMAKE_CUDA_FLAGS}'
+print("cuda_flags = %s" % (cuda_flags))
+
+cub_source_dir = "${CUB_SOURCE_DIR}"
+cub_binary_dir = "${CUB_BINARY_DIR}"
+
+include_dirs = [os.path.abspath(cub_source_dir), ops_dir]
+lib_dirs = [os.path.abspath(cub_binary_dir), utility_dir]
+libs = ['utility'] 
+
+tokens = str(torch.__version__).split('.')
+torch_major_version = "-DTORCH_MAJOR_VERSION=%d" % (int(tokens[0]))
+torch_minor_version = "-DTORCH_MINOR_VERSION=%d" % (int(tokens[1]))
+
+def add_prefix(filename):
+    return os.path.join('${CMAKE_CURRENT_SOURCE_DIR}/src', filename)
+
+modules = []
+
+if "${CUDA_FOUND}".upper() == 'TRUE': 
+    modules.extend([
+            CUDAExtension('pin_pos_cuda', 
+                [
+                    add_prefix('pin_pos_cuda.cpp'),
+                    add_prefix('pin_pos_cuda_kernel.cu')
+                    ], 
+                include_dirs=include_dirs, 
+                library_dirs=lib_dirs,
+                libraries=libs,
+                extra_compile_args={
+                    'cxx': ['-O2', torch_major_version, torch_minor_version], 
+                    'nvcc': cuda_flags.split()
+                    }
+                ),
+        ])
+
+setup(
+        name='pin_pos',
+        ext_modules=modules,
+        cmdclass={
+            'build_ext': BuildExtension
+            })
