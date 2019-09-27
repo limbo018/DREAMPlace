@@ -21,77 +21,27 @@ __global__ void permuteGrad(
     for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_pins; i += blockDim.x * gridDim.x)
     {
         int pin_id = flat_node2pin_map[i];
-	grad_out_x_perm[i] = grad_out_x[pin_id];
-	grad_out_y_perm[i] = grad_out_y[pin_id];
+		grad_out_x_perm[i] = grad_out_x[pin_id];
+		grad_out_y_perm[i] = grad_out_y[pin_id];
     }
 }
 
-template <typename T>
-void sortByKey(
-	const long* old_keys, 
-	long* keys_sorted, 
-	const T* array_unsorted, 
-	T* array_sorted, 
-	int array_size
+template <typename T, typename K>
+__global__ void computeLoca(
+	const T* x, const T* y,
+	const T* pin_offset_x,
+	const T* pin_offset_y,
+	const K* pin2node_map,
+	const int num_pins,
+	T* pin_x, T* pin_y
 	)
 {
-    void *d_temp_storage = NULL;
-    size_t temp_storage_bytes = 0;
-    cub::DeviceRadixSort::SortPairs(d_temp_storage, temp_storage_bytes, 
-	    old_keys, keys_sorted, array_unsorted, array_sorted, array_size, 0, sizeof(int)*8);
-
-    cudaMalloc(&d_temp_storage, temp_storage_bytes);
-
-    cub::DeviceRadixSort::SortPairs(d_temp_storage, temp_storage_bytes,
-	    old_keys, keys_sorted, array_unsorted, array_sorted, array_size, 0, sizeof(int)*8);
-
-    cudaFree(d_temp_storage);
-}
-
-struct CustomAdd
-{
-    template <typename T>
-    CUB_RUNTIME_FUNCTION __forceinline__
-    T operator()(const T &a, const T &b) const{
-	return a + b;
-    }    
-};
-
-template <typename T>
-void reduceByKey(
-	const long* keys,
-	const T* vals,
-	T* sum_reduced,
-	int num_val
-	)
-{
-    int *d_unique_out;
-    cudaMalloc((void**)&d_unique_out, num_val*sizeof(int));
-    int *d_num_runs_out;
-    cudaMalloc((void**)&d_num_runs_out, sizeof(int));
-    CustomAdd reduction_op;
-
-    long *keys_sorted;
-    cudaMalloc((void**)&keys_sorted, num_val*sizeof(long));
-    T *vals_sorted;
-    cudaMalloc((void**)&vals_sorted, num_val*sizeof(T));
-
-    sortByKey(keys, keys_sorted, vals, vals_sorted, num_val);
-
-    void *d_temp_storage = NULL;
-    size_t temp_storage_bytes = 0;
-    cub::DeviceReduce::ReduceByKey(d_temp_storage, temp_storage_bytes, keys_sorted, d_unique_out, 
-	    vals_sorted, sum_reduced, d_num_runs_out, reduction_op, num_val);
-
-    cudaMalloc(&d_temp_storage, temp_storage_bytes);
-    cub::DeviceReduce::ReduceByKey(d_temp_storage, temp_storage_bytes, keys_sorted, d_unique_out,
-	    vals_sorted, sum_reduced, d_num_runs_out, reduction_op, num_val);
-
-    cudaFree(d_unique_out);
-    cudaFree(d_num_runs_out);
-    cudaFree(keys_sorted);
-    cudaFree(vals_sorted);
-    cudaFree(d_temp_storage);
+	for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_pins; i += blockDim.x * gridDim.x)
+	{
+		int node_id = pin2node_map[i];
+		pin_x[i] = pin_offset_x[i] + x[node_id];
+		pin_y[i] = pin_offset_y[i] + y[node_id];
+	}
 }
 
 template <typename T>
@@ -127,10 +77,10 @@ int computePinPosCudaLauncher(
 	T* pin_x, T* pin_y
     )
 {
-    cudaMemcpy(pin_x, pin_offset_x, num_pins * sizeof(T), cudaMemcpyDefault);
-    cudaMemcpy(pin_y, pin_offset_y, num_pins * sizeof(T), cudaMemcpyDefault);
-    reduceByKey(pin2node_map, x, pin_x, num_pins);
-    reduceByKey(pin2node_map, y, pin_y, num_pins);
+	int thread_count = 1024;
+	int block_count = 32;
+
+	computeLoca<<<block_count, thread_count>>>(x, y, pin_offset_x, pin_offset_y, pin2node_map, num_pins, pin_x, pin_y);
 
     return 0;
 }

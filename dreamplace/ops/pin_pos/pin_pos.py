@@ -166,7 +166,7 @@ class PinPos(nn.Module):
                         self.pin2node_map, 
                         self.flat_node2pin_map, 
                         self.flat_node2pin_start_map, 
-                        self.num_physical_nodes    
+                        self.num_physical_nodes
                         )
         else:
             return PinPosFunction.apply(
