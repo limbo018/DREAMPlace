@@ -232,8 +232,9 @@ class BasicPlace (nn.Module):
                 pin2node_map=data_collections.pin2node_map, 
                 flat_node2pin_map=data_collections.flat_node2pin_map, 
                 flat_node2pin_start_map=data_collections.flat_node2pin_start_map, 
-                num_physical_nodes=placedb.num_physical_nodes
-                #num_threads=params.num_threads
+                num_physical_nodes=placedb.num_physical_nodes,
+                algorithm='segment',
+                num_threads=params.num_threads
                 )
 
     def build_move_boundary(self, params, placedb, data_collections, device):

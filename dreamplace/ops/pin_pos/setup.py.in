@@ -34,6 +34,19 @@ def add_prefix(filename):
 
 modules = []
 
+modules.extend([
+    CppExtension('pin_pos_cpp', 
+        [
+            add_prefix('pin_pos.cpp')
+            ], 
+        include_dirs=include_dirs, 
+        library_dirs=lib_dirs,
+        libraries=libs,
+        extra_compile_args={
+            'cxx' : [torch_major_version, torch_minor_version, '-fopenmp']
+            }),
+    ])
+
 if "${CUDA_FOUND}".upper() == 'TRUE': 
     modules.extend([
             CUDAExtension('pin_pos_cuda', 
@@ -46,7 +59,7 @@ if "${CUDA_FOUND}".upper() == 'TRUE':
                 libraries=libs,
                 extra_compile_args={
                     'cxx': ['-O2', torch_major_version, torch_minor_version], 
-                    'nvcc': cuda_flags.split()
+                    'nvcc': [cuda_flags.split(), '-use_fast_math', '-prec-div=false', '-ftz=true']
                     }
                 ),
         ])
