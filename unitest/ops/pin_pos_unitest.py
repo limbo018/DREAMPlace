@@ -26,7 +26,7 @@ import torch
 from torch.autograd import Function, Variable
 
 def build_pin_pos(pos, pin_offset_x, pin_offset_y, pin2node_map, num_physical_nodes):
-    num_nodes = pos.numel()/2
+    num_nodes = pos.numel()//2
     pin_x = pin_offset_x.add(torch.index_select(pos[0:num_physical_nodes], dim=0, index=pin2node_map.long()))
     pin_y = pin_offset_y.add(torch.index_select(pos[num_nodes:num_nodes+num_physical_nodes], dim=0, index=pin2node_map.long()))
     pin_pos = torch.cat([pin_x, pin_y], dim=0)
