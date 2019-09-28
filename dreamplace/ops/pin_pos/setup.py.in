@@ -12,17 +12,19 @@ from torch.utils.cpp_extension import BuildExtension, CppExtension, CUDAExtensio
 import os
 import sys
 
+os.environ["CC"] = "${CMAKE_C_COMPILER}"
+os.environ["CXX"] = "${CMAKE_CXX_COMPILER}"
+
 utility_dir = "${UTILITY_LIBRARY_DIRS}"
 ops_dir = "${OPS_DIR}"
 
-cuda_flags = '${CMAKE_CUDA_FLAGS}'
-print("cuda_flags = %s" % (cuda_flags))
+cuda_flags = '${CMAKE_CUDA_FLAGS}'.split(';')
+print("cuda_flags = %s" % (' '.join(cuda_flags)))
 
-cub_source_dir = "${CUB_SOURCE_DIR}"
-cub_binary_dir = "${CUB_BINARY_DIR}"
+cub_dir = "${CUB_DIR}"
 
-include_dirs = [os.path.abspath(cub_source_dir), ops_dir]
-lib_dirs = [os.path.abspath(cub_binary_dir), utility_dir]
+include_dirs = [cub_dir, ops_dir]
+lib_dirs = [utility_dir]
 libs = ['utility'] 
 
 tokens = str(torch.__version__).split('.')
@@ -59,7 +61,7 @@ if "${CUDA_FOUND}".upper() == 'TRUE':
                 libraries=libs,
                 extra_compile_args={
                     'cxx': ['-O2', torch_major_version, torch_minor_version], 
-                    'nvcc': [cuda_flags, '-use_fast_math', '-prec-div=false', '-ftz=true']
+                    'nvcc': cuda_flags
                     }
                 ),
         ])
