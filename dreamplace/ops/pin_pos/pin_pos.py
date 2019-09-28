@@ -11,7 +11,10 @@ from torch import nn
 from torch.autograd import Function
 
 import dreamplace.ops.pin_pos.pin_pos_cpp as pin_pos_cpp
-import dreamplace.ops.pin_pos.pin_pos_cuda as pin_pos_cuda
+try: 
+    import dreamplace.ops.pin_pos.pin_pos_cuda as pin_pos_cuda
+except:
+    pass 
 
 import pdb
 
