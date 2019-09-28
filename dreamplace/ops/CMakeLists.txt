@@ -13,6 +13,7 @@ add_subdirectory(move_boundary)
 add_subdirectory(weighted_average_wirelength)
 add_subdirectory(rmst_wl)
 add_subdirectory(place_io)
+add_subdirectory(pin_pos)
 
 file(GLOB INSTALL_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/*.py")
 install(

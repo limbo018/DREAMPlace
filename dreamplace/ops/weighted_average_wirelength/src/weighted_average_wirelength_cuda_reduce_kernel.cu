@@ -65,29 +65,33 @@ void computeExpSum(
         int *d_num_runs_out;
         cudaMalloc((void**)&d_num_runs_out, sizeof(int));
         CustomAdd reduction_op;
-        T *exp_x_sorted;
-        cudaMalloc((void**)&exp_x_sorted, num_pins*sizeof(T));
-        int *pin2net_sorted;
-        cudaMalloc((void**)&pin2net_sorted, num_pins*sizeof(int));
+	// T *exp_x_sorted;
+        // cudaMalloc((void**)&exp_x_sorted, num_pins*sizeof(T));
+        // int *pin2net_sorted;
+        // cudaMalloc((void**)&pin2net_sorted, num_pins*sizeof(int));
 
-        sortByNet(pin2net_map, pin2net_sorted, exp_x, exp_x_sorted, num_pins, stream);
+        // sortByNet(pin2net_map, pin2net_sorted, exp_x, exp_x_sorted, num_pins, stream);
 
         void *d_temp_storage = NULL;
         size_t temp_storage_bytes = 0;
-        cub::DeviceReduce::ReduceByKey(d_temp_storage, temp_storage_bytes, pin2net_sorted, d_unique_out,
-                exp_x_sorted, exp_x_sum, d_num_runs_out, reduction_op, num_pins, stream);
+        // cub::DeviceReduce::ReduceByKey(d_temp_storage, temp_storage_bytes, pin2net_sorted, d_unique_out,
+                // exp_x_sorted, exp_x_sum, d_num_runs_out, reduction_op, num_pins, stream);
+	cub::DeviceReduce::ReduceByKey(d_temp_storage, temp_storage_bytes, pin2net_map, d_unique_out,
+		exp_x, exp_x_sum, d_num_runs_out, reduction_op, num_pins, stream);
 
         status = cudaMalloc(&d_temp_storage, temp_storage_bytes);
         if(status != cudaSuccess){
                 printf("cudaMalloc failed for ReduceByKey temp storage\n");
         }
-        cub::DeviceReduce::ReduceByKey(d_temp_storage, temp_storage_bytes, pin2net_sorted, d_unique_out,
-                exp_x_sorted, exp_x_sum, d_num_runs_out, reduction_op, num_pins, stream);
+        // cub::DeviceReduce::ReduceByKey(d_temp_storage, temp_storage_bytes, pin2net_sorted, d_unique_out,
+                // exp_x_sorted, exp_x_sum, d_num_runs_out, reduction_op, num_pins, stream);
+	cub::DeviceReduce::ReduceByKey(d_temp_storage, temp_storage_bytes, pin2net_map, d_unique_out,
+		exp_x, exp_x_sum, d_num_runs_out, reduction_op, num_pins, stream);
 
         cudaFree(d_unique_out);
         cudaFree(d_num_runs_out);
-        cudaFree(exp_x_sorted);
-        cudaFree(pin2net_sorted);
+        // cudaFree(exp_x_sorted);
+        // cudaFree(pin2net_sorted);
         cudaFree(d_temp_storage);
 }
 
