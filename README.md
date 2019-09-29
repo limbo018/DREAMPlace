@@ -105,16 +105,16 @@ You can use the Docker container to avoid building all the dependencies yourself
     ```
     - Option 2: build the container. 
     ```
-    docker build . --file Dockerfile --tag limbo018/dreamplace:cuda
+    docker build . --file Dockerfile --tag your_name/dreamplace:cuda
     ```
-5. Enter bash environment of the container. 
+5. Enter bash environment of the container. Replace ```limbo018``` with your name if option 2 is chosen in the previous step. 
 ```
 # with GPU 
 docker run --gpus 1 -it -v $(pwd):/DREAMPlace limbo018/dreamplace:cuda bash
 # without GPU 
 docker run -it -v $(pwd):/DREAMPlace limbo018/dreamplace:cuda bash
 ```
-6. Navigate to ```/DREAMPlace```. 
+6. ```cd /DREAMPlace```. 
 7. Go to next section to complete building. 
 
 ## Build without Docker
