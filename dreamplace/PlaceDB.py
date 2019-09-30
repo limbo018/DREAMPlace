@@ -559,6 +559,31 @@ row height = %g, site width = %g
         place_io.PlaceIOFunction.write(self.rawdb, filename, sol_file_format, node_x, node_y)
         logging.info("write %s takes %.3f seconds" % (str(sol_file_format), time.time()-tt))
 
+    def read_pl(self, params, pl_file):
+        """
+        @brief read .pl file
+        @param pl_file .pl file
+        """
+        tt = time.time()
+        logging.info("reading %s" % (pl_file))
+        count = 0
+        with open(pl_file, "r") as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("UCLA"):
+                    continue
+                # node positions
+                pos = re.search(r"(\w+)\s+([+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?)\s+([+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?)\s*:\s*(\w+)", line)
+                if pos:
+                    node_id = self.node_name2id_map[pos.group(1)]
+                    self.node_x[node_id] = float(pos.group(2))
+                    self.node_y[node_id] = float(pos.group(6))
+                    self.node_orient[node_id] = pos.group(10)
+                    orient = pos.group(4)
+        if params.scale_factor != 1.0:
+            self.scale_pl(params.scale_factor)
+        logging.info("read_pl takes %.3f seconds" % (time.time()-tt))
+
     def write_pl(self, params, pl_file):
         """
         @brief write .pl file
