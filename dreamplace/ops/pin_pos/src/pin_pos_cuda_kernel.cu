@@ -18,7 +18,8 @@ __global__ void permuteGrad(
 	T* grad_out_y_perm
 	)
 {
-    for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_pins; i += blockDim.x * gridDim.x)
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_pins)
     {
         int pin_id = flat_node2pin_map[i];
 		grad_out_x_perm[i] = grad_out_x[pin_id];
@@ -26,8 +27,9 @@ __global__ void permuteGrad(
     }
 }
 
+/// @brief Compute pin position from node position 
 template <typename T, typename K>
-__global__ void computeLoca(
+__global__ void computePinPos(
 	const T* x, const T* y,
 	const T* pin_offset_x,
 	const T* pin_offset_y,
@@ -36,33 +38,13 @@ __global__ void computeLoca(
 	T* pin_x, T* pin_y
 	)
 {
-	for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_pins; i += blockDim.x * gridDim.x)
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_pins)
 	{
 		int node_id = pin2node_map[i];
 		pin_x[i] = pin_offset_x[i] + x[node_id];
 		pin_y[i] = pin_offset_y[i] + y[node_id];
 	}
-}
-
-template <typename T>
-void segmentSum(
-	const T* d_in,
-	T* d_out,
-	const int* d_offset,
-	const int num_seg
-	)
-{
-    void *d_temp_storage = NULL;
-    size_t temp_storage_bytes = 0;
-    cub::DeviceSegmentedReduce::Sum(d_temp_storage, temp_storage_bytes, d_in, d_out, 
-	    num_seg, d_offset, d_offset + 1);
-
-    cudaMalloc(&d_temp_storage, temp_storage_bytes);
-
-    cub::DeviceSegmentedReduce::Sum(d_temp_storage, temp_storage_bytes, d_in, d_out,
-	    num_seg, d_offset, d_offset + 1);
-
-    cudaFree(d_temp_storage);
 }
 
 template <typename T>
@@ -77,10 +59,9 @@ int computePinPosCudaLauncher(
 	T* pin_x, T* pin_y
     )
 {
-	int thread_count = 1024;
-	int block_count = 32;
+	int thread_count = 512;
 
-	computeLoca<<<block_count, thread_count>>>(x, y, pin_offset_x, pin_offset_y, pin2node_map, num_pins, pin_x, pin_y);
+	computePinPos<<<(num_pins+thread_count-1) / thread_count, thread_count>>>(x, y, pin_offset_x, pin_offset_y, pin2node_map, num_pins, pin_x, pin_y);
 
     return 0;
 }
@@ -96,23 +77,34 @@ int computePinPosGradCudaLauncher(
 	const int* flat_node2pin_start_map,
 	int num_nodes,
 	int num_pins,
-	T* grad_x, T* grad_y
+	T* grad_x, T* grad_y, 
+    T* grad_perm_buf ///< 2*num_pins, buffer for store the permutated gradients  
     )
 {
-    int thread_count = 1024;
-    int block_count = 32;
+    int thread_count = 512;
 
-    T *grad_out_x_perm, *grad_out_y_perm;
-    cudaMalloc((void**)&grad_out_x_perm, num_pins*sizeof(T));
-    cudaMalloc((void**)&grad_out_y_perm, num_pins*sizeof(T));
+    T* grad_out_x_perm = grad_perm_buf; 
+    T* grad_out_y_perm = grad_perm_buf + num_pins;
 
-    permuteGrad<<<block_count, thread_count>>>(grad_out_x, grad_out_y, flat_node2pin_map, num_pins, grad_out_x_perm, grad_out_y_perm);
+    permuteGrad<<<(num_pins+thread_count-1) / thread_count, thread_count>>>(grad_out_x, grad_out_y, flat_node2pin_map, num_pins, grad_out_x_perm, grad_out_y_perm);
 
-    segmentSum(grad_out_x_perm, grad_x, flat_node2pin_start_map, num_nodes);
-    segmentSum(grad_out_y_perm, grad_y, flat_node2pin_start_map, num_nodes);
+    void* d_temp_storage = NULL; 
+    size_t temp_storage_bytes = 0; 
 
-    cudaFree(grad_out_x_perm);
-    cudaFree(grad_out_y_perm);
+    // allocate temp storage 
+    cub::DeviceSegmentedReduce::Sum(d_temp_storage, temp_storage_bytes, grad_out_x_perm, grad_x, 
+            num_nodes, flat_node2pin_start_map, flat_node2pin_start_map + 1);
+    cudaMalloc(&d_temp_storage, temp_storage_bytes);
+
+    // for x
+    cub::DeviceSegmentedReduce::Sum(d_temp_storage, temp_storage_bytes, grad_out_x_perm, grad_x, 
+            num_nodes, flat_node2pin_start_map, flat_node2pin_start_map + 1);
+    // for y 
+    cub::DeviceSegmentedReduce::Sum(d_temp_storage, temp_storage_bytes, grad_out_y_perm, grad_y, 
+            num_nodes, flat_node2pin_start_map, flat_node2pin_start_map + 1);
+
+    cudaFree(d_temp_storage);
+
     return 0;	
 }
 
@@ -151,7 +143,8 @@ int computePinPosGradCudaLauncher(
 	        const int* flat_node2pin_start_map, \
 	        int num_nodes, \
 	        int num_pins, \
-	        T* grad_x, T* grad_y \
+	        T* grad_x, T* grad_y, \
+            T* grad_perm_buf \
             )\
     {\
         return computePinPosGradCudaLauncher(\
@@ -164,7 +157,8 @@ int computePinPosGradCudaLauncher(
 	            flat_node2pin_start_map, \
 	            num_nodes, \
 	            num_pins, \
-	            grad_x, grad_y \
+	            grad_x, grad_y, \
+                grad_perm_buf \
                 );\
     }
 REGISTER_KERNEL_LAUNCHER(float);

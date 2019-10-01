@@ -128,6 +128,17 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                     cur_metric.gamma = model.gamma.data
                     #print("update density weight %.3f ms" % ((time.time()-t2)*1000))
 
+                    ######### debug
+                    #with gzip.open("debug2.pklz", "wb") as f:
+                    #    pickle.dump([
+                    #        cur_metric.density_weight.cpu(), 
+                    #        cur_metric.hpwl.cpu(), 
+                    #        cur_metric.overflow.cpu(), 
+                    #        cur_metric.max_density.cpu(), 
+                    #        cur_metric.gamma.cpu()], f)
+                    #    exit()
+                    ###############
+
                     # as nesterov requires line search, we cannot follow the convention of other solvers
                     if optimizer_name.lower() in ["sgd", "adam", "sgd_momentum", "sgd_nesterov", "cg"]: 
                         model.obj_and_grad_fn(model.data_collections.pos[0])
@@ -153,17 +164,42 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                     optimizer.step()
                     print("[I] optimizer step %.3f ms" % ((time.time()-t3)*1000))
 
+                    ######### debug
+                    #with gzip.open("debug2.pklz", "wb") as f:
+                    #    pickle.dump([
+                    #        self.pos[0].data.cpu(), 
+                    #        self.pos[0].grad.data.cpu()
+                    #        ], f)
+                    #    exit()
+                    ###############
+
                     iteration += 1
 
                     print("[I] full step %.3f ms" % ((time.time()-t0)*1000))
 
                 print("[I] optimizer %s takes %.3f seconds" % (optimizer_name, time.time()-tt))
 
+        ######### debug
+        #with gzip.open("debug2.pklz", "wb") as f:
+        #    pickle.dump([
+        #        self.pos[0].data.cpu()
+        #        ], f)
+        #    exit()
+        ###############
+
         # legalization 
         if params.legalize_flag:
             tt = time.time()
             self.pos[0].data.copy_(self.op_collections.greedy_legalize_op(self.pos[0]))
             print("[I] legalization takes %.3f seconds" % (time.time()-tt))
+
+        ######### debug
+        #with gzip.open("debug2.pklz", "wb") as f:
+        #    pickle.dump([
+        #        self.pos[0].data.cpu()
+        #        ], f)
+        #    exit()
+        ###############
 
         # detailed placement 
         if params.detailed_place_flag: 

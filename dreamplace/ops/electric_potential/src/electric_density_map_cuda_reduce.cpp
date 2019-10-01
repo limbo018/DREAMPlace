@@ -10,9 +10,12 @@
 DREAMPLACE_BEGIN_NAMESPACE
 
 // The triangular density model from e-place 
+// Triangle mode 
 // The impact of a cell to bins is extended to two neighboring bins 
-template <typename T>
-int computeTriangleDensityMapCudaReduceLauncher(
+// Exact mode 
+// Compute the exact overlap area for density 
+template <typename T, typename V>
+int computeDensityMapCudaReduceLauncher(
         const T* x_tensor, const T* y_tensor, 
         const T* node_size_x_tensor, const T* node_size_y_tensor, 
         const T* bin_center_x_tensor, const T* bin_center_y_tensor, 
@@ -21,32 +24,20 @@ int computeTriangleDensityMapCudaReduceLauncher(
         int num_impacted_bins_x, int num_impacted_bins_y, 
         const T xl, const T yl, const T xh, const T yh, 
         const T bin_size_x, const T bin_size_y, 
+        bool fixed_node_flag, ///< fixed node or not 
+        bool triangle_or_exact_flag, ///< triangle mode or exact mode 
         T* density_map_tensor, 
         T* values_buf, ///< max(2*num_items, num_bins+num_items), num_items = num_nodes*num_impacted_bins_x*num_impacted_bins_y
-        int* keys_buf ///< max(2*num_items, num_bins+num_items), num_items = num_nodes*num_impacted_bins_x*num_impacted_bins_y 
-        );
-
-// The exact density model
-// Compute the exact overlap area for density 
-template <typename T>
-int computeExactDensityMapCudaReduceLauncher(
-        const T* x_tensor, const T* y_tensor, 
-        const T* node_size_x_tensor, const T* node_size_y_tensor, 
-        const T* bin_center_x_tensor, const T* bin_center_y_tensor, 
-        const int num_nodes, 
-        const int num_bins_x, const int num_bins_y, 
-        const int num_impacted_bins_x, const int num_impacted_bins_y, 
-        const T xl, const T yl, const T xh, const T yh, 
-        const T bin_size_x, const T bin_size_y, 
-        bool fixed_node_flag, 
-        T* density_map_tensor, 
-        T* values_buf, ///< max(2*num_items, num_bins+num_items), num_items = num_nodes*num_impacted_bins_x*num_impacted_bins_y
-        int* keys_buf ///< max(2*num_items, num_bins+num_items), num_items = num_nodes*num_impacted_bins_x*num_impacted_bins_y 
+        V* keys_buf, ///< max(2*num_items, num_bins+num_items), num_items = num_nodes*num_impacted_bins_x*num_impacted_bins_y 
+        int* offsets_buf ///< 2*(num_bins+1)
         );
 
 #define CHECK_FLAT(x) AT_ASSERTM(x.is_cuda() && x.ndimension() == 1, #x "must be a flat tensor on CPU")
 #define CHECK_EVEN(x) AT_ASSERTM((x.numel()&1) == 0, #x "must have even number of elements")
 #define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x "must be contiguous")
+
+#define KEYTYPE long 
+#define ATEN_KEYTYPE kLong
 
 /// @brief compute density map for movable and filler cells 
 /// @param pos cell locations. The array consists of all x locations and then y locations. 
@@ -100,14 +91,16 @@ at::Tensor density_map(
 
     at::Tensor density_map = initial_density_map.clone();
     int num_nodes = pos.numel()/2; 
+    int num_bins = num_bins_x*num_bins_y;
     int num_items = num_nodes*std::max(num_movable_impacted_bins_x, num_filler_impacted_bins_x)*std::max(num_movable_impacted_bins_y, num_filler_impacted_bins_y);
-    int buf_size = std::max(2*num_items, num_bins_x*num_bins_y+num_items);
+    int buf_size = std::max(2*num_items, num_bins_x*num_bins_y+1+num_items);
     at::Tensor values_buf = at::zeros({buf_size}, pos.options());
-    at::Tensor keys_buf = at::full({buf_size}, std::numeric_limits<int>::max(), at::CUDA(at::kInt));
+    at::Tensor keys_buf = at::full({buf_size}, std::numeric_limits<KEYTYPE>::max(), at::CUDA(at::ATEN_KEYTYPE));
+    at::Tensor offsets_buf = at::zeros({(num_bins+1)*2}, at::CUDA(at::kInt));
 
     // Call the cuda kernel launcher
-    AT_DISPATCH_FLOATING_TYPES(pos.type().scalarType(), "computeTriangleDensityMapCudaReduceLauncher", [&] {
-            computeTriangleDensityMapCudaReduceLauncher<scalar_t>(
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeTriangleDensityMapCudaReduceLauncher", [&] {
+            computeDensityMapCudaReduceLauncher<scalar_t>(
                     pos.data<scalar_t>(), pos.data<scalar_t>()+num_nodes, 
                     node_size_x.data<scalar_t>(), node_size_y.data<scalar_t>(), 
                     bin_center_x.data<scalar_t>(), bin_center_y.data<scalar_t>(), 
@@ -116,16 +109,20 @@ at::Tensor density_map(
                     num_movable_impacted_bins_x, num_movable_impacted_bins_y, 
                     xl, yl, xh, yh, 
                     bin_size_x, bin_size_y, 
+                    false, // not fixed node  
+                    true, // triangle 
                     density_map.data<scalar_t>(), 
                     values_buf.data<scalar_t>(), 
-                    keys_buf.data<int>()
+                    keys_buf.data<KEYTYPE>(), 
+                    offsets_buf.data<int>()
                     );
             if (num_filler_nodes)
             {
                 values_buf.zero_();
-                keys_buf.fill_(std::numeric_limits<int>::max());
+                keys_buf.fill_(std::numeric_limits<KEYTYPE>::max());
+                offsets_buf.zero_();
 
-                computeTriangleDensityMapCudaReduceLauncher<scalar_t>(
+                computeDensityMapCudaReduceLauncher<scalar_t>(
                         pos.data<scalar_t>()+num_nodes-num_filler_nodes, pos.data<scalar_t>()+num_nodes*2-num_filler_nodes, 
                         node_size_x.data<scalar_t>()+num_nodes-num_filler_nodes, node_size_y.data<scalar_t>()+num_nodes-num_filler_nodes, 
                         bin_center_x.data<scalar_t>(), bin_center_y.data<scalar_t>(), 
@@ -134,9 +131,12 @@ at::Tensor density_map(
                         num_filler_impacted_bins_x, num_filler_impacted_bins_y, 
                         xl, yl, xh, yh, 
                         bin_size_x, bin_size_y, 
+                        false, // not fixed node  
+                        true, // triangle 
                         density_map.data<scalar_t>(), 
                         values_buf.data<scalar_t>(), 
-                        keys_buf.data<int>()
+                        keys_buf.data<KEYTYPE>(), 
+                        offsets_buf.data<int>()
                         );
             }
             });
@@ -174,17 +174,19 @@ at::Tensor fixed_density_map(
 
     at::Tensor density_map = at::zeros({num_bins_x, num_bins_y}, pos.options());
     int num_items = num_terminals*num_fixed_impacted_bins_x*num_fixed_impacted_bins_y;
-    int buf_size = std::max(2*num_items, num_bins_x*num_bins_y+num_items);
+    int num_bins = num_bins_x*num_bins_y;
+    int buf_size = std::max(2*num_items, num_bins_x*num_bins_y+1+num_items);
     at::Tensor values_buf = at::zeros({buf_size}, pos.options());
-    at::Tensor keys_buf = at::full({buf_size}, std::numeric_limits<int>::max(), at::CUDA(at::kInt));
+    at::Tensor keys_buf = at::full({buf_size}, std::numeric_limits<KEYTYPE>::max(), at::CUDA(at::ATEN_KEYTYPE));
+    at::Tensor offsets_buf = at::zeros({(num_bins+1)*2}, at::CUDA(at::kInt));
 
     int num_nodes = pos.numel()/2; 
 
     // Call the cuda kernel launcher
     if (num_terminals && num_fixed_impacted_bins_x && num_fixed_impacted_bins_y)
     {
-        AT_DISPATCH_FLOATING_TYPES(pos.type().scalarType(), "computeExactDensityMapCudaReduceLauncher", [&] {
-                computeExactDensityMapCudaReduceLauncher<scalar_t>(
+        DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeExactDensityMapCudaReduceLauncher", [&] {
+                computeDensityMapCudaReduceLauncher<scalar_t>(
                         pos.data<scalar_t>()+num_movable_nodes, pos.data<scalar_t>()+num_nodes+num_movable_nodes, 
                         node_size_x.data<scalar_t>()+num_movable_nodes, node_size_y.data<scalar_t>()+num_movable_nodes, 
                         bin_center_x.data<scalar_t>(), bin_center_y.data<scalar_t>(), 
@@ -193,10 +195,12 @@ at::Tensor fixed_density_map(
                         num_fixed_impacted_bins_x, num_fixed_impacted_bins_y, 
                         xl, yl, xh, yh, 
                         bin_size_x, bin_size_y, 
-                        true, 
+                        true, // fixed node 
+                        false, // exact mode 
                         density_map.data<scalar_t>(), 
                         values_buf.data<scalar_t>(), 
-                        keys_buf.data<int>()
+                        keys_buf.data<KEYTYPE>(), 
+                        offsets_buf.data<int>()
                         );
                 });
     }

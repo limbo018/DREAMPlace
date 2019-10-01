@@ -40,15 +40,7 @@ void sortByNet(const int* sum_keys, int* keys_sorted, const T* sum_unsorted, T* 
         cudaFree(d_temp_storage);
 }
 
-struct CustomAdd
-{
-        template <typename T>
-        CUB_RUNTIME_FUNCTION __forceinline__
-        T operator()(const T &a, const T &b) const{
-                return a + b;
-        }
-};
-
+#if 1
 template <typename T>
 void computeExpSum(
         const T* exp_x,
@@ -59,42 +51,67 @@ void computeExpSum(
         T* exp_x_sum,
         cudaStream_t stream)
 {
-        cudaError_t status;
-        int *d_unique_out;
-        cudaMalloc((void**)&d_unique_out, num_nets*sizeof(int));
-        int *d_num_runs_out;
-        cudaMalloc((void**)&d_num_runs_out, sizeof(int));
-        CustomAdd reduction_op;
-	// T *exp_x_sorted;
-        // cudaMalloc((void**)&exp_x_sorted, num_pins*sizeof(T));
-        // int *pin2net_sorted;
-        // cudaMalloc((void**)&pin2net_sorted, num_pins*sizeof(int));
+    cudaError_t status;
+    int *d_unique_out;
+    cudaMalloc((void**)&d_unique_out, num_nets*sizeof(int));
+    int *d_num_runs_out;
+    cudaMalloc((void**)&d_num_runs_out, sizeof(int));
+    auto reduction_op = cub::Sum();
+    // T *exp_x_sorted;
+    // cudaMalloc((void**)&exp_x_sorted, num_pins*sizeof(T));
+    // int *pin2net_sorted;
+    // cudaMalloc((void**)&pin2net_sorted, num_pins*sizeof(int));
 
-        // sortByNet(pin2net_map, pin2net_sorted, exp_x, exp_x_sorted, num_pins, stream);
+    // sortByNet(pin2net_map, pin2net_sorted, exp_x, exp_x_sorted, num_pins, stream);
 
-        void *d_temp_storage = NULL;
-        size_t temp_storage_bytes = 0;
-        // cub::DeviceReduce::ReduceByKey(d_temp_storage, temp_storage_bytes, pin2net_sorted, d_unique_out,
-                // exp_x_sorted, exp_x_sum, d_num_runs_out, reduction_op, num_pins, stream);
-	cub::DeviceReduce::ReduceByKey(d_temp_storage, temp_storage_bytes, pin2net_map, d_unique_out,
-		exp_x, exp_x_sum, d_num_runs_out, reduction_op, num_pins, stream);
+    void *d_temp_storage = NULL;
+    size_t temp_storage_bytes = 0;
+    // cub::DeviceReduce::ReduceByKey(d_temp_storage, temp_storage_bytes, pin2net_sorted, d_unique_out,
+    // exp_x_sorted, exp_x_sum, d_num_runs_out, reduction_op, num_pins, stream);
+    cub::DeviceReduce::ReduceByKey(d_temp_storage, temp_storage_bytes, pin2net_map, d_unique_out,
+            exp_x, exp_x_sum, d_num_runs_out, reduction_op, num_pins, stream);
 
-        status = cudaMalloc(&d_temp_storage, temp_storage_bytes);
-        if(status != cudaSuccess){
-                printf("cudaMalloc failed for ReduceByKey temp storage\n");
-        }
-        // cub::DeviceReduce::ReduceByKey(d_temp_storage, temp_storage_bytes, pin2net_sorted, d_unique_out,
-                // exp_x_sorted, exp_x_sum, d_num_runs_out, reduction_op, num_pins, stream);
-	cub::DeviceReduce::ReduceByKey(d_temp_storage, temp_storage_bytes, pin2net_map, d_unique_out,
-		exp_x, exp_x_sum, d_num_runs_out, reduction_op, num_pins, stream);
+    status = cudaMalloc(&d_temp_storage, temp_storage_bytes);
+    if(status != cudaSuccess)
+    {
+        printf("cudaMalloc failed for ReduceByKey temp storage\n");
+    }
+    // cub::DeviceReduce::ReduceByKey(d_temp_storage, temp_storage_bytes, pin2net_sorted, d_unique_out,
+    // exp_x_sorted, exp_x_sum, d_num_runs_out, reduction_op, num_pins, stream);
+    cub::DeviceReduce::ReduceByKey(d_temp_storage, temp_storage_bytes, pin2net_map, d_unique_out,
+            exp_x, exp_x_sum, d_num_runs_out, reduction_op, num_pins, stream);
 
-        cudaFree(d_unique_out);
-        cudaFree(d_num_runs_out);
-        // cudaFree(exp_x_sorted);
-        // cudaFree(pin2net_sorted);
-        cudaFree(d_temp_storage);
+    cudaFree(d_unique_out);
+    cudaFree(d_num_runs_out);
+    // cudaFree(exp_x_sorted);
+    // cudaFree(pin2net_sorted);
+    cudaFree(d_temp_storage);
 }
 
+#else
+
+template <typename T>
+__global__ void computeExpSum(
+        const T* exp_x, 
+        const int* pin2net_map, 
+        const unsigned char* net_mask, 
+        int num_nets,
+        int num_pins, 
+        T* exp_x_sum
+        )
+{
+    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_pins; i += blockDim.x * gridDim.x) 
+    {
+        int net_id = pin2net_map[i]; 
+        if (net_id >= 0 || net_mask[net_id])
+        {
+            atomicAdd(&exp_x_sum[net_id], exp_x[i]); 
+        }
+    }
+}
+#endif
+
+#if 0
 template <typename T>
 void computeXExpSum(
         const T* x, 
@@ -106,19 +123,42 @@ void computeXExpSum(
         T* xexp_x_sum,
         cudaStream_t stream)
 {
-        cudaError_t status;
-        T *xexp_x = NULL;
-        cudaMalloc((void**)&xexp_x, num_pins*sizeof(T));
+    T *xexp_x = NULL;
+    cudaMalloc((void**)&xexp_x, num_pins*sizeof(T));
 
-        int block_count = 32;
-        int thread_count = 1024;
-        multiply<<<block_count, thread_count, 0, stream>>>(x, exp_x, num_pins, xexp_x);
+    int block_count = 32;
+    int thread_count = 1024;
+    multiply<<<block_count, thread_count, 0, stream>>>(x, exp_x, num_pins, xexp_x);
 
-        computeExpSum(xexp_x, pin2net_map, net_mask, num_nets, num_pins, xexp_x_sum, stream);
+    computeExpSum(xexp_x, pin2net_map, net_mask, num_nets, num_pins, xexp_x_sum, stream);
 
-        cudaFree(xexp_x);
+    cudaFree(xexp_x);
 }
 
+#else 
+
+template <typename T>
+__global__ void computeXExpSum(
+        const T* x, 
+        const T* exp_x, 
+        const int* pin2net_map, 
+        const unsigned char* net_mask, 
+        int num_nets,
+        int num_pins, 
+        T* xexp_x_sum
+        )
+{
+    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_pins; i += blockDim.x * gridDim.x) 
+    {
+        int net_id = pin2net_map[i]; 
+        if (net_id >= 0 || net_mask[net_id])
+        {
+            atomicAdd(&xexp_x_sum[net_id], x[i]*exp_x[i]); 
+        }
+    }
+}
+
+#endif
 
 template <typename T, typename V>
 int computeWeightedAverageWirelengthCudaReduceLauncher(
@@ -283,6 +323,7 @@ int computeWeightedAverageWirelengthCudaReduceLauncher(
                 );
 
         // compute exp sum 
+#if 1
         computeExpSum(
                 exp_xy, 
                 pin2net_map, 
@@ -319,7 +360,42 @@ int computeWeightedAverageWirelengthCudaReduceLauncher(
                 exp_nxy_sum+num_nets,
                 stream_ny_exp
                 );
+#else 
+        computeExpSum<<<block_count, thread_count, 0, stream_x_exp>>>(
+                exp_xy, 
+                pin2net_map, 
+                net_mask, 
+                num_nets,
+                num_pins, 
+                exp_xy_sum
+                );
+        computeExpSum<<<block_count, thread_count, 0, stream_nx_exp>>>(
+                exp_nxy, 
+                pin2net_map, 
+                net_mask, 
+                num_nets,
+                num_pins, 
+                exp_nxy_sum
+                );
+        computeExpSum<<<block_count, thread_count, 0, stream_y_exp>>>(
+                exp_xy+num_pins, 
+                pin2net_map, 
+                net_mask, 
+                num_nets,
+                num_pins, 
+                exp_xy_sum+num_nets
+                );
+        computeExpSum<<<block_count, thread_count, 0, stream_ny_exp>>>(
+                exp_nxy+num_pins, 
+                pin2net_map, 
+                net_mask, 
+                num_nets,
+                num_pins, 
+                exp_nxy_sum+num_nets
+                );
+#endif
 
+#if 0
         // compute x exp sum 
         computeXExpSum(
                 x, 
@@ -361,6 +437,45 @@ int computeWeightedAverageWirelengthCudaReduceLauncher(
                 xyexp_nxy_sum+num_nets,
                 stream_ny_exp
                 );
+#else 
+        // compute x exp sum 
+        computeXExpSum<<<block_count, thread_count, 0, stream_x_exp>>>(
+                x, 
+                exp_xy, 
+                pin2net_map, 
+                net_mask, 
+                num_nets,
+                num_pins, 
+                xyexp_xy_sum
+                );
+        computeXExpSum<<<block_count, thread_count, 0, stream_nx_exp>>>(
+                x, 
+                exp_nxy, 
+                pin2net_map, 
+                net_mask, 
+                num_nets,
+                num_pins, 
+                xyexp_nxy_sum
+                );
+        computeXExpSum<<<block_count, thread_count, 0, stream_y_exp>>>(
+                y, 
+                exp_xy+num_pins, 
+                pin2net_map, 
+                net_mask, 
+                num_nets,
+                num_pins, 
+                xyexp_xy_sum+num_nets
+                );
+        computeXExpSum<<<block_count, thread_count, 0, stream_ny_exp>>>(
+                y, 
+                exp_nxy+num_pins, 
+                pin2net_map, 
+                net_mask, 
+                num_nets,
+                num_pins, 
+                xyexp_nxy_sum+num_nets
+                );
+#endif
 
         // compute log sum exp 
         computeXExpSumByExpSum<<<block_count, thread_count, 0, stream_x_exp>>>(

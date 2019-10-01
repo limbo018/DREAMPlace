@@ -76,7 +76,9 @@ class WeightedAverageWirelengthOpTest(unittest.TestCase):
     def test_weighted_average_wirelength_random(self):
         dtype = torch.float32
         pin_pos = np.array([[0.0, 0.0], [1.0, 2.0], [1.5, 0.2], [0.5, 3.1], [0.6, 1.1]], dtype=np.float32)
-        net2pin_map = np.array([np.array([0, 4]), np.array([1, 2, 3])])
+        #net2pin_map = np.array([np.array([0, 4]), np.array([1, 2, 3])])
+        # reduce assumes the pins are sorted 
+        net2pin_map = np.array([np.array([0, 1]), np.array([2, 3, 4])])
         pin2net_map = np.zeros(len(pin_pos), dtype=np.int32)
         for net_id, pins in enumerate(net2pin_map):
             for pin in pins:
@@ -199,6 +201,28 @@ class WeightedAverageWirelengthOpTest(unittest.TestCase):
             result_cuda.backward()
             grad_cuda = pin_pos_var.grad.clone()
             print("custom_grad_cuda sparse = ", grad_cuda.data.cpu())
+
+            np.testing.assert_allclose(result_cuda.data.cpu().numpy(), golden_value, atol=1e-6)
+            np.testing.assert_allclose(grad_cuda.data.cpu().numpy(), grad.data.numpy(), rtol=1e-6, atol=1e-6)
+
+        # test gpu merged
+        if torch.cuda.device_count(): 
+            pin_pos_var.grad.zero_()
+            custom_cuda = weighted_average_wirelength.WeightedAverageWirelength(
+                    flat_netpin=Variable(torch.from_numpy(flat_net2pin_map)).cuda(), 
+                    netpin_start=Variable(torch.from_numpy(flat_net2pin_start_map)).cuda(),
+                    pin2net_map=torch.from_numpy(pin2net_map).cuda(), 
+                    net_weights=torch.from_numpy(net_weights).cuda(), 
+                    net_mask=torch.from_numpy(net_mask).cuda(), 
+                    pin_mask=torch.from_numpy(pin_mask).cuda(), 
+                    gamma=torch.tensor(gamma, dtype=dtype).cuda(),
+                    algorithm='merged'
+                    )
+            result_cuda = custom_cuda.forward(pin_pos_var.cuda())
+            print("custom_cuda_result merged = ", result_cuda.data.cpu())
+            result_cuda.backward()
+            grad_cuda = pin_pos_var.grad.clone()
+            print("custom_grad_cuda merged = ", grad_cuda.data.cpu())
 
             np.testing.assert_allclose(result_cuda.data.cpu().numpy(), golden_value, atol=1e-6)
             np.testing.assert_allclose(grad_cuda.data.cpu().numpy(), grad.data.numpy(), rtol=1e-6, atol=1e-6)

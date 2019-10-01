@@ -158,7 +158,7 @@ class PlaceObj(nn.Module):
                 net_mask=data_collections.net_mask_ignore_large_degrees, 
                 pin_mask=data_collections.pin_mask_ignore_fixed_macros,
                 gamma=self.gamma, 
-                algorithm='reduce', 
+                algorithm='merged', 
                 num_threads=params.num_threads
                 )
 
@@ -339,11 +339,32 @@ class PlaceObj(nn.Module):
             self.data_collections.pos[0].grad.zero_()
         wirelength.backward()
         wirelength_grad_norm = self.data_collections.pos[0].grad.norm(p=1)
+        ######### debug
+        #with gzip.open("debug2.pklz", "wb") as f:
+        #    pickle.dump([
+        #        wirelength.cpu(), 
+        #        self.data_collections.pos[0].cpu(), 
+        #        self.data_collections.pos[0].grad.cpu(), 
+        #        wirelength_grad_norm.cpu()
+        #        ], f)
+        #    exit()
+        ###############
 
         self.data_collections.pos[0].grad.zero_()
         density = self.op_collections.density_op(self.data_collections.pos[0])
         density.backward()
         density_grad_norm = self.data_collections.pos[0].grad.norm(p=1)
+
+        ######### debug
+        #with gzip.open("debug2.pklz", "wb") as f:
+        #    pickle.dump([
+        #        density.cpu(), 
+        #        self.data_collections.pos[0].cpu(), 
+        #        self.data_collections.pos[0].grad.cpu(), 
+        #        density_grad_norm.cpu()
+        #        ], f)
+        #    exit()
+        ###############
 
         grad_norm_ratio = wirelength_grad_norm / density_grad_norm
         self.density_weight = torch.tensor([params.density_weight*grad_norm_ratio], dtype=self.data_collections.pos[0].dtype, device=self.data_collections.pos[0].device)

@@ -269,7 +269,7 @@ class BasicPlace (nn.Module):
                 pin2net_map=data_collections.pin2net_map, 
                 net_weights=data_collections.net_weights, 
                 net_mask=data_collections.net_mask_all, 
-                algorithm='atomic', 
+                algorithm='net-by-net', 
                 num_threads=params.num_threads
                 )
 

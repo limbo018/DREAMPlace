@@ -183,6 +183,27 @@ class ElectricPotentialFunction(Function):
             wu_by_wu2_plus_wv2_2X = wu.mul(inv_wu2_plus_wv2_2X)
             wv_by_wu2_plus_wv2_2X = wv.mul(inv_wu2_plus_wv2_2X)
         
+        ######### debug
+        #import gzip 
+        #if sys.version_info[0] < 3: 
+        #    import cPickle as pickle
+        #else:
+        #    import _pickle as pickle
+        #with gzip.open("debug2.pklz", "wb") as f:
+        #    pickle.dump([
+        #        pos.cpu(), 
+        #        initial_density_map.cpu(), 
+        #        density_map.cpu(), 
+        #        perm_M.cpu(), 
+        #        perm_N.cpu(), 
+        #        expk_M.cpu(), 
+        #        expk_N.cpu(), 
+        #        wu_by_wu2_plus_wv2_2X.cpu(), 
+        #        wv_by_wu2_plus_wv2_2X.cpu()
+        #        ], f)
+        #    exit()
+        ###############
+
         # compute auv 
         density_map.mul_(1.0/(ctx.bin_size_x*ctx.bin_size_y))
         #auv = discrete_spectral_transform.dct2_2N(density_map, expk0=expk_M, expk1=expk_N)
@@ -197,6 +218,20 @@ class ElectricPotentialFunction(Function):
         ctx.field_map_x = dct.idsct2(auv_by_wu2_plus_wv2_wu, expk_M, expk_N)
         #ctx.field_map_y = discrete_spectral_transform.idcst2(auv_by_wu2_plus_wv2_wv, expk_M, expk_N).contiguous()
         ctx.field_map_y = dct.idcst2(auv_by_wu2_plus_wv2_wv, expk_M, expk_N)
+
+        ######### debug
+        #import gzip 
+        #if sys.version_info[0] < 3: 
+        #    import cPickle as pickle
+        #else:
+        #    import _pickle as pickle
+        #with gzip.open("debug2.pklz", "wb") as f:
+        #    pickle.dump([
+        #        ctx.field_map_x.cpu(), 
+        #        ctx.field_map_y.cpu(), 
+        #        ], f)
+        #    exit()
+        ###############
 
         # energy = \sum q*phi
         # it takes around 80% of the computation time 
@@ -296,6 +331,20 @@ class ElectricPotentialFunction(Function):
         if grad_pos.is_cuda: 
             torch.cuda.synchronize()
         print("\t\tdensity backward %.3f ms" % ((time.time()-tt)*1000))
+
+        ######### debug
+        #import gzip 
+        #if sys.version_info[0] < 3: 
+        #    import cPickle as pickle
+        #else:
+        #    import _pickle as pickle
+        #with gzip.open("debug2.pklz", "wb") as f:
+        #    pickle.dump([
+        #        output.cpu()
+        #        ], f)
+        #    exit()
+        ###############
+
         return output, \
                 None, None, None, None, \
                 None, None, None, None, \

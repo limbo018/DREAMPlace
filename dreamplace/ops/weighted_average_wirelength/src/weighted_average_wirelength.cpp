@@ -72,7 +72,7 @@ at::Tensor weighted_average_wirelength_forward(
     int num_nets = netpin_start.numel()-1; 
     at::Tensor wl = at::zeros({num_nets}, pos.options());
 
-    AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeWeightedAverageWirelengthLauncher", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeWeightedAverageWirelengthLauncher", [&] {
             computeWeightedAverageWirelengthLauncher<scalar_t>(
                     pos.data<scalar_t>(), pos.data<scalar_t>()+pos.numel()/2, 
                     flat_netpin.data<int>(), 
@@ -126,7 +126,7 @@ at::Tensor weighted_average_wirelength_backward(
 
     at::Tensor grad_out = at::zeros_like(pos);
 
-    AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeWeightedAverageWirelengthLauncher", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeWeightedAverageWirelengthLauncher", [&] {
             computeWeightedAverageWirelengthLauncher<scalar_t>(
                     pos.data<scalar_t>(), pos.data<scalar_t>()+pos.numel()/2, 
                     flat_netpin.data<int>(), 
