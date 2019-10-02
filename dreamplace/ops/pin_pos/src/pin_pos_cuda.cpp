@@ -33,8 +33,7 @@ int computePinPosGradCudaLauncher(
 	const int* flat_node2pin_start_map,
 	int num_nodes,
 	int num_pins,
-	T* grad, T* grad_y, 
-    T* grad_perm_buf ///< 2*num_pins 
+	T* grad, T* grad_y
 	);
 
 #define CHECK_FLAT(x) AT_ASSERTM(x.is_cuda() && x.ndimension() == 1, #x "must be a flat tensor on GPU")
@@ -95,7 +94,6 @@ at::Tensor pin_pos_backward(
     auto out = at::zeros_like(pos);
     int num_nodes = pos.numel()/2;
     int num_pins = pin_offset_x.numel();
-    auto grad_perm_buf = at::empty({2*num_pins}, pos.options());
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computePinPosGradCudaLauncher", [&] {
             computePinPosGradCudaLauncher<scalar_t>(
@@ -108,8 +106,7 @@ at::Tensor pin_pos_backward(
                     flat_node2pin_start_map.data<int>(),  
                     num_physical_nodes, 
                     num_pins, 
-                    out.data<scalar_t>(), out.data<scalar_t>()+num_nodes, 
-                    grad_perm_buf.data<scalar_t>()
+                    out.data<scalar_t>(), out.data<scalar_t>()+num_nodes
                     );
             });
 

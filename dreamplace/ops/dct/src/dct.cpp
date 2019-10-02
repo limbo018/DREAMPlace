@@ -24,7 +24,7 @@ at::Tensor dct_forward(
     //auto x_reorder = at::empty_like(x);
     auto x_reorder = at::empty({M, N}, x.options());
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "dct_forward", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "dct_forward", [&] {
             computeReorder<scalar_t>(
                     x.data<scalar_t>(), 
                     M, 
@@ -74,7 +74,7 @@ at::Tensor idct_forward(
     // vk is hermitian symmetric, only fill in half 
     auto v = at::empty({M*N+std::max(M, N)}, x.options()).resize_({M, N/2+1, 2});
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "idct_forward", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idct_forward", [&] {
             computeVk<scalar_t>(
                     x.data<scalar_t>(), 
                     expk.data<scalar_t>(), 
@@ -131,7 +131,7 @@ at::Tensor dct2_forward(
     auto M = x.numel()/N; 
     auto x_reorder = at::empty({M, N}, x.options());
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "dct2_forward", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "dct2_forward", [&] {
             computeReorder<scalar_t>(
                     x.data<scalar_t>(), 
                     M, 
@@ -219,7 +219,7 @@ at::Tensor idct2_forward(
     // vk is hermitian symmetric, only fill in half 
     auto v = at::empty({M*N+std::max(M, N)}, x.options()).resize_({M, N/2+1, 2});
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "idct2_forward", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idct2_forward", [&] {
             computeVk<scalar_t>(
                     x.data<scalar_t>(), 
                     expk1.data<scalar_t>(), 
@@ -306,9 +306,15 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
   m.def("idct2", &DREAMPLACE_NAMESPACE::idct2_forward, "IDCT2 forward");
   m.def("idxst", &DREAMPLACE_NAMESPACE::idxst_forward, "IDXST forward");
+
+  // use idxst and idxct as kernels 
   m.def("idcct2", &DREAMPLACE_NAMESPACE::idcct2_forward, "IDCCT2 forward");
   m.def("idcst2", &DREAMPLACE_NAMESPACE::idcst2_forward, "IDCST2 forward");
   m.def("idsct2", &DREAMPLACE_NAMESPACE::idsct2_forward, "IDSCT2 forward");
+
+  // use idxst and idct as kernels 
+  m.def("idxst_idct", &DREAMPLACE_NAMESPACE::idxst_idct_forward, "IDXST(IDCT(x)) forward");
+  m.def("idct_idxst", &DREAMPLACE_NAMESPACE::idct_idxst_forward, "IDCT(IDXST(x)) forward");
 
   m.def("dct_2N", &DREAMPLACE_NAMESPACE::dct_2N_forward, "DCT forward");
   m.def("idct_2N", &DREAMPLACE_NAMESPACE::idct_2N_forward, "IDCT forward");

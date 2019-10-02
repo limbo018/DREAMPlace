@@ -15,6 +15,7 @@ else:
     import _pickle as pickle
 import re 
 import numpy as np 
+import logging
 import torch 
 import torch.nn as nn
 import dreamplace.ops.move_boundary.move_boundary as move_boundary 
@@ -25,6 +26,9 @@ import dreamplace.ops.rmst_wl.rmst_wl as rmst_wl
 import dreamplace.ops.greedy_legalize.greedy_legalize as greedy_legalize 
 import dreamplace.ops.draw_place.draw_place as draw_place 
 import dreamplace.ops.pin_pos.pin_pos as pin_pos
+import dreamplace.ops.global_swap.global_swap as global_swap 
+import dreamplace.ops.k_reorder.k_reorder as k_reorder
+import dreamplace.ops.independent_set_matching.independent_set_matching as independent_set_matching
 import pdb 
 
 class PlaceDataCollection (object):
@@ -59,7 +63,7 @@ class PlaceDataCollection (object):
         if np.amin(placedb.net_weights) != np.amax(placedb.net_weights): # weights are meaningful 
             self.net_weights = torch.from_numpy(placedb.net_weights).to(device)
         else: # an empty tensor 
-            print("[I] net weights are all the same, ignored")
+            logging.warning("net weights are all the same, ignored")
             self.net_weights = torch.Tensor().to(device)
 
         self.net_mask_all = torch.from_numpy(np.ones(placedb.num_nets, dtype=np.uint8)).to(device) # all nets included 
@@ -74,6 +78,18 @@ class PlaceDataCollection (object):
         self.bin_center_x = torch.from_numpy(placedb.bin_center_x).to(device)
         self.bin_center_y = torch.from_numpy(placedb.bin_center_y).to(device)
 
+        # sort nodes by size, return their sorted indices, designed for memory coalesce in electrical force
+        movable_size_x = self.node_size_x[:placedb.num_movable_nodes]
+        _, self.sorted_node_map = torch.sort(movable_size_x)
+        self.sorted_node_map = self.sorted_node_map.to(torch.int32) 
+        # self.sorted_node_map = torch.arange(0, placedb.num_movable_nodes, dtype=torch.int32, device=device)
+
+        # logging.debug(self.node_size_x[placedb.num_movable_nodes//2 :placedb.num_movable_nodes//2+20])
+        # logging.debug(self.sorted_node_map[placedb.num_movable_nodes//2 :placedb.num_movable_nodes//2+20])
+        # logging.debug(self.node_size_x[self.sorted_node_map[0: 10].long()])
+        # logging.debug(self.node_size_x[self.sorted_node_map[-10:].long()])
+
+        
     def bin_center_x_padded(self, placedb, padding): 
         """
         @brief compute array of bin center horizontal coordinates with padding 
@@ -141,12 +157,12 @@ class BasicPlace (nn.Module):
         torch.manual_seed(params.random_seed)
         super(BasicPlace, self).__init__()
 
-        #tt = time.time()
+        tt = time.time()
         self.init_pos = np.zeros(placedb.num_nodes*2, dtype=placedb.dtype)
         # x position 
         self.init_pos[0:placedb.num_physical_nodes] = placedb.node_x
         if params.global_place_flag and params.random_center_init_flag: # move to center of layout 
-            print("[I] move cells to the center of layout with random noise")
+            logging.info("move cells to the center of layout with random noise")
             self.init_pos[0:placedb.num_movable_nodes] = np.random.normal(loc=(placedb.xl*1.0+placedb.xh*1.0)/2, scale=(placedb.xh-placedb.xl)*0.001, size=placedb.num_movable_nodes)
         #self.init_pos[0:placedb.num_movable_nodes] = init_x[0:placedb.num_movable_nodes]*0.01 + (placedb.xl+placedb.xh)/2
         # y position 
@@ -159,26 +175,26 @@ class BasicPlace (nn.Module):
             self.init_pos[placedb.num_physical_nodes:placedb.num_nodes] = np.random.uniform(low=placedb.xl, high=placedb.xh-placedb.node_size_x[-placedb.num_filler_nodes], size=placedb.num_filler_nodes)
             self.init_pos[placedb.num_nodes+placedb.num_physical_nodes:placedb.num_nodes*2] = np.random.uniform(low=placedb.yl, high=placedb.yh-placedb.node_size_y[-placedb.num_filler_nodes], size=placedb.num_filler_nodes)
 
-        #print("prepare init_pos takes %.2f seconds" % (time.time()-tt))
+        logging.debug("prepare init_pos takes %.2f seconds" % (time.time()-tt))
 
         self.device = torch.device("cuda" if params.gpu else "cpu")
 
         # position should be parameter 
         # must be defined in BasicPlace 
-        #tt = time.time()
+        tt = time.time()
         self.pos = nn.ParameterList([nn.Parameter(torch.from_numpy(self.init_pos).to(self.device))])
-        #print("build pos takes %.2f seconds" % (time.time()-tt))
+        logging.debug("build pos takes %.2f seconds" % (time.time()-tt))
         # shared data on device for building ops  
         # I do not want to construct the data from placedb again and again for each op 
-        #tt = time.time()
+        tt = time.time()
         self.data_collections = PlaceDataCollection(self.pos, params, placedb, self.device)
-        #print("build data_collections takes %.2f seconds" % (time.time()-tt))
+        logging.debug("build data_collections takes %.2f seconds" % (time.time()-tt))
         # similarly I wrap all ops 
-        #tt = time.time()
+        tt = time.time()
         self.op_collections = PlaceOpCollection()
-        #print("build op_collections takes %.2f seconds" % (time.time()-tt))
+        logging.debug("build op_collections takes %.2f seconds" % (time.time()-tt))
 
-        #tt = time.time()
+        tt = time.time()
         # position to pin position
         self.op_collections.pin_pos_op = self.build_pin_pos(params, placedb, self.data_collections, self.device)
         # bound nodes to layout region 
@@ -192,6 +208,8 @@ class BasicPlace (nn.Module):
         self.op_collections.density_overflow_op = self.build_electric_overflow(params, placedb, self.data_collections, self.device)
         # legalization 
         self.op_collections.greedy_legalize_op = self.build_greedy_legalization(params, placedb, self.data_collections, self.device)
+        # detailed placement 
+        self.op_collections.detailed_place_op = self.build_detailed_placement(params, placedb, self.data_collections, self.device)
         # draw placement 
         self.op_collections.draw_place_op = self.build_draw_placement(params, placedb)
 
@@ -199,7 +217,7 @@ class BasicPlace (nn.Module):
         # can only read once 
         self.read_lut_flag = True
 
-        #print("build BasicPlace ops takes %.2f seconds" % (time.time()-tt))
+        logging.debug("build BasicPlace ops takes %.2f seconds" % (time.time()-tt))
 
     def __call__(self, params, placedb):
         """
@@ -218,13 +236,16 @@ class BasicPlace (nn.Module):
         @param data_collections a collection of all data and variables required for constructing the ops 
         @param device cpu or cuda 
         """
-        """
-        def build_pin_pos_op(pos): 
-            pin_x = data_collections.pin_offset_x.add(torch.index_select(pos[0:placedb.num_physical_nodes], dim=0, index=data_collections.pin2node_map.long()))
-            pin_y = data_collections.pin_offset_y.add(torch.index_select(pos[placedb.num_nodes:placedb.num_nodes+placedb.num_physical_nodes], dim=0, index=data_collections.pin2node_map.long()))
-            pin_pos = torch.cat([pin_x, pin_y], dim=0)
+        # Yibo: I found CPU version of this is super slow, more than 2s for ISPD2005 bigblue4 with 10 threads. 
+        # So I implemented a custom CPU version, which is around 20ms
+        #pin2node_map = data_collections.pin2node_map.long()
+        #def build_pin_pos_op(pos): 
+        #    pin_x = data_collections.pin_offset_x.add(torch.index_select(pos[0:placedb.num_physical_nodes], dim=0, index=pin2node_map))
+        #    pin_y = data_collections.pin_offset_y.add(torch.index_select(pos[placedb.num_nodes:placedb.num_nodes+placedb.num_physical_nodes], dim=0, index=pin2node_map))
+        #    pin_pos = torch.cat([pin_x, pin_y], dim=0)
 
-            return pin_pos""" 
+        #    return pin_pos 
+        #return build_pin_pos_op
 
         return pin_pos.PinPos(
                 pin_offset_x=data_collections.pin_offset_x, 
@@ -233,7 +254,7 @@ class BasicPlace (nn.Module):
                 flat_node2pin_map=data_collections.flat_node2pin_map, 
                 flat_node2pin_start_map=data_collections.flat_node2pin_start_map, 
                 num_physical_nodes=placedb.num_physical_nodes,
-                algorithm='segment',
+                algorithm='by-node',
                 num_threads=params.num_threads
                 )
 
@@ -291,8 +312,8 @@ class BasicPlace (nn.Module):
 
         POWVFILE = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../thirdparty/flute-3.1/POWV9.dat"))
         POSTFILE = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../thirdparty/flute-3.1/POST9.dat"))
-        print("POWVFILE = %s" % (POWVFILE))
-        print("POSTFILE = %s" % (POSTFILE))
+        logging.info("POWVFILE = %s" % (POWVFILE))
+        logging.info("POSTFILE = %s" % (POSTFILE))
         wirelength_for_pin_op = rmst_wl.RMSTWL(
                 flat_netpin=torch.from_numpy(placedb.flat_net2pin_map).to(device), 
                 netpin_start=torch.from_numpy(placedb.flat_net2pin_start_map).to(device),
@@ -349,7 +370,8 @@ class BasicPlace (nn.Module):
                 num_terminals=placedb.num_terminals, 
                 num_filler_nodes=0,
                 padding=0, 
-                algorithm='reduce', 
+                sorted_node_map=data_collections.sorted_node_map,
+                algorithm= 'reduce' if params.deterministic_flag else 'atomic', 
                 num_threads=params.num_threads
                 )
 
@@ -370,6 +392,76 @@ class BasicPlace (nn.Module):
                 num_movable_nodes=placedb.num_movable_nodes, 
                 num_filler_nodes=placedb.num_filler_nodes
                 )
+
+    def build_detailed_placement(self, params, placedb, data_collections, device):
+        """
+        @brief detailed placement consisting of global swap and independent set matching 
+        @param params parameters 
+        @param placedb placement database 
+        @param data_collections a collection of all data and variables required for constructing the ops 
+        @param device cpu or cuda 
+        """
+        gs = global_swap.GlobalSwap(
+                node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
+                flat_net2pin_map=data_collections.flat_net2pin_map, flat_net2pin_start_map=data_collections.flat_net2pin_start_map, pin2net_map=data_collections.pin2net_map, 
+                flat_node2pin_map=data_collections.flat_node2pin_map, flat_node2pin_start_map=data_collections.flat_node2pin_start_map, pin2node_map=data_collections.pin2node_map, 
+                pin_offset_x=data_collections.pin_offset_x, pin_offset_y=data_collections.pin_offset_y, 
+                net_mask=data_collections.net_mask_ignore_large_degrees, 
+                xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
+                site_width=placedb.site_width, row_height=placedb.row_height, 
+                #num_bins_x=placedb.num_bins_x//16, num_bins_y=placedb.num_bins_y//16, 
+                num_bins_x=placedb.num_bins_x//2, num_bins_y=placedb.num_bins_y//2, 
+                num_movable_nodes=placedb.num_movable_nodes, 
+                num_filler_nodes=placedb.num_filler_nodes, 
+                batch_size=256, 
+                max_iters=2, 
+                algorithm='concurrent', 
+                num_threads=params.num_threads
+                )
+        kr = k_reorder.KReorder(
+                node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
+                flat_net2pin_map=data_collections.flat_net2pin_map, flat_net2pin_start_map=data_collections.flat_net2pin_start_map, pin2net_map=data_collections.pin2net_map, 
+                flat_node2pin_map=data_collections.flat_node2pin_map, flat_node2pin_start_map=data_collections.flat_node2pin_start_map, pin2node_map=data_collections.pin2node_map, 
+                pin_offset_x=data_collections.pin_offset_x, pin_offset_y=data_collections.pin_offset_y, 
+                net_mask=data_collections.net_mask_ignore_large_degrees, 
+                xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
+                site_width=placedb.site_width, row_height=placedb.row_height, 
+                num_bins_x=placedb.num_bins_x, num_bins_y=placedb.num_bins_y, 
+                num_movable_nodes=placedb.num_movable_nodes, 
+                num_filler_nodes=placedb.num_filler_nodes, 
+                K=4, 
+                max_iters=2, 
+                num_threads=params.num_threads
+                )
+        ism = independent_set_matching.IndependentSetMatching(
+                node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
+                flat_net2pin_map=data_collections.flat_net2pin_map, flat_net2pin_start_map=data_collections.flat_net2pin_start_map, pin2net_map=data_collections.pin2net_map, 
+                flat_node2pin_map=data_collections.flat_node2pin_map, flat_node2pin_start_map=data_collections.flat_node2pin_start_map, pin2node_map=data_collections.pin2node_map, 
+                pin_offset_x=data_collections.pin_offset_x, pin_offset_y=data_collections.pin_offset_y, 
+                net_mask=data_collections.net_mask_ignore_large_degrees, 
+                xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
+                site_width=placedb.site_width, row_height=placedb.row_height, 
+                num_bins_x=placedb.num_bins_x, num_bins_y=placedb.num_bins_y, 
+                num_movable_nodes=placedb.num_movable_nodes, 
+                num_filler_nodes=placedb.num_filler_nodes, 
+                batch_size=2048, 
+                set_size=128, 
+                max_iters=50, 
+                algorithm='concurrent', 
+                num_threads=params.num_threads
+                )
+
+        # wirelength for position 
+        def build_detailed_placement_op(pos): 
+            logging.info("Start ABCDPlace for refinement")
+            pos1 = pos 
+            for i in range(1): 
+                pos1 = kr(pos1)
+                pos1 = ism(pos1)
+                pos1 = gs(pos1)
+                pos1 = kr(pos1)
+            return pos1 
+        return build_detailed_placement_op
 
     def build_draw_placement(self, params, placedb):
         """
@@ -409,4 +501,27 @@ class BasicPlace (nn.Module):
         if isinstance(pos, np.ndarray):
             pos = torch.from_numpy(pos)
         self.op_collections.draw_place_op(pos, figname)
-        print("[I] plotting to %s takes %.3f seconds" % (figname, time.time()-tt))
+        logging.info("plotting to %s takes %.3f seconds" % (figname, time.time()-tt))
+
+    def dump(self, params, placedb, pos, filename):
+        """
+        @brief dump intermediate solution as compressed pickle file (.pklz)
+        @param params parameters 
+        @param placedb placement database 
+        @param iteration optimization step 
+        @param pos locations of cells 
+        @param filename output file name 
+        """
+        with gzip.open(filename, "wb") as f:
+            pickle.dump((self.data_collections.node_size_x.cpu(), self.data_collections.node_size_y.cpu(), 
+                self.data_collections.flat_net2pin_map.cpu(), self.data_collections.flat_net2pin_start_map.cpu(), self.data_collections.pin2net_map.cpu(), 
+                self.data_collections.flat_node2pin_map.cpu(), self.data_collections.flat_node2pin_start_map.cpu(), self.data_collections.pin2node_map.cpu(), 
+                self.data_collections.pin_offset_x.cpu(), self.data_collections.pin_offset_y.cpu(), 
+                self.data_collections.net_mask_ignore_large_degrees.cpu(), 
+                placedb.xl, placedb.yl, placedb.xh, placedb.yh, 
+                placedb.site_width, placedb.row_height, 
+                placedb.num_bins_x, placedb.num_bins_y, 
+                placedb.num_movable_nodes, 
+                placedb.num_filler_nodes, 
+                pos 
+                ), f)

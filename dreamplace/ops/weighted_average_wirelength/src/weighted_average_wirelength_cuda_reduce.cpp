@@ -15,7 +15,7 @@ int computeWeightedAverageWirelengthCudaReduceLauncher(
         const unsigned char* net_mask, 
         int num_nets, 
         int num_pins, 
-        const T* gamma, 
+        const T* inv_gamma, 
         T* exp_xy, T* exp_nxy, 
         T* exp_xy_sum, T* exp_nxy_sum,
         T* xyexp_xy_sum, T* xyexp_nxy_sum,
@@ -49,14 +49,14 @@ typedef int V;
 /// @param pin2net_map map pin to net 
 /// @param net_weights weight of nets
 /// @param net_mask whether compute the wirelength for a net or not 
-/// @param gamma gamma coefficient in weighted average wirelength. 
+/// @param inv_gamma 1/gamma coefficient in weighted average wirelength. 
 /// @return total wirelength cost.
 std::vector<at::Tensor> weighted_average_wirelength_reduce_forward(
         at::Tensor pos,
         at::Tensor pin2net_map, 
         at::Tensor net_weights, 
         at::Tensor net_mask, 
-        at::Tensor gamma) 
+        at::Tensor inv_gamma) 
 {
     CHECK_FLAT(pos); 
     CHECK_EVEN(pos);
@@ -93,7 +93,7 @@ std::vector<at::Tensor> weighted_average_wirelength_reduce_forward(
                     net_mask.data<unsigned char>(), 
                     num_nets, 
                     num_pins, 
-                    gamma.data<scalar_t>(), 
+                    inv_gamma.data<scalar_t>(), 
                     exp_xy.data<scalar_t>(), exp_nxy.data<scalar_t>(), 
                     exp_xy_sum.data<scalar_t>(), exp_nxy_sum.data<scalar_t>(),
                     xyexp_xy_sum.data<scalar_t>(), xyexp_nxy_sum.data<scalar_t>(), 
@@ -125,7 +125,7 @@ std::vector<at::Tensor> weighted_average_wirelength_reduce_forward(
 /// @param pin2net_map map pin to net 
 /// @param net_weights weight of nets
 /// @param net_mask an array to record whether compute the where for a net or not 
-/// @param gamma a scalar tensor for the parameter in the equation 
+/// @param inv_gamma 1/gamma, a scalar tensor for the parameter in the equation 
 at::Tensor weighted_average_wirelength_reduce_backward(
         at::Tensor grad_pos, 
         at::Tensor pos,
@@ -135,7 +135,7 @@ at::Tensor weighted_average_wirelength_reduce_backward(
         at::Tensor pin2net_map, 
         at::Tensor net_weights, 
         at::Tensor net_mask, 
-        at::Tensor gamma) 
+        at::Tensor inv_gamma) 
 {
     CHECK_FLAT(pos); 
     CHECK_EVEN(pos);
@@ -177,7 +177,7 @@ at::Tensor weighted_average_wirelength_reduce_backward(
                     net_mask.data<unsigned char>(), 
                     num_nets, 
                     num_pins, 
-                    gamma.data<scalar_t>(), 
+                    inv_gamma.data<scalar_t>(), 
                     exp_xy.data<scalar_t>(), exp_nxy.data<scalar_t>(), 
                     exp_xy_sum.data<scalar_t>(), exp_nxy_sum.data<scalar_t>(),
                     xyexp_xy_sum.data<scalar_t>(), xyexp_nxy_sum.data<scalar_t>(),

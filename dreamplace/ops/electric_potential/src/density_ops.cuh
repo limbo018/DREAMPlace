@@ -26,7 +26,7 @@ struct ExactDensity
                 bin_xh = max(bin_xh, x+node_size); 
             }
         }
-        return max(T(0.0), min(x+node_size, bin_xh) - max(x, bin_xl));
+        return max(T(0), min(x+node_size, bin_xh) - max(x, bin_xl));
     }
 };
 
@@ -35,8 +35,14 @@ struct TriangleDensity
 {
     __device__ __forceinline__ T operator()(T x, T node_size, T bin_center, T bin_size) const
     {
-        return max(T(0.0), min(x+node_size, bin_center+bin_size/2) - max(x, bin_center-bin_size/2));
+        return max(T(0), min(x+node_size, bin_center+bin_size/2) - max(x, bin_center-bin_size/2));
     }
+
+    __device__ __forceinline__ T operator()(T x, T node_size, T xl, int k, T bin_size) const
+    {
+        T bin_xl = xl + k * bin_size;
+        return max(T(0), min(x + node_size, bin_xl + bin_size) - max(x, bin_xl));
+    };
 };
 
 DREAMPLACE_END_NAMESPACE

@@ -16,12 +16,15 @@ int computeElectricForceCudaLauncher(
         int num_filler_impacted_bins_x, int num_filler_impacted_bins_y, 
         const T* field_map_x_tensor, const T* field_map_y_tensor, 
         const T* x_tensor, const T* y_tensor, 
-        const T* node_size_x_tensor, const T* node_size_y_tensor, 
+        const T* node_size_x_clamped_tensor, const T* node_size_y_clamped_tensor, 
+        const T* offset_x_tensor, const T* offset_y_tensor,
+        const T* ratio_tensor,
         const T* bin_center_x_tensor, const T* bin_center_y_tensor, 
         T xl, T yl, T xh, T yh, 
         T bin_size_x, T bin_size_y, 
         int num_nodes, int num_movable_nodes, int num_filler_nodes, 
-        T* grad_x_tensor, T* grad_y_tensor
+        T* grad_x_tensor, T* grad_y_tensor,
+        const int* sorted_node_map
         );
 
 #define CHECK_FLAT(x) AT_ASSERTM(x.is_cuda() && x.ndimension() == 1, #x "must be a flat tensor on CPU")
@@ -39,8 +42,11 @@ int computeElectricForceCudaLauncher(
 /// @param field_map_x electric field map in x direction 
 /// @param field_map_y electric field map in y direction 
 /// @param pos cell locations. The array consists of all x locations and then y locations. 
-/// @param node_size_x cell width array
-/// @param node_size_y cell height array 
+/// @param node_size_x_clamped cell width array clamp(min = sqrt2 * bin_size_x)
+/// @param node_size_y_clamped cell height array clamp(min = sqrt2 * bin_size_y)
+/// @param offset_x (node_size_x - node_size_x_clamped)/2
+/// @param offset_y (node_size_y - node_size_y_clamped)/2
+/// @param ratio (node_size_x * node_size_y)  / (node_size_x_clamped * node_size_y_clamped)
 /// @param bin_center_x bin center x locations 
 /// @param bin_center_y bin center y locations 
 /// @param xl left boundary 
@@ -51,6 +57,7 @@ int computeElectricForceCudaLauncher(
 /// @param bin_size_y bin height 
 /// @param num_movable_nodes number of movable cells 
 /// @param num_filler_nodes number of filler cells 
+/// @param sorted_node_map the indices of the movable node map
 at::Tensor electric_force(
         at::Tensor grad_pos,
         int num_bins_x, int num_bins_y, 
@@ -58,12 +65,15 @@ at::Tensor electric_force(
         int num_filler_impacted_bins_x, int num_filler_impacted_bins_y, 
         at::Tensor field_map_x, at::Tensor field_map_y, 
         at::Tensor pos, 
-        at::Tensor node_size_x, at::Tensor node_size_y, 
+        at::Tensor node_size_x_clamped, at::Tensor node_size_y_clamped, 
+        at::Tensor offset_x, at::Tensor offset_y,
+        at::Tensor ratio,
         at::Tensor bin_center_x, at::Tensor bin_center_y, 
         double xl, double yl, double xh, double yh, 
         double bin_size_x, double bin_size_y, 
         int num_movable_nodes, 
-        int num_filler_nodes
+        int num_filler_nodes,
+        at::Tensor sorted_node_map
         ) 
 {
     CHECK_FLAT(pos); 
@@ -84,12 +94,15 @@ at::Tensor electric_force(
                     num_filler_impacted_bins_x, num_filler_impacted_bins_y, 
                     field_map_x.data<scalar_t>(), field_map_y.data<scalar_t>(), 
                     pos.data<scalar_t>(), pos.data<scalar_t>()+num_nodes, 
-                    node_size_x.data<scalar_t>(), node_size_y.data<scalar_t>(), 
+                    node_size_x_clamped.data<scalar_t>(), node_size_y_clamped.data<scalar_t>(), 
+                    offset_x.data<scalar_t>(), offset_y.data<scalar_t>(),
+                    ratio.data<scalar_t>(),
                     bin_center_x.data<scalar_t>(), bin_center_y.data<scalar_t>(), 
                     xl, yl, xh, yh, 
                     bin_size_x, bin_size_y, 
                     num_nodes, num_movable_nodes, num_filler_nodes, 
-                    grad_out.data<scalar_t>(), grad_out.data<scalar_t>()+num_nodes
+                    grad_out.data<scalar_t>(), grad_out.data<scalar_t>()+num_nodes,
+                    sorted_node_map.data<int>()
                     );
             });
 

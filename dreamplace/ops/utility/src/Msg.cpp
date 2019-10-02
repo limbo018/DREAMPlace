@@ -35,7 +35,7 @@ int dreamplacePrintStream(MessageType m, FILE* stream, const char* format, ...)
 int dreamplaceVPrintStream(MessageType m, FILE* stream, const char* format, va_list args)
 {
 	// print prefix 
-    char prefix[8];
+    char prefix[16];
     dreamplaceSPrintPrefix(m, prefix);
 	fprintf(stream, "%s", prefix);
 
@@ -58,7 +58,7 @@ int dreamplaceSPrint(MessageType m, char* buf, const char* format, ...)
 int dreamplaceVSPrint(MessageType m, char* buf, const char* format, va_list args)
 {
 	// print prefix 
-    char prefix[8];
+    char prefix[16];
     dreamplaceSPrintPrefix(m, prefix);
 	sprintf(buf, "%s", prefix);
 
@@ -75,15 +75,15 @@ int dreamplaceSPrintPrefix(MessageType m, char* prefix)
 		case kNONE:
             return sprintf(prefix, "%c", '\0');
 		case kINFO:
-			return sprintf(prefix, "(I) ");
+			return sprintf(prefix, "[INFO   ] ");
 		case kWARN:
-            return sprintf(prefix, "(W) ");
+            return sprintf(prefix, "[WARNING] ");
 		case kERROR:
-            return sprintf(prefix, "(E) ");
+            return sprintf(prefix, "[ERROR  ] ");
 		case kDEBUG:
-            return sprintf(prefix, "(D) ");
+            return sprintf(prefix, "[DEBUG  ] ");
         case kASSERT:
-            return sprintf(prefix, "(A) ");
+            return sprintf(prefix, "[ASSERT ] ");
 		default:
 			dreamplaceAssertMsg(0, "unknown message type");
 	}

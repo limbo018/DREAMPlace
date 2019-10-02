@@ -11,6 +11,7 @@ from torch.utils.cpp_extension import BuildExtension, CppExtension, CUDAExtensio
 
 import os 
 import sys
+import copy
 
 os.environ["CC"] = "${CMAKE_C_COMPILER}"
 os.environ["CXX"] = "${CMAKE_CXX_COMPILER}"
@@ -64,22 +65,22 @@ if "${CUDA_FOUND}".upper() == 'TRUE':
                 libraries=['cusparse', 'culibos'] + libs,
                 extra_compile_args={
                     'cxx': ['-O2', torch_major_version, torch_minor_version], 
-                    'nvcc': cuda_flags #+ ['-use_fast_math', '-prec-div=false', '-ftz=true']
+                    'nvcc': copy.deepcopy(cuda_flags) #+ ['-use_fast_math', '-prec-div=false', '-ftz=true']
                     }
                 ),
             CUDAExtension('electric_potential_cuda_reduce', 
                 [
                     add_prefix('electric_density_map_cuda_reduce.cpp'),
                     add_prefix('electric_density_map_cuda_reduce_kernel.cu'),
-                    add_prefix('electric_force_cuda.cpp'), 
-                    add_prefix('electric_force_cuda_kernel.cu'),
+                    add_prefix('electric_force_cuda_reduce.cpp'), 
+                    add_prefix('electric_force_cuda_reduce_kernel.cu'),
                     ], 
                 include_dirs=include_dirs, 
                 library_dirs=lib_dirs,
                 libraries=['cusparse', 'culibos'] + libs,
                 extra_compile_args={
                     'cxx': ['-O2', torch_major_version, torch_minor_version], 
-                    'nvcc': cuda_flags #+ ['-use_fast_math', '-prec-div=false', '-ftz=true']
+                    'nvcc': copy.deepcopy(cuda_flags) #+ ['-use_fast_math', '-prec-div=false', '-ftz=true']
                     }
                 ),
         ])

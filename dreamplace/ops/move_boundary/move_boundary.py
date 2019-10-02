@@ -59,7 +59,7 @@ class MoveBoundaryFunction(Function):
                     )
         return output
 
-class MoveBoundary(Function):
+class MoveBoundary(object):
     """ 
     @brief Bound cells into layout boundary, perform in-place update 
     """
@@ -74,7 +74,7 @@ class MoveBoundary(Function):
         self.num_movable_nodes = num_movable_nodes
         self.num_filler_nodes = num_filler_nodes
         self.num_threads = num_threads
-    def forward(self, pos): 
+    def __call__(self, pos): 
         return MoveBoundaryFunction.forward(
                 pos,
                 node_size_x=self.node_size_x,

@@ -10,6 +10,7 @@ import sys
 import time 
 import pickle 
 import numpy as np 
+import logging
 import torch 
 from torch.optim.optimizer import Optimizer, required
 import pdb 
@@ -74,7 +75,7 @@ class ConjugateGradientOptimizer(Optimizer):
                     alpha_k = torch.tensor(group['lr'], dtype=d_k.dtype, device=d_k.device)
                     alpha_k, line_search_count, obj_at_alpha_k[0] = line_search_fn(xk=p.data, pk=d_k, gfk=g_k, fk=None, alpha0=alpha_k)
                     group['obj_eval_count'] += line_search_count
-                    print("alpha_k = %g, line_search_count = %d, obj_at_alpha_k = %g, obj_eval_count = %d" % (alpha_k, line_search_count, obj_at_alpha_k[0], group['obj_eval_count']))
+                    logging.debug("alpha_k = %g, line_search_count = %d, obj_at_alpha_k = %g, obj_eval_count = %d" % (alpha_k, line_search_count, obj_at_alpha_k[0], group['obj_eval_count']))
                 p.data.add_(alpha_k.mul(d_k))
 
                 g_k_1.data.copy_(g_k)

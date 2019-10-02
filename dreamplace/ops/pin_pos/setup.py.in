@@ -11,6 +11,7 @@ from torch.utils.cpp_extension import BuildExtension, CppExtension, CUDAExtensio
 
 import os
 import sys
+import copy
 
 os.environ["CC"] = "${CMAKE_C_COMPILER}"
 os.environ["CXX"] = "${CMAKE_CXX_COMPILER}"
@@ -61,7 +62,20 @@ if "${CUDA_FOUND}".upper() == 'TRUE':
                 libraries=libs,
                 extra_compile_args={
                     'cxx': ['-O2', torch_major_version, torch_minor_version], 
-                    'nvcc': cuda_flags
+                    'nvcc': copy.deepcopy(cuda_flags)
+                    }
+                ),
+            CUDAExtension('pin_pos_cuda_segment', 
+                [
+                    add_prefix('pin_pos_cuda_segment.cpp'),
+                    add_prefix('pin_pos_cuda_segment_kernel.cu')
+                    ], 
+                include_dirs=include_dirs, 
+                library_dirs=lib_dirs,
+                libraries=libs,
+                extra_compile_args={
+                    'cxx': ['-O2', torch_major_version, torch_minor_version], 
+                    'nvcc': copy.deepcopy(cuda_flags)
                     }
                 ),
         ])

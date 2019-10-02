@@ -65,6 +65,16 @@ at::Tensor idsct2_forward(
         at::Tensor expk0, 
         at::Tensor expk1);
 
+at::Tensor idxst_idct_forward(
+        at::Tensor x,
+        at::Tensor expk0, 
+        at::Tensor expk1);
+
+at::Tensor idct_idxst_forward(
+        at::Tensor x,
+        at::Tensor expk0, 
+        at::Tensor expk1);
+
 template <typename T>
 void computeReorderCudaLauncher(
         const T* x, 

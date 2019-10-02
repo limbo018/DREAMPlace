@@ -182,6 +182,7 @@ at::Tensor fixed_density_map(
 
     int num_nodes = pos.numel()/2; 
 
+    printf("num_terminals = %d\n", num_terminals);
     // Call the cuda kernel launcher
     if (num_terminals && num_fixed_impacted_bins_x && num_fixed_impacted_bins_y)
     {
@@ -208,7 +209,7 @@ at::Tensor fixed_density_map(
     return density_map;
 }
 
-/// @brief Compute electric force for movable and filler cells 
+/// @brief compute electric force for movable and filler cells 
 /// @param grad_pos input gradient from backward propagation
 /// @param num_bins_x number of bins in horizontal bins 
 /// @param num_bins_y number of bins in vertical bins 

@@ -109,15 +109,15 @@ class DensityOverflowFunction(Function):
                     num_filler_nodes, 
                     num_threads
                     )
-        #print("overflow initial_density_map")
-        #print(initial_density_map/(bin_size_x*bin_size_y))
-        #print("overflow density_map")
-        #print(output[1]/(bin_size_x*bin_size_y))
-        #plot(output[1].clone().div(bin_size_x*bin_size_y).cpu().numpy(), 'density_map')
+        # logger.debug("overflow initial_density_map")
+        # logger.debug(initial_density_map/(bin_size_x*bin_size_y))
+        # logger.debug("overflow density_map")
+        # logger.debug(output[1]/(bin_size_x*bin_size_y))
+        # plot(output[1].clone().div(bin_size_x*bin_size_y).cpu().numpy(), 'density_map')
         # output consists of (overflow, density_map, max_density)
         return output[0], output[2]
 
-class DensityOverflow(Function):
+class DensityOverflow(object):
     """
     @brief Compute density overflow for both movable and fixed cells.
     The density map for fixed cells is pre-computed. 
@@ -182,7 +182,7 @@ class DensityOverflow(Function):
             self.thread2bin_y_map = None
         self.initial_density_map = None
         self.num_threads = num_threads
-    def forward(self, pos): 
+    def __call__(self, pos): 
         """
         @brief API 
         @param pos cell locations. The array consists of x locations of movable cells, fixed cells, and filler cells, then y locations of them 

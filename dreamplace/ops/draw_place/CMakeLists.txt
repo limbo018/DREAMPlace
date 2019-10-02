@@ -1,5 +1,3 @@
-cmake_minimum_required(VERSION 3.0.2)
-
 project(draw_place)
 
 if (NOT CMAKE_CUDA_FLAGS)

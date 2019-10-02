@@ -87,7 +87,7 @@ class WeightedAverageWirelengthOpTest(unittest.TestCase):
                 flat_node2pin_map=torch.from_numpy(flat_node2pin_map), 
                 flat_node2pin_start_map=torch.from_numpy(flat_node2pin_start_map), 
                 num_physical_nodes=num_physical_nodes, 
-                algorithm='cpu',
+                algorithm='by-node',
                 num_threads=num_threads
                 )
         result = custom.forward(pos_var)
@@ -100,6 +100,29 @@ class WeightedAverageWirelengthOpTest(unittest.TestCase):
 
         np.testing.assert_allclose(result.data.detach().numpy(), golden_value, atol=1e-6)
         np.testing.assert_allclose(grad.data.detach().numpy(), golden_grad, atol=1e-6)
+
+        # test gpu 
+        if torch.cuda.device_count(): 
+            pos_var.grad.zero_()
+            custom_cuda = pin_pos.PinPos(
+                    pin_offset_x=torch.from_numpy(pin_offset_x).cuda(), 
+                    pin_offset_y=torch.from_numpy(pin_offset_y).cuda(), 
+                    pin2node_map=torch.from_numpy(pin2node_map).cuda(), 
+                    flat_node2pin_map=torch.from_numpy(flat_node2pin_map).cuda(), 
+                    flat_node2pin_start_map=torch.from_numpy(flat_node2pin_start_map).cuda(), 
+                    num_physical_nodes=num_physical_nodes, 
+                    algorithm='by-node',
+                    num_threads=num_threads
+                    )
+            result_cuda = custom_cuda.forward(pos_var.cuda())
+            custom_cuda_loss = result_cuda.sum()
+            print("custom_cuda_result = ", result_cuda.data.cpu())
+            custom_cuda_loss.backward()
+            grad_cuda = pos_var.grad.clone()
+            print("custom_grad_cuda = ", grad_cuda.data.cpu())
+
+            np.testing.assert_allclose(result_cuda.data.cpu().numpy(), golden_value, atol=1e-6)
+            np.testing.assert_allclose(grad_cuda.data.cpu().numpy(), grad.data.numpy(), rtol=1e-6, atol=1e-6)
 
         # test gpu 
         if torch.cuda.device_count(): 

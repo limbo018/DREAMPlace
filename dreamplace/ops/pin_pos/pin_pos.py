@@ -13,6 +13,7 @@ from torch.autograd import Function
 import dreamplace.ops.pin_pos.pin_pos_cpp as pin_pos_cpp
 try: 
     import dreamplace.ops.pin_pos.pin_pos_cuda as pin_pos_cuda
+    import dreamplace.ops.pin_pos.pin_pos_cuda_segment as pin_pos_cuda_segment
 except:
     pass 
 
@@ -36,7 +37,14 @@ class PinPosFunction(Function):
           ):
         ctx.pos = pos .view(pos.numel())
         if pos.is_cuda:
-            assert 0, "CUDA version NOT implemented"
+            output = pin_pos_cuda.forward(
+                    ctx.pos, 
+                    pin_offset_x, 
+                    pin_offset_y, 
+                    pin2node_map, 
+                    flat_node2pin_map, 
+                    flat_node2pin_start_map
+                    )
         else:
             output = pin_pos_cpp.forward(
                     ctx.pos, 
@@ -59,17 +67,30 @@ class PinPosFunction(Function):
     @staticmethod
     def backward(ctx, grad_pin_pos): 
         # grad_pin_pos is not contiguous
-        return pin_pos_cpp.backward(
-                grad_pin_pos.contiguous(), 
-                ctx.pos,  
-                ctx.pin_offset_x, 
-                ctx.pin_offset_y, 
-                ctx.pin2node_map, 
-                ctx.flat_node2pin_map, 
-                ctx.flat_node2pin_start_map, 
-                ctx.num_physical_nodes, 
-                ctx.num_threads
-                ), None, None, None, None, None, None, None
+        if grad_pin_pos.is_cuda: 
+            output = pin_pos_cuda.backward(
+                    grad_pin_pos.contiguous(), 
+                    ctx.pos,  
+                    ctx.pin_offset_x, 
+                    ctx.pin_offset_y, 
+                    ctx.pin2node_map, 
+                    ctx.flat_node2pin_map, 
+                    ctx.flat_node2pin_start_map, 
+                    ctx.num_physical_nodes
+                    )
+        else:
+            output = pin_pos_cpp.backward(
+                    grad_pin_pos.contiguous(), 
+                    ctx.pos,  
+                    ctx.pin_offset_x, 
+                    ctx.pin_offset_y, 
+                    ctx.pin2node_map, 
+                    ctx.flat_node2pin_map, 
+                    ctx.flat_node2pin_start_map, 
+                    ctx.num_physical_nodes, 
+                    ctx.num_threads
+                    )
+        return output, None, None, None, None, None, None, None
 
 class PinPosSegmentFunction(Function):
     """
@@ -90,7 +111,7 @@ class PinPosSegmentFunction(Function):
         if not pos.is_cuda:
             assert 0, "CPU version NOT implemented"
         else:
-            output = pin_pos_cuda.forward(
+            output = pin_pos_cuda_segment.forward(
                     ctx.pos, 
                     pin_offset_x, 
                     pin_offset_y, 
@@ -114,7 +135,7 @@ class PinPosSegmentFunction(Function):
     def backward(ctx, grad_pin_pos): 
         # grad_pin_pos is not contiguous
         if grad_pin_pos.is_cuda:
-            output = pin_pos_cuda.backward(
+            output = pin_pos_cuda_segment.backward(
                     grad_pin_pos.contiguous(), 
                     ctx.pos,  
                     ctx.pin_offset_x, 
@@ -170,6 +191,17 @@ class PinPos(nn.Module):
                         self.flat_node2pin_map, 
                         self.flat_node2pin_start_map, 
                         self.num_physical_nodes
+                        )
+            else:
+                return PinPosFunction.apply(
+                        pos,
+                        self.pin_offset_x, 
+                        self.pin_offset_y, 
+                        self.pin2node_map, 
+                        self.flat_node2pin_map, 
+                        self.flat_node2pin_start_map, 
+                        self.num_physical_nodes, 
+                        self.num_threads
                         )
         else:
             return PinPosFunction.apply(

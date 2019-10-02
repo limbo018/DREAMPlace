@@ -93,7 +93,7 @@ class DensityOverflowOpTest(unittest.TestCase):
                     num_filler_nodes=num_filler_nodes)
 
         pos = Variable(torch.from_numpy(np.concatenate([xx, yy])))
-        result, max_density = custom.forward(pos)
+        result, max_density = custom(pos)
         print("custom_result = ", result)
         print("custom_max_density = ", max_density)
 
@@ -112,7 +112,7 @@ class DensityOverflowOpTest(unittest.TestCase):
                         )
 
             pos = Variable(torch.from_numpy(np.concatenate([xx, yy]))).cuda()
-            result_cuda, max_density_cuda = custom_cuda.forward(pos)
+            result_cuda, max_density_cuda = custom_cuda(pos)
             print("by-node custom_result = ", result_cuda.data.cpu())
             print("by-node custom_max_density_cuda = ", max_density_cuda.data.cpu())
 
@@ -134,7 +134,7 @@ class DensityOverflowOpTest(unittest.TestCase):
                         )
 
             pos = Variable(torch.from_numpy(np.concatenate([xx, yy]))).cuda()
-            result_cuda, max_density_cuda = custom_cuda.forward(pos)
+            result_cuda, max_density_cuda = custom_cuda(pos)
             print("threadmap custom_result = ", result_cuda.data.cpu())
             print("threadmap custom_max_density_cuda = ", max_density_cuda.data.cpu())
 
@@ -173,13 +173,13 @@ def eval_runtime(design):
     iters = 10 
     tt = time.time()
     for i in range(iters): 
-        result = custom_cuda_by_node.forward(pos_var)
+        result = custom_cuda_by_node(pos_var)
     torch.cuda.synchronize()
     print("custom_cuda_by_node takes %.3f ms" % ((time.time()-tt)/iters*1000))
 
     tt = time.time()
     for i in range(iters): 
-        result = custom_cuda_thread_map.forward(pos_var)
+        result = custom_cuda_thread_map(pos_var)
     torch.cuda.synchronize()
     print("custom_cuda_thread_map takes %.3f ms" % ((time.time()-tt)/iters*1000))
 

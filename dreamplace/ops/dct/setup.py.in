@@ -7,6 +7,7 @@
 
 import os
 from setuptools import setup
+import copy
 import torch
 from torch.utils.cpp_extension import BuildExtension, CppExtension, CUDAExtension
 
@@ -53,6 +54,16 @@ modules.extend([
         extra_compile_args={
                     'cxx' : [torch_major_version, torch_minor_version, '-fopenmp']
                     }),
+    CppExtension('dct2_fft2_cpp', 
+        [
+            add_prefix('dct2_fft2.cpp')
+            ],
+        include_dirs=include_dirs,
+        library_dirs=lib_dirs,
+        libraries=libs,
+        extra_compile_args={
+                    'cxx' : [torch_major_version, torch_minor_version, '-fopenmp']
+                    }),
             ])
 
 if "${CUDA_FOUND}".upper() == 'TRUE':
@@ -79,6 +90,18 @@ if "${CUDA_FOUND}".upper() == 'TRUE':
                     add_prefix('dct_lee_cuda_kernel.cu'),
                     add_prefix('dct_cuda_kernel.cu'),
                     add_prefix('dst_cuda_kernel.cu')
+                    ],
+                include_dirs=include_dirs,
+                library_dirs=lib_dirs,
+                libraries=libs,
+                extra_compile_args={
+                    'cxx' : [torch_major_version, torch_minor_version],
+                    'nvcc': []
+                    }),
+            CUDAExtension('dct2_fft2_cuda',
+                [
+                    add_prefix('dct2_fft2_cuda.cpp'),
+                    add_prefix('dct2_fft2_cuda_kernel.cu')
                     ],
                 include_dirs=include_dirs,
                 library_dirs=lib_dirs,

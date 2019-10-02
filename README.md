@@ -3,9 +3,10 @@
 Deep learning toolkit-enabled VLSI placement. 
 With the analogy between nonlinear VLSI placement and deep learning training problem, this tool is developed with deep learning toolkit for flexibility and efficiency. 
 The tool runs on both CPU and GPU. 
-Over 30X speedup over the CPU implementation ([RePlAce](https://doi.org/10.1109/TCAD.2018.2859220)) is achieved in global placement and legalization on ISPD 2005 contest benchmarks with a Nvidia Tesla V100 GPU. 
+Over ```30X``` speedup over the CPU implementation ([RePlAce](https://doi.org/10.1109/TCAD.2018.2859220)) is achieved in global placement and legalization on ISPD 2005 contest benchmarks with a Nvidia Tesla V100 GPU. 
+DREAMPlace also integrates a GPU-accelerated detailed placer, *ABCDPlace*, which can achieve around ```16X``` speedup on million-size benchmarks over the widely-adopted sequential placer [NTUPlace3](https://doi.org/10.1109/TCAD.2008.923063) on CPU.
 
-DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU, only CPU support will be enabled. 
+DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU, only CPU support will be enabled with multi-threading. 
 
 | Bigblue4 | Density Map | Electric Potential | Electric Field |
 | -------- | ----------- | ------------------ | -------------- |
@@ -18,11 +19,20 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
   ACM/IEEE Design Automation Conference (DAC), Las Vegas, NV, Jun 2-6, 2019
   ([preprint](http://yibolin.com/publications/papers/PLACE_DAC2019_Lin.pdf)) ([slides](http://yibolin.com/publications/papers/PLACE_DAC2019_Lin.slides.pptx))
 
+* [Yibo Lin](http://yibolin.com), Zixuan Jiang, Jiaqi Gu, [Wuxi Li](http://wuxili.net), Shounak Dhar, Haoxing Ren, Brucek Khailany and [David Z. Pan](http://users.ece.utexas.edu/~dpan), 
+  "**DREAMPlace: Deep Learning Toolkit-Enabled GPU Acceleration for Modern VLSI Placement**", 
+  IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems (TCAD), 2020 (in submission)
+
+* [Yibo Lin](http://yibolin.com), [Wuxi Li](http://wuxili.net), Jiaqi Gu, Haoxing Ren, Brucek Khailany and [David Z. Pan](http://users.ece.utexas.edu/~dpan), 
+  "**ABCDPlace: Accelerated Batch-based Concurrent Detailed Placement on Multi-threaded CPUs and GPUs**", 
+  IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems (TCAD), 2020 (in submission)
+
 # Dependency 
 
-- Pytorch 0.4.1 or 1.0.0
+- Python 2.7 or Python 3.5/3.6/3.7
 
-- Python 2.7 or Python 3.5
+- [Pytorch](https://pytorch.org/) 1.0.0
+    - Other version around 1.0.0 may also work, but not tested
 
 - [GCC](https://gcc.gnu.org/)
     - Recommend GCC 5.1 or later. 
@@ -36,6 +46,12 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
 
 - [Flute](https://doi.org/10.1109/TCAD.2007.907068)
     - Integrated as a submodule
+
+- [CUB](https://github.com/NVlabs/cub)
+    - Integrated as a git submodule
+
+- [munkres-cpp](https://github.com/saebyn/munkres-cpp)
+    - Integrated as a git submodule
 
 - [CUDA 9.1 or later](https://developer.nvidia.com/cuda-toolkit) (Optional)
     - If installed and found, GPU acceleration will be enabled. 
@@ -52,7 +68,7 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
     - Otherwise, python implementation is used. 
 
 - [NTUPlace3](http://eda.ee.ntu.edu.tw/research.htm) (Optional)
-    - If the binary is provided, it can be used to perform detailed placement 
+    - If the binary is provided, it can be used to perform detailed placement.
 
 To pull git submodules in the root directory
 ```
@@ -73,6 +89,35 @@ pip install -r requirements.txt
 ```
 
 # How to Build 
+
+Two options are provided for building: with and without [Docker](https://hub.docker.com). 
+
+## Build with Docker
+
+You can use the Docker container to avoid building all the dependencies yourself. 
+1. Install Docker on [Windows](https://docs.docker.com/docker-for-windows/), [Mac](https://docs.docker.com/docker-for-mac/) or [Linux](https://docs.docker.com/install/).
+2. To enable the GPU features, install [NVIDIA-docker](https://github.com/NVIDIA/nvidia-docker); otherwise, skip this step.  
+3. Navigate to the repository. 
+4. Get the docker container with either of the following options. 
+    - Option 1: pull from the cloud [limbo018/dreamplace](https://hub.docker.com/r/limbo018/dreamplace). 
+    ```
+    docker pull limbo018/dreamplace:cuda
+    ```
+    - Option 2: build the container. 
+    ```
+    docker build . --file Dockerfile --tag limbo018/dreamplace:cuda
+    ```
+5. Enter bash environment of the container. 
+```
+# with GPU 
+docker run --gpus 1 -it -v $(pwd):/DREAMPlace limbo018/dreamplace:cuda bash
+# without GPU 
+docker run -it -v $(pwd):/DREAMPlace limbo018/dreamplace:cuda bash
+```
+6. Navigate to ```/DREAMPlace```. 
+7. Go to next section to complete building. 
+
+## Build without Docker
 
 [CMake](https://cmake.org) is adopted as the makefile system. 
 To build, go to the root directory. 
@@ -131,14 +176,27 @@ python dreamplace/Placer.py --help
 # Authors
 
 * [Yibo Lin](http://yibolin.com), supervised by [David Z. Pan](http://users.ece.utexas.edu/~dpan), composed the initial release. 
+* [Zixuan Jiang](https://github.com/ZixuanJiang) and [Jiaqi Gu](https://github.com/JeremieMelo) improved the efficiency of the wirelength and density operators on GPU. 
+* [Yibo Lin](http://yibolin.com) and [Jiaqi Gu](https://github.com/JeremieMelo) developed and integrated ABCDPlace for detailed placement. 
 * **Pull requests to improve the tool are more than welcome.** We appreciate all kinds of contributions from the community. 
 
 # Features
 
-* Python binding and access to C++ placement database
+* [0.0.2](https://github.com/limbo018/DREAMPlace/releases/tag/0.0.2)
+    - Multi-threaded CPU and optional GPU acceleration support 
 
-* LEF/DEF support as input/output
+* [0.0.5](https://github.com/limbo018/DREAMPlace/releases/tag/0.0.5)
+    - Net weighting support through .wts files in Bookshelf format
+    - Incremental placement support
 
-* Net weighting support through .wts files in Bookshelf format
+* [0.0.6](https://github.com/limbo018/DREAMPlace/releases/tag/0.0.6)
+    - LEF/DEF support as input/output
+    - Python binding and access to C++ placement database
 
-* Multi-thread CPU and optional GPU acceleration support 
+* [1.0.0](https://github.com/limbo018/DREAMPlace/releases/tag/1.0.0)
+    - Improved efficiency for wirelength and density operators from TCAD extension
+
+* [1.1.0](https://github.com/limbo018/DREAMPlace/releases/tag/1.1.0)
+    - Integrate ABCDPlace: multi-threaded CPU and GPU acceleration for detailed placement
+    - Support independent set matching, local reordering, and global swap
+    - Docker container for building environment

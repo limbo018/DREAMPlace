@@ -87,6 +87,20 @@ at::Tensor idsct2_forward(
 		int num_threads
 		);
 
+at::Tensor idxst_idct_forward(
+        at::Tensor x,
+        at::Tensor expk0, 
+        at::Tensor expk1, 
+		int num_threads
+        );
+
+at::Tensor idct_idxst_forward(
+        at::Tensor x,
+        at::Tensor expk0, 
+        at::Tensor expk1, 
+		int num_threads
+        );
+
 template <typename T>
 void computeReorder(
         const T* x, 

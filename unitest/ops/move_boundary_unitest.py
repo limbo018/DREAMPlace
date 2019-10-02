@@ -46,7 +46,7 @@ class MoveBoundaryOpTest(unittest.TestCase):
                     num_filler_nodes=num_filler_nodes)
 
         pos = Variable(torch.from_numpy(np.concatenate([xx, yy])))
-        result = custom.forward(pos)
+        result = custom(pos)
         print("custom_result = ", result)
 
         #result.retain_grad()
@@ -62,7 +62,7 @@ class MoveBoundaryOpTest(unittest.TestCase):
                         num_filler_nodes=num_filler_nodes)
 
             pos = Variable(torch.from_numpy(np.concatenate([xx, yy]))).cuda()
-            result_cuda = custom_cuda.forward(pos)
+            result_cuda = custom_cuda(pos)
             print("custom_result = ", result_cuda.data.cpu())
 
 
