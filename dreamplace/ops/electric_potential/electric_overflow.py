@@ -243,6 +243,9 @@ class ElectricOverflow(nn.Module):
                 num_fixed_impacted_bins_x = ((self.node_size_x[self.num_movable_nodes:self.num_movable_nodes+self.num_terminals].max()+self.bin_size_x)/self.bin_size_x).ceil().clamp(max=self.num_bins_x)
                 num_fixed_impacted_bins_y = ((self.node_size_y[self.num_movable_nodes:self.num_movable_nodes+self.num_terminals].max()+self.bin_size_y)/self.bin_size_y).ceil().clamp(max=self.num_bins_y)
             if pos.is_cuda:
+                deterministic_flag = 0
+                if self.algorithm == 'atomic-deterministic':
+                    deterministic_flag = 1
                 if self.algorithm.startswith('atomic'): 
                     self.initial_density_map = electric_potential_cuda.fixed_density_map(
                             pos.view(pos.numel()),
@@ -255,7 +258,8 @@ class ElectricOverflow(nn.Module):
                             self.num_bins_x,
                             self.num_bins_y,
                             num_fixed_impacted_bins_x,
-                            num_fixed_impacted_bins_y
+                            num_fixed_impacted_bins_y,
+                            deterministic_flag
                             )
                 else:
                     self.initial_density_map = electric_potential_cuda_reduce.fixed_density_map(

@@ -24,7 +24,7 @@ int computeTriangleDensityMapCudaLauncher(
         int num_filler_impacted_bins_x, int num_filler_impacted_bins_y, 
         const T xl, const T yl, const T xh, const T yh, 
         const T bin_size_x, const T bin_size_y, 
-        int deterministic_flag, 
+        bool deterministic_flag, 
         T* density_map_tensor,
         const int* sorted_node_map
         );
@@ -42,6 +42,7 @@ int computeExactDensityMapCudaLauncher(
         const T xl, const T yl, const T xh, const T yh, 
         const T bin_size_x, const T bin_size_y, 
         bool fixed_node_flag, 
+        bool deterministic_flag, 
         T* density_map_tensor
         );
 
@@ -125,7 +126,7 @@ at::Tensor density_map(
                     xl, yl, xh, yh, 
                     bin_size_x, bin_size_y, 
                     //false, 
-                    deterministic_flag, 
+                    (bool)deterministic_flag, 
                     density_map.data<scalar_t>(),
                     sorted_node_map.data<int>()
                     );
@@ -155,7 +156,8 @@ at::Tensor fixed_density_map(
         int num_movable_nodes, 
         int num_terminals, 
         int num_bins_x, int num_bins_y,
-        int num_fixed_impacted_bins_x, int num_fixed_impacted_bins_y
+        int num_fixed_impacted_bins_x, int num_fixed_impacted_bins_y,
+        int deterministic_flag
         ) 
 {
     CHECK_FLAT(pos); 
@@ -180,6 +182,7 @@ at::Tensor fixed_density_map(
                         xl, yl, xh, yh, 
                         bin_size_x, bin_size_y, 
                         true, 
+                        (bool)deterministic_flag, 
                         density_map.data<scalar_t>()
                         );
                 });
