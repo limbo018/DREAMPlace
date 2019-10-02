@@ -24,6 +24,7 @@ int computeTriangleDensityMapCudaLauncher(
         int num_filler_impacted_bins_x, int num_filler_impacted_bins_y, 
         const T xl, const T yl, const T xh, const T yh, 
         const T bin_size_x, const T bin_size_y, 
+        int deterministic_flag, 
         T* density_map_tensor,
         const int* sorted_node_map
         );
@@ -98,6 +99,7 @@ at::Tensor density_map(
         int num_bins_x, int num_bins_y, 
         int num_movable_impacted_bins_x, int num_movable_impacted_bins_y, 
         int num_filler_impacted_bins_x, int num_filler_impacted_bins_y,
+        int deterministic_flag, 
         at::Tensor sorted_node_map
         ) 
 {
@@ -105,8 +107,8 @@ at::Tensor density_map(
     CHECK_EVEN(pos);
     CHECK_CONTIGUOUS(pos);
 
-    at::Tensor density_map = initial_density_map.clone();
     int num_nodes = pos.numel()/2; 
+    at::Tensor density_map = initial_density_map.clone();
 
     // Call the cuda kernel launcher
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeTriangleDensityMapCudaLauncher", [&] {
@@ -123,6 +125,7 @@ at::Tensor density_map(
                     xl, yl, xh, yh, 
                     bin_size_x, bin_size_y, 
                     //false, 
+                    deterministic_flag, 
                     density_map.data<scalar_t>(),
                     sorted_node_map.data<int>()
                     );

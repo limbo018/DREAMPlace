@@ -310,7 +310,7 @@ class PlaceObj(nn.Module):
                 padding=padding,
                 sorted_node_map=data_collections.sorted_node_map,
                 fast_mode=True, 
-                algorithm='reduce' if params.deterministic_flag else 'atomic', 
+                algorithm='atomic-deterministic' if params.deterministic_flag else 'atomic', 
                 num_threads=params.num_threads
                 )
 

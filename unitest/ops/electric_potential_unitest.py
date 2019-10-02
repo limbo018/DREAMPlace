@@ -547,6 +547,32 @@ class ElectricPotentialOpTest(unittest.TestCase):
             np.testing.assert_allclose(grad.detach().numpy(), grad_cuda.data.cpu().detach().numpy())
 
             custom_cuda = electric_potential.ElectricPotential(
+                        torch.tensor(node_size_x, requires_grad=False, dtype=dtype).cuda(), torch.tensor(node_size_y, requires_grad=False, dtype=dtype).cuda(),
+                        torch.tensor(bin_center_x, requires_grad=False, dtype=dtype).cuda(), torch.tensor(bin_center_y, requires_grad=False, dtype=dtype).cuda(),
+                        target_density=torch.tensor(target_density, requires_grad=False, dtype=dtype).cuda(),
+                        xl=xl, yl=yl, xh=xh, yh=yh,
+                        bin_size_x=bin_size_x, bin_size_y=bin_size_y,
+                        num_movable_nodes=num_movable_nodes,
+                        num_terminals=num_terminals,
+                        num_filler_nodes=num_filler_nodes,
+                        padding=0,
+                        algorithm='atomic-deterministic', 
+                        sorted_node_map=sorted_node_map.cuda()
+                        )
+
+            pos = Variable(torch.from_numpy(np.concatenate([xx, yy])).cuda(), requires_grad=True)
+            #pos.grad.zero_()
+            result_cuda = custom_cuda.forward(pos)
+            print("custom_result_cuda atomic-deterministic = ", result_cuda.data.cpu())
+            print(result_cuda.type())
+            result_cuda.backward()
+            grad_cuda = pos.grad.clone()
+            print("custom_grad_cuda atomic-deterministic = ", grad_cuda.data.cpu())
+
+            np.testing.assert_allclose(result.detach().numpy(), result_cuda.data.cpu().detach().numpy())
+            np.testing.assert_allclose(grad.detach().numpy(), grad_cuda.data.cpu().detach().numpy())
+
+            custom_cuda = electric_potential.ElectricPotential(
                         torch.tensor(node_size_x, requires_grad=False, dtype=dtype).cuda(), torch.tensor(node_size_y, requires_grad=False, dtype=dtype).cuda(), 
                         torch.tensor(bin_center_x, requires_grad=False, dtype=dtype).cuda(), torch.tensor(bin_center_y, requires_grad=False, dtype=dtype).cuda(), 
                         target_density=torch.tensor(target_density, requires_grad=False, dtype=dtype).cuda(), 

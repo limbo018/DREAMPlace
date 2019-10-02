@@ -371,7 +371,7 @@ class BasicPlace (nn.Module):
                 num_filler_nodes=0,
                 padding=0, 
                 sorted_node_map=data_collections.sorted_node_map,
-                algorithm= 'reduce' if params.deterministic_flag else 'atomic', 
+                algorithm= 'atomic-deterministic' if params.deterministic_flag else 'atomic', 
                 num_threads=params.num_threads
                 )
 
