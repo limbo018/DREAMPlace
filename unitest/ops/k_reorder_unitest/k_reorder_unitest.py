@@ -91,7 +91,7 @@ def test_ispd2015(design, device_str):
                     num_threads=10
                     )
 
-        result = custom.forward(pos.float().to(device))
+        result = custom(pos.float().to(device))
         #print("initial result = ", np.concatenate([xx, yy]))
         #print("custom_result = ", result)
 

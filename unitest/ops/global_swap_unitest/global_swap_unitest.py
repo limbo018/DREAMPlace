@@ -233,7 +233,7 @@ class GlobalSwapOpTest(unittest.TestCase):
                     )
 
         pos = Variable(torch.from_numpy(np.concatenate([xx, yy])))
-        result = custom.forward(pos)
+        result = custom(pos)
         print("initial result = ", np.concatenate([xx, yy]))
         print("custom_result = ", result)
 
@@ -262,7 +262,7 @@ class GlobalSwapOpTest(unittest.TestCase):
                     )
 
         pos = Variable(torch.from_numpy(np.concatenate([xx, yy]))).cuda()
-        result_cuda = custom_cuda.forward(pos)
+        result_cuda = custom_cuda(pos)
         print("custom_result = ", result_cuda.data.cpu())
 
         #np.testing.assert_allclose(result, result_cuda.data.cpu())
@@ -333,7 +333,7 @@ def test_ispd2015(design, algorithm, device_str):
                     num_threads=20
                     )
 
-        result = custom.forward(pos.float().to(device))
+        result = custom(pos.float().to(device))
         #print("initial result = ", np.concatenate([xx, yy]))
         #print("custom_result = ", result)
 

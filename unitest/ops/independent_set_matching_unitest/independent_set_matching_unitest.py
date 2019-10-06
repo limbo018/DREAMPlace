@@ -235,7 +235,7 @@ def test_ispd2015(design, algorithm, device_str):
                     num_threads=20 
                     )
 
-        result = custom.forward(pos)
+        result = custom(pos)
 
         #num_bins_x = 512 
         #num_bins_y = 512 
