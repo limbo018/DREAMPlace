@@ -38,7 +38,7 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
     - Recommend GCC 5.1 or later. 
     - Other compilers may also work, but not tested. 
 
-- [Boost](www.boost.org)
+- [Boost](https://www.boost.org)
     - Need to install and visible for linking
 
 - [Limbo](https://github.com/limbo018/Limbo)
@@ -132,7 +132,7 @@ make
 make install
 ```
 
-Third party submodules are automatically built except for [Boost](www.boost.org).
+Third party submodules are automatically built except for [Boost](https://www.boost.org).
 
 To clean, go to the root directory. 
 ```
