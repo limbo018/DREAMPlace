@@ -480,7 +480,7 @@ at::Tensor k_reorder_forward(
     total_time_start = get_globaltime(); 
 
     // Call the cuda kernel launcher
-    AT_DISPATCH_FLOATING_TYPES(pos.type(), "kreorderCPULauncher", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "kreorderCPULauncher", [&] {
             auto db = make_placedb<scalar_t>(
                     init_pos,
                     pos, 

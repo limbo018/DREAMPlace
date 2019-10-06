@@ -21,7 +21,7 @@ at::Tensor dct_2N_forward(
 
     auto x_pad = at::zeros({M, 2*N}, x.options());
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "dct_2N_forward", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "dct_2N_forward", [&] {
             computePadCudaLauncher<scalar_t>(
                     x.data<scalar_t>(), 
                     M, 
@@ -60,7 +60,7 @@ at::Tensor idct_2N_forward(
 
     auto x_pad = at::zeros({M, 2*N, 2}, x.options());
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "idct_2N_forward", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idct_2N_forward", [&] {
             computeMulExpkAndPad_2N_CudaLauncher<scalar_t>(
                     x.data<scalar_t>(), 
                     expk.data<scalar_t>(), 
@@ -109,7 +109,7 @@ at::Tensor dct2_2N_forward(
     auto M = x.numel()/N; 
     auto x_pad = at::zeros({M, 2*N}, x.options());
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "dct2_2N_forward", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "dct2_2N_forward", [&] {
             computePadCudaLauncher<scalar_t>(
                     x.data<scalar_t>(), 
                     M, 
@@ -181,7 +181,7 @@ at::Tensor idct2_2N_forward(
 
     auto x_pad = at::zeros({M, 2*N, 2}, x.options());
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "idct2_2N_forward", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idct2_2N_forward", [&] {
             computeMulExpkAndPad_2N_CudaLauncher<scalar_t>(
                     x.data<scalar_t>(), 
                     expk1.data<scalar_t>(), 

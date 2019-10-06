@@ -6,6 +6,7 @@
 #
 
 import os
+import copy
 from setuptools import setup
 import torch
 from torch.utils.cpp_extension import BuildExtension, CppExtension, CUDAExtension
@@ -37,9 +38,9 @@ modules.extend([
             add_prefix('dxt.cpp'),
             add_prefix('dct_2N.cpp')
             ],
-        include_dirs=include_dirs,
-        library_dirs=lib_dirs,
-        libraries=libs,
+        include_dirs=copy.deepcopy(include_dirs),
+        library_dirs=copy.deepcopy(lib_dirs),
+        libraries=copy.deepcopy(libs),
         extra_compile_args={
                     'cxx' : [torch_major_version, torch_minor_version, '-fopenmp']
                     }), 
@@ -47,9 +48,9 @@ modules.extend([
         [
             add_prefix('dct_lee.cpp')
             ],
-        include_dirs=include_dirs,
-        library_dirs=lib_dirs,
-        libraries=libs,
+        include_dirs=copy.deepcopy(include_dirs),
+        library_dirs=copy.deepcopy(lib_dirs),
+        libraries=copy.deepcopy(libs),
         extra_compile_args={
                     'cxx' : [torch_major_version, torch_minor_version, '-fopenmp']
                     }),
@@ -57,9 +58,9 @@ modules.extend([
         [
             add_prefix('dct2_fft2.cpp')
             ],
-        include_dirs=include_dirs,
-        library_dirs=lib_dirs,
-        libraries=libs,
+        include_dirs=copy.deepcopy(include_dirs),
+        library_dirs=copy.deepcopy(lib_dirs),
+        libraries=copy.deepcopy(libs),
         extra_compile_args={
                     'cxx' : [torch_major_version, torch_minor_version, '-fopenmp']
                     }),
@@ -76,9 +77,9 @@ if "${CUDA_FOUND}".upper() == 'TRUE':
                     add_prefix('dxt_cuda.cpp'),
                     add_prefix('dct_2N_cuda.cpp')
                     ],
-                include_dirs=include_dirs,
-                library_dirs=lib_dirs,
-                libraries=libs,
+                include_dirs=copy.deepcopy(include_dirs),
+                library_dirs=copy.deepcopy(lib_dirs),
+                libraries=copy.deepcopy(libs),
                 extra_compile_args={
                     'cxx' : [torch_major_version, torch_minor_version],
                     'nvcc': []
@@ -90,9 +91,9 @@ if "${CUDA_FOUND}".upper() == 'TRUE':
                     add_prefix('dct_cuda_kernel.cu'),
                     add_prefix('dst_cuda_kernel.cu')
                     ],
-                include_dirs=include_dirs,
-                library_dirs=lib_dirs,
-                libraries=libs,
+                include_dirs=copy.deepcopy(include_dirs),
+                library_dirs=copy.deepcopy(lib_dirs),
+                libraries=copy.deepcopy(libs),
                 extra_compile_args={
                     'cxx' : [torch_major_version, torch_minor_version],
                     'nvcc': []
@@ -102,9 +103,9 @@ if "${CUDA_FOUND}".upper() == 'TRUE':
                     add_prefix('dct2_fft2_cuda.cpp'),
                     add_prefix('dct2_fft2_cuda_kernel.cu')
                     ],
-                include_dirs=include_dirs,
-                library_dirs=lib_dirs,
-                libraries=libs,
+                include_dirs=copy.deepcopy(include_dirs),
+                library_dirs=copy.deepcopy(lib_dirs),
+                libraries=copy.deepcopy(libs),
                 extra_compile_args={
                     'cxx' : [torch_major_version, torch_minor_version],
                     'nvcc': []

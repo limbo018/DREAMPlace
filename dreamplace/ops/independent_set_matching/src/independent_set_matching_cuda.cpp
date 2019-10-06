@@ -70,7 +70,7 @@ at::Tensor independent_set_matching_cuda_forward(
     auto pos = init_pos.clone();
 
     // Call the cuda kernel launcher
-    AT_DISPATCH_FLOATING_TYPES(pos.type(), "independentSetMatchingCUDALauncher", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "independentSetMatchingCUDALauncher", [&] {
             auto db = make_placedb<scalar_t>(
                     init_pos,
                     pos, 

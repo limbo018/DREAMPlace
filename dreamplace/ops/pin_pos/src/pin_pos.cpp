@@ -82,7 +82,7 @@ at::Tensor pin_pos_forward(
     int num_nodes = pos.numel()/2;
     int num_pins = pin_offset_x.numel();
 
-    AT_DISPATCH_FLOATING_TYPES(pos.type(), "computePinPosLauncher", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computePinPosLauncher", [&] {
             computePinPosLauncher<scalar_t>(
                     pos.data<scalar_t>(), pos.data<scalar_t>()+num_nodes, 
                     pin_offset_x.data<scalar_t>(), 
@@ -122,7 +122,7 @@ at::Tensor pin_pos_backward(
     int num_nodes = pos.numel()/2;
     int num_pins = pin_offset_x.numel();
 
-    AT_DISPATCH_FLOATING_TYPES(pos.type(), "computePinPosGradLauncher", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computePinPosGradLauncher", [&] {
             computePinPosGradLauncher<scalar_t>(
                     grad_out.data<scalar_t>(), grad_out.data<scalar_t>()+num_pins, 
                     pos.data<scalar_t>(), pos.data<scalar_t>()+num_nodes, 

@@ -11,6 +11,7 @@ from torch.utils.cpp_extension import BuildExtension, CppExtension, CUDAExtensio
 
 import os 
 import sys
+import copy
 
 os.environ["CC"] = "${CMAKE_C_COMPILER}"
 os.environ["CXX"] = "${CMAKE_CXX_COMPILER}"
@@ -46,9 +47,9 @@ modules.extend([
         [
             add_prefix('global_swap.cpp')
             ], 
-        include_dirs=include_dirs, 
-        library_dirs=lib_dirs,
-        libraries=libs,
+        include_dirs=copy.deepcopy(include_dirs), 
+        library_dirs=copy.deepcopy(lib_dirs),
+        libraries=copy.deepcopy(libs),
         extra_compile_args={
             'cxx' : [torch_major_version, torch_minor_version]
             }),
@@ -56,9 +57,9 @@ modules.extend([
             [
                 add_prefix('global_swap_concurrent.cpp')
                 ], 
-            include_dirs=include_dirs, 
-            library_dirs=lib_dirs,
-            libraries=libs,
+            include_dirs=copy.deepcopy(include_dirs), 
+            library_dirs=copy.deepcopy(lib_dirs),
+            libraries=copy.deepcopy(libs),
             extra_compile_args={
                 'cxx': [torch_major_version, torch_minor_version, '-fopenmp']
                 }
@@ -72,12 +73,12 @@ if "${CUDA_FOUND}".upper() == 'TRUE':
                 [
                     add_prefix('global_swap_cuda.cpp'),
                     ], 
-                include_dirs=include_dirs, 
-                library_dirs=lib_dirs,
+                include_dirs=copy.deepcopy(include_dirs), 
+                library_dirs=copy.deepcopy(lib_dirs),
                 libraries=['${CUDA_LINKED}', 'curand', 'culibos', 'cudadevrt', 'cudart'] + libs,
                 extra_compile_args={
                     'cxx': ['-O2', torch_major_version, torch_minor_version], 
-                    'nvcc': cuda_flags
+                    'nvcc': copy.deepcopy(cuda_flags)
                     }
                 ),
         ])

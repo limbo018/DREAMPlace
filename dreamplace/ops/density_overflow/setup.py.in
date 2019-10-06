@@ -11,6 +11,7 @@ from torch.utils.cpp_extension import BuildExtension, CppExtension, CUDAExtensio
 
 import os 
 import sys
+import copy
 
 os.environ["CC"] = "${CMAKE_C_COMPILER}"
 os.environ["CXX"] = "${CMAKE_CXX_COMPILER}"
@@ -39,9 +40,9 @@ modules.extend([
         [
             add_prefix('density_overflow.cpp')
             ], 
-        include_dirs=include_dirs, 
-        library_dirs=lib_dirs,
-        libraries=libs,
+        include_dirs=copy.deepcopy(include_dirs), 
+        library_dirs=copy.deepcopy(lib_dirs),
+        libraries=copy.deepcopy(libs),
         extra_compile_args={
             'cxx' : [torch_major_version, torch_minor_version, '-fopenmp']
             })
@@ -55,12 +56,12 @@ if "${CUDA_FOUND}".upper() == 'TRUE':
                     add_prefix('density_overflow_cuda_kernel.cu'), 
                     add_prefix('density_overflow_cuda_thread_map_kernel.cu')
                     ], 
-                include_dirs=include_dirs, 
-                library_dirs=lib_dirs,
+                include_dirs=copy.deepcopy(include_dirs), 
+                library_dirs=copy.deepcopy(lib_dirs),
                 libraries=['cusparse', 'culibos'] + libs,
                 extra_compile_args={
                     'cxx': ['-O2', torch_major_version, torch_minor_version], 
-                    'nvcc': cuda_flags
+                    'nvcc': copy.deepcopy(cuda_flags)
                     }
                 ),
             CUDAExtension('density_overflow_cuda_by_node', 
@@ -68,12 +69,12 @@ if "${CUDA_FOUND}".upper() == 'TRUE':
                     add_prefix('density_overflow_cuda_by_node.cpp'),
                     add_prefix('density_overflow_cuda_by_node_kernel.cu')
                     ], 
-                include_dirs=include_dirs, 
-                library_dirs=lib_dirs,
+                include_dirs=copy.deepcopy(include_dirs), 
+                library_dirs=copy.deepcopy(lib_dirs),
                 libraries=['cusparse', 'culibos'] + libs,
                 extra_compile_args={
                     'cxx': ['-O2', torch_major_version, torch_minor_version], 
-                    'nvcc': cuda_flags
+                    'nvcc': copy.deepcopy(cuda_flags)
                     }
                 )
         ])

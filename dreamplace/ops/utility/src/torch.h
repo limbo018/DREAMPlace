@@ -15,4 +15,18 @@
 #endif
 #include <limits>
 
+/// As the API for torch changes, customize a DREAMPlace version to remove warnings 
+#define DREAMPLACE_DISPATCH_FLOATING_TYPES(TYPE, NAME, ...)                  \
+  [&] {                                                                      \
+    const auto& the_type = TYPE;                                             \
+    (void)the_type;                                                          \
+    at::ScalarType _st = TYPE.scalarType();                                  \
+    switch (_st) {                                                           \
+      AT_PRIVATE_CASE_TYPE(at::ScalarType::Double, double, __VA_ARGS__)      \
+      AT_PRIVATE_CASE_TYPE(at::ScalarType::Float, float, __VA_ARGS__)        \
+      default:                                                               \
+        AT_ERROR(#NAME, " not implemented for '", toString(_st), "'");       \
+    }                                                                        \
+  }()
+
 #endif

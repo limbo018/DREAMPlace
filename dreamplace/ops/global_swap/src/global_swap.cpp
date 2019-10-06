@@ -500,7 +500,7 @@ at::Tensor global_swap_forward(
 	hr_clock_rep total_time_start, total_time_stop;
     total_time_start = get_globaltime();
     // Call the cuda kernel launcher
-    AT_DISPATCH_FLOATING_TYPES(pos.type(), "globalSwapCPULauncher", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "globalSwapCPULauncher", [&] {
             auto db = make_placedb<scalar_t>(
                     init_pos,
                     pos, 

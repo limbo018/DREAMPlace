@@ -326,7 +326,7 @@ at::Tensor independent_set_matching_forward(
     hr_clock_rep timer_start, timer_stop; 
     timer_start = get_globaltime(); 
     // Call the cuda kernel launcher
-    AT_DISPATCH_FLOATING_TYPES(pos.type(), "independentSetMatchingCPULauncher", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "independentSetMatchingCPULauncher", [&] {
             auto db = make_placedb<scalar_t>(
                     init_pos,
                     pos, 
