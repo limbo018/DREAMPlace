@@ -218,7 +218,7 @@ struct DetailedPlaceDB
     /// @brief compute HPWL for all nets 
     T compute_total_hpwl() const
     {
-        //printf("[D] start compute_total_hpwl\n");
+        //dreamplacePrint(kDEBUG, "start compute_total_hpwl\n");
         T total_hpwl = 0; 
         for (int net_id = 0; net_id < num_nets; ++net_id)
         {
@@ -227,7 +227,7 @@ struct DetailedPlaceDB
                 total_hpwl += compute_net_hpwl(net_id);
             }
         }
-        //printf("[D] end compute_total_hpwl\n");
+        //dreamplacePrint(kDEBUG, "end compute_total_hpwl\n");
         return total_hpwl; 
     }
     /// @brief distribute cells to rows 

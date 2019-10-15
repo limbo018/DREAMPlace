@@ -552,7 +552,8 @@ T compute_total_hpwl(const DetailedPlaceDB<T>& db, const SwapState<T>& state, co
         net_hpwls[i] = db.compute_net_hpwl(i);
     }
     T hpwl = 0; 
-#pragma omp parallel for num_threads(state.num_threads) default(shared) reduction(+:hpwl)
+    // I found OpenMP reduction cannot guarantee run-to-run determinism
+//#pragma omp parallel for num_threads(state.num_threads) default(shared) reduction(+:hpwl)
     for (int i = 0; i < db.num_nets; ++i)
     {
         hpwl += net_hpwls[i];
@@ -613,7 +614,7 @@ int globalSwapCPULauncher(DetailedPlaceDB<T> db, int batch_size, int max_iters,
 	hr_clock_rep iter_time_start, iter_time_stop;
 
     kernel_time_start = get_globaltime(); 
-    double hpwls [max_iters+1]; 
+    std::vector<T> hpwls (max_iters+1); 
     hpwls[0] = compute_total_hpwl(db, state, db.x, db.y, state.net_hpwls.data());
     dreamplacePrint(kINFO, "initial hpwl = %.3f\n", hpwls[0]);
     for (int iter = 0; iter < max_iters; ++iter)

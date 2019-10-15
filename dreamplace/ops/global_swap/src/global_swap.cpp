@@ -250,7 +250,7 @@ int globalSwapCPULauncher(DetailedPlaceDB<T> db, int max_iters)
 
     // count number of movement 
     int num_moved = 0; 
-    T hpwls [max_iters+1]; 
+    std::vector<T> hpwls (max_iters+1); 
     hpwls[0] = db.compute_total_hpwl();
     dreamplacePrint(kINFO, "initial hpwl = %.3f\n", hpwls[0]);
 

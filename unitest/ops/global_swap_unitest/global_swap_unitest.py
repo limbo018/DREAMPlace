@@ -269,7 +269,10 @@ class GlobalSwapOpTest(unittest.TestCase):
 
 def test_ispd2015(design, algorithm, device_str):
     with gzip.open(design, "rb") as f:
-        data_collections = pickle.load(f)
+        if sys.version_info[0] < 3: 
+            data_collections = pickle.load(f)
+        else:
+            data_collections = pickle.load(f, encoding='bytes')
         node_size_x = data_collections[0]
         node_size_y = data_collections[1]
         flat_net2pin_map = data_collections[2]
@@ -328,7 +331,7 @@ def test_ispd2015(design, algorithm, device_str):
                     num_movable_nodes=num_movable_nodes, 
                     num_filler_nodes=num_filler_nodes, 
                     batch_size=256, 
-                    max_iters=1, 
+                    max_iters=2, 
                     algorithm=algorithm,
                     num_threads=20
                     )
