@@ -1,10 +1,10 @@
 /**
- * @file   maximum_independent_set.cuh
+ * @file   maximal_independent_set.cuh
  * @author Yibo Lin
  * @date   Jul 2019
  */
-#ifndef _DREAMPLACE_INDEPENDENT_SET_MATCHING_MAXIMUM_INDEPENDENT_SET_CUH
-#define _DREAMPLACE_INDEPENDENT_SET_MATCHING_MAXIMUM_INDEPENDENT_SET_CUH
+#ifndef _DREAMPLACE_INDEPENDENT_SET_MATCHING_MAXIMAL_INDEPENDENT_SET_CUH
+#define _DREAMPLACE_INDEPENDENT_SET_MATCHING_MAXIMAL_INDEPENDENT_SET_CUH
 
 #include "independent_set_matching/src/select.cuh"
 
@@ -13,38 +13,14 @@ DREAMPLACE_BEGIN_NAMESPACE
 #define SOFT_DEPENDENCY
 
 /// @brief mark a node and as first level connected nodes as dependent 
-/// only nodes with the same sizes are marked 
+/// if cell distance is larger than state.skip_threshold, we will skip it 
 template <typename DetailedPlaceDBType, typename IndependentSetMatchingStateType>
 __device__ void mark_dependent_nodes(const DetailedPlaceDBType& db, IndependentSetMatchingStateType& state, int node_id, unsigned char value)
 {
-    // in case all nets are masked 
-    int node2pin_start = db.flat_node2pin_start_map[node_id];
-    int node2pin_end = db.flat_node2pin_start_map[node_id+1];
-    for (int node2pin_id = node2pin_start; node2pin_id < node2pin_end; ++node2pin_id)
-    {
-        int node_pin_id = db.flat_node2pin_map[node2pin_id];
-        int net_id = db.pin2net_map[node_pin_id];
-        if (db.net_mask[net_id])
-        {
-            int net2pin_start = db.flat_net2pin_start_map[net_id];
-            int net2pin_end = db.flat_net2pin_start_map[net_id+1];
-            for (int net2pin_id = net2pin_start; net2pin_id < net2pin_end; ++net2pin_id)
-            {
-                int net_pin_id = db.flat_net2pin_map[net2pin_id];
-                int other_node_id = db.pin2node_map[net_pin_id];
-                state.dependent_markers[other_node_id] = value; 
-            }
-        }
-    }
-}
-
-/// @brief mark a node and as first level connected nodes as dependent 
-/// if cell distance is larger than state.skip_threshold, we will skip it 
-template <typename DetailedPlaceDBType, typename IndependentSetMatchingStateType>
-__device__ void mark_dependent_nodes_soft(const DetailedPlaceDBType& db, IndependentSetMatchingStateType& state, int node_id, unsigned char value)
-{
+#ifdef SOFT_DEPENDENCY
     typename DetailedPlaceDBType::type node_xl = db.x[node_id];
     typename DetailedPlaceDBType::type node_yl = db.y[node_id];
+#endif
     // in case all nets are masked 
     int node2pin_start = db.flat_node2pin_start_map[node_id];
     int node2pin_end = db.flat_node2pin_start_map[node_id+1];
@@ -60,21 +36,72 @@ __device__ void mark_dependent_nodes_soft(const DetailedPlaceDBType& db, Indepen
             {
                 int net_pin_id = db.flat_net2pin_map[net2pin_id];
                 int other_node_id = db.pin2node_map[net_pin_id];
+#ifdef SOFT_DEPENDENCY
                 typename DetailedPlaceDBType::type other_node_xl = db.x[other_node_id];
                 typename DetailedPlaceDBType::type other_node_yl = db.y[other_node_id];
                 typename DetailedPlaceDBType::type distance = abs(node_xl-other_node_xl) + abs(node_yl-other_node_yl); 
                 if (distance < state.skip_threshold)
                 {
+#endif
                     state.dependent_markers[other_node_id] = value; 
+#ifdef SOFT_DEPENDENCY
                 }
+#endif
+            }
+        }
+    }
+    state.dependent_markers[node_id] = value; 
+}
+
+/// @brief for each node, check its first level neighbors, if they are selected, mark itself as dependent 
+template <typename DetailedPlaceDBType, typename IndependentSetMatchingStateType>
+__device__ void mark_dependent_nodes_self(const DetailedPlaceDBType& db, IndependentSetMatchingStateType& state, int node_id)
+{
+    if (state.selected_markers[node_id])
+    {
+        state.dependent_markers[node_id] = 1; 
+        return;
+    }
+#ifdef SOFT_DEPENDENCY
+    typename DetailedPlaceDBType::type node_xl = db.x[node_id];
+    typename DetailedPlaceDBType::type node_yl = db.y[node_id];
+#endif
+    // in case all nets are masked 
+    int node2pin_start = db.flat_node2pin_start_map[node_id];
+    int node2pin_end = db.flat_node2pin_start_map[node_id+1];
+    for (int node2pin_id = node2pin_start; node2pin_id < node2pin_end; ++node2pin_id)
+    {
+        int node_pin_id = db.flat_node2pin_map[node2pin_id];
+        int net_id = db.pin2net_map[node_pin_id];
+        if (db.net_mask[net_id])
+        {
+            int net2pin_start = db.flat_net2pin_start_map[net_id];
+            int net2pin_end = db.flat_net2pin_start_map[net_id+1];
+            for (int net2pin_id = net2pin_start; net2pin_id < net2pin_end; ++net2pin_id)
+            {
+                int net_pin_id = db.flat_net2pin_map[net2pin_id];
+                int other_node_id = db.pin2node_map[net_pin_id];
+#ifdef SOFT_DEPENDENCY
+                typename DetailedPlaceDBType::type other_node_xl = db.x[other_node_id];
+                typename DetailedPlaceDBType::type other_node_yl = db.y[other_node_id];
+                if (std::abs(node_xl-other_node_xl) + std::abs(node_yl-other_node_yl) < state.skip_threshold)
+                {
+#endif
+                    if (other_node_id < db.num_movable_nodes && state.selected_markers[other_node_id])
+                    {
+                        state.dependent_markers[node_id] = 1; 
+                        return;
+                    }
+#ifdef SOFT_DEPENDENCY
+                }
+#endif
             }
         }
     }
 }
 
-
 template <typename DetailedPlaceDBType, typename IndependentSetMatchingStateType>
-__global__ void maximum_independent_set_kernel(DetailedPlaceDBType db, IndependentSetMatchingStateType state, int *empty)
+__global__ void maximal_independent_set_kernel(DetailedPlaceDBType db, IndependentSetMatchingStateType state, int *empty)
 {
     const int from = blockIdx.x * blockDim.x + threadIdx.x;
     const int incr = gridDim.x * blockDim.x;
@@ -86,6 +113,10 @@ __global__ void maximum_independent_set_kernel(DetailedPlaceDBType db, Independe
         {
             if (!state.dependent_markers[node_id])
             {
+                if (*empty)
+                {
+                    atomicExch(empty, false); 
+                }
                 //empty = false; 
                 bool min_node_flag = true; 
                 {
@@ -139,18 +170,6 @@ __global__ void maximum_independent_set_kernel(DetailedPlaceDBType db, Independe
                 if (min_node_flag)
                 {
                     state.selected_markers[node_id] = 1; 
-                    // must be called after marking selected_markers 
-                    // this function means removing node from the graph, but it also removes the selected one 
-#ifdef SOFT_DEPENDENCY
-                    mark_dependent_nodes_soft
-#else 
-                    mark_dependent_nodes
-#endif
-                        (db, state, node_id, 1);
-                    if (*empty)
-                    {
-                        atomicExch(empty, false); 
-                    }
                 }
             }
         }
@@ -162,9 +181,9 @@ __global__ void mark_dependent_nodes_kernel(DetailedPlaceDBType db, IndependentS
 {
     for (int node_id = blockIdx.x*blockDim.x + threadIdx.x; node_id < db.num_movable_nodes; node_id += blockDim.x*gridDim.x)
     {
-        if (state.selected_markers[node_id] && !state.dependent_markers[node_id])
+        if (!state.dependent_markers[node_id])
         {
-            mark_dependent_nodes(db, state, node_id, 1);
+            mark_dependent_nodes_self(db, state, node_id);
         }
     }
 }
@@ -263,7 +282,7 @@ __global__ void check_dependent_nodes(DetailedPlaceDBType db, IndependentSetMatc
 }
 
 template <typename DetailedPlaceDBType, typename IndependentSetMatchingStateType>
-__global__ void maximum_independent_set_dynamic(DetailedPlaceDBType db, IndependentSetMatchingStateType state)
+__global__ void maximal_independent_set_dynamic(DetailedPlaceDBType db, IndependentSetMatchingStateType state)
 {
     // if dependent_markers is 1, it means "cannot be selected"
     // if selected_markers is 1, it means "already selected"
@@ -272,8 +291,8 @@ __global__ void maximum_independent_set_dynamic(DetailedPlaceDBType db, Independ
     int iteration = 0; 
     do {
         *state.independent_set_empty_flag = true; 
-        maximum_independent_set_kernel<<<CUDACeilDiv(db.num_movable_nodes, 256), 256>>>(db, state, state.independent_set_empty_flag);
-        //mark_dependent_nodes_kernel<<<CUDACeilDiv(db.num_movable_nodes, 256), 256>>>(db, state);
+        maximal_independent_set_kernel<<<CUDACeilDiv(db.num_movable_nodes, 256), 256>>>(db, state, state.independent_set_empty_flag);
+        mark_dependent_nodes_kernel<<<CUDACeilDiv(db.num_movable_nodes, 256), 256>>>(db, state);
         ++iteration; 
     } while (!*state.independent_set_empty_flag && iteration < 10); 
     //marker_sum<<<1, 1>>>(state.selected_markers, db.num_movable_nodes);
@@ -283,7 +302,7 @@ __global__ void maximum_independent_set_dynamic(DetailedPlaceDBType db, Independ
 
 
 template <typename DetailedPlaceDBType, typename IndependentSetMatchingStateType>
-void maximum_independent_set(DetailedPlaceDBType const& db, IndependentSetMatchingStateType& state)
+void maximal_independent_set(DetailedPlaceDBType const& db, IndependentSetMatchingStateType& state)
 {
     // if dependent_markers is 1, it means "cannot be selected"
     // if selected_markers is 1, it means "already selected"
@@ -295,8 +314,8 @@ void maximum_independent_set(DetailedPlaceDBType const& db, IndependentSetMatchi
     do {
         host_empty = true; 
         checkCUDA(cudaMemcpy(state.independent_set_empty_flag, &host_empty, sizeof(int), cudaMemcpyHostToDevice));
-        maximum_independent_set_kernel<<<CPUCeilDiv(db.num_movable_nodes, 256), 256>>>(db, state, state.independent_set_empty_flag);
-        //mark_dependent_nodes_kernel<<<CPUCeilDiv(db.num_movable_nodes, 256), 256>>>(db, state);
+        maximal_independent_set_kernel<<<CPUCeilDiv(db.num_movable_nodes, 256), 256>>>(db, state, state.independent_set_empty_flag);
+        mark_dependent_nodes_kernel<<<CPUCeilDiv(db.num_movable_nodes, 256), 256>>>(db, state);
         checkCUDA(cudaMemcpy(&host_empty, state.independent_set_empty_flag, sizeof(int), cudaMemcpyDeviceToHost));
         ++iteration; 
     } while (!host_empty && iteration < 10); 
@@ -304,7 +323,7 @@ void maximum_independent_set(DetailedPlaceDBType const& db, IndependentSetMatchi
     //check_dependent_nodes<<<1, 1>>>(db, state);
     //postprocess_markers_kernel<<<CPUCeilDiv(db.num_movable_nodes, 256), 256>>>(db, state);
 
-    select(state.selected_markers, state.selected_maximum_independent_set, db.num_movable_nodes, state.select_scratch, state.device_num_selected);
+    select(state.selected_markers, state.selected_maximal_independent_set, db.num_movable_nodes, state.select_scratch, state.device_num_selected);
     checkCUDA(cudaMemcpy(&state.num_selected, state.device_num_selected, sizeof(int), cudaMemcpyDeviceToHost));
 }
 

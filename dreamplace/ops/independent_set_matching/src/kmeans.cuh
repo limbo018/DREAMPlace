@@ -81,7 +81,7 @@ __global__ void kmeans_find_centers_kernel(DetailedPlaceDBType db, IndependentSe
     assert(ThreadsPerBlock == blockDim.x);
 #endif
     assert(blockIdx.x < state.num_selected);
-    int node_id = state.selected_maximum_independent_set[blockIdx.x];
+    int node_id = state.selected_maximal_independent_set[blockIdx.x];
     assert(node_id < db.num_movable_nodes);
     auto node_x = db.x[node_id]; 
     auto node_y = db.y[node_id];
@@ -133,7 +133,7 @@ __global__ void init_kmeans_seeds_kernel(DetailedPlaceDBType db, IndependentSetM
         assert(db.num_movable_nodes-i-1 < db.num_movable_nodes && db.num_movable_nodes-i-1 >= 0);
         int random_number = state.ordered_nodes[db.num_movable_nodes-i-1]; 
         random_number = random_number % state.num_selected; 
-        int node_id = state.selected_maximum_independent_set[random_number]; 
+        int node_id = state.selected_maximal_independent_set[random_number]; 
         assert(node_id < db.num_movable_nodes);
         kmeans_state.centers_x[i] = db.x[node_id];
         kmeans_state.centers_y[i] = db.y[node_id];
@@ -188,7 +188,7 @@ __global__ void compute_kmeans_centers_sum_kernel(DetailedPlaceDBType db, Indepe
     int i = blockIdx.x*blockDim.x + threadIdx.x;
     if (i < state.num_selected)
     {
-        int node_id = state.selected_maximum_independent_set[i];
+        int node_id = state.selected_maximal_independent_set[i];
         int center_id = kmeans_state.node2centers_map[i]; 
         assert(center_id < kmeans_state.num_seeds);
         assert(node_id < db.num_movable_nodes);
@@ -257,7 +257,7 @@ template <typename DetailedPlaceDBType, typename IndependentSetMatchingStateType
 void kmeans_collect_sets(const DetailedPlaceDBType& db, IndependentSetMatchingStateType& state, KMeansState<typename DetailedPlaceDBType::type>& kmeans_state)
 {
     gather(state.num_selected, kmeans_state.num_seeds, state.set_size, 
-            state.selected_maximum_independent_set, kmeans_state.node2centers_map, 
+            state.selected_maximal_independent_set, kmeans_state.node2centers_map, 
             state.independent_sets, state.independent_set_sizes);
 
     // statistics 
@@ -277,7 +277,7 @@ template <typename DetailedPlaceDBType, typename IndependentSetMatchingStateType
 void kmeans_collect_sets_cuda2cpu(const DetailedPlaceDBType& db, IndependentSetMatchingStateType& state, KMeansState<typename DetailedPlaceDBType::type>& kmeans_state)
 {
     std::vector<int> selected_nodes (state.num_selected); 
-    checkCUDA(cudaMemcpy(selected_nodes.data(), state.selected_maximum_independent_set, sizeof(int)*state.num_selected, cudaMemcpyDeviceToHost));
+    checkCUDA(cudaMemcpy(selected_nodes.data(), state.selected_maximal_independent_set, sizeof(int)*state.num_selected, cudaMemcpyDeviceToHost));
     std::vector<int> node2centers_map (state.num_selected); 
     checkCUDA(cudaMemcpy(node2centers_map.data(), kmeans_state.node2centers_map, sizeof(int)*state.num_selected, cudaMemcpyDeviceToHost)); 
 

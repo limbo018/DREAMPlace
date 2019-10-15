@@ -1,17 +1,19 @@
 /**
- * @file   maximum_independent_set.h
+ * @file   maximal_independent_set.h
  * @author Yibo Lin
  * @date   Jul 2019
  */
-#ifndef _DREAMPLACE_INDEPENDENT_SET_MATCHING_MAXIMUM_INDEPENDENT_SET_H
-#define _DREAMPLACE_INDEPENDENT_SET_MATCHING_MAXIMUM_INDEPENDENT_SET_H
+#ifndef _DREAMPLACE_INDEPENDENT_SET_MATCHING_MAXIMAL_INDEPENDENT_SET_H
+#define _DREAMPLACE_INDEPENDENT_SET_MATCHING_MAXIMAL_INDEPENDENT_SET_H
+
+#define SOFT_DEPENDENCY
 
 #include "independent_set_matching/src/mark_dependent_nodes.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename DetailedPlaceDBType, typename IndependentSetMatchingStateType>
-void maximum_independent_set_sequential(const DetailedPlaceDBType& db, IndependentSetMatchingStateType& state)
+void maximal_independent_set_sequential(const DetailedPlaceDBType& db, IndependentSetMatchingStateType& state)
 {
     dreamplacePrint(kDEBUG, "%s\n", __func__);
     std::fill(state.selected_markers.begin(), state.selected_markers.end(), 0);
@@ -23,13 +25,13 @@ void maximum_independent_set_sequential(const DetailedPlaceDBType& db, Independe
         if (!state.dependent_markers[node_id])
         {
             state.selected_markers[node_id] = 1; 
-            mark_dependent_nodes_soft(db, state, node_id, 1); 
+            mark_dependent_nodes(db, state, node_id, 1); 
         }
     }
 }
 
 template <typename DetailedPlaceDBType, typename IndependentSetMatchingStateType>
-void maximum_independent_set_parallel(const DetailedPlaceDBType& db, IndependentSetMatchingStateType& state, int max_iters=10)
+void maximal_independent_set_parallel(const DetailedPlaceDBType& db, IndependentSetMatchingStateType& state, int max_iters=10)
 {
     dreamplacePrint(kDEBUG, "%s\n", __func__);
     // if dependent_markers is 1, it means "cannot be selected"
@@ -47,10 +49,13 @@ void maximum_independent_set_parallel(const DetailedPlaceDBType& db, Independent
         {
             if (!state.dependent_markers[node_id])
             {
-                empty = false; 
+#pragma omp atomic
+                empty &= false; 
                 bool min_node_flag = true; 
+#ifdef SOFT_DEPENDENCY
                 typename DetailedPlaceDBType::type node_xl = db.x[node_id];
                 typename DetailedPlaceDBType::type node_yl = db.y[node_id];
+#endif
                 int rank = state.ordered_nodes[node_id];
                 // in case all nets are masked 
                 int node2pin_start = db.flat_node2pin_start_map[node_id];
@@ -67,11 +72,15 @@ void maximum_independent_set_parallel(const DetailedPlaceDBType& db, Independent
                         {
                             int net_pin_id = db.flat_net2pin_map[net2pin_id];
                             int other_node_id = db.pin2node_map[net_pin_id];
+#ifdef SOFT_DEPENDENCY
                             typename DetailedPlaceDBType::type other_node_xl = db.x[other_node_id];
                             typename DetailedPlaceDBType::type other_node_yl = db.y[other_node_id];
+#endif
                             if (other_node_id < db.num_movable_nodes 
                                     && state.ordered_nodes[other_node_id] < rank && state.dependent_markers[other_node_id] == 0
+#ifdef SOFT_DEPENDENCY
                                     && std::abs(node_xl-other_node_xl) + std::abs(node_yl-other_node_yl) < state.skip_threshold
+#endif
                                     )
                             {
                                 min_node_flag = false; 
@@ -93,9 +102,11 @@ void maximum_independent_set_parallel(const DetailedPlaceDBType& db, Independent
 #pragma omp parallel for num_threads(state.num_threads) 
         for (int node_id = 0; node_id < db.num_movable_nodes; ++node_id)
         {
-            if (state.selected_markers[node_id] && !state.dependent_markers[node_id])
+            if (!state.dependent_markers[node_id])
             {
-                mark_dependent_nodes_soft(db, state, node_id, 1);
+                // there wil be no data race if use *_self function 
+                // the other version may result in parallel issue 
+                mark_dependent_nodes_self(db, state, node_id);
             }
         }
         //dreamplacePrint(kDEBUG, "selected %lu nodes\n", std::count(state.selected_markers.begin(), state.selected_markers.end(), 1));

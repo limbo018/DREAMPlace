@@ -29,7 +29,7 @@
 #include "independent_set_matching/src/bin2node_3d_map.h"
 #include "independent_set_matching/src/bin2node_map.h"
 #include "independent_set_matching/src/construct_spaces.h"
-#include "independent_set_matching/src/maximum_independent_set.h"
+#include "independent_set_matching/src/maximal_independent_set.h"
 #include "independent_set_matching/src/collect_independent_sets.h"
 #include "independent_set_matching/src/cost_matrix_construction.h"
 #include "independent_set_matching/src/apply_solution.h"
@@ -113,8 +113,8 @@ void independentSetMatchingCPULauncher(DetailedPlaceDB<T> db,
     // runtime profiling 
     hr_clock_rep iter_timer_start, iter_timer_stop; 
     hr_clock_rep timer_start, timer_stop; 
-    int random_shuffle_runs = 0, maximum_independent_set_runs=0, collect_independent_sets_runs = 0, cost_matrix_construction_runs = 0, hungarian_runs = 0, apply_solution_runs = 0; 
-    hr_clock_rep random_shuffle_time = 0, maximum_independent_set_time = 0, collect_independent_sets_time = 0, cost_matrix_construction_time = 0, hungarian_time = 0, apply_solution_time = 0; 
+    int random_shuffle_runs = 0, maximal_independent_set_runs=0, collect_independent_sets_runs = 0, cost_matrix_construction_runs = 0, hungarian_runs = 0, apply_solution_runs = 0; 
+    hr_clock_rep random_shuffle_time = 0, maximal_independent_set_time = 0, collect_independent_sets_time = 0, cost_matrix_construction_time = 0, hungarian_time = 0, apply_solution_time = 0; 
 
     std::vector<T> hpwls (max_iters+1); 
     hpwls[0] = db.compute_total_hpwl();
@@ -138,15 +138,15 @@ void independentSetMatchingCPULauncher(DetailedPlaceDB<T> db,
         // there will be no benefit with 10 or fewer threads 
         if (state.num_threads < 10)
         {
-            maximum_independent_set_sequential(db, state);
+            maximal_independent_set_sequential(db, state);
         }
         else 
         {
-            maximum_independent_set_parallel(db, state);
+            maximal_independent_set_parallel(db, state);
         }
         timer_stop = get_globaltime();
-        maximum_independent_set_time += timer_stop-timer_start; 
-        maximum_independent_set_runs += 1; 
+        maximal_independent_set_time += timer_stop-timer_start; 
+        maximal_independent_set_runs += 1; 
 
         timer_start = get_globaltime(); 
         int num_independent_sets = collect_independent_sets(db, state);
@@ -245,8 +245,8 @@ void independentSetMatchingCPULauncher(DetailedPlaceDB<T> db,
     }
     dreamplacePrint(kDEBUG, "random_shuffle takes %g ms, %d runs, average %g ms\n", 
             get_timer_period()*random_shuffle_time, random_shuffle_runs, get_timer_period()*random_shuffle_time/random_shuffle_runs);
-    dreamplacePrint(kDEBUG, "maximum_independent_set takes %g ms, %d runs, average %g ms\n", 
-            get_timer_period()*maximum_independent_set_time, maximum_independent_set_runs, get_timer_period()*maximum_independent_set_time/maximum_independent_set_runs);
+    dreamplacePrint(kDEBUG, "maximal_independent_set takes %g ms, %d runs, average %g ms\n", 
+            get_timer_period()*maximal_independent_set_time, maximal_independent_set_runs, get_timer_period()*maximal_independent_set_time/maximal_independent_set_runs);
     dreamplacePrint(kDEBUG, "collect_independent_sets takes %g ms, %d runs, average %g ms\n", 
             get_timer_period()*collect_independent_sets_time, collect_independent_sets_runs, get_timer_period()*collect_independent_sets_time/collect_independent_sets_runs);
     dreamplacePrint(kDEBUG, "cost_matrix_construction takes %g ms, %d runs, average %g ms\n", 

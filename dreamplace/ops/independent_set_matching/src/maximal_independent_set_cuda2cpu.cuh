@@ -1,7 +1,7 @@
-#ifndef _DREAMPLACE_INDEPENDENT_SET_MATCHING_MAXIMUM_INDEPENDENT_SET_CUDA2CPU_CUH
-#define _DREAMPLACE_INDEPENDENT_SET_MATCHING_MAXIMUM_INDEPENDENT_SET_CUDA2CPU_CUH
+#ifndef _DREAMPLACE_INDEPENDENT_SET_MATCHING_MAXIMAL_INDEPENDENT_SET_CUDA2CPU_CUH
+#define _DREAMPLACE_INDEPENDENT_SET_MATCHING_MAXIMAL_INDEPENDENT_SET_CUDA2CPU_CUH
 
-#include "independent_set_matching/src/maximum_independent_set.h"
+#include "independent_set_matching/src/maximal_independent_set.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
 
@@ -46,7 +46,7 @@ struct IndependentSetMatchingCPUStateMaximumIndependentSet
 };
 
 template <typename DetailedPlaceDBType, typename IndependentSetMatchingStateType>
-void maximum_independent_set_cuda2cpu(DetailedPlaceDBType db, IndependentSetMatchingStateType state)
+void maximal_independent_set_cuda2cpu(DetailedPlaceDBType db, IndependentSetMatchingStateType state)
 {
     typedef typename DetailedPlaceDBType::type T; 
     DetailedPlaceCPUDBMaximumIndependentSet<T> host_db; 
@@ -96,7 +96,7 @@ void maximum_independent_set_cuda2cpu(DetailedPlaceDBType db, IndependentSetMatc
     host_state.dependent_markers.assign(db.num_nodes, 0); 
     host_state.selected_nodes.reserve(db.num_movable_nodes); 
 
-    maximum_independent_set_parallel(host_db, host_state);
+    maximal_independent_set_parallel(host_db, host_state);
 
     for (int i = 0; i < db.num_movable_nodes; ++i)
     {
@@ -108,7 +108,7 @@ void maximum_independent_set_cuda2cpu(DetailedPlaceDBType db, IndependentSetMatc
 
     state.num_selected = host_state.num_selected; 
     checkCUDA(cudaMemcpy(state.selected_markers, host_state.selected_markers.data(), sizeof(unsigned char)*db.num_movable_nodes, cudaMemcpyHostToDevice));
-    checkCUDA(cudaMemcpy(state.selected_maximum_independent_set, host_state.selected_nodes.data(), sizeof(int)*host_state.selected_nodes.size(), cudaMemcpyHostToDevice));
+    checkCUDA(cudaMemcpy(state.selected_maximal_independent_set, host_state.selected_nodes.data(), sizeof(int)*host_state.selected_nodes.size(), cudaMemcpyHostToDevice));
 }
 
 DREAMPLACE_END_NAMESPACE

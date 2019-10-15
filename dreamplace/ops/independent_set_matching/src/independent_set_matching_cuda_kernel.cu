@@ -28,8 +28,8 @@
 //#include "independent_set_matching/src/auction.cuh"
 #include "independent_set_matching/src/auction_shared_memory.cuh"
 //#include "independent_set_matching/src/auction_cuda2cpu.cuh"
-#include "independent_set_matching/src/maximum_independent_set.cuh"
-//#include "independent_set_matching/src/maximum_independent_set_cuda2cpu.cuh"
+#include "independent_set_matching/src/maximal_independent_set.cuh"
+//#include "independent_set_matching/src/maximal_independent_set_cuda2cpu.cuh"
 #include "independent_set_matching/src/cpu_state.cuh"
 #include "independent_set_matching/src/collect_independent_sets.cuh"
 //#include "independent_set_matching/src/collect_independent_sets_cuda2cpu.cuh"
@@ -61,7 +61,7 @@ struct IndependentSetMatchingState
     int* independent_set_sizes = nullptr; ///< size of each independent set 
     ////int* ordered_independent_sets = nullptr; ///< temporary storage for reordering independent sets, forward mapping  
     ////int* reordered_independent_sets = nullptr; ///< temporary storage for reordering independent sets, reverse mapping 
-    int* selected_maximum_independent_set = nullptr; ///< storing the selected maximum independent set  
+    int* selected_maximal_independent_set = nullptr; ///< storing the selected maximum independent set  
     char* select_scratch = nullptr; ///< temporary storage for selection kernel 
     int num_selected; ///< maximum independent set size 
     int* device_num_selected; ///< maximum independent set size 
@@ -286,7 +286,7 @@ int independentSetMatchingCUDALauncher(DetailedPlaceDB<T> db,
         allocateCUDA(state.independent_set_sizes, state.batch_size, int);
         ////allocateCUDA(state.ordered_independent_sets, state.batch_size, int);
         ////allocateCUDA(state.reordered_independent_sets, state.batch_size, int);
-        allocateCUDA(state.selected_maximum_independent_set, db.num_movable_nodes, int);
+        allocateCUDA(state.selected_maximal_independent_set, db.num_movable_nodes, int);
         allocateCUDA(state.select_scratch, db.num_movable_nodes, int); 
         allocateCUDA(state.device_num_selected, 1, int);
         ////allocateCUDA(state.device_num_selected_prefix_sum, NUM_NODE_SIZES+1, int);
@@ -333,9 +333,9 @@ int independentSetMatchingCUDALauncher(DetailedPlaceDB<T> db,
 
     // runtime profiling 
     hr_clock_rep iter_timer_start, iter_timer_stop; 
-    int random_shuffle_runs = 0, maximum_independent_set_runs = 0, collect_independent_sets_runs = 0, 
+    int random_shuffle_runs = 0, maximal_independent_set_runs = 0, collect_independent_sets_runs = 0, 
         cost_matrix_construction_runs = 0, independent_sets_solving_runs = 0, apply_solution_runs = 0; 
-    hr_clock_rep random_shuffle_time = 0, maximum_independent_set_time = 0, collect_independent_sets_time = 0, 
+    hr_clock_rep random_shuffle_time = 0, maximal_independent_set_time = 0, collect_independent_sets_time = 0, 
                  cost_matrix_construction_time = 0, independent_sets_solving_time = 0, apply_solution_time = 0; 
 
     std::vector<T> hpwls (max_iters+1); 
@@ -355,11 +355,11 @@ int independentSetMatchingCUDALauncher(DetailedPlaceDB<T> db,
         random_shuffle_runs += 1; 
 
         timer_start = get_globaltime(); 
-        maximum_independent_set(db, state);
+        maximal_independent_set(db, state);
         checkCUDA(cudaDeviceSynchronize()); 
         timer_stop = get_globaltime(); 
-        maximum_independent_set_time += timer_stop-timer_start; 
-        maximum_independent_set_runs += 1; 
+        maximal_independent_set_time += timer_stop-timer_start; 
+        maximal_independent_set_runs += 1; 
 
         timer_start = get_globaltime();
         collect_independent_sets(db, state, kmeans_state, host_db, host_state);
@@ -426,8 +426,8 @@ int independentSetMatchingCUDALauncher(DetailedPlaceDB<T> db,
     kernel_timer_stop = get_globaltime(); 
     dreamplacePrint(kDEBUG, "random_shuffle takes %g ms, %d runs, average %g ms\n", 
             get_timer_period()*random_shuffle_time, random_shuffle_runs, get_timer_period()*random_shuffle_time/random_shuffle_runs);
-    dreamplacePrint(kDEBUG, "maximum_independent_set takes %g ms, %d runs, average %g ms\n", 
-            get_timer_period()*maximum_independent_set_time, maximum_independent_set_runs, get_timer_period()*maximum_independent_set_time/maximum_independent_set_runs);
+    dreamplacePrint(kDEBUG, "maximal_independent_set takes %g ms, %d runs, average %g ms\n", 
+            get_timer_period()*maximal_independent_set_time, maximal_independent_set_runs, get_timer_period()*maximal_independent_set_time/maximal_independent_set_runs);
     dreamplacePrint(kDEBUG, "collect_independent_sets takes %g ms, %d runs, average %g ms\n", 
             get_timer_period()*collect_independent_sets_time, collect_independent_sets_runs, get_timer_period()*collect_independent_sets_time/collect_independent_sets_runs);
     dreamplacePrint(kDEBUG, "cost_matrix_construction takes %g ms, %d runs, average %g ms\n", 
@@ -447,7 +447,7 @@ int independentSetMatchingCUDALauncher(DetailedPlaceDB<T> db,
         destroyCUDA(state.independent_set_sizes);
         ////destroyCUDA(state.ordered_independent_sets);
         ////destroyCUDA(state.reordered_independent_sets);
-        destroyCUDA(state.selected_maximum_independent_set);
+        destroyCUDA(state.selected_maximal_independent_set);
         destroyCUDA(state.select_scratch);
         destroyCUDA(state.device_num_selected);
         ////destroyCUDA(state.device_num_selected_prefix_sum);

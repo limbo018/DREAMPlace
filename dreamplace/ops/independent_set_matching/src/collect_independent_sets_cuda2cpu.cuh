@@ -76,7 +76,7 @@ int collect_independent_sets_cuda2cpu(const DetailedPlaceDBType& db, Independent
     host_state.max_diamond_search_sequence = host_state.grid_size*host_state.grid_size/2; 
     dreamplacePrint(kINFO, "diamond search grid size %d, sequence length %d\n", host_state.grid_size, host_state.max_diamond_search_sequence);
     host_state.selected_nodes.reserve(db.num_movable_nodes);
-    checkCUDA(cudaMemcpy(host_state.selected_nodes.data(), state.selected_maximum_independent_set, sizeof(int)*state.num_selected, cudaMemcpyDeviceToHost));
+    checkCUDA(cudaMemcpy(host_state.selected_nodes.data(), state.selected_maximal_independent_set, sizeof(int)*state.num_selected, cudaMemcpyDeviceToHost));
     host_state.selected_markers.resize(db.num_movable_nodes);
     checkCUDA(cudaMemcpy(host_state.selected_markers.data(), state.selected_markers, sizeof(unsigned char)*db.num_movable_nodes, cudaMemcpyDeviceToHost));
     host_state.ordered_nodes.resize(db.num_movable_nodes);

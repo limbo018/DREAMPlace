@@ -392,7 +392,7 @@ void update_cpu_state(const DetailedPlaceDBType& db, const IndependentSetMatchin
     checkCUDA(cudaMemcpy(host_state.ordered_nodes.data(), state.ordered_nodes, sizeof(int)*db.num_movable_nodes, cudaMemcpyDeviceToHost));
 
     host_state.selected_nodes.resize(state.num_selected);
-    checkCUDA(cudaMemcpy(host_state.selected_nodes.data(), state.selected_maximum_independent_set, sizeof(int)*state.num_selected, cudaMemcpyDeviceToHost));
+    checkCUDA(cudaMemcpy(host_state.selected_nodes.data(), state.selected_maximal_independent_set, sizeof(int)*state.num_selected, cudaMemcpyDeviceToHost));
     checkCUDA(cudaMemcpy(host_state.selected_markers.data(), state.selected_markers, sizeof(unsigned char)*db.num_movable_nodes, cudaMemcpyDeviceToHost));
 
     std::random_shuffle(host_state.selected_nodes.begin(), host_state.selected_nodes.end());

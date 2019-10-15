@@ -264,7 +264,7 @@ __global__ void compute_num_selected_with_sizes_kernel(DetailedPlaceDBType db, I
 {
     for (int i = blockIdx.x*blockDim.x + threadIdx.x; i < state.num_selected-1; i += blockDim.x*gridDim.x)
     {
-        int node_id = state.selected_maximum_independent_set[i]; 
+        int node_id = state.selected_maximal_independent_set[i]; 
         int size_id = state.node_size_id[node_id]; 
         if (i == 0)
         {
@@ -274,7 +274,7 @@ __global__ void compute_num_selected_with_sizes_kernel(DetailedPlaceDBType db, I
             }
         }
 
-        int next_node_id = state.selected_maximum_independent_set[i+1];
+        int next_node_id = state.selected_maximal_independent_set[i+1];
         int next_size_id = state.node_size_id[next_node_id]; 
         if (size_id != next_size_id && next_size_id <= state.num_node_sizes)
         {
@@ -315,7 +315,7 @@ __global__ void print_num_selected_with_sizes_kernel(DetailedPlaceDBType db, Ind
         {
             for (int j = state.device_num_selected_prefix_sum[i]; j < state.device_num_selected_prefix_sum[i+1]; ++j)
             {
-                int node_id = state.selected_maximum_independent_set[j]; 
+                int node_id = state.selected_maximal_independent_set[j]; 
                 int size_id = state.node_size_id[node_id]; 
                 if (size_id != i)
                 {
@@ -354,7 +354,7 @@ __global__ void estimate_clusters2set_sizes_kernel(DetailedPlaceDBType db, Indep
 {
     for (int i = blockIdx.x*blockDim.x + threadIdx.x; i < state.num_selected; i += blockDim.x*gridDim.x)
     {
-        int node_id = state.selected_maximum_independent_set[i]; 
+        int node_id = state.selected_maximal_independent_set[i]; 
         int set_id = state.node2center[node_id]; 
         if (set_id < state.batch_size)
         {
@@ -368,7 +368,7 @@ __global__ void assign_clusters2ordered_sets_kernel(DetailedPlaceDBType db, Inde
 {
     for (int i = blockIdx.x*blockDim.x + threadIdx.x; i < state.num_selected; i += blockDim.x*gridDim.x)
     {
-        int node_id = state.selected_maximum_independent_set[i]; 
+        int node_id = state.selected_maximal_independent_set[i]; 
         int set_id = state.node2center[node_id]; 
         if (set_id < state.batch_size)
         {
@@ -388,7 +388,7 @@ __global__ void assign_clusters2ordered_sets_kernel(DetailedPlaceDBType db, Inde
 //{
 //    for (int i = blockIdx.x*blockDim.x + threadIdx.x; i < state.num_selected; i += blockDim.x*gridDim.x)
 //    {
-//        int node_id = state.selected_maximum_independent_set[i]; 
+//        int node_id = state.selected_maximal_independent_set[i]; 
 //        int size_id = state.node_size_id[node_id]; 
 //        if (size_id < state.num_node_sizes)
 //        {
@@ -423,7 +423,7 @@ void collect_independent_sets(const DetailedPlaceDBType& db, IndependentSetMatch
     partition_kmeans(db, state, kmeans_state);
 #if 0
     //print_selected<<<1, 1>>>(db, state); 
-    thrust::sort(thrust::device, state.selected_maximum_independent_set, state.selected_maximum_independent_set+state.num_selected, 
+    thrust::sort(thrust::device, state.selected_maximal_independent_set, state.selected_maximal_independent_set+state.num_selected, 
             CompareNodeBySizeId(state.node_size_id));
 
     //print_selected<<<1, 1>>>(db, state); 
