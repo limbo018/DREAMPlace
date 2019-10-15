@@ -133,8 +133,6 @@ void apply_solution(DetailedPlaceDBType& db, IndependentSetMatchingStateType& st
                 dreamplaceAssert(db.x[target_node_id] >= target_spaces[sol_j].xl && db.x[target_node_id]+db.node_size_x[target_node_id] <= target_spaces[sol_j].xh); 
             }
         }
-#pragma omp atomic
-        state.num_moved += count; 
 #ifdef DEBUG
         //typename DetailedPlaceDBType::type target_hpwl = db.compute_total_hpwl();
         //for (unsigned int j = 0; j < independent_set.size(); ++j)

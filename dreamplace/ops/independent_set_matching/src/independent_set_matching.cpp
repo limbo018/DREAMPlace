@@ -229,6 +229,14 @@ void independentSetMatchingCPULauncher(DetailedPlaceDB<T> db,
         hpwls[iter+1] = db.compute_total_hpwl(); 
         if ((iter%(std::max(max_iters/10, 1))) == 0 || iter+1 == max_iters)
         {
+            state.num_moved = 0; 
+            for (int i = 0; i < db.num_movable_nodes; ++i)
+            {
+                if (db.x[i] != db.init_x[i] || db.y[i] != db.init_y[i])
+                {
+                    state.num_moved += 1; 
+                }
+            }
             dreamplacePrint(kINFO, "iteration %d, target hpwl %g, delta %g(%g%%), solved %d sets, moved %g%% cells, runtime %g ms\n", 
                     iter, 
                     hpwls[iter+1], hpwls[iter+1]-hpwls[0], (hpwls[iter+1]-hpwls[0])/hpwls[0]*100, 
