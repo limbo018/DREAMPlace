@@ -73,7 +73,7 @@ struct IndependentSetMatchingState
     ////T* center_ys = nullptr; ///< NUM_NODE_SIZES*batch_size, cluster centers of different sizes 
     //int* cluster_sizes = nullptr; ///< NUM_NODE_SIZES*batch_size, cluster sizes of different cell sizes 
 
-    long* net_hpwls; ///< HPWL for each net, use integer to get consistent values 
+    double* net_hpwls; ///< HPWL for each net, use integer to get consistent values 
 
     unsigned char* selected_markers = nullptr; 
     unsigned char* dependent_markers = nullptr; 

@@ -88,7 +88,7 @@ struct SwapState
 
     SwapCandidate<T>* candidates; 
 
-    long* net_hpwls; ///< HPWL for each net, use integer to get consistent values 
+    double* net_hpwls; ///< HPWL for each net, use integer to get consistent values 
     unsigned char* node_markers; ///< markers for cells 
 
     int batch_size; 

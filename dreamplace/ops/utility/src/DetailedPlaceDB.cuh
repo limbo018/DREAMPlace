@@ -7,6 +7,7 @@
 #ifndef _DREAMPLACE_UTILITY_DETAILEDPLACEDB_CUH
 #define _DREAMPLACE_UTILITY_DETAILEDPLACEDB_CUH
 
+#include <type_traits>
 #include "utility/src/Msg.h"
 #include "utility/src/Box.cuh"
 #include "utility/src/utils.cuh"
@@ -387,16 +388,34 @@ struct DetailedPlaceDB
     }
 };
 
+/// @brief Automatic determine scaling factor by types 
+template <typename T, bool = std::is_integral<T>::value>
+struct HPWLScaleTraits;
+
+/// @brief For floating point numbers, no scaling. 
+template <typename T>
+struct HPWLScaleTraits<T, false>
+{
+    static constexpr T scale = 1; 
+};
+
+/// @brief For integers, scale. 
+template <typename T>
+struct HPWLScaleTraits<T, true>
+{
+    static constexpr int scale = 1000; 
+};
+
 /// @brief compute total HPWL 
 /// This function is mainly for evaluation, so the performance is not highly tuned. 
 /// Consistency is more important. 
 /// Thus integer is adopted. 
-template <typename T, typename V, int scale=1000>
+template <typename T, typename V>
 __global__ void compute_total_hpwl_kernel(DetailedPlaceDB<T> db, const T* xx, const T* yy, V* net_hpwls)
 {
     for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < db.num_nets; i += blockDim.x * gridDim.x)
     {
-        net_hpwls[i] = V(db.compute_net_hpwl(i, xx, yy)*(T)scale); 
+        net_hpwls[i] = V(db.compute_net_hpwl(i, xx, yy)*HPWLScaleTraits<V>::scale); 
         //if (db.net_mask[i])
         //{
         //    net_hpwls[i] = V(db.compute_net_hpwl(i, xx, yy)*(T)scale); 
@@ -408,10 +427,10 @@ __global__ void compute_total_hpwl_kernel(DetailedPlaceDB<T> db, const T* xx, co
     }
 }
 
-template <typename T, typename V, int scale=1000>
+template <typename T, typename V>
 T compute_total_hpwl(const DetailedPlaceDB<T>& db, const T* xx, const T* yy, V* net_hpwls)
 {
-    compute_total_hpwl_kernel<T, V, scale><<<CPUCeilDiv(db.num_nets, 512), 512>>>(db, xx, yy, net_hpwls); 
+    compute_total_hpwl_kernel<T, V><<<CPUCeilDiv(db.num_nets, 512), 512>>>(db, xx, yy, net_hpwls); 
     //auto hpwl = thrust::reduce(thrust::device, net_hpwls, net_hpwls+db.num_nets);
 
     V* d_out = NULL; 
@@ -430,7 +449,7 @@ T compute_total_hpwl(const DetailedPlaceDB<T>& db, const T* xx, const T* yy, V* 
     destroyCUDA(d_temp_storage); 
     destroyCUDA(d_out); 
 
-    return T(hpwl)/scale;
+    return T(hpwl)/HPWLScaleTraits<V>::scale;
 }
 
 DREAMPLACE_END_NAMESPACE

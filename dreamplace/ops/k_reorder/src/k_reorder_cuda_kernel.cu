@@ -20,6 +20,7 @@
 //#define DEBUG 
 //#define DYNAMIC
 //#define TIMER 
+#define DETERMINISTIC
 
 #include "utility/src/Msg.h"
 #include "utility/src/utils.cuh"
@@ -35,9 +36,17 @@
 
 DREAMPLACE_BEGIN_NAMESPACE
 
+// maximum number of cells for reordering 
 #define MAX_K 4
+// maximum number of nets per cell to be considered 
 #define MAX_NUM_NETS_PER_NODE 20 
-#define MAX_NUM_NETS_PER_INSTANCE MAX_NUM_NETS_PER_NODE * MAX_K
+// maximum number of nets incident to cells per instance 
+#define MAX_NUM_NETS_PER_INSTANCE ( MAX_NUM_NETS_PER_NODE * MAX_K )
+
+/// Concepts in the algorith: 
+/// A group contains independent rows. 
+/// An KReorderInstance contains an adjacent sequence of cells to be solved. 
+/// 
 
 /// a net for a reorder instance 
 template <typename T>
@@ -59,7 +68,7 @@ struct KReorderState
 
     T* node_space_x; ///< cell size with spaces, a cell only considers its right space  
 
-    PitchNestedVector<KReorderInstance> reorder_instances; 
+    PitchNestedVector<KReorderInstance> reorder_instances; ///< array of array for independent instances; each instance is a sequence of at most K cells to be solved. 
     T* costs; ///< maximum reorder_instances.size2 * num_permutations
     int* best_permute_id; ///< maximum reorder_instances.size2 
     InstanceNet<T>* instance_nets; ///< reorder_instances.size2 * MAX_NUM_NETS_PER_INSTANCE
@@ -71,7 +80,7 @@ struct KReorderState
     int* device_num_moved; 
     int K; ///< number of cells to reorder 
 
-    long* net_hpwls; ///< used for compute HPWL 
+    double* net_hpwls; ///< used for compute HPWL 
 };
 
 template <typename DetailedPlaceDBType, typename StateType>
@@ -112,170 +121,6 @@ void compute_position(
     for (int i = 1; i < K; ++i)
     {
         target_x[i] = target_x[i-1] + target_sizes[i-1];
-    }
-}
-
-#if 0
-template <typename DetailedPlaceDBType, typename StateType>
-inline __device__
-void compute_instance_net_boxes(
-        const DetailedPlaceDBType& db, 
-        const StateType& state, 
-        const KReorderInstance& inst, 
-        int inst_id, 
-        const int* __restrict__ row2nodes, 
-        int K
-        )
-{
-    typedef typename DetailedPlaceDBType::type T; 
-    auto check_node_exist = [&](int bgn, int end, int node_id){
-        for (int i = bgn; i < end; ++i)
-        {
-            if (row2nodes[i] == node_id)
-            {
-                return i; 
-            }
-        }
-        return cuda::numeric_limits<int>::max(); 
-    };
-
-    T row_yl = db.yl + inst.row_id*db.row_height; 
-    auto instance_nets = state.instance_nets + inst_id*MAX_NUM_NETS_PER_INSTANCE; 
-    T cost = 0; 
-    for (int i = 0; i < K; ++i)
-    {
-        int node_id = row2nodes[i];
-        int node2pin_id = db.flat_node2pin_start_map[node_id];
-        const int node2pin_id_end = db.flat_node2pin_start_map[node_id+1];
-        for (; node2pin_id < node2pin_id_end; ++node2pin_id)
-        {
-            int node_pin_id = db.flat_node2pin_map[node2pin_id];
-            int net_id = db.pin2net_map[node_pin_id];
-            T bxl = db.xh; 
-            T bxh = db.xl; 
-            int flag = db.net_mask[net_id];
-            if (flag)
-            {
-                int net2pin_id = db.flat_net2pin_start_map[net_id];
-                const int net2pin_id_end = db.flat_net2pin_start_map[net_id+1]*flag;
-                for (; net2pin_id < net2pin_id_end; ++net2pin_id)
-                {
-                    int net_pin_id = db.flat_net2pin_map[net2pin_id];
-                    int other_node_id = db.pin2node_map[net_pin_id];
-                    int other_node_found = check_node_exist(0, K, other_node_id);
-                    T other_node_xl; 
-                    if (other_node_found < K) // found 
-                    {
-                        d
-                    }
-                    else // not found 
-                    {
-                        other_node_xl = db.x[other_node_id];
-                        if (db.y[other_node_id] == row_yl) // in the same row  
-                        {
-                            if (other_node_xl < target_x[0]) // left of the segment 
-                            {
-                                other_node_xl = db.xl;
-                            }
-                            else if (other_node_xl > target_x[K-1]) // right of the segment 
-                            {
-                                other_node_xl = db.xh;
-                            }
-                        }
-                    }
-                    other_node_xl += db.pin_offset_x[net_pin_id];
-                    bxl = min(bxl, other_node_xl);
-                    bxh = max(bxh, other_node_xl);
-                }
-                cost += bxh-bxl; 
-            }
-        }
-    }
-    return cost; 
-}
-#endif
-
-template <typename DetailedPlaceDBType, typename StateType>
-__global__
-void compute_instance_net_boxes(
-        DetailedPlaceDBType db, 
-        StateType state, 
-        int group_id, 
-        int offset
-        )
-{
-    typedef typename DetailedPlaceDBType::type T; 
-    __shared__ int group_size; 
-    if (threadIdx.x == 0)
-    {
-        group_size = state.reorder_instances.size(group_id); 
-    }
-    __syncthreads(); 
-
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < group_size; i += blockDim.x * gridDim.x)
-    {
-        int inst_id = i; 
-        // this is a copy 
-        auto inst = state.reorder_instances(group_id, inst_id); 
-        inst.idx_bgn += offset; 
-        inst.idx_end = min(inst.idx_end+offset, state.row2node_map.size(inst.row_id)); 
-        auto row2nodes = state.row2node_map(inst.row_id) + inst.idx_bgn; 
-        int K = inst.idx_end-inst.idx_bgn; 
-
-        // after adding offset 
-        for (int idx = 0; idx < K; ++idx)
-        {
-            int node_id = row2nodes[idx]; 
-            if (node_id >= db.num_movable_nodes || db.node_size_y[node_id] > db.row_height)
-            {
-                inst.idx_end = inst.idx_bgn+idx; 
-                K = idx; 
-                break; 
-            }
-        }
-
-        if (K > 0)
-        {
-            T segment_xl = db.x[row2nodes[0]]; 
-            T segment_xh = db.x[row2nodes[K-1]]; 
-            T row_yl = db.yl + inst.row_id * db.row_height; 
-            auto instance_nets = state.instance_nets + inst_id*MAX_NUM_NETS_PER_INSTANCE; 
-            auto instance_nets_size = state.instance_nets_size[inst_id]; 
-            for (int idx = 0; idx < instance_nets_size; ++idx)
-            {
-                auto& instance_net = instance_nets[idx]; 
-                instance_net.bxl = db.xh; 
-                instance_net.bxh = db.xl; 
-
-                int net2pin_id = db.flat_net2pin_start_map[instance_net.net_id];
-                const int net2pin_id_end = db.flat_net2pin_start_map[instance_net.net_id+1];
-                for (; net2pin_id < net2pin_id_end; ++net2pin_id)
-                {
-                    int net_pin_id = db.flat_net2pin_map[net2pin_id];
-                    int other_node_id = db.pin2node_map[net_pin_id];
-                    int other_node_found = (state.node2inst_map[other_node_id] == inst_id);
-                    T other_node_xl; 
-                    if (!other_node_found) // not found 
-                    {
-                        other_node_xl = db.x[other_node_id];
-                        if (abs(db.y[other_node_id]-row_yl) < db.row_height) // in the same row  
-                        {
-                            if (other_node_xl < segment_xl) // left of the segment 
-                            {
-                                other_node_xl = db.xl;
-                            }
-                            else if (other_node_xl > segment_xh) // right of the segment 
-                            {
-                                other_node_xl = db.xh;
-                            }
-                        }
-                        other_node_xl += db.pin_offset_x[net_pin_id];
-                        instance_net.bxl = min(instance_net.bxl, other_node_xl);
-                        instance_net.bxh = max(instance_net.bxh, other_node_xl);
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -364,6 +209,90 @@ typename DetailedPlaceDBType::type compute_instance_hpwl(
         }
     }
     return cost; 
+}
+
+template <typename DetailedPlaceDBType, typename StateType>
+__global__
+void compute_instance_net_boxes(
+        DetailedPlaceDBType db, 
+        StateType state, 
+        int group_id, 
+        int offset
+        )
+{
+    typedef typename DetailedPlaceDBType::type T; 
+    __shared__ int group_size; 
+    if (threadIdx.x == 0)
+    {
+        group_size = state.reorder_instances.size(group_id); 
+    }
+    __syncthreads(); 
+
+    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < group_size; i += blockDim.x * gridDim.x)
+    {
+        int inst_id = i; 
+        // this is a copy 
+        auto inst = state.reorder_instances(group_id, inst_id); 
+        inst.idx_bgn += offset; 
+        inst.idx_end = min(inst.idx_end+offset, state.row2node_map.size(inst.row_id)); 
+        auto row2nodes = state.row2node_map(inst.row_id) + inst.idx_bgn; 
+        int K = inst.idx_end-inst.idx_bgn; 
+
+        // after adding offset 
+        for (int idx = 0; idx < K; ++idx)
+        {
+            int node_id = row2nodes[idx]; 
+            if (node_id >= db.num_movable_nodes || db.node_size_y[node_id] > db.row_height)
+            {
+                inst.idx_end = inst.idx_bgn+idx; 
+                K = idx; 
+                break; 
+            }
+        }
+
+        if (K > 0)
+        {
+            T segment_xl = db.x[row2nodes[0]]; 
+            T segment_xh = db.x[row2nodes[K-1]]; 
+            T row_yl = db.yl + inst.row_id * db.row_height; 
+            auto instance_nets = state.instance_nets + inst_id*MAX_NUM_NETS_PER_INSTANCE; 
+            auto instance_nets_size = state.instance_nets_size[inst_id]; 
+            for (int idx = 0; idx < instance_nets_size; ++idx)
+            {
+                auto& instance_net = instance_nets[idx]; 
+                instance_net.bxl = db.xh; 
+                instance_net.bxh = db.xl; 
+
+                int net2pin_id = db.flat_net2pin_start_map[instance_net.net_id];
+                const int net2pin_id_end = db.flat_net2pin_start_map[instance_net.net_id+1];
+                for (; net2pin_id < net2pin_id_end; ++net2pin_id)
+                {
+                    int net_pin_id = db.flat_net2pin_map[net2pin_id];
+                    int other_node_id = db.pin2node_map[net_pin_id];
+                    int other_node_found = (state.node2inst_map[other_node_id] == inst_id);
+                    if (!other_node_found) // not found 
+                    {
+                        T other_node_xl = db.x[other_node_id];
+                        auto pin_offset_x = db.pin_offset_x[net_pin_id];
+                        if (abs(db.y[other_node_id]-row_yl) < db.row_height) // in the same row  
+                        {
+                            if (other_node_xl < segment_xl) // left of the segment 
+                            {
+                                other_node_xl = db.xl;
+                            }
+                            else if (other_node_xl > segment_xh) // right of the segment 
+                            {
+                                other_node_xl = db.xh;
+                            }
+                        }
+                        other_node_xl += pin_offset_x;
+                        instance_net.bxl = min(instance_net.bxl, other_node_xl);
+                        instance_net.bxh = max(instance_net.bxh, other_node_xl);
+                    }
+                }
+            }
+        }
+    }
 }
 
 template <typename DetailedPlaceDBType, typename StateType>
@@ -595,6 +524,14 @@ void apply_reorder(
     }
 }
 
+/// @brief Map each node to its instance. 
+/// For each instance in the group
+///     For each node incident to the instance 
+///         update node2inst_map
+///         update node_markers
+/// Every time, we solve one group with all independent instances in the group. 
+/// For sliding window, offset can be different during iterations, 
+/// so node2inst_map and node_markers need to be recomputed. 
 template <typename T>
 __global__ void compute_node2inst_map(DetailedPlaceDB<T> db, KReorderState<T> state, int group_id, int offset)
 {
@@ -608,6 +545,7 @@ __global__ void compute_node2inst_map(DetailedPlaceDB<T> db, KReorderState<T> st
     for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < group_size; i += blockDim.x * gridDim.x)
     {
         int inst_id = i; 
+        // this is a copy
         auto inst = state.reorder_instances(group_id, inst_id); 
         inst.idx_bgn += offset; 
         inst.idx_end = min(inst.idx_end+offset, state.row2node_map.size(inst.row_id)); 
@@ -617,12 +555,17 @@ __global__ void compute_node2inst_map(DetailedPlaceDB<T> db, KReorderState<T> st
         for (int j = 0; j < K; ++j)
         {
             int node_id = row2nodes[j]; 
-            state.node2inst_map[node_id] = inst_id; 
-            state.node_markers[node_id] = j; 
+            // do not update for fixed cells 
+            if (node_id < db.num_movable_nodes)
+            {
+                state.node2inst_map[node_id] = inst_id; 
+                state.node_markers[node_id] = j; 
+            }
         }
     }
 }
 
+/// @brief Mark target nets for all instances in this group. 
 template <typename T>
 __global__ void compute_net_markers(DetailedPlaceDB<T> db, KReorderState<T> state)
 {
@@ -643,6 +586,84 @@ __global__ void compute_net_markers(DetailedPlaceDB<T> db, KReorderState<T> stat
     }
 }
 
+template <typename T>
+__global__ void print_net_markers(DetailedPlaceDB<T> db, KReorderState<T> state)
+{
+    if (blockIdx.x == 0 && threadIdx.x == 0)
+    {
+        for (int i = 0; i < db.num_nets; ++i)
+        {
+            printf("net_markers[%d] = %d\n", i, state.net_markers[i]);
+        }
+    }
+}
+
+#ifdef DETERMINISTIC
+/// @brief Collect information of nets belong to each instance. 
+/// The net order is deterministic. 
+template <typename T>
+__global__ void compute_instance_nets(DetailedPlaceDB<T> db, KReorderState<T> state, int group_id, int offset)
+{
+    __shared__ int group_size; 
+    if (threadIdx.x == 0)
+    {
+        group_size = state.reorder_instances.size(group_id); 
+    }
+    __syncthreads(); 
+
+    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < group_size; i += blockDim.x * gridDim.x)
+    {
+        int inst_id = i; 
+        // this is a copy 
+        auto inst = state.reorder_instances(group_id, inst_id); 
+        inst.idx_bgn += offset; 
+        inst.idx_end = min(inst.idx_end+offset, state.row2node_map.size(inst.row_id)); 
+        const auto row2nodes = state.row2node_map(inst.row_id) + inst.idx_bgn; 
+        int K = inst.idx_end-inst.idx_bgn; 
+        auto& instance_nets_size = state.instance_nets_size[inst_id]; 
+        auto instance_nets = state.instance_nets + inst_id*MAX_NUM_NETS_PER_INSTANCE;
+        instance_nets_size = 0; 
+
+        // after adding offset 
+        for (int idx = 0; idx < K; ++idx)
+        {
+            int node_id = row2nodes[idx]; 
+            if (node_id >= db.num_movable_nodes || db.node_size_y[node_id] > db.row_height)
+            {
+                inst.idx_end = inst.idx_bgn+idx; 
+                K = idx; 
+                break; 
+            }
+        }
+
+        for (int j = 0; j < K; ++j)
+        {
+            int node_id = row2nodes[j]; 
+            int node2pin_id = db.flat_node2pin_start_map[node_id]; 
+            int node2pin_id_end = db.flat_node2pin_start_map[node_id+1]; 
+            for (; node2pin_id < node2pin_id_end; ++node2pin_id)
+            {
+                int node_pin_id = db.flat_node2pin_map[node2pin_id]; 
+                int net_id = db.pin2net_map[node_pin_id]; 
+                if (state.net_markers[net_id])
+                {
+                    if (instance_nets_size < MAX_NUM_NETS_PER_INSTANCE)
+                    {
+                        auto& instance_net = instance_nets[instance_nets_size]; 
+
+                        instance_net.net_id = net_id; 
+                        instance_net.node_marker = (1<<state.node_markers[node_id]); 
+                        instance_net.pin_offset_x[state.node_markers[node_id]] = db.pin_offset_x[node_pin_id]; 
+                        instance_nets_size += 1; 
+                    }
+                }
+            }
+        }
+    }
+}
+#else
+/// @brief Collect information of nets belong to each instance. 
+/// The net orders may not be deterministic. 
 template <typename T>
 __global__ void compute_instance_nets(DetailedPlaceDB<T> db, KReorderState<T> state)
 {
@@ -671,12 +692,15 @@ __global__ void compute_instance_nets(DetailedPlaceDB<T> db, KReorderState<T> st
                         instance_net.node_marker = (1<<state.node_markers[other_node_id]); 
                         instance_net.pin_offset_x[state.node_markers[other_node_id]] = db.pin_offset_x[net_pin_id]; 
                     }
+                    // I do not expect the else condition to happen 
                 }
             }
         }
     }
 }
+#endif
 
+/// @brief Remove duplicate nets in an instance.  
 template <typename T>
 __global__ void unique_instance_nets(DetailedPlaceDB<T> db, KReorderState<T> state, int group_id)
 {
@@ -740,10 +764,11 @@ __global__ void iota(int* ptr, int n)
 }
 
 template <typename StateType>
-__global__ void print_costs(StateType state, int group_id)
+__global__ void print_costs(StateType state, int group_id, int offset)
 {
     if (blockIdx.x == 0 && threadIdx.x == 0)
     {
+        printf("group_id %d, offset %d, %s\n", group_id, offset, __func__);
         for (int i = 0; i < state.reorder_instances.size(group_id); ++i)
         {
             printf("inst[%d][%d] costs: ", i, state.num_permutations);
@@ -757,17 +782,62 @@ __global__ void print_costs(StateType state, int group_id)
 }
 
 template <typename StateType>
-__global__ void print_instance_nets(StateType state, int group_id)
+__global__ void print_best_permute_id(StateType state, int group_id, int offset)
 {
     if (blockIdx.x == 0 && threadIdx.x == 0)
     {
+        printf("group_id %d, offset %d, %s\n", group_id, offset, __func__);
         for (int i = 0; i < state.reorder_instances.size(group_id); ++i)
         {
-            printf("inst[%d][%d] nets: ", i, state.instance_nets_size[i]);
-            for (int j = 0; j < state.instance_nets_size[i]; ++j)
+            printf("[%d] = %d\n", i, state.best_permute_id[i]);
+        }
+    }
+}
+
+template <typename StateType>
+__global__ void print_instance_nets(StateType state, int group_id, int offset)
+{
+    assert(blockDim.x == 1 && gridDim.x == 1);
+    if (blockIdx.x == 0 && threadIdx.x == 0)
+    {
+        printf("group_id %d, offset %d, %s\n", group_id, offset, __func__);
+        int size = state.reorder_instances.size(group_id);
+        assert(size >= 0 && size < state.reorder_instances.size2);
+        for (int i = 0; i < size; ++i)
+        {
+            int instance_nets_size = state.instance_nets_size[i];
+            printf("inst[%d][%d] nets: ", i, instance_nets_size);
+            assert(instance_nets_size >= 0 && instance_nets_size < MAX_NUM_NETS_PER_INSTANCE);
+            for (int j = 0; j < instance_nets_size; ++j)
             {
-                auto const& instance_net = state.instance_nets[i*MAX_NUM_NETS_PER_INSTANCE + j];
-                printf("%d (%d) ", instance_net.net_id, instance_net.node_marker);
+                int index = i*MAX_NUM_NETS_PER_INSTANCE + j;
+                assert(index >= 0 && index < state.reorder_instances.size2*MAX_NUM_NETS_PER_INSTANCE);
+                printf("%d (%d) ", state.instance_nets[index].net_id, state.instance_nets[index].node_marker);
+            }
+            printf("\n");
+        }
+    }
+}
+
+template <typename StateType>
+__global__ void print_instance_net_bboxes(StateType state, int group_id, int offset)
+{
+    assert(blockDim.x == 1 && gridDim.x == 1);
+    if (blockIdx.x == 0 && threadIdx.x == 0)
+    {
+        printf("group_id %d, offset %d, %s\n", group_id, offset, __func__);
+        int size = state.reorder_instances.size(group_id);
+        assert(size >= 0 && size < state.reorder_instances.size2);
+        for (int i = 0; i < size; ++i)
+        {
+            int instance_nets_size = state.instance_nets_size[i];
+            printf("inst[%d][%d] nets: ", i, instance_nets_size);
+            assert(instance_nets_size >= 0 && instance_nets_size < MAX_NUM_NETS_PER_INSTANCE);
+            for (int j = 0; j < instance_nets_size; ++j)
+            {
+                int index = i*MAX_NUM_NETS_PER_INSTANCE + j;
+                assert(index >= 0 && index < state.reorder_instances.size2*MAX_NUM_NETS_PER_INSTANCE);
+                printf("%d/%d:%g/%g ", index, j, state.instance_nets[index].bxl, state.instance_nets[index].bxh);
             }
             printf("\n");
         }
@@ -816,6 +886,19 @@ __global__ void check_instance_nets(DetailedPlaceDBType db, StateType state, int
     }
 }
 
+template <typename DetailedPlaceDBType>
+__global__ void print_pos(DetailedPlaceDBType db, int group_id, int offset)
+{
+    if (blockIdx.x == 0 && threadIdx.x == 0)
+    {
+        printf("group_id %d, offset %d, pos[%d]\n", group_id, offset, db.num_movable_nodes);
+        for (int i = 0; i < db.num_movable_nodes; ++i)
+        {
+            printf("[%d] = %g, %g\n", i, db.x[i], db.y[i]);
+        }
+    }
+}
+
 template <typename DetailedPlaceDBType, typename StateType>
 __global__ void reset_state(DetailedPlaceDBType db, StateType state, int group_id)
 {
@@ -845,6 +928,19 @@ __global__ void reset_state(DetailedPlaceDBType db, StateType state, int group_i
     for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < db.num_nets; i += blockDim.x * gridDim.x)
     {
         state.net_markers[i] = 0; 
+    }
+    int instance_nets_size = state.reorder_instances.size2*MAX_NUM_NETS_PER_INSTANCE;
+    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < instance_nets_size; i += blockDim.x * gridDim.x)
+    {
+        auto& instance_net = state.instance_nets[i];
+        instance_net.net_id = cuda::numeric_limits<int>::max();
+        instance_net.node_marker = 0; 
+        instance_net.bxl = db.xh;
+        instance_net.bxh = db.xl;
+        for (int j = 0; j < MAX_K; ++j)
+        {
+            instance_net.pin_offset_x[j] = 0;
+        }
     }
 }
 
@@ -899,12 +995,18 @@ void k_reorder(DetailedPlaceDB<T>& db, KReorderState<T>& state, const std::vecto
                 reset_state<<<64, 512>>>(db, state, group_id); 
                 compute_node2inst_map<<<CEILDIV(group_size, 256), 256>>>(db, state, group_id, offset); 
                 compute_net_markers<<<CEILDIV(db.num_movable_nodes, 256), 256>>>(db, state); 
+                //print_net_markers<<<1, 1>>>(db, state);
+#ifdef DETERMINISTIC
+                compute_instance_nets<<<CEILDIV(group_size, 256), 256>>>(db, state, group_id, offset); 
+#else
                 compute_instance_nets<<<CEILDIV(db.num_nets, 256), 256>>>(db, state); 
+#endif
                 //print_instance_nets<<<1, 1>>>(state, group_id); 
                 unique_instance_nets<<<CEILDIV(group_size, 256), 256>>>(db, state, group_id); 
-                //print_instance_nets<<<1, 1>>>(state, group_id); 
+                //print_instance_nets<<<1, 1>>>(state, group_id, offset); 
                 //check_instance_nets<<<1, 1>>>(db, state, group_id); 
                 compute_instance_net_boxes<<<CEILDIV(group_size, 256), 256>>>(db, state, group_id, offset); 
+                //print_instance_net_bboxes<<<1, 1>>>(state, group_id, offset); 
                 compute_reorder_hpwl<<<CEILDIV(group_size, 256), 256>>>(db, state, group_id, offset);
 #ifdef TIMER 
                 checkCUDA(cudaDeviceSynchronize()); 
@@ -916,8 +1018,9 @@ void k_reorder(DetailedPlaceDB<T>& db, KReorderState<T>& state, const std::vecto
 #ifdef TIMER
                 timer_start = get_globaltime();
 #endif
-                //print_costs<<<1, 1>>>(state, group_id);
+                //print_costs<<<1, 1>>>(state, group_id, offset);
                 reduce_min_2d_cub<T, 32><<<group_size, 32>>>(state.costs, state.best_permute_id, group_size, state.num_permutations); 
+                //print_best_permute_id<<<1, 1>>>(state, group_id, offset);
                 apply_reorder<<<CEILDIV(group_size, 256), 256>>>(db, state, group_id, offset); 
 #ifdef TIMER
                 checkCUDA(cudaDeviceSynchronize()); 
@@ -925,6 +1028,7 @@ void k_reorder(DetailedPlaceDB<T>& db, KReorderState<T>& state, const std::vecto
                 apply_reorder_time += timer_stop-timer_start; 
                 apply_reorder_runs += 1; 
 #endif
+                //print_pos<<<1, 1>>>(db, group_id, offset);
             }
         }
     }

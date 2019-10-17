@@ -8,6 +8,8 @@
 
 DREAMPLACE_BEGIN_NAMESPACE
 
+/// @brief An instance is a wrapper to an adjacent sequence of at most K cells. 
+/// It records the row, group, and node begin/end indices in the row2node_map. 
 struct KReorderInstance 
 {
     int group_id; 
