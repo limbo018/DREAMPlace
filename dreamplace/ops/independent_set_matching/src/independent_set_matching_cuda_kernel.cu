@@ -12,8 +12,12 @@
 #include <chrono>
 #include <cmath>
 #include <map>
+#include <iostream>
+#include <fstream>
 #include <curand.h>
 #include <curand_kernel.h>
+
+#define DETERMINISTIC
 
 //#define DEBUG 
 //#define DYNAMIC
@@ -38,6 +42,7 @@
 #include "independent_set_matching/src/apply_solution.cuh"
 //#include "independent_set_matching/src/apply_solution_cuda2cpu.h"
 #include "independent_set_matching/src/shuffle.cuh"
+#include "utility/src/print.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
 
@@ -106,6 +111,39 @@ struct IndependentSetMatchingState
     int auction_max_iterations; ///< maximum iteration 
     T skip_threshold; ///< ignore connections if cells are far apart 
 };
+
+/// @brief A function for debug. Dump out binary data to a file. 
+template <typename T>
+void write(const T* device_data, size_t size, std::string filename) 
+{
+    std::ofstream out (filename.c_str(), std::ios::out | std::ios::binary); 
+    dreamplaceAssert(out.good());
+    dreamplacePrint(kDEBUG, "write to %s size %llu\n", filename.c_str(), size);
+
+    std::vector<T> host_data (size); 
+    checkCUDA(cudaMemcpy(host_data.data(), device_data, sizeof(T)*size, cudaMemcpyDeviceToHost));
+    checkCUDA(cudaDeviceSynchronize());
+    out.write((char*)&size, sizeof(int));
+    out.write((char*)host_data.data(), sizeof(T)*host_data.size());
+
+    out.close();
+}
+
+/// @brief Corresponding read the binary data. 
+template <typename T>
+void read(std::vector<T>& data, const char* filename)
+{
+    std::ifstream in (filename, std::ios::in | std::ios::binary);
+    assert(in.good());
+
+    int size = 0; 
+    in.read((char*)&size, sizeof(size)); 
+    data.resize(size); 
+
+    in.read((char*)data.data(), sizeof(T)*size);
+
+    in.close();
+}
 
 __global__ void cost_matrix_init(int* cost_matrix, int set_size)
 {
@@ -181,6 +219,9 @@ template <typename T>
 int independentSetMatchingCUDALauncher(DetailedPlaceDB<T> db, 
         int batch_size, int set_size, int max_iters)
 {
+    //size_t printf_size = 0; 
+    //cudaDeviceGetLimit(&printf_size,cudaLimitPrintfFifoSize);
+    //cudaDeviceSetLimit(cudaLimitPrintfFifoSize, printf_size*10);
     // fix random seed 
     std::srand(1000);
     //const double threshold = 0.0001; 
@@ -381,7 +422,7 @@ int independentSetMatchingCUDALauncher(DetailedPlaceDB<T> db,
 
         // solve independent sets 
         //state.num_independent_sets = 4; 
-        //print_cost_matrix<<<1, 1>>>(state.cost_matrices + state.cost_matrix_size*0, state.set_size, 0);
+        //print_cost_matrix<<<1, 1>>>(state.cost_matrices + state.cost_matrix_size*3, state.set_size, 0);
         timer_start = get_globaltime();
         linear_assignment_auction(
                 state.cost_matrices, 
@@ -399,7 +440,6 @@ int independentSetMatchingCUDALauncher(DetailedPlaceDB<T> db,
         timer_stop = get_globaltime();
         independent_sets_solving_time += timer_stop-timer_start; 
         independent_sets_solving_runs += 1; 
-
         //print_solution<<<1, 1>>>(state.solutions + state.set_size*3, state.set_size);
 
         // apply solutions 

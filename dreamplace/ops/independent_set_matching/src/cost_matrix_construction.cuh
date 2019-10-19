@@ -7,6 +7,8 @@
 
 DREAMPLACE_BEGIN_NAMESPACE
 
+#define MAX_NODE_DEGREE 32
+
 template <typename DetailedPlaceDBType, typename IndependentSetMatchingStateType>
 __global__ void print_net_boxes_kernel(DetailedPlaceDBType db, IndependentSetMatchingStateType state)
 {
@@ -29,8 +31,6 @@ __global__ void print_net_boxes_kernel(DetailedPlaceDBType db, IndependentSetMat
         }
     }
 }
-
-#define MAX_NODE_DEGREE 32
 
 template <typename DetailedPlaceDBType, typename IndependentSetMatchingStateType>
 __global__ void compute_cost_matrix_kernel(DetailedPlaceDBType db, IndependentSetMatchingStateType state)
@@ -68,7 +68,9 @@ __global__ void compute_cost_matrix_kernel(DetailedPlaceDBType db, IndependentSe
                 box.yh = db.yl;
                 if (db.net_mask[net_id])
                 {
-                    for (int net2pin_id = db.flat_net2pin_start_map[net_id]; net2pin_id < db.flat_net2pin_start_map[net_id+1]; ++net2pin_id)
+                    int net2pin_id_bgn = db.flat_net2pin_start_map[net_id];
+                    int net2pin_id_end = db.flat_net2pin_start_map[net_id+1];
+                    for (int net2pin_id = net2pin_id_bgn; net2pin_id < net2pin_id_end; ++net2pin_id)
                     {
                         int net_pin_id = db.flat_net2pin_map[net2pin_id];
                         int other_node_id = db.pin2node_map[net_pin_id];

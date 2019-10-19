@@ -22,22 +22,8 @@ __global__ void init_independent_sets_kernel(IndependentSetMatchingStateType sta
             *state.device_num_independent_sets = 0;
         }
         state.independent_sets[i] = cuda::numeric_limits<int>::max();
-        //state.unordered_independent_sets[i] = cuda::numeric_limits<int>::max();
     }
 }
-
-//template <typename IndependentSetMatchingStateType>
-//__global__ void init_unordered_independent_sets_kernel(IndependentSetMatchingStateType state)
-//{
-//    for (int i = blockIdx.x*blockDim.x + threadIdx.x; i < state.batch_size*state.set_size; i += blockDim.x*gridDim.x)
-//    {
-//        if (i == 0)
-//        {
-//            *state.device_num_independent_sets = 0;
-//        }
-//        state.unordered_independent_sets[i] = cuda::numeric_limits<int>::max();
-//    }
-//}
 
 template <typename DetailedPlaceDBType, typename IndependentSetMatchingStateType>
 __global__ void check_db_kernel(DetailedPlaceDBType db, IndependentSetMatchingStateType state)
@@ -188,41 +174,6 @@ __global__ void print_independent_set_kernel(const int* independent_set, int set
     }
 }
 
-//template <typename DetailedPlaceDBType, typename IndependentSetMatchingStateType>
-//__global__ void reorder_sets_kernel(DetailedPlaceDBType db, IndependentSetMatchingStateType state)
-//{
-//    int i = blockIdx.x; // set 
-//    for (int j = threadIdx.x; j < state.set_size; j += blockDim.x)
-//    {
-//        int set_id = state.reordered_independent_sets[i]; 
-//        int node_id = state.unordered_independent_sets[i*state.set_size+j]; 
-//        state.independent_sets[set_id*state.set_size + j] = node_id; 
-//        if (node_id < db.num_movable_nodes)
-//        {
-//            atomicAdd(state.independent_set_sizes+set_id, 1);
-//        }
-//    }
-//}
-
-//template <typename DetailedPlaceDBType, typename IndependentSetMatchingStateType>
-//__global__ void compute_independent_set_sizes_kernel(DetailedPlaceDBType db, IndependentSetMatchingStateType state)
-//{
-//    __shared__ int independent_set_size; 
-//    if (threadIdx.x == 0)
-//    {
-//        independent_set_size = 0; 
-//    }
-//    __syncthreads(); 
-//    //int node_id = state.independent_sets[blockIdx.x*state.set_size + threadIdx.x]; 
-//    int node_id = state.unordered_independent_sets[blockIdx.x*state.set_size + threadIdx.x]; 
-//    if (node_id < db.num_movable_nodes)
-//    {
-//        atomicMax(&independent_set_size, threadIdx.x+1);
-//    }
-//    __syncthreads(); 
-//    state.independent_set_sizes[blockIdx.x] = independent_set_size; 
-//}
-
 struct CompareNodeBySizeId 
 {
     const int* node_size_id; 
@@ -329,26 +280,6 @@ __global__ void print_num_selected_with_sizes_kernel(DetailedPlaceDBType db, Ind
 }
 
 
-//template <typename DetailedPlaceDBType, typename IndependentSetMatchingStateType>
-//__global__ void compute_num_clusters_prefix_sum_kernel(DetailedPlaceDBType db, IndependentSetMatchingStateType state)
-//{
-//    if (blockIdx.x == 0 && threadIdx.x == 0)
-//    {
-//        for (int i = 0; i < state.num_node_sizes; ++i)
-//        {
-//            state.device_num_clusters_prefix_sum[i+1] += state.device_num_clusters_prefix_sum[i];
-//        }
-//#ifdef DEBUG
-//        printf("device_num_clusters_prefix_sum = ");
-//        for (int i = 0; i < state.num_node_sizes+1; ++i)
-//        {
-//            printf("%d ", state.device_num_clusters_prefix_sum[i]);
-//        }
-//        printf("\n");
-//#endif
-//    }
-//}
-
 template <typename DetailedPlaceDBType, typename IndependentSetMatchingStateType>
 __global__ void estimate_clusters2set_sizes_kernel(DetailedPlaceDBType db, IndependentSetMatchingStateType state)
 {
@@ -383,35 +314,6 @@ __global__ void assign_clusters2ordered_sets_kernel(DetailedPlaceDBType db, Inde
     }
 }
 
-//template <typename DetailedPlaceDBType, typename IndependentSetMatchingStateType>
-//__global__ void assign_clusters2sets_kernel(DetailedPlaceDBType db, IndependentSetMatchingStateType state)
-//{
-//    for (int i = blockIdx.x*blockDim.x + threadIdx.x; i < state.num_selected; i += blockDim.x*gridDim.x)
-//    {
-//        int node_id = state.selected_maximal_independent_set[i]; 
-//        int size_id = state.node_size_id[node_id]; 
-//        if (size_id < state.num_node_sizes)
-//        {
-//            int prefix_sum_offset = state.device_num_clusters_prefix_sum[size_id]; 
-//            int cluster_id = state.node2center[node_id]; 
-//            int set_id = prefix_sum_offset + cluster_id; 
-//#ifdef DEBUG
-//            if (!(cluster_id >= 0 && cluster_id < state.device_num_clusters_prefix_sum[size_id+1]-state.device_num_clusters_prefix_sum[size_id]))
-//            {
-//                printf("i %d, node_id %d, cluster_id = %d, size_id = %d, prefix_sum_offset %d\n", node_id, cluster_id, size_id, prefix_sum_offset);
-//            }
-//            assert(cluster_id >= 0 && cluster_id < state.device_num_clusters_prefix_sum[size_id+1]-state.device_num_clusters_prefix_sum[size_id]);
-//            assert(set_id < state.batch_size);
-//#endif
-//            int index = atomicAdd(state.independent_set_sizes + set_id, 1); 
-//            if (index < state.set_size)
-//            {
-//                state.unordered_independent_sets[set_id*state.set_size + index] = node_id;
-//            }
-//        }
-//    }
-//}
-
 template <typename DetailedPlaceDBType, typename IndependentSetMatchingStateType>
 void collect_independent_sets(const DetailedPlaceDBType& db, IndependentSetMatchingStateType& state, 
         KMeansState<typename DetailedPlaceDBType::type>& kmeans_state, 
@@ -421,50 +323,6 @@ void collect_independent_sets(const DetailedPlaceDBType& db, IndependentSetMatch
 {
     //partition_independent_sets_cuda2cpu(db, state, host_db, host_state);
     partition_kmeans(db, state, kmeans_state);
-#if 0
-    //print_selected<<<1, 1>>>(db, state); 
-    thrust::sort(thrust::device, state.selected_maximal_independent_set, state.selected_maximal_independent_set+state.num_selected, 
-            CompareNodeBySizeId(state.node_size_id));
-
-    //print_selected<<<1, 1>>>(db, state); 
-    init_num_selected_with_sizes_kernel<<<CPUCeilDiv(state.num_node_sizes, 256), 256>>>(db, state);
-
-    compute_num_selected_with_sizes_kernel<<<CPUCeilDiv(state.num_selected, 256), 256>>>(db, state);
-    //print_num_selected_with_sizes_kernel<<<1, 1>>>(db, state);
-
-    //kmeans_with_sizes<<<CPUCeilDiv(state.num_node_sizes, 64), 64>>>(db, state);
-    kmeans_with_sizes<<<1, 1>>>(db, state);
-
-    //compute_num_clusters_prefix_sum_kernel<<<1, 1>>>(db, state); 
-
-    checkCUDA(cudaMemset(state.independent_set_sizes, 0, sizeof(int)*state.batch_size));
-    init_independent_sets_kernel<<<CPUCeilDiv(state.batch_size*state.set_size, 256), 256>>>(state);
-    //assign_clusters2sets_kernel<<<CPUCeilDiv(state.num_selected, 256), 256>>>(db, state);
-    estimate_clusters2set_sizes_kernel<<<CPUCeilDiv(state.num_selected, 256), 256>>>(db, state);
-
-    // reorder set assignment such that larger sets come first 
-    iota<<<CPUCeilDiv(state.batch_size, 256), 256>>>(state.ordered_independent_sets, state.batch_size);
-    //compute_independent_set_sizes_kernel<<<state.batch_size, state.set_size>>>(db, state); 
-    //print_ordered_independent_set_sizes_kernel<<<1, 1>>>(db, state);
-    thrust::sort_by_key(thrust::device, state.independent_set_sizes, state.independent_set_sizes+state.batch_size, state.ordered_independent_sets, thrust::greater<int>());
-    permute_independent_sets_kernel<<<CPUCeilDiv(state.batch_size, 256), 256>>>(state);
-    //print_ordered_independent_set_sizes_kernel<<<1, 1>>>(db, state);
-    //print_ordered_independent_sets_kernel<<<1, 1>>>(db, state);
-    //print_reordered_independent_sets_kernel<<<1, 1>>>(state); 
-
-    // copy cells to sets 
-    checkCUDA(cudaMemset(state.independent_set_sizes, 0, sizeof(int)*state.batch_size));
-    //reorder_sets_kernel<<<state.batch_size, min(state.set_size, 512)>>>(db, state);
-    assign_clusters2ordered_sets_kernel<<<CPUCeilDiv(state.num_selected, 256), 256>>>(db, state);
-    checkCUDA(cudaMemset(state.device_num_independent_sets, 0, sizeof(int)));
-    compute_num_independent_sets_kernel<<<CPUCeilDiv(state.batch_size, 256), 256>>>(state);
-    //print_ordered_independent_set_sizes_kernel<<<1, 1>>>(db, state);
-    //print_independent_set_sizes_kernel<<<1, 1>>>(db, state);
-    //for (int i = 0; i < state.batch_size; ++i)
-    //{
-    //    print_independent_set_kernel<<<1, 1>>>(state.independent_sets+state.set_size*i, state.set_size);
-    //}
-#endif
 }
 
 DREAMPLACE_END_NAMESPACE

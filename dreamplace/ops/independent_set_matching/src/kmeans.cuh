@@ -13,21 +13,48 @@ DREAMPLACE_BEGIN_NAMESPACE
 template <typename T>
 struct KMeansState
 {
-    T* centers_x;
-    T* centers_y;
+#ifdef DETERMINISTIC
+    typedef long long int coordinate_type; 
+#else 
+    typedef T coordinate_type; 
+#endif
+
+    coordinate_type* centers_x; // To ensure determinism, use fixed point numbers 
+    coordinate_type* centers_y;
     T* weights;
     int* partition_sizes; 
     int* node2centers_map; 
     int num_seeds; 
+
+#ifdef DETERMINISTIC
+    static constexpr T scale = 1024; 
+#else
+    static constexpr T scale = 1; 
+#endif
 };
+
+/// @brief A wrapper for atomicAdd 
+/// As CUDA atomicAdd does not support for long long int, using unsigned long long int is equivalent. 
+template <typename T>
+inline __device__ T atomicAddWrapper(T* address, T value)
+{
+    return atomicAdd(address, value);
+}
+
+/// @brief Template specialization for long long int
+template <>
+inline __device__ long long int atomicAddWrapper<long long int>(long long int* address, long long int value)
+{
+    return atomicAdd((unsigned long long int*)address, (unsigned long long int)value);
+}
 
 template <typename DetailedPlaceDBType, typename IndependentSetMatchingStateType>
 void init_kmeans(const DetailedPlaceDBType& db, const IndependentSetMatchingStateType& state, KMeansState<typename DetailedPlaceDBType::type>& kmeans_state)
 {
     typedef typename DetailedPlaceDBType::type T; 
 
-    allocateCUDA(kmeans_state.centers_x, state.batch_size, T);
-    allocateCUDA(kmeans_state.centers_y, state.batch_size, T);
+    allocateCUDA(kmeans_state.centers_x, state.batch_size, typename KMeansState<typename DetailedPlaceDBType::type>::coordinate_type);
+    allocateCUDA(kmeans_state.centers_y, state.batch_size, typename KMeansState<typename DetailedPlaceDBType::type>::coordinate_type);
     allocateCUDA(kmeans_state.weights, state.batch_size, T);
     allocateCUDA(kmeans_state.partition_sizes, state.batch_size, int);
     allocateCUDA(kmeans_state.node2centers_map, db.num_movable_nodes, int); 
@@ -97,9 +124,10 @@ __global__ void kmeans_find_centers_kernel(DetailedPlaceDBType db, IndependentSe
     for (int center_id = threadIdx.x; center_id < kmeans_state.num_seeds; center_id += ThreadsPerBlock)
     {
         assert(center_id < kmeans_state.num_seeds);
-        auto center_x = kmeans_state.centers_x[center_id]; 
-        auto center_y = kmeans_state.centers_y[center_id]; 
-        auto weight = kmeans_state.weights[center_id];
+        // scale back to floating point numbers 
+        typename DetailedPlaceDBType::type center_x = kmeans_state.centers_x[center_id] / KMeansState<typename DetailedPlaceDBType::type>::scale; 
+        typename DetailedPlaceDBType::type center_y = kmeans_state.centers_y[center_id] / KMeansState<typename DetailedPlaceDBType::type>::scale; 
+        typename DetailedPlaceDBType::type weight = kmeans_state.weights[center_id];
 
         typename DetailedPlaceDBType::type distance = kmeans_distance(node_x, node_y, center_x, center_y)*weight; 
         if (distance < thread_data.value)
@@ -135,8 +163,9 @@ __global__ void init_kmeans_seeds_kernel(DetailedPlaceDBType db, IndependentSetM
         random_number = random_number % state.num_selected; 
         int node_id = state.selected_maximal_independent_set[random_number]; 
         assert(node_id < db.num_movable_nodes);
-        kmeans_state.centers_x[i] = db.x[node_id];
-        kmeans_state.centers_y[i] = db.y[node_id];
+        // scale up for fixed point numbers 
+        kmeans_state.centers_x[i] = db.x[node_id] * KMeansState<typename DetailedPlaceDBType::type>::scale;
+        kmeans_state.centers_y[i] = db.y[node_id] * KMeansState<typename DetailedPlaceDBType::type>::scale;
     }
 }
 
@@ -192,8 +221,9 @@ __global__ void compute_kmeans_centers_sum_kernel(DetailedPlaceDBType db, Indepe
         int center_id = kmeans_state.node2centers_map[i]; 
         assert(center_id < kmeans_state.num_seeds);
         assert(node_id < db.num_movable_nodes);
-        atomicAdd(kmeans_state.centers_x+center_id, db.x[node_id]);
-        atomicAdd(kmeans_state.centers_y+center_id, db.y[node_id]);
+        // scale up for fixed point numbers 
+        atomicAddWrapper<typename KMeansState<typename DetailedPlaceDBType::type>::coordinate_type>(kmeans_state.centers_x+center_id, db.x[node_id] * KMeansState<typename DetailedPlaceDBType::type>::scale);
+        atomicAddWrapper<typename KMeansState<typename DetailedPlaceDBType::type>::coordinate_type>(kmeans_state.centers_y+center_id, db.y[node_id] * KMeansState<typename DetailedPlaceDBType::type>::scale);
     }
 }
 
@@ -352,14 +382,14 @@ void partition_kmeans(const DetailedPlaceDBType& db, IndependentSetMatchingState
     for (int iter = 0; iter < 2; ++iter)
     {
 #ifdef DEBUG
-        std::vector<typename DetailedPlaceDBType::type> centers_x (kmeans_state.num_seeds); 
-        std::vector<typename DetailedPlaceDBType::type> centers_y (kmeans_state.num_seeds); 
-        checkCUDA(cudaMemcpy(centers_x.data(), kmeans_state.centers_x, sizeof(typename DetailedPlaceDBType::type)*kmeans_state.num_seeds, cudaMemcpyDeviceToHost));
-        checkCUDA(cudaMemcpy(centers_y.data(), kmeans_state.centers_y, sizeof(typename DetailedPlaceDBType::type)*kmeans_state.num_seeds, cudaMemcpyDeviceToHost));
+        std::vector<typename KMeansState<typename DetailedPlaceDBType::type>::coordinate_type> centers_x (kmeans_state.num_seeds); 
+        std::vector<typename KMeansState<typename DetailedPlaceDBType::type>::coordinate_type> centers_y (kmeans_state.num_seeds); 
+        checkCUDA(cudaMemcpy(centers_x.data(), kmeans_state.centers_x, sizeof(typename KMeansState<typename DetailedPlaceDBType::type>::coordinate_type)*kmeans_state.num_seeds, cudaMemcpyDeviceToHost));
+        checkCUDA(cudaMemcpy(centers_y.data(), kmeans_state.centers_y, sizeof(typename KMeansState<typename DetailedPlaceDBType::type>::coordinate_type)*kmeans_state.num_seeds, cudaMemcpyDeviceToHost));
         dreamplacePrint(kDEBUG, "centers[%d] = ", kmeans_state.num_seeds);
         for (int i = 0; i < kmeans_state.num_seeds; ++i)
         {
-            dreamplacePrint(kNONE, "(%g, %g) ", centers_x.at(i), centers_y.at(i));
+            dreamplacePrint(kNONE, "(%g, %g) ", (double)centers_x.at(i), (double)centers_y.at(i));
         }
         dreamplacePrint(kNONE, "\n");
 #endif
