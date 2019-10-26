@@ -201,5 +201,5 @@ python dreamplace/Placer.py --help
 
 * [2.0.0](https://github.com/limbo018/DREAMPlace/releases/tag/2.0.0)
     - Integrate ABCDPlace: multi-threaded CPU and GPU acceleration for detailed placement
-    - Support independent set matching, local reordering, and global swap with run-to-run determinism
+    - Support independent set matching, local reordering, and global swap with run-to-run determinism on one machine
     - Docker container for building environment
