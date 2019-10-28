@@ -12,6 +12,8 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
 | -------- | ----------- | ------------------ | -------------- |
 | <img src=/images/bigblue4-nofiller_SLD.gif width=250> | ![Density Map](images/density_map_SLD.gif) | ![Electric Potential Map](images/potential_map_SLD.gif) | ![Electric Field Map](images/field_map_SLD.gif) |
 
+![DREAMPlace Flow](/images/DREAMPlace2_flow.png | width=600)
+
 # Publications
 
 * [Yibo Lin](http://yibolin.com), Shounak Dhar, [Wuxi Li](http://wuxili.net), Haoxing Ren, Brucek Khailany and [David Z. Pan](http://users.ece.utexas.edu/~dpan), 
