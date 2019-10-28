@@ -8,11 +8,13 @@ DREAMPlace also integrates a GPU-accelerated detailed placer, *ABCDPlace*, which
 
 DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU, only CPU support will be enabled with multi-threading. 
 
+* Animation
+
 | Bigblue4 | Density Map | Electric Potential | Electric Field |
 | -------- | ----------- | ------------------ | -------------- |
 | <img src=/images/bigblue4-nofiller_SLD.gif width=250> | ![Density Map](images/density_map_SLD.gif) | ![Electric Potential Map](images/potential_map_SLD.gif) | ![Electric Field Map](images/field_map_SLD.gif) |
 
-* DREAMPlace Reference Flow
+* Reference Flow
 
 <img src=/images/DREAMPlace2_flow.png width=600>
 
