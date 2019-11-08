@@ -211,4 +211,4 @@ python dreamplace/Placer.py --help
 * [2.0.0](https://github.com/limbo018/DREAMPlace/releases/tag/2.0.0)
     - Integrate ABCDPlace: multi-threaded CPU and GPU acceleration for detailed placement
     - Support independent set matching, local reordering, and global swap with run-to-run determinism on one machine
-    - Support movable macros with macro legalization
+    - Support movable macros with Tetris-like macro legalization and min-cost flow refinement
