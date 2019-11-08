@@ -65,8 +65,7 @@ def place(params):
 
         if params.plot_flag: 
             # read solution and evaluate 
-            placedb.read_pl(dp_out_file+".ntup.pl")
-            placedb.scale_pl(params.scale_factor)
+            placedb.read_pl(params, dp_out_file+".ntup.pl")
             iteration = len(metrics)
             pos = placer.init_pos
             pos[0:placedb.num_physical_nodes] = placedb.node_x

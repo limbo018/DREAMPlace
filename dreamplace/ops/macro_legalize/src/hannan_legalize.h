@@ -256,6 +256,11 @@ void hannanLegalizeLauncher(LegalizationDB<T> db, std::vector<int>& macros)
         spacing_x = std::min(spacing_x, db.node_size_x[node_id]);
         spacing_y = std::min(spacing_y, db.node_size_y[node_id]);
     }
+    // make sure the grid is not too small 
+    spacing_x = std::max(spacing_x, (db.xh-db.xl)/db.num_bins_x); 
+    spacing_y = std::max(spacing_y, (db.yh-db.yl)/db.num_bins_y);
+    dreamplacePrint(kDEBUG, "maximum grid spacing %gx%g, equivalent to %dx%d bins\n", 
+            (double)spacing_x, (double)spacing_y, (int)((db.xh-db.xl)/spacing_x), (int)((db.yh-db.yl)/spacing_y));
 
     // construct hannan grid map for fixed macros 
     HannanGridMap<T> grid_map (db.init_x+db.num_movable_nodes, db.init_y+db.num_movable_nodes, 

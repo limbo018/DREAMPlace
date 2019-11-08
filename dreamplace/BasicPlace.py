@@ -384,12 +384,12 @@ class BasicPlace (nn.Module):
         @param device cpu or cuda 
         """
         # for movable macro legalization 
+        # the number of bins control the search granularity 
         ml = macro_legalize.MacroLegalize(
                 node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
                 xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
                 site_width=placedb.site_width, row_height=placedb.row_height, 
-                num_bins_x=1, num_bins_y=64, 
-                #num_bins_x=64, num_bins_y=64, 
+                num_bins_x=params.num_bins_x, num_bins_y=params.num_bins_y, 
                 num_movable_nodes=placedb.num_movable_nodes, 
                 num_filler_nodes=placedb.num_filler_nodes
                 )
