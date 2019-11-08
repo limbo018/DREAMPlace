@@ -4,8 +4,8 @@
  * @date   Oct 2018
  */
 
-#ifndef GPUPLACE_COMPARE_CPU_H
-#define GPUPLACE_COMPARE_CPU_H
+#ifndef DREAMPLACE_COMPARE_CPU_H
+#define DREAMPLACE_COMPARE_CPU_H
 
 #include "utility/src/Msg.h"
 #include "blank.h"

@@ -11,6 +11,7 @@
 #include "DefWriter.h"
 #include "BookshelfWriter.h"
 #include "LefCbkHelper.h"
+#include "utility/src/utils.h"
 //#include <boost/timer/timer.hpp>
 
 DREAMPLACE_BEGIN_NAMESPACE
@@ -694,11 +695,11 @@ void PlaceDB::set_bookshelf_node_position(std::string const& name, double x, dou
         else
             node.setStatus(status); // update status
         // a heuristic fix for some special cases, first move it to a legal position and then fix it
-        // I found in the benchmark from Chris Chu, there are very big movable macros
+        // I found in the benchmark from Dr. Chris Chu, there are very big movable macros
         // simply fix them
-        if (node.status() != PlaceStatusEnum::FIXED && node.height() > (rowHeight()<<2))
+        if (node.status() != PlaceStatusEnum::FIXED && node.height() > (rowHeight()*DUMMY_FIXED_NUM_ROWS))
         {
-            dreamplacePrint(kWARN, "detect large movable cells that cannot be handled: %s %ldx%ld @(%d,%d) with %lu pins\n", nodeName(node).c_str(), node.width(), node.height(), node.xl(), node.yl(), node.pins().size());
+            dreamplacePrint(kWARN, "detect large movable macros that will be handled differently from standard cells: %s %ldx%ld @(%d,%d) with %lu pins\n", nodeName(node).c_str(), node.width(), node.height(), node.xl(), node.yl(), node.pins().size());
             node.setStatus(PlaceStatusEnum::DUMMY_FIXED);
         }
         deriveMultiRowAttr(node); // update MultiRowAttr

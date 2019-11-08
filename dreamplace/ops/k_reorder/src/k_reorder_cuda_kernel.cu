@@ -944,21 +944,6 @@ __global__ void reset_state(DetailedPlaceDBType db, StateType state, int group_i
     }
 }
 
-typedef std::chrono::high_resolution_clock::rep hr_clock_rep;
-
-inline hr_clock_rep get_globaltime(void) 
-{
-	using namespace std::chrono;
-	return high_resolution_clock::now().time_since_epoch().count();
-}
-
-// Returns the period in miliseconds
-inline double get_timer_period(void) 
-{
-	using namespace std::chrono;
-	return 1000.0 * high_resolution_clock::period::num / high_resolution_clock::period::den;
-}
-
 #ifdef DYNAMIC
 #define CEILDIV CUDACeilDiv 
 #else 

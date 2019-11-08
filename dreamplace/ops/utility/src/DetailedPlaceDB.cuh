@@ -364,8 +364,7 @@ struct DetailedPlaceDB
                 site_width, row_height, 
                 xl, yl, xh, yh,
                 num_nodes, 
-                num_movable_nodes, 
-                0
+                num_movable_nodes
                 );
     }
     /// @brief draw placement 

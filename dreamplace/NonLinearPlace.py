@@ -171,11 +171,24 @@ class NonLinearPlace (BasicPlace.BasicPlace):
         if params.dump_global_place_solution_flag: 
             self.dump(params, placedb, self.pos[0].cpu(), "%s.lg.pklz" %(params.design_name()))
 
+        # plot placement 
+        if params.plot_flag: 
+            self.plot(params, placedb, iteration, self.pos[0].data.clone().cpu().numpy())
+
         # legalization 
         if params.legalize_flag:
             tt = time.time()
-            self.pos[0].data.copy_(self.op_collections.greedy_legalize_op(self.pos[0]))
+            self.pos[0].data.copy_(self.op_collections.legalize_op(self.pos[0]))
             logging.info("legalization takes %.3f seconds" % (time.time()-tt))
+            cur_metric = EvalMetrics.EvalMetrics(iteration)
+            metrics.append(cur_metric)
+            cur_metric.evaluate(placedb, {"hpwl" : self.op_collections.hpwl_op}, self.pos[0])
+            logging.info(cur_metric)
+            iteration += 1
+
+        # plot placement 
+        if params.plot_flag: 
+            self.plot(params, placedb, iteration, self.pos[0].data.clone().cpu().numpy())
 
         # dump legalization solution for detailed placement 
         if params.dump_legalize_solution_flag: 
@@ -186,6 +199,11 @@ class NonLinearPlace (BasicPlace.BasicPlace):
             tt = time.time()
             self.pos[0].data.copy_(self.op_collections.detailed_place_op(self.pos[0]))
             logging.info("detailed placement takes %.3f seconds" % (time.time()-tt))
+            cur_metric = EvalMetrics.EvalMetrics(iteration)
+            metrics.append(cur_metric)
+            cur_metric.evaluate(placedb, {"hpwl" : self.op_collections.hpwl_op}, self.pos[0])
+            logging.info(cur_metric)
+            iteration += 1
 
         # save results 
         cur_pos = self.pos[0].data.clone().cpu().numpy()

@@ -17,6 +17,7 @@ DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T>
 int greedyLegalizationCPU(
+        const LegalizationDB<T>& db, 
         const T* init_x, const T* init_y, 
         const T* node_size_x, const T* node_size_y, 
         T* x, T* y, 
@@ -48,7 +49,7 @@ int greedyLegalizationCPU(
         // bin dimension in y direction for blanks is different from that for cells 
         T blank_bin_size_y = row_height; 
         int blank_num_bins_y = (yh-yl)/blank_bin_size_y; 
-        dreamplacePrint(kDEBUG, "%s blank_num_bins_y = %d\n", __func__, blank_num_bins_y);
+        dreamplacePrint(kDEBUG, "%s blank_num_bins_y = %d\n", "Standard cell legalization", blank_num_bins_y);
 
         // allocate bin cells 
         std::vector<std::vector<int> > bin_cells (num_bins_x*num_bins_y); 
@@ -56,6 +57,7 @@ int greedyLegalizationCPU(
 
         // distribute cells to bins 
         distributeCells2BinsCPU(
+                db, 
                 x, y, 
                 node_size_x, node_size_y, 
                 bin_size_x, bin_size_y, 
@@ -71,6 +73,7 @@ int greedyLegalizationCPU(
 
         // distribute fixed cells to bins 
         distributeFixedCells2BinsCPU(
+                db, 
                 init_x, init_y, 
                 node_size_x, node_size_y, 
                 bin_size_x, bin_size_y, 
@@ -102,10 +105,10 @@ int greedyLegalizationCPU(
         int num_iters = floor(log((T)std::min(num_bins_x, num_bins_y))/log(2.0))+1;
         for (int iter = 0; iter < num_iters; ++iter)
         {
-            dreamplacePrint(kDEBUG, "%s iteration %d with %dx%d bins\n", __func__, iter, num_bins_x, num_bins_y);
+            dreamplacePrint(kDEBUG, "%s iteration %d with %dx%d bins\n", "Standard cell legalization", iter, num_bins_x, num_bins_y);
             num_unplaced_cells_host = 0; 
             //countBinObjects(bin_cells);
-            dreamplacePrint(kDEBUG, "%s #bin_blanks\n", __func__);
+            dreamplacePrint(kDEBUG, "%s #bin_blanks\n", "Standard cell legalization");
             countBinObjects(bin_blanks);
 
             milliseconds = clock(); 
@@ -125,9 +128,9 @@ int greedyLegalizationCPU(
                     &num_unplaced_cells_host
                     );
             milliseconds = (clock()-milliseconds)/CLOCKS_PER_SEC*1000; 
-            dreamplacePrint(kINFO, "%s legalizeBin takes %.3f ms\n", __func__, milliseconds);
+            dreamplacePrint(kINFO, "%s legalizeBin takes %.3f ms\n", "Standard cell legalization", milliseconds);
 
-            dreamplacePrint(kDEBUG, "%s num_unplaced_cells = %d\n", __func__, num_unplaced_cells_host); 
+            dreamplacePrint(kDEBUG, "%s num_unplaced_cells = %d\n", "Standard cell legalization", num_unplaced_cells_host); 
             //countBinObjects(bin_cells);
             //countBinObjects(bin_blanks);
 
@@ -147,8 +150,8 @@ int greedyLegalizationCPU(
                     &min_unplaced_node_size_x_host
                     );
             milliseconds = (clock()-milliseconds)/CLOCKS_PER_SEC*1000; 
-            dreamplacePrint(kINFO, "%s minNodeSize takes %.3f ms\n", __func__, milliseconds);
-            dreamplacePrint(kDEBUG, "%s minimum unplaced node_size_x %d sites\n", __func__, min_unplaced_node_size_x_host);
+            dreamplacePrint(kINFO, "%s minNodeSize takes %.3f ms\n", "Standard cell legalization", milliseconds);
+            dreamplacePrint(kDEBUG, "%s minimum unplaced node_size_x %d sites\n", "Standard cell legalization", min_unplaced_node_size_x_host);
 
             // ceil(num_bins_x/2), ceil(num_bins_y/2)
             int dst_num_bins_x = (num_bins_x>>1)+(num_bins_x&1); 
@@ -169,7 +172,7 @@ int greedyLegalizationCPU(
                     scale_ratio_x, scale_ratio_y
                     );
             milliseconds = (clock()-milliseconds)/CLOCKS_PER_SEC*1000; 
-            dreamplacePrint(kDEBUG, "%s mergeBinCells takes %.3f ms\n", __func__, milliseconds);
+            dreamplacePrint(kDEBUG, "%s mergeBinCells takes %.3f ms\n", "Standard cell legalization", milliseconds);
             milliseconds = clock(); 
             resizeBinObjectsCPU(
                     bin_blanks_copy, 
@@ -184,7 +187,7 @@ int greedyLegalizationCPU(
                     min_unplaced_node_size_x_host*site_width
                     );
             milliseconds = (clock()-milliseconds)/CLOCKS_PER_SEC*1000; 
-            dreamplacePrint(kDEBUG, "%s mergeBinBlanks takes %.3f ms\n", __func__, milliseconds);
+            dreamplacePrint(kDEBUG, "%s mergeBinBlanks takes %.3f ms\n", "Standard cell legalization", milliseconds);
 
             // update bin dimensions
             num_bins_x = dst_num_bins_x; 
@@ -198,36 +201,21 @@ int greedyLegalizationCPU(
         }
     }
 
-    milliseconds = clock(); 
-    abacusLegalizationCPU(
-            init_x, init_y, 
-            node_size_x, node_size_y, 
-            x, y, 
-            xl, yl, xh, yh, 
-            site_width, row_height, 
-            1, num_bins_y, 
-            num_nodes, 
-            num_movable_nodes, 
-            num_filler_nodes
-            );
-    milliseconds = (clock()-milliseconds)/CLOCKS_PER_SEC*1000; 
-    dreamplacePrint(kDEBUG, "%s abacusLegalization takes %.3f ms\n", __func__, milliseconds);
-
     legalityCheckKernelCPU(
             init_x, init_y, 
             node_size_x, node_size_y, 
             x, y, 
             site_width, row_height, 
             xl, yl, xh, yh, 
-            num_nodes, 
-            num_movable_nodes, 
-            num_filler_nodes
+            num_nodes - num_filler_nodes, 
+            num_movable_nodes
             );
 
     return 0; 
 }
 
 int instantiateGreedyLegalizationCPU(
+        const LegalizationDB<float>& db, 
         const float* init_x, const float* init_y, 
         const float* node_size_x, const float* node_size_y, 
         float* x, float* y, 
@@ -240,6 +228,7 @@ int instantiateGreedyLegalizationCPU(
         )
 {
     return greedyLegalizationCPU(
+            db, 
             init_x, init_y, 
             node_size_x, node_size_y, 
             x, y, 
@@ -253,6 +242,7 @@ int instantiateGreedyLegalizationCPU(
 }
 
 int instantiateGreedyLegalizationCPU(
+        const LegalizationDB<double>& db, 
         const double* init_x, const double* init_y, 
         const double* node_size_x, const double* node_size_y, 
         double* x, double* y, 
@@ -265,6 +255,7 @@ int instantiateGreedyLegalizationCPU(
         )
 {
     return greedyLegalizationCPU(
+            db, 
             init_x, init_y, 
             node_size_x, node_size_y, 
             x, y, 

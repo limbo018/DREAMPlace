@@ -1,5 +1,5 @@
 ##
-# @file   greedy_legalize.py
+# @file   abacus_legalize.py
 # @author Yibo Lin
 # @date   Jun 2018
 #
@@ -9,10 +9,10 @@ import torch
 from torch import nn
 from torch.autograd import Function
 
-import dreamplace.ops.greedy_legalize.greedy_legalize_cpp as greedy_legalize_cpp
+import dreamplace.ops.abacus_legalize.abacus_legalize_cpp as abacus_legalize_cpp
 
-class GreedyLegalizeFunction(Function):
-    """ Legalize cells with greedy approach 
+class AbacusLegalizeFunction(Function):
+    """ Legalize cells with abacus approach 
     """
     @staticmethod
     def forward(
@@ -32,7 +32,7 @@ class GreedyLegalizeFunction(Function):
           num_filler_nodes
           ):
         if pos.is_cuda:
-            output = greedy_legalize_cpp.forward(
+            output = abacus_legalize_cpp.forward(
                     init_pos.view(init_pos.numel()).cpu(), 
                     pos.view(pos.numel()).cpu(), 
                     node_size_x.cpu(),
@@ -49,7 +49,7 @@ class GreedyLegalizeFunction(Function):
                     num_filler_nodes
                     ).cuda()
         else:
-            output = greedy_legalize_cpp.forward(
+            output = abacus_legalize_cpp.forward(
                     init_pos.view(init_pos.numel()), 
                     pos.view(pos.numel()), 
                     node_size_x,
@@ -67,11 +67,11 @@ class GreedyLegalizeFunction(Function):
                     )
         return output
 
-class GreedyLegalize(object):
-    """ Legalize cells with greedy approach 
+class AbacusLegalize(object):
+    """ Legalize cells with abacus approach 
     """
     def __init__(self, node_size_x, node_size_y, xl, yl, xh, yh, site_width, row_height, num_bins_x, num_bins_y, num_movable_nodes, num_filler_nodes):
-        super(GreedyLegalize, self).__init__()
+        super(AbacusLegalize, self).__init__()
         self.node_size_x = node_size_x
         self.node_size_y = node_size_y
         self.xl = xl 
@@ -89,7 +89,7 @@ class GreedyLegalize(object):
         @param init_pos the reference position for displacement minization
         @param pos current roughly legal position
         """
-        return GreedyLegalizeFunction.forward(
+        return AbacusLegalizeFunction.forward(
                 init_pos, 
                 pos,
                 node_size_x=self.node_size_x,

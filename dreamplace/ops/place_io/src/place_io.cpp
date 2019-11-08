@@ -330,7 +330,7 @@ struct PyPlaceDB
             pin2node_map.append(node.id()); 
             pin2net_map.append(db.getNet(pin).id()); 
 
-            if (node.status() != PlaceStatusEnum::FIXED && node.status() != PlaceStatusEnum::DUMMY_FIXED)
+            if (node.status() != PlaceStatusEnum::FIXED /*&& node.status() != PlaceStatusEnum::DUMMY_FIXED*/)
             {
                 num_movable_pins += 1; 
             }

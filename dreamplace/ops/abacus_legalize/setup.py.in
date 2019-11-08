@@ -31,25 +31,21 @@ def add_prefix(filename):
 modules = []
 
 modules.extend([
-    CppExtension('greedy_legalize_cpp', 
+    CppExtension('abacus_legalize_cpp', 
         [
-            add_prefix('greedy_legalize.cpp'),
-            add_prefix('legalize_bin_cpu.cpp'), 
-            add_prefix('merge_bin_cpu.cpp'), 
-            add_prefix('greedy_legalize_cpu.cpp') 
+            add_prefix('abacus_legalize.cpp')
             ], 
         include_dirs=copy.deepcopy(include_dirs), 
         library_dirs=copy.deepcopy(lib_dirs),
         libraries=copy.deepcopy(libs),
         extra_compile_args={
-            #'cxx': ['-g', '-O0'], 
             'cxx': ['-O2', torch_major_version, torch_minor_version], 
             }
         )
     ])
 
 setup(
-        name='greedy_legalize',
+        name='abacus_legalize',
         ext_modules=modules,
         cmdclass={
             'build_ext': BuildExtension

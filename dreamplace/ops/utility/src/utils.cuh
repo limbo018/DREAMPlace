@@ -9,6 +9,7 @@
 #include <chrono>
 #include <cuda.h>
 #include <cuda_runtime.h>
+#include "utility/src/utils.h"
 
 #define allocateCUDA(var, size, type) \
 {\
@@ -71,21 +72,6 @@ __device__ inline long long int d_get_globaltime(void)
 __device__ inline double d_get_timer_period(void) 
 {
 	return 1.0e-6;
-}
-
-typedef std::chrono::high_resolution_clock::rep hr_clock_rep;
-
-inline hr_clock_rep get_globaltime(void) 
-{
-	using namespace std::chrono;
-	return high_resolution_clock::now().time_since_epoch().count();
-}
-
-// Returns the period in miliseconds
-inline double get_timer_period(void) 
-{
-	using namespace std::chrono;
-	return 1000.0 * high_resolution_clock::period::num / high_resolution_clock::period::den;
 }
 
 #define declareCUDAKernel(k)						\

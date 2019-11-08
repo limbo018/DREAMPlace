@@ -1,5 +1,5 @@
 {
-"aux_input" : "benchmarks/ispd2005/bigblue2/bigblue2.dp.aux", 
+"aux_input" : "benchmarks/ispd2005/bigblue2/bigblue2.aux", 
 "gpu" : 1,
 "num_bins_x" : 1024,
 "num_bins_y" : 1024,

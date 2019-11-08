@@ -1,7 +1,7 @@
 ##
-# @file   greedy_legalize_unitest.py
+# @file   macro_legalize_unitest.py
 # @author Yibo Lin
-# @date   Mar 2019
+# @date   Nov 2019
 #
 
 import os 
@@ -15,7 +15,7 @@ import torch
 from torch.autograd import Function, Variable
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
-from dreamplace.ops.greedy_legalize import greedy_legalize
+from dreamplace.ops.macro_legalize import macro_legalize
 sys.path.pop()
 
 def plot(figname, 
@@ -128,19 +128,21 @@ def plot(figname,
     #print(session.run(grads))
     #print(session.run(masked_grads))
 
-class GreedyLegalizeOpTest(unittest.TestCase):
+class MacroLegalizeOpTest(unittest.TestCase):
     def test_greedyLegalizeRandom(self):
         dtype = np.float64
-        xx = np.array([1.0, 0.5, 3.0]).astype(dtype)
-        yy = np.array([0.5, 0.8, 1.5]).astype(dtype)
-        node_size_x = np.array([0.5, 1.5, 1.0]).astype(dtype)
-        node_size_y = np.array([2.0, 2.0, 4.0]).astype(dtype)
-        num_nodes = len(xx)
-        
+
         xl = 1.0 
         yl = 1.0 
-        xh = 5.0
-        yh = 5.0
+        xh = 51.0
+        yh = 51.0
+
+        xx = np.random.uniform(xl, xh, size=6).astype(dtype)
+        yy = np.random.uniform(yl, yh, size=6).astype(dtype)
+        node_size_x = np.array([10, 15, 5, 4, 2, 4]).astype(dtype)
+        node_size_y = np.array([10, 20, 30, 2, 4, 6]).astype(dtype)
+        num_nodes = len(xx)
+        
         num_terminals = 0 
         num_filler_nodes = 0
         num_movable_nodes = len(xx)-num_terminals-num_filler_nodes
@@ -149,6 +151,8 @@ class GreedyLegalizeOpTest(unittest.TestCase):
         num_bins_x = 2
         num_bins_y = 2
 
+        print("xx = %s" % (xx))
+        print("yy = %s" % (yy))
         plot("initial.png", 
                 xx, yy, 
                 node_size_x, node_size_y, 
@@ -157,7 +161,7 @@ class GreedyLegalizeOpTest(unittest.TestCase):
                 num_movable_nodes+num_terminals+num_filler_nodes, num_movable_nodes, num_movable_nodes+num_terminals, num_filler_nodes)
 
         # test cpu 
-        custom = greedy_legalize.GreedyLegalize(
+        custom = macro_legalize.MacroLegalize(
                     torch.from_numpy(node_size_x), torch.from_numpy(node_size_y), 
                     xl=xl, yl=yl, xh=xh, yh=yh, 
                     site_width=site_width, row_height=row_height, 
@@ -180,7 +184,7 @@ class GreedyLegalizeOpTest(unittest.TestCase):
 
         # test cuda 
         if torch.cuda.device_count(): 
-            custom_cuda = greedy_legalize.GreedyLegalize(
+            custom_cuda = macro_legalize.MacroLegalize(
                         torch.from_numpy(node_size_x).cuda(), torch.from_numpy(node_size_y).cuda(), 
                         xl=xl, yl=yl, xh=xh, yh=yh, 
                         site_width=site_width, row_height=row_height, 
@@ -195,4 +199,5 @@ class GreedyLegalizeOpTest(unittest.TestCase):
             #np.testing.assert_allclose(result, result_cuda.data.cpu())
 
 if __name__ == '__main__':
+    np.random.seed(1234)
     unittest.main()

@@ -272,8 +272,7 @@ void independentSetMatchingCPULauncher(DetailedPlaceDB<T> db,
             db.site_width, db.row_height, 
             db.xl, db.yl, db.xh, db.yh,
             db.num_nodes, 
-            db.num_movable_nodes, 
-            0
+            db.num_movable_nodes
             );
     dreamplacePrint(kDEBUG, "legal_flag = %d\n", (int)legal_flag);
 

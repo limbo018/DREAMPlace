@@ -4,8 +4,8 @@
  * @date   Oct 2018
  */
 
-#ifndef GPUPLACE_LEGALITY_CHECK_H
-#define GPUPLACE_LEGALITY_CHECK_H
+#ifndef DREAMPLACE_LEGALITY_CHECK_H
+#define DREAMPLACE_LEGALITY_CHECK_H
 
 #include <iostream>
 #include <vector>
@@ -45,8 +45,7 @@ bool legalityCheckKernelCPU(
         T site_width, T row_height, 
         T xl, T yl, T xh, T yh,
         const int num_nodes, 
-        const int num_movable_nodes, 
-        const int num_filler_nodes
+        const int num_movable_nodes
         )
 {
     bool legal_flag = true; 
@@ -70,7 +69,7 @@ bool legalityCheckKernelCPU(
     }
 
     // distribute cells to rows 
-    for (int i = 0; i < num_nodes-num_filler_nodes; ++i)
+    for (int i = 0; i < num_nodes; ++i)
     {
         T node_xl = x[i]; 
         T node_yl = y[i];
@@ -150,8 +149,7 @@ bool legalityCheckSiteMapKernelCPU(
         T site_width, T row_height, 
         T xl, T yl, T xh, T yh,
         const int num_nodes, 
-        const int num_movable_nodes, 
-        const int num_filler_nodes
+        const int num_movable_nodes
         )
 {
     int num_rows = ceil((yh-yl))/row_height; 
@@ -159,7 +157,7 @@ bool legalityCheckSiteMapKernelCPU(
     std::vector<std::vector<unsigned char> > site_map (num_rows, std::vector<unsigned char>(num_sites, 0)); 
 
     // fixed macros 
-    for (int i = num_movable_nodes; i < num_nodes-num_filler_nodes; ++i)
+    for (int i = num_movable_nodes; i < num_nodes; ++i)
     {
         T node_xl = x[i]; 
         T node_yl = y[i];

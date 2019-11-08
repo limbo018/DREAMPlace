@@ -4,8 +4,8 @@
  * @date   Oct 2018
  */
 
-#ifndef GPUPLACE_BLANK_H
-#define GPUPLACE_BLANK_H
+#ifndef DREAMPLACE_BLANK_H
+#define DREAMPLACE_BLANK_H
 
 #include "utility/src/Msg.h"
 

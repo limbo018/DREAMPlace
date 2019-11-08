@@ -23,7 +23,9 @@ import dreamplace.ops.hpwl.hpwl as hpwl
 import dreamplace.ops.density_overflow.density_overflow as density_overflow 
 import dreamplace.ops.electric_potential.electric_overflow as electric_overflow 
 import dreamplace.ops.rmst_wl.rmst_wl as rmst_wl 
+import dreamplace.ops.macro_legalize.macro_legalize as macro_legalize 
 import dreamplace.ops.greedy_legalize.greedy_legalize as greedy_legalize 
+import dreamplace.ops.abacus_legalize.abacus_legalize as abacus_legalize 
 import dreamplace.ops.draw_place.draw_place as draw_place 
 import dreamplace.ops.pin_pos.pin_pos as pin_pos
 import dreamplace.ops.global_swap.global_swap as global_swap 
@@ -133,7 +135,7 @@ class PlaceOpCollection (object):
         self.hpwl_op = None
         self.rmst_wl_op = None 
         self.density_overflow_op = None 
-        self.greedy_legalize_op = None 
+        self.legalize_op = None 
         self.detailed_place_op = None
         self.wirelength_op = None 
         self.update_gamma_op = None 
@@ -207,7 +209,7 @@ class BasicPlace (nn.Module):
         #self.op_collections.density_overflow_op = self.build_density_overflow(params, placedb, self.data_collections, self.device)
         self.op_collections.density_overflow_op = self.build_electric_overflow(params, placedb, self.data_collections, self.device)
         # legalization 
-        self.op_collections.greedy_legalize_op = self.build_greedy_legalization(params, placedb, self.data_collections, self.device)
+        self.op_collections.legalize_op = self.build_legalization(params, placedb, self.data_collections, self.device)
         # detailed placement 
         self.op_collections.detailed_place_op = self.build_detailed_placement(params, placedb, self.data_collections, self.device)
         # draw placement 
@@ -373,15 +375,16 @@ class BasicPlace (nn.Module):
                 num_threads=params.num_threads
                 )
 
-    def build_greedy_legalization(self, params, placedb, data_collections, device):
+    def build_legalization(self, params, placedb, data_collections, device):
         """
-        @brief greedy legalization 
+        @brief legalization 
         @param params parameters 
         @param placedb placement database 
         @param data_collections a collection of all data and variables required for constructing the ops 
         @param device cpu or cuda 
         """
-        return greedy_legalize.GreedyLegalize(
+        # for movable macro legalization 
+        ml = macro_legalize.MacroLegalize(
                 node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
                 xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
                 site_width=placedb.site_width, row_height=placedb.row_height, 
@@ -390,6 +393,32 @@ class BasicPlace (nn.Module):
                 num_movable_nodes=placedb.num_movable_nodes, 
                 num_filler_nodes=placedb.num_filler_nodes
                 )
+        # for standard cell legalization
+        gl = greedy_legalize.GreedyLegalize(
+                node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
+                xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
+                site_width=placedb.site_width, row_height=placedb.row_height, 
+                num_bins_x=1, num_bins_y=64, 
+                #num_bins_x=64, num_bins_y=64, 
+                num_movable_nodes=placedb.num_movable_nodes, 
+                num_filler_nodes=placedb.num_filler_nodes
+                )
+        # for standard cell legalization
+        al = abacus_legalize.AbacusLegalize(
+                node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
+                xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
+                site_width=placedb.site_width, row_height=placedb.row_height, 
+                num_bins_x=1, num_bins_y=64, 
+                #num_bins_x=64, num_bins_y=64, 
+                num_movable_nodes=placedb.num_movable_nodes, 
+                num_filler_nodes=placedb.num_filler_nodes
+                )
+        def build_legalization_op(pos): 
+            logging.info("Start legalization")
+            pos1 = ml(pos, pos)
+            pos2 = gl(pos1, pos1)
+            return al(pos1, pos2)
+        return build_legalization_op
 
     def build_detailed_placement(self, params, placedb, data_collections, device):
         """

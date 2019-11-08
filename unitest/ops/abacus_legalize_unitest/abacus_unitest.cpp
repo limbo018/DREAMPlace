@@ -4,7 +4,7 @@
  * @date   Oct 2018
  */
 #include <iostream>
-#include "greedy_legalize/src/abacus_legalize_cpu.h"
+#include "abacus_legalize/src/abacus_legalize_cpu.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
 

@@ -13,8 +13,10 @@ DREAMPLACE_BEGIN_NAMESPACE
 template <typename DetailedPlaceDBType, typename IndependentSetMatchingStateType>
 void mark_dependent_nodes(const DetailedPlaceDBType& db, IndependentSetMatchingStateType& state, int node_id, unsigned char value)
 {
+#ifdef SOFT_DEPENDENCY
     typename DetailedPlaceDBType::type node_xl = db.x[node_id];
     typename DetailedPlaceDBType::type node_yl = db.y[node_id];
+#endif
     // in case all nets are masked 
     int node2pin_start = db.flat_node2pin_start_map[node_id];
     int node2pin_end = db.flat_node2pin_start_map[node_id+1];

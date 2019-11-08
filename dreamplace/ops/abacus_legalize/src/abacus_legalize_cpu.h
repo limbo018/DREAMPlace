@@ -1,17 +1,110 @@
 /**
- * @file   abacus_place_row_cpu.h
+ * @file   abacus_legalize_cpu.h
  * @author Yibo Lin
- * @date   Oct 2018
+ * @date   Nov 2019
  */
 
-#ifndef GPUPLACE_LEGALIZE_PLACEROW_CPU_H
-#define GPUPLACE_LEGALIZE_PLACEROW_CPU_H
+#ifndef DREAMPLACEPLACE_ABACUS_LEGALIZE_CPU_H
+#define DREAMPLACEPLACE_ABACUS_LEGALIZE_CPU_H
 
-#include <cassert>
+#include <stdio.h>
+#include <math.h>
+#include <float.h>
+#include <time.h>
+#include <limits.h>
+#include <iostream>
+#include <vector>
+#include <algorithm>
 #include "utility/src/Msg.h"
-#include "abacus_cluster.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
+
+/// A cluster recording abutting cells 
+/// behave liked a linked list but allocated on a continuous memory
+template <typename T>
+struct AbacusCluster
+{
+    int prev_cluster_id; ///< previous cluster, set to INT_MIN if the cluster is invalid  
+    int next_cluster_id; ///< next cluster, set to INT_MIN if the cluster is invalid 
+    int bgn_row_node_id; ///< id of first node in the row 
+    int end_row_node_id; ///< id of last node in the row 
+    T e; ///< weight of displacement in the objective
+    T q; ///< x = q/e 
+    T w; ///< width 
+    T x; ///< optimal location 
+
+    /// @return whether this is a valid cluster 
+    bool valid() const 
+    {
+        return prev_cluster_id != INT_MIN && next_cluster_id != INT_MIN;
+    }
+};
+
+template <typename T>
+struct CompareByNodeCenterXCPU 
+{
+    CompareByNodeCenterXCPU(const T* x, const T* size_x) 
+        : node_x(x)
+        , node_size_x(size_x)
+    {
+    }
+
+    bool operator()(const int i, const int j) const 
+    {
+        T xi = node_x[i]+node_size_x[i]/2;
+        T xj = node_x[j]+node_size_x[j]/2;
+        return xi < xj || (xi == xj && i < j); 
+    }
+
+    const T* node_x; ///< xl 
+    const T *node_size_x; ///< width 
+}; 
+
+template <typename T>
+void distributeMovableAndFixedCells2BinsCPU(
+        const T* x, const T* y, 
+        const T* node_size_x, const T* node_size_y, 
+        T bin_size_x, T bin_size_y, 
+        T xl, T yl, T xh, T yh, 
+        int num_bins_x, int num_bins_y, 
+        int num_nodes, int num_movable_nodes, int num_filler_nodes, 
+        std::vector<std::vector<int> >& bin_cells
+        )
+{
+    for (int i = 0; i < num_nodes-num_filler_nodes; i += 1) 
+    {
+        if (i < num_movable_nodes && node_size_y[i] <= bin_size_y) // single-row movable nodes only distribute to one bin 
+        {
+            int bin_id_x = (x[i]+node_size_x[i]/2-xl)/bin_size_x; 
+            int bin_id_y = (y[i]+node_size_y[i]/2-yl)/bin_size_y;
+
+            bin_id_x = std::min(std::max(bin_id_x, 0), num_bins_x-1);
+            bin_id_y = std::min(std::max(bin_id_y, 0), num_bins_y-1);
+
+            int bin_id = bin_id_x*num_bins_y + bin_id_y; 
+
+            bin_cells[bin_id].push_back(i); 
+        }
+        else // fixed nodes may distribute to multiple bins  
+        {
+            int node_id = i; 
+            int bin_id_xl = std::max((x[node_id]-xl)/bin_size_x, (T)0);
+            int bin_id_xh = std::min((int)ceil((x[node_id]+node_size_x[node_id]-xl)/bin_size_x), num_bins_x);
+            int bin_id_yl = std::max((y[node_id]-yl)/bin_size_y, (T)0);
+            int bin_id_yh = std::min((int)ceil((y[node_id]+node_size_y[node_id]-yl)/bin_size_y), num_bins_y);
+
+            for (int bin_id_x = bin_id_xl; bin_id_x < bin_id_xh; ++bin_id_x)
+            {
+                for (int bin_id_y = bin_id_yl; bin_id_y < bin_id_yh; ++bin_id_y)
+                {
+                    int bin_id = bin_id_x*num_bins_y + bin_id_y; 
+
+                    bin_cells[bin_id].push_back(node_id); 
+                }
+            }
+        }
+    }
+}
 
 /// @param row_nodes node indices in this row 
 /// @param clusters pre-allocated clusters in this row with the same length as that of row_nodes 
@@ -240,6 +333,84 @@ void abacusLegalizeRowCPU(
         displace += fabs(x[i]-init_x[i]); 
     }
     dreamplacePrint(kDEBUG, "average displace = %g\n", displace/num_movable_nodes);
+}
+
+template <typename T>
+void abacusLegalizationCPU(
+        const T* init_x, const T* init_y, 
+        const T* node_size_x, const T* node_size_y, 
+        T* x, T* y, 
+        const T xl, const T yl, const T xh, const T yh, 
+        const T site_width, const T row_height, 
+        int num_bins_x, int num_bins_y, 
+        const int num_nodes, 
+        const int num_movable_nodes, 
+        const int num_filler_nodes
+        )
+{
+    // adjust bin sizes 
+    T bin_size_x = (xh-xl)/num_bins_x; 
+    T bin_size_y = row_height; 
+    //num_bins_x = ceil((xh-xl)/bin_size_x);
+    num_bins_y = ceil((yh-yl)/bin_size_y);
+
+    // include both movable and fixed nodes 
+    std::vector<std::vector<int> > bin_cells (num_bins_x*num_bins_y); 
+    // distribute cells to bins 
+    distributeMovableAndFixedCells2BinsCPU(
+            x, y, 
+            node_size_x, node_size_y, 
+            bin_size_x, bin_size_y, 
+            xl, yl, xh, yh, 
+            num_bins_x, num_bins_y, 
+            num_nodes, num_movable_nodes, num_filler_nodes, 
+            bin_cells
+            );
+    std::vector<std::vector<AbacusCluster<T> > > bin_clusters (num_bins_x*num_bins_y);
+    for (unsigned int i = 0; i < bin_cells.size(); ++i)
+    {
+        bin_clusters[i].resize(bin_cells[i].size()); 
+    }
+
+    abacusLegalizeRowCPU(
+            init_x, 
+            node_size_x, node_size_y, 
+            x, 
+            xl, xh, 
+            bin_size_x, bin_size_y, 
+            num_bins_x, num_bins_y,
+            num_nodes, 
+            num_movable_nodes, 
+            num_filler_nodes, 
+            bin_cells, 
+            bin_clusters
+            );
+    // need to align nodes to sites 
+    // this also considers cell width which is not integral times of site_width 
+    for (auto const& cells : bin_cells)
+    {
+        T xxl = xl; 
+        for (auto node_id : cells)
+        {
+            if (node_id < num_movable_nodes)
+            {
+                x[node_id] = std::max(std::min(x[node_id], xh-node_size_x[node_id]), xxl);
+                x[node_id] = floor((x[node_id]-xxl)/site_width)*site_width+xxl; 
+                xxl += ceil(node_size_x[node_id]/site_width)*site_width; 
+            }
+            else if (node_id < num_nodes-num_filler_nodes)
+            {
+                xxl = ceil((x[node_id]+node_size_x[node_id]-xl)/site_width)*site_width+xl; 
+            }
+        }
+    }
+    //align2SiteCPU(
+    //        node_size_x, 
+    //        x, 
+    //        xl, xh, 
+    //        site_width, 
+    //        num_movable_nodes 
+    //        );
 }
 
 DREAMPLACE_END_NAMESPACE
