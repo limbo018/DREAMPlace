@@ -145,8 +145,12 @@ void check_macro_legality(LegalizationDB<T> db, const std::vector<int>& macros)
                     node_id2, xl2, yl2, xh2, yh2, j, 
                     (int)(node_id2 >= db.num_movable_nodes)
                     ); 
+            return true; 
         }
+        return false; 
     };
+
+    bool legal = true; 
     for (unsigned int i = 0, ie = macros.size(); i < ie; ++i)
     {
         int node_id1 = macros[i];
@@ -163,7 +167,11 @@ void check_macro_legality(LegalizationDB<T> db, const std::vector<int>& macros)
             T width2 = db.node_size_x[node_id2];
             T height2 = db.node_size_y[node_id2];
 
-            checkOverlap2Nodes(i, node_id1, xl1, yl1, width1, height1, j, node_id2, xl2, yl2, width2, height2);
+            bool overlap = checkOverlap2Nodes(i, node_id1, xl1, yl1, width1, height1, j, node_id2, xl2, yl2, width2, height2);
+            if (overlap)
+            {
+                legal = false; 
+            }
         }
         // constraints with fixed macros 
         // when considering fixed macros, there is no guarantee to find legal solution 
@@ -176,8 +184,20 @@ void check_macro_legality(LegalizationDB<T> db, const std::vector<int>& macros)
             T width2 = db.node_size_x[node_id2];
             T height2 = db.node_size_y[node_id2];
 
-            checkOverlap2Nodes(i, node_id1, xl1, yl1, width1, height1, j, node_id2, xl2, yl2, width2, height2);
+            bool overlap = checkOverlap2Nodes(i, node_id1, xl1, yl1, width1, height1, j, node_id2, xl2, yl2, width2, height2);
+            if (overlap)
+            {
+                legal = false; 
+            }
         }
+    }
+    if (legal)
+    {
+        dreamplacePrint(kDEBUG, "Macro legality check PASSED\n");
+    }
+    else 
+    {
+        dreamplacePrint(kERROR, "Macro legality check FAILED\n");
     }
 }
 
@@ -226,6 +246,19 @@ void macroLegalizationLauncher(LegalizationDB<T> db)
 #ifdef DEBUG
     check_macro_legality(db, macros);
 #endif
+
+    dreamplacePrint(kINFO, "Align macros to site and rows\n");
+    // align the lower left corner to row and site
+    for (unsigned int i = 0, ie = macros.size(); i < ie; ++i)
+    {
+        int node_id = macros[i];
+        db.x[node_id] = db.align2site(db.x[node_id], db.node_size_x[node_id]);
+        db.y[node_id] = db.align2row(db.y[node_id], db.node_size_y[node_id]);
+    }
+
+//#ifdef DEBUG
+    check_macro_legality(db, macros);
+//#endif
 }
 
 DREAMPLACE_END_NAMESPACE

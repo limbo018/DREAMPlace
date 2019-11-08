@@ -164,7 +164,10 @@ class HannanGridMap : public HannanGrids<T>
                 {
                     for (std::size_t iy = iyl; iy <= iyh; ++iy)
                     {
-                        this->set(ix, iy, this->base_type::overlap(ix, iy, xl, yl, xh, yh)); 
+                        if (this->base_type::overlap(ix, iy, xl, yl, xh, yh))
+                        {
+                            this->set(ix, iy, 1); 
+                        }
                     }
                 }
             }
@@ -291,6 +294,17 @@ void hannanLegalizeLauncher(LegalizationDB<T> db, std::vector<int>& macros)
             {
                 T xl = grid_map.coord_x(ix);
                 T yl = grid_map.coord_y(iy);
+                // make sure the coordinates are aligned to row and site 
+                T aligned_xl = db.align2site(xl, width);
+                T aligned_yl = db.align2row(yl, height);
+                if (aligned_xl < xl)
+                {
+                    xl = aligned_xl+db.site_width;
+                }
+                if (aligned_yl < yl)
+                {
+                    yl = aligned_yl+db.row_height;
+                }
                 T xh = xl + width;
                 T yh = yl + height; 
 

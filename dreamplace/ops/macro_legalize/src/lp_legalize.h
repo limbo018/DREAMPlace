@@ -25,9 +25,13 @@ void lpLegalizeLauncher(LegalizationDB<T> db, std::vector<int>& macros)
 {
     dreamplacePrint(kINFO, "Legalize movable macros with linear programming on constraint graphs\n");
 
-    typedef limbo::solvers::LinearModel<T, T> model_type;
-    typedef limbo::solvers::DualMinCostFlow<T, T> solver_type; 
-    typedef limbo::solvers::NetworkSimplex<T, T> solver_alg_type; 
+    // numeric type can be int, long ,double, not never use float. 
+    // It will cause incorrect results and introduce overlap. 
+    // Meanwhile, integers are recommended, as the coefficients are forced to be integers. 
+    typedef long numeric_type; 
+    typedef limbo::solvers::LinearModel<numeric_type, numeric_type> model_type;
+    typedef limbo::solvers::DualMinCostFlow<numeric_type, numeric_type> solver_type; 
+    typedef limbo::solvers::NetworkSimplex<numeric_type, numeric_type> solver_alg_type; 
 
     char buf[64];
     // two linear programming models represent horizontal and vertical constraint graphs
@@ -68,7 +72,7 @@ void lpLegalizeLauncher(LegalizationDB<T> db, std::vector<int>& macros)
         model_vcg.addVariable(0, db.yh, limbo::solvers::CONTINUOUS, buf);
     }
 
-    auto add2Hcg = [&](int i, int j, T xl1, T yl1, T width1, T xl2, T yl2, T width2){
+    auto add2Hcg = [&](int i, T xl1, T width1, int j, T xl2, T width2){
         auto var1 = model_hcg.variable(i);
         if (j < db.num_movable_nodes) // movable macro 
         {
@@ -86,19 +90,21 @@ void lpLegalizeLauncher(LegalizationDB<T> db, std::vector<int>& macros)
         {
             if (xl1 < xl2)
             {
-                model_hcg.updateVariableUpperBound(var1, xl2 - width1);
+                model_hcg.updateVariableUpperBound(var1, floor(xl2 - width1));
+                //dreamplacePrint(kDEBUG, "HCG: %s <= x%d (%g) - %g\n", model_hcg.variableName(var1).c_str(), j, xl2, width1);
             }
             else 
             {
-                model_hcg.updateVariableLowerBound(var1, xl2 + width2);
+                model_hcg.updateVariableLowerBound(var1, ceil(xl2 + width2));
+                //dreamplacePrint(kDEBUG, "HCG: %s >= x%d (%g) + %g\n", model_hcg.variableName(var1).c_str(), j, xl2, width2);
             }
         }
     };
-    auto add2Vcg = [&](int i, int j, T xl1, T yl1, T height1, T xl2, T yl2, T height2){
+    auto add2Vcg = [&](int i, T yl1, T height1, int j, T yl2, T height2){
         auto var1 = model_vcg.variable(i);
-        auto var2 = model_vcg.variable(j);
         if (j < db.num_movable_nodes) // movable macro 
         {
+            auto var2 = model_vcg.variable(j);
             if (yl1 < yl2)
             {
                 dreamplaceAssertMsg(model_vcg.addConstraint(var1 - var2 <= -height1), "failed to add VCG constraint");
@@ -112,11 +118,13 @@ void lpLegalizeLauncher(LegalizationDB<T> db, std::vector<int>& macros)
         {
             if (yl1 < yl2)
             {
-                model_vcg.updateVariableUpperBound(var1, yl2 - height1); 
+                model_vcg.updateVariableUpperBound(var1, floor(yl2 - height1)); 
+                //dreamplacePrint(kDEBUG, "VCG: %s <= x%d (%g) - %g\n", model_vcg.variableName(var1).c_str(), j, yl2, height1);
             }
             else 
             {
-                model_vcg.updateVariableLowerBound(var1, yl2 + height2);
+                model_vcg.updateVariableLowerBound(var1, ceil(yl2 + height2));
+                //dreamplacePrint(kDEBUG, "VCG: %s >= x%d (%g) + %g\n", model_vcg.variableName(var1).c_str(), j, yl2, height2);
             }
         }
     };
@@ -133,30 +141,30 @@ void lpLegalizeLauncher(LegalizationDB<T> db, std::vector<int>& macros)
         {
             if (fabs(dx) < fabs(dy)) // horizontal movement has better displacement
             {
-                add2Hcg(i, j, xl1, yl1, width1, xl2, yl2, width2);
+                add2Hcg(i, xl1, width1, j, xl2, width2);
             }
             else // vertical movement has better displacement
             {
-                add2Vcg(i, j, xl1, yl1, height1, xl2, yl2, height2);
+                add2Vcg(i, yl1, height1, j, yl2, height2);
             }
         }
         else if (dx >= 0 && dy < 0) // case II: two cells intersect in y direction
         {
-            add2Hcg(i, j, xl1, yl1, width1, xl2, yl2, width2);
+            add2Hcg(i, xl1, width1, j, xl2, width2);
         }
         else if (dx < 0 && dy >= 0) // case III: two cells intersect in x direction
         {
-            add2Vcg(i, j, xl1, yl1, height1, xl2, yl2, height2);
+            add2Vcg(i, yl1, height1, j, yl2, height2);
         }
         else // case IV: diagonal, dx > 0 && dy > 0
         {
             if (dx < dy) // vertical constraint is easier to satisfy 
             {
-                add2Vcg(i, j, xl1, yl1, height1, xl2, yl2, height2);
+                add2Vcg(i, yl1, height1, j, yl2, height2);
             }
             else // horizontal constraint is easier to satisfy
             {
-                add2Hcg(i, j, xl1, yl1, width1, xl2, yl2, width2);
+                add2Hcg(i, xl1, width1, j, xl2, width2);
             }
         }
     };
@@ -201,25 +209,25 @@ void lpLegalizeLauncher(LegalizationDB<T> db, std::vector<int>& macros)
     for (unsigned int i = 0, ie = macros.size(); i < ie; ++i)
     {
         int node_id = macros[i];
-        T xl = db.init_x[node_id];
-        T yl = db.init_y[node_id];
+        T xl = round(db.init_x[node_id]);
+        T yl = round(db.init_y[node_id]);
 
         auto var_x = model_hcg.variable(i); 
         auto var_l = model_hcg.variable(i + macros.size());
         auto var_u = model_hcg.variable(i + macros.size()*2);
         dreamplaceAssertMsg(model_hcg.addConstraint(var_l - var_x <= 0), "failed to add HCG lower bound constraint");
-        dreamplaceAssertMsg(model_hcg.addConstraint(var_l <= xl), "failed to add HCG lower bound constraint");
+        model_hcg.updateVariableUpperBound(var_l, xl);
         dreamplaceAssertMsg(model_hcg.addConstraint(var_u - var_x >= 0), "failed to add HCG upper bound constraint");
-        dreamplaceAssertMsg(model_hcg.addConstraint(var_u >= xl), "failed to add HCG upper bound constraint");
+        model_hcg.updateVariableLowerBound(var_u, xl);
         obj_hcg += var_u - var_l;
 
         var_x = model_vcg.variable(i); 
         var_l = model_vcg.variable(i + macros.size());
         var_u = model_vcg.variable(i + macros.size()*2);
         dreamplaceAssertMsg(model_vcg.addConstraint(var_l - var_x <= 0), "failed to add VCG lower bound constraint");
-        dreamplaceAssertMsg(model_vcg.addConstraint(var_l <= yl), "failed to add VCG lower bound constraint");
+        model_vcg.updateVariableUpperBound(var_l, yl);
         dreamplaceAssertMsg(model_vcg.addConstraint(var_u - var_x >= 0), "failed to add VCG upper bound constraint");
-        dreamplaceAssertMsg(model_vcg.addConstraint(var_u >= yl), "failed to add VCG upper bound constraint");
+        model_vcg.updateVariableLowerBound(var_u, yl);
         obj_vcg += var_u - var_l;
     }
 
@@ -264,14 +272,6 @@ void lpLegalizeLauncher(LegalizationDB<T> db, std::vector<int>& macros)
     model_hcg.printSolution("hcg.sol");
     model_vcg.printSolution("vcg.sol");
 #endif
-
-    // align the lower left corner to row and site
-    for (unsigned int i = 0, ie = macros.size(); i < ie; ++i)
-    {
-        int node_id = macros[i];
-        db.x[node_id] = db.align2site(db.x[node_id], db.node_size_x[node_id]);
-        db.y[node_id] = db.align2row(db.y[node_id], db.node_size_y[node_id]);
-    }
 }
 
 DREAMPLACE_END_NAMESPACE
