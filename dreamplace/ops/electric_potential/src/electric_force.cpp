@@ -6,8 +6,14 @@
  */
 #include "utility/src/torch.h"
 #include "utility/src/Msg.h"
+#include "utility/src/utils.h"
+#include "electric_potential/src/density_function.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
+
+/// define triangle_density_function
+template <typename T> 
+DEFINE_TRIANGLE_DENSITY_FUNCTION(T);
 
 template <typename T>
 int computeElectricForceLauncher(
@@ -95,6 +101,7 @@ at::Tensor electric_force(
                     num_threads,
                     grad_out.data<scalar_t>(), grad_out.data<scalar_t>()+num_nodes
                     );
+            std::cout << "electric force for movable cells: mean " << grad_out.mean() << " max " << grad_out.max() << std::endl; 
             });
 
     if (num_filler_nodes)
@@ -116,13 +123,12 @@ at::Tensor electric_force(
                         num_threads,
                         grad_out.data<scalar_t>()+num_physical_nodes, grad_out.data<scalar_t>()+num_nodes+num_physical_nodes
                         );
+                std::cout << "electric force for movable cells + filler: mean " << grad_out.mean() << " max " << grad_out.max() << std::endl; 
                 });
     }
 
     return grad_out.mul_(grad_pos);
 }
-
-#define SQRT2 1.4142135623730950488016887242096980785696718753769480731766797379907324784621
 
 template <typename T>
 int computeElectricForceLauncher(
@@ -143,12 +149,9 @@ int computeElectricForceLauncher(
 {
     // density_map_tensor should be initialized outside
 
-    auto computeDensityFunc = [](T x, T node_size, T bin_center, T bin_size){
-        //return std::max(T(0.0), min(x+node_size, bin_center+bin_size/2) - std::max(x, bin_center-bin_size/2));
-        // Yibo: cannot understand why negative overlap is allowed in RePlAce
-        return std::min(x+node_size, bin_center+bin_size/2) - std::max(x, bin_center-bin_size/2);
-    };
-    int chunk_size = int(num_nodes/num_threads/16);
+    T inv_bin_size_x = 1.0 / bin_size_x; 
+    T inv_bin_size_y = 1.0 / bin_size_y;
+    int chunk_size = DREAMPLACE_STD_NAMESPACE::max(int(num_nodes/num_threads/16), 1);
 #pragma omp parallel for num_threads(num_threads) schedule(dynamic, chunk_size)
     for (int i = 0; i < num_nodes; ++i)
     {
@@ -162,19 +165,19 @@ int computeElectricForceLauncher(
         // Yibo: looks very weird implementation, but this is how RePlAce implements it
         // the common practice should be floor
         // Zixuan and Jiaqi: use the common practice of floor
-        int bin_index_xl = int((node_x - xl) / bin_size_x);
-        int bin_index_xh = int(((node_x + node_size_x - xl) / bin_size_x)) + 1; // exclusive
-        bin_index_xl = std::max(bin_index_xl, 0);
-        bin_index_xh = std::min(bin_index_xh, num_bins_x);
+        int bin_index_xl = int((node_x - xl) * inv_bin_size_x);
+        int bin_index_xh = int(((node_x + node_size_x - xl) * inv_bin_size_x)) + 1; // exclusive
+        bin_index_xl = DREAMPLACE_STD_NAMESPACE::max(bin_index_xl, 0);
+        bin_index_xh = DREAMPLACE_STD_NAMESPACE::min(bin_index_xh, num_bins_x);
         //int bin_index_xh = bin_index_xl+num_impacted_bins_x;
 
         // Yibo: looks very weird implementation, but this is how RePlAce implements it
         // the common practice should be floor
         // Zixuan and Jiaqi: use the common practice of floor
-        int bin_index_yl = int((node_y - yl) / bin_size_y);
-        int bin_index_yh = int(((node_y + node_size_y - yl) / bin_size_y)) + 1; // exclusive
-        bin_index_yl = std::max(bin_index_yl, 0);
-        bin_index_yh = std::min(bin_index_yh, num_bins_y);
+        int bin_index_yl = int((node_y - yl) * inv_bin_size_y);
+        int bin_index_yh = int(((node_y + node_size_y - yl) * inv_bin_size_y)) + 1; // exclusive
+        bin_index_yl = DREAMPLACE_STD_NAMESPACE::max(bin_index_yl, 0);
+        bin_index_yh = DREAMPLACE_STD_NAMESPACE::min(bin_index_yh, num_bins_y);
         //int bin_index_yh = bin_index_yl+num_impacted_bins_y;
 
         T& gx = grad_x_tensor[i]; 
@@ -184,19 +187,19 @@ int computeElectricForceLauncher(
         // update density potential map
         for (int k = bin_index_xl; k < bin_index_xh; ++k)
         {
-            T px = computeDensityFunc(node_x, node_size_x, bin_center_x_tensor[k], bin_size_x);
+            T px = triangle_density_function(node_x, node_size_x, xl, k, bin_size_x);
             for (int h = bin_index_yl; h < bin_index_yh; ++h)
             {
-                T py = computeDensityFunc(node_y, node_size_y, bin_center_y_tensor[h], bin_size_y);
+                T py = triangle_density_function(node_y, node_size_y, yl, h, bin_size_y);
+                T area = px * py;
 
-                // px*py*ratio 
-                T area = py*px*ratio;
-
-                int idx = k*num_bins_y+h; 
-                gx += area*field_map_x_tensor[idx];
-                gy += area*field_map_y_tensor[idx];
+                int idx = k * num_bins_y + h;
+                gx += area * field_map_x_tensor[idx];
+                gy += area * field_map_y_tensor[idx];
             }
         }
+        gx *= ratio; 
+        gy *= ratio;
     }
 
     return 0;
