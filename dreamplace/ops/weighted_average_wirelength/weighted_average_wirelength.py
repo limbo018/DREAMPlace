@@ -264,7 +264,7 @@ class WeightedAverageWirelengthMergedFunction(Function):
         ctx.pos = pos
         if pos.is_cuda:
             torch.cuda.synchronize()
-        print("\t\twirelength forward %.3f ms" % ((time.time()-tt)*1000))
+        logger.debug("wirelength forward %.3f ms" % ((time.time()-tt)*1000))
         return output[0]
 
     @staticmethod
@@ -288,7 +288,7 @@ class WeightedAverageWirelengthMergedFunction(Function):
         output[int(output.numel()//2):].masked_fill_(ctx.pin_mask, 0.0)
         if grad_pos.is_cuda:
             torch.cuda.synchronize()
-        print("\t\twirelength backward kernel %.3f ms" % ((time.time()-tt)*1000))
+        logger.debug("wirelength backward kernel %.3f ms" % ((time.time()-tt)*1000))
         return output, None, None, None, None, None, None, None
 
 class WeightedAverageWirelength(nn.Module):

@@ -3,9 +3,9 @@
 Deep learning toolkit-enabled VLSI placement. 
 With the analogy between nonlinear VLSI placement and deep learning training problem, this tool is developed with deep learning toolkit for flexibility and efficiency. 
 The tool runs on both CPU and GPU. 
-Over 30X speedup over the CPU implementation ([RePlAce](https://doi.org/10.1109/TCAD.2018.2859220)) is achieved in global placement and legalization on ISPD 2005 contest benchmarks with a Nvidia Tesla V100 GPU. 
+Over ```30X``` speedup over the CPU implementation ([RePlAce](https://doi.org/10.1109/TCAD.2018.2859220)) is achieved in global placement and legalization on ISPD 2005 contest benchmarks with a Nvidia Tesla V100 GPU. 
 
-DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU, only CPU support will be enabled. 
+DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU, only CPU support will be enabled with multi-threading. 
 
 | Bigblue4 | Density Map | Electric Potential | Electric Field |
 | -------- | ----------- | ------------------ | -------------- |
@@ -24,9 +24,10 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
 
 # Dependency 
 
-- Pytorch 1.0.0
+- Python 2.7 or Python 3.5/3.6/3.7
 
-- Python 2.7 or Python 3.5
+- [Pytorch](https://pytorch.org/) 1.0.0
+    - Other version around 1.0.0 may also work, but not tested
 
 - [GCC](https://gcc.gnu.org/)
     - Recommend GCC 5.1 or later. 
@@ -34,7 +35,6 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
 
 - [Boost](https://www.boost.org)
     - Need to install and visible for linking
-    - Need to be compiled with C++11 and same ```_GLIBCXX_USE_CXX11_ABI``` as PyTorch
 
 - [Limbo](https://github.com/limbo018/Limbo)
     - Integrated as a git submodule
@@ -57,7 +57,7 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
     - Otherwise, python implementation is used. 
 
 - [NTUPlace3](http://eda.ee.ntu.edu.tw/research.htm) (Optional)
-    - If the binary is provided, it can be used to perform detailed placement 
+    - If the binary is provided, it can be used to perform detailed placement.
 
 To pull git submodules in the root directory
 ```
@@ -79,12 +79,44 @@ pip install -r requirements.txt
 
 # How to Build 
 
+Two options are provided for building: with and without [Docker](https://hub.docker.com). 
+
+## Build with Docker
+
+You can use the Docker container to avoid building all the dependencies yourself. 
+1. Install Docker on [Windows](https://docs.docker.com/docker-for-windows/), [Mac](https://docs.docker.com/docker-for-mac/) or [Linux](https://docs.docker.com/install/).
+2. To enable the GPU features, install [NVIDIA-docker](https://github.com/NVIDIA/nvidia-docker); otherwise, skip this step.  
+3. Navigate to the repository. 
+4. Get the docker container with either of the following options. 
+    - Option 1: pull from the cloud [limbo018/dreamplace](https://hub.docker.com/r/limbo018/dreamplace). 
+    ```
+    docker pull limbo018/dreamplace:cuda
+    ```
+    - Option 2: build the container. 
+    ```
+    docker build . --file Dockerfile --tag your_name/dreamplace:cuda
+    ```
+5. Enter bash environment of the container. Replace ```limbo018``` with your name if option 2 is chosen in the previous step. 
+
+Run with GPU. 
+```
+docker run --gpus 1 -it -v $(pwd):/DREAMPlace limbo018/dreamplace:cuda bash
+```
+Run without GPU. 
+```
+docker run -it -v $(pwd):/DREAMPlace limbo018/dreamplace:cuda bash
+```
+6. ```cd /DREAMPlace```. 
+7. Go to next section to complete building. 
+
+## Build without Docker
+
 [CMake](https://cmake.org) is adopted as the makefile system. 
 To build, go to the root directory. 
 ```
 mkdir build 
 cd build 
-cmake ..
+cmake .. -DCMAKE_INSTALL_PREFIX=your_install_path
 make 
 make install
 ```
@@ -142,7 +174,7 @@ python dreamplace/Placer.py --help
 # Features
 
 * [0.0.2](https://github.com/limbo018/DREAMPlace/releases/tag/0.0.2)
-    - Multi-thread CPU and optional GPU acceleration support 
+    - Multi-threaded CPU and optional GPU acceleration support 
 
 * [0.0.5](https://github.com/limbo018/DREAMPlace/releases/tag/0.0.5)
     - Net weighting support through .wts files in Bookshelf format
@@ -154,3 +186,6 @@ python dreamplace/Placer.py --help
 
 * [1.0.0](https://github.com/limbo018/DREAMPlace/releases/tag/1.0.0)
     - Improved efficiency for wirelength and density operators from TCAD extension
+
+* [1.1.0](https://github.com/limbo018/DREAMPlace/releases/tag/1.1.0)
+    - Docker container for building environment
