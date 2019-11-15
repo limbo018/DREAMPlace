@@ -51,6 +51,66 @@ int computeExactDensityMapLauncher(
         T* density_map_tensor
         );
 
+template <typename T>
+int debugComputeExactDensityMapLauncher(
+        const T* x_tensor, const T* y_tensor,
+        const T* node_size_x_tensor, const T* node_size_y_tensor,
+        const T* bin_center_x_tensor, const T* bin_center_y_tensor,
+        const int num_nodes,
+        const int num_bins_x, const int num_bins_y,
+        const T xl, const T yl, const T xh, const T yh,
+        const T bin_size_x, const T bin_size_y,
+        bool fixed_node_flag,
+        const int num_threads,
+        T* density_map_tensor, 
+        const int largest_density_k, const int largest_density_h, 
+        const int second_largest_density_k, const int second_largest_density_h
+        )
+{
+    // density_map_tensor should be initialized outside
+
+#pragma omp parallel for num_threads(num_threads)
+    for (int i = 0; i < num_nodes; ++i)
+    {
+        // x direction
+        int bin_index_xl = int((x_tensor[i]-xl)/bin_size_x);
+        int bin_index_xh = int(ceil((x_tensor[i]-xl+node_size_x_tensor[i])/bin_size_x))+1; // exclusive
+        bin_index_xl = DREAMPLACE_STD_NAMESPACE::max(bin_index_xl, 0);
+        bin_index_xh = DREAMPLACE_STD_NAMESPACE::min(bin_index_xh, num_bins_x);
+
+        // y direction
+        int bin_index_yl = int((y_tensor[i]-yl)/bin_size_y);
+        int bin_index_yh = int(ceil((y_tensor[i]-yl+node_size_y_tensor[i])/bin_size_y))+1; // exclusive
+        bin_index_yl = DREAMPLACE_STD_NAMESPACE::max(bin_index_yl, 0);
+        bin_index_yh = DREAMPLACE_STD_NAMESPACE::min(bin_index_yh, num_bins_y);
+
+        for (int k = bin_index_xl; k < bin_index_xh; ++k)
+        {
+            T px = exact_density_function(x_tensor[i], node_size_x_tensor[i], bin_center_x_tensor[k], bin_size_x, xl, xh, fixed_node_flag);
+            for (int h = bin_index_yl; h < bin_index_yh; ++h)
+            {
+                T py = exact_density_function(y_tensor[i], node_size_y_tensor[i], bin_center_y_tensor[h], bin_size_y, yl, yh, fixed_node_flag);
+
+                // still area
+                T& density = density_map_tensor[k*num_bins_y+h];
+                if ((k == largest_density_k && h == largest_density_h) 
+                        || (k == second_largest_density_k && h == second_largest_density_h))
+                {
+                    printf("node %d @ (%g, %g, %g, %g), bin (%d, %d) @ (%g, %g, %g, %g), px %g, py %g, area %g\n", 
+                            i, x_tensor[i], y_tensor[i], x_tensor[i]+node_size_x_tensor[i], y_tensor[i]+node_size_y_tensor[i], 
+                            k, h, bin_center_x_tensor[k]-bin_size_x/2, bin_center_y_tensor[h]-bin_size_y/2, bin_center_x_tensor[k]+bin_size_x/2, bin_center_y_tensor[h]+bin_size_y/2, 
+                            px, py, px*py
+                            );
+                }
+#pragma omp atomic
+                density += px*py;
+            }
+        }
+    }
+
+    return 0;
+}
+
 #define CHECK_FLAT(x) AT_ASSERTM(!x.is_cuda() && x.ndimension() == 1, #x "must be a flat tensor on CPU")
 #define CHECK_EVEN(x) AT_ASSERTM((x.numel()&1) == 0, #x "must have even number of elements")
 #define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x "must be contiguous")
@@ -205,7 +265,62 @@ at::Tensor fixed_density_map(
                         density_map.data<scalar_t>()
                         );
                 std::cout << "fixed density mean " << density_map.mean() << " max " << density_map.max() << std::endl;
+                // scan original density map, and try to figure out what is wrong 
+                std::cout << "scan original fixed density map before clamping\n";
+                const scalar_t* debug_density_map_ptr = density_map.data<scalar_t>();
+                scalar_t largest_density = 0; 
+                int largest_density_k = -1; 
+                int largest_density_h = -1; 
+                scalar_t second_largest_density = 0; 
+                int second_largest_density_k = -1; 
+                int second_largest_density_h = -1; 
+                for (int k = 0; k < num_bins_x; ++k)
+                {
+                    for (int h = 0; h < num_bins_y; ++h)
+                    {
+                        scalar_t density = debug_density_map_ptr[k*num_bins_y+h];
+                        if (density > largest_density)
+                        {
+                            second_largest_density = largest_density; 
+                            second_largest_density_k = largest_density_k;
+                            second_largest_density_h = largest_density_h;
+                            largest_density = density; 
+                            largest_density_k = k;
+                            largest_density_h = h;
+                        }
+                        else if (density > second_largest_density)
+                        {
+                            second_largest_density = density; 
+                            second_largest_density_k = k;
+                            second_largest_density_h = h;
+                        }
+                    }
+                }
+                std::cout << "largest density " << largest_density << "@(" << largest_density_k << ", " << largest_density_h << ")\n";
+                std::cout << "second largest density " << second_largest_density << "@(" << second_largest_density_k << ", " << second_largest_density_h << ")\n";
+
+                at::Tensor debug_density_map = at::zeros({num_bins_x, num_bins_y}, pos.type());
+                debugComputeExactDensityMapLauncher<scalar_t>(
+                        pos.data<scalar_t>()+num_movable_nodes, pos.data<scalar_t>()+num_nodes+num_movable_nodes,
+                        node_size_x.data<scalar_t>()+num_movable_nodes, node_size_y.data<scalar_t>()+num_movable_nodes,
+                        bin_center_x.data<scalar_t>(), bin_center_y.data<scalar_t>(),
+                        num_terminals,
+                        num_bins_x, num_bins_y,
+                        xl, yl, xh, yh,
+                        bin_size_x, bin_size_y,
+                        true,
+                        num_threads,
+                        debug_density_map.data<scalar_t>(), 
+                        largest_density_k, largest_density_h, 
+                        second_largest_density_k, second_largest_density_h
+                        );
                 });
+
+        // Fixed cells may have overlaps. We should not over-compute the density map. 
+        // This is just an approximate fix. It does not guarantee the exact value in each bin. 
+        density_map.clamp_max_(bin_size_x*bin_size_y);
+        std::cout << "fixed density clamped mean " << density_map.mean() << " max " << density_map.max() 
+            << " bin area " << bin_size_x*bin_size_y << std::endl;
     }
 
     return density_map;

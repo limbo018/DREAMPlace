@@ -203,6 +203,12 @@ at::Tensor fixed_density_map(
                         );
                 std::cout << "fixed density mean " << density_map.mean() << " max " << density_map.max() << std::endl;
                 });
+
+        // Fixed cells may have overlaps. We should not over-compute the density map. 
+        // This is just an approximate fix. It does not guarantee the exact value in each bin. 
+        density_map.clamp_max_(bin_size_x*bin_size_y);
+        std::cout << "fixed density clamped mean " << density_map.mean() << " max " << density_map.max() 
+            << " bin area " << bin_size_x*bin_size_y << std::endl;
     }
 
     return density_map;
