@@ -101,7 +101,6 @@ at::Tensor electric_force(
                     num_threads,
                     grad_out.data<scalar_t>(), grad_out.data<scalar_t>()+num_nodes
                     );
-            std::cout << "electric force for movable cells: mean " << grad_out.mean() << " max " << grad_out.max() << std::endl; 
             });
 
     if (num_filler_nodes)
@@ -123,7 +122,6 @@ at::Tensor electric_force(
                         num_threads,
                         grad_out.data<scalar_t>()+num_physical_nodes, grad_out.data<scalar_t>()+num_nodes+num_physical_nodes
                         );
-                std::cout << "electric force for movable cells + filler: mean " << grad_out.mean() << " max " << grad_out.max() << std::endl; 
                 });
     }
 
