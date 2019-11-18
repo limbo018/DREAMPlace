@@ -9,22 +9,15 @@
 #include "cuda_runtime.h"
 #include "utility/src/print.h"
 #include "utility/src/Msg.h"
+#include "utility/src/utils.cuh"
+#include "electric_potential/src/density_function.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
 
-template <typename T>
-inline __device__ T computeDensityFunc(T x, T node_size, T bin_center, T half_bin_size)
-{
-    // Yibo: cannot understand why negative overlap is allowed in RePlAce
-    return min(x + node_size, bin_center + half_bin_size) - max(x, bin_center - half_bin_size);
-};
-
-template <typename T>
-inline __device__ T computeDensityFunc(T x, T node_size, T xl, int k, T bin_size)
-{
-    T bin_xl = xl + k * bin_size;
-    return min(x + node_size, bin_xl + bin_size) - max(x, bin_xl);
-};
+/// define triangle_density_function
+template <typename T> 
+inline __device__ 
+DEFINE_TRIANGLE_DENSITY_FUNCTION(T);
 
 template <typename T>
 __global__ void __launch_bounds__(1024, 8) computeElectricForce(
@@ -60,13 +53,13 @@ __global__ void __launch_bounds__(1024, 8) computeElectricForce(
         // Zixuan and Jiaqi: use the common practice of floor
         int bin_index_xl = int((node_x - xl) * inv_bin_size_x);
         int bin_index_xh = int(((node_x + node_size_x - xl) * inv_bin_size_x)) + 1; // exclusive
-        bin_index_xl = (bin_index_xl > 0) * bin_index_xl;                           // max(bin_index_xl, 0);
-        bin_index_xh = min(bin_index_xh, num_bins_x);
+        bin_index_xl = DREAMPLACE_STD_NAMESPACE::max(bin_index_xl, 0);
+        bin_index_xh = DREAMPLACE_STD_NAMESPACE::min(bin_index_xh, num_bins_x);
 
         int bin_index_yl = int((node_y - yl) * inv_bin_size_y);
         int bin_index_yh = int(((node_y + node_size_y - yl) * inv_bin_size_y)) + 1; // exclusive
-        bin_index_yl = (bin_index_yl > 0) * bin_index_yl;                           // max(bin_index_yl, 0);
-        bin_index_yh = min(bin_index_yh, num_bins_y);
+        bin_index_yl = DREAMPLACE_STD_NAMESPACE::max(bin_index_yl, 0);
+        bin_index_yh = DREAMPLACE_STD_NAMESPACE::min(bin_index_yh, num_bins_y);
 
         // blockDim.x * blockDim.y threads will be used to update one node
         // shared memory is used to privatize the atomic memory access to thread block
@@ -86,11 +79,11 @@ __global__ void __launch_bounds__(1024, 8) computeElectricForce(
         // update density potential map
         for (int k = bin_index_xl + threadIdx.y; k < bin_index_xh; k += blockDim.y)
         {
-            T px = computeDensityFunc(node_x, node_size_x, xl, k, bin_size_x);
+            T px = triangle_density_function(node_x, node_size_x, xl, k, bin_size_x);
 
             for (int h = bin_index_yl + threadIdx.x; h < bin_index_yh; h += blockDim.x)
             {
-                T py = computeDensityFunc(node_y, node_size_y, yl, h, bin_size_y);
+                T py = triangle_density_function(node_y, node_size_y, yl, h, bin_size_y);
                 T area = px * py;
 
                 int idx = k * num_bins_y + h;
@@ -149,13 +142,13 @@ __global__ void computeElectricForceUnroll(
         // Zixuan and Jiaqi: use the common practice of floor
         int bin_index_xl = int((node_x - xl) * inv_bin_size_x);
         int bin_index_xh = int(((node_x + node_size_x - xl) * inv_bin_size_x)); // inclusive
-        bin_index_xl = (bin_index_xl > 0) * bin_index_xl;                       // max(bin_index_xl, 0);
-        bin_index_xh = min(bin_index_xh, num_bins_x - 1);
+        bin_index_xl = DREAMPLACE_STD_NAMESPACE::max(bin_index_xl, 0);
+        bin_index_xh = DREAMPLACE_STD_NAMESPACE::min(bin_index_xh, num_bins_x - 1);
 
         int bin_index_yl = int((node_y - yl) * inv_bin_size_y);
         int bin_index_yh = int(((node_y + node_size_y - yl) * inv_bin_size_y)); // inclusive
-        bin_index_yl = (bin_index_yl > 0) * bin_index_yl;                       // max(bin_index_yl, 0);
-        bin_index_yh = min(bin_index_yh, num_bins_y - 1);
+        bin_index_yl = DREAMPLACE_STD_NAMESPACE::max(bin_index_yl, 0);
+        bin_index_yh = DREAMPLACE_STD_NAMESPACE::min(bin_index_yh, num_bins_y - 1);
 
         int k, h;
 
@@ -390,8 +383,7 @@ __global__ void computeElectricForceUnroll(
 template <typename T>
 int computeElectricForceCudaLauncher(
     int num_bins_x, int num_bins_y,
-    int num_movable_impacted_bins_x, int num_movable_impacted_bins_y,
-    int num_filler_impacted_bins_x, int num_filler_impacted_bins_y,
+    int num_impacted_bins_x, int num_impacted_bins_y,
     const T *field_map_x_tensor, const T *field_map_y_tensor,
     const T *x_tensor, const T *y_tensor,
     const T *node_size_x_clamped_tensor, const T *node_size_y_clamped_tensor,
@@ -400,7 +392,7 @@ int computeElectricForceCudaLauncher(
     const T *bin_center_x_tensor, const T *bin_center_y_tensor,
     T xl, T yl, T xh, T yh,
     T bin_size_x, T bin_size_y,
-    int num_nodes, int num_movable_nodes, int num_filler_nodes,
+    int num_nodes, 
     T *grad_x_tensor, T *grad_y_tensor,
     const int *sorted_node_map)
 {
@@ -409,7 +401,7 @@ int computeElectricForceCudaLauncher(
     dim3 blockSize(2, 2, thread_count);
     size_t shared_mem_size = sizeof(T) * thread_count * 2;
 
-    int block_count_nodes = (num_movable_nodes + thread_count - 1) / thread_count;
+    int block_count_nodes = (num_nodes + thread_count - 1) / thread_count;
     computeElectricForce<<<block_count_nodes, blockSize, shared_mem_size>>>(
         num_bins_x, num_bins_y,
         field_map_x_tensor, field_map_y_tensor,
@@ -422,50 +414,9 @@ int computeElectricForceCudaLauncher(
         bin_size_x / 2, bin_size_y / 2,
         bin_size_x, bin_size_y,
         1 / bin_size_x, 1 / bin_size_y,
-        num_movable_nodes,
+        num_nodes,
         grad_x_tensor, grad_y_tensor,
         sorted_node_map);
-
-    if (num_filler_nodes)
-    {
-        cudaError_t status;
-        cudaStream_t stream_filler;
-
-        status = cudaStreamCreate(&stream_filler);
-        if (status != cudaSuccess)
-        {
-            printf("cudaStreamCreate failed for stream_filler\n");
-            fflush(stdout);
-            return 1;
-        }
-
-        block_count_nodes = (num_filler_nodes + thread_count - 1) / thread_count;
-        int num_physical_nodes = num_nodes - num_filler_nodes;
-        computeElectricForce<<<block_count_nodes, blockSize, shared_mem_size, stream_filler>>>(
-            num_bins_x, num_bins_y,
-            field_map_x_tensor, field_map_y_tensor,
-            x_tensor + num_physical_nodes, y_tensor + num_physical_nodes,
-            node_size_x_clamped_tensor + num_physical_nodes, node_size_y_clamped_tensor + num_physical_nodes,
-            offset_x_tensor + num_physical_nodes, offset_y_tensor + num_physical_nodes,
-            ratio_tensor + num_physical_nodes,
-            bin_center_x_tensor, bin_center_y_tensor,
-            xl, yl, xh, yh,
-            bin_size_x / 2, bin_size_y / 2,
-            bin_size_x, bin_size_y,
-            1 / bin_size_x, 1 / bin_size_y,
-            num_filler_nodes,
-            grad_x_tensor + num_physical_nodes, grad_y_tensor + num_physical_nodes, 
-            NULL
-            );
-
-        status = cudaStreamDestroy(stream_filler);
-        if (status != cudaSuccess)
-        {
-            printf("stream_filler destroy failed\n");
-            fflush(stdout);
-            return 1;
-        }
-    }
 
     return 0;
 }
@@ -473,8 +424,7 @@ int computeElectricForceCudaLauncher(
 #define REGISTER_KERNEL_LAUNCHER(T)                                               \
     int instantiateComputeElectricForceLauncher(                                  \
         int num_bins_x, int num_bins_y,                                           \
-        int num_movable_impacted_bins_x, int num_movable_impacted_bins_y,         \
-        int num_filler_impacted_bins_x, int num_filler_impacted_bins_y,           \
+        int num_impacted_bins_x, int num_impacted_bins_y,                         \
         const T *field_map_x_tensor, const T *field_map_y_tensor,                 \
         const T *x_tensor, const T *y_tensor,                                     \
         const T *node_size_x_clamped_tensor, const T *node_size_y_clamped_tensor, \
@@ -483,14 +433,13 @@ int computeElectricForceCudaLauncher(
         const T *bin_center_x_tensor, const T *bin_center_y_tensor,               \
         T xl, T yl, T xh, T yh,                                                   \
         T bin_size_x, T bin_size_y,                                               \
-        int num_nodes, int num_movable_nodes, int num_filler_nodes,               \
+        int num_nodes,                                                            \
         T *grad_x_tensor, T *grad_y_tensor,                                       \
         const int *sorted_node_map)                                               \
     {                                                                             \
         return computeElectricForceCudaLauncher(                                  \
             num_bins_x, num_bins_y,                                               \
-            num_movable_impacted_bins_x, num_movable_impacted_bins_y,             \
-            num_filler_impacted_bins_x, num_filler_impacted_bins_y,               \
+            num_impacted_bins_x, num_impacted_bins_y,                             \
             field_map_x_tensor, field_map_y_tensor,                               \
             x_tensor, y_tensor,                                                   \
             node_size_x_clamped_tensor, node_size_y_clamped_tensor,               \
@@ -499,7 +448,7 @@ int computeElectricForceCudaLauncher(
             bin_center_x_tensor, bin_center_y_tensor,                             \
             xl, yl, xh, yh,                                                       \
             bin_size_x, bin_size_y,                                               \
-            num_nodes, num_movable_nodes, num_filler_nodes,                       \
+            num_nodes,                                                            \
             grad_x_tensor, grad_y_tensor,                                         \
             sorted_node_map);                                                     \
     }

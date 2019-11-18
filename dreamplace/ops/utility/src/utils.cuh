@@ -11,6 +11,13 @@
 #include <cuda_runtime.h>
 //#include <device_launch_parameters.h>
 //#include <device_functions.h>
+#include "utility/src/Msg.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
+
+/// namespace definition to make functions like 
+/// min/max general between C++ and CUDA
+#define DREAMPLACE_STD_NAMESPACE 
 
 #define allocateCUDA(var, size, type) \
 {\
@@ -153,5 +160,7 @@ inline __host__ unsigned int CPUCeilDiv(unsigned int a, unsigned int b)
 {
     return CPUDiv(a+b-1, b); 
 }
+
+DREAMPLACE_END_NAMESPACE
 
 #endif

@@ -12,8 +12,7 @@ DREAMPLACE_BEGIN_NAMESPACE
 template <typename T>
 int computeElectricForceCudaLauncher(
         int num_bins_x, int num_bins_y, 
-        int num_movable_impacted_bins_x, int num_movable_impacted_bins_y, 
-        int num_filler_impacted_bins_x, int num_filler_impacted_bins_y, 
+        int num_impacted_bins_x, int num_impacted_bins_y, 
         const T* field_map_x_tensor, const T* field_map_y_tensor, 
         const T* x_tensor, const T* y_tensor, 
         const T* node_size_x_clamped_tensor, const T* node_size_y_clamped_tensor, 
@@ -22,7 +21,7 @@ int computeElectricForceCudaLauncher(
         const T* bin_center_x_tensor, const T* bin_center_y_tensor, 
         T xl, T yl, T xh, T yh, 
         T bin_size_x, T bin_size_y, 
-        int num_nodes, int num_movable_nodes, int num_filler_nodes, 
+        int num_nodes, 
         T* grad_x_tensor, T* grad_y_tensor,
         const int* sorted_node_map
         );
@@ -91,7 +90,6 @@ at::Tensor electric_force(
             computeElectricForceCudaLauncher<scalar_t>(
                     num_bins_x, num_bins_y, 
                     num_movable_impacted_bins_x, num_movable_impacted_bins_y, 
-                    num_filler_impacted_bins_x, num_filler_impacted_bins_y, 
                     field_map_x.data<scalar_t>(), field_map_y.data<scalar_t>(), 
                     pos.data<scalar_t>(), pos.data<scalar_t>()+num_nodes, 
                     node_size_x_clamped.data<scalar_t>(), node_size_y_clamped.data<scalar_t>(), 
@@ -100,11 +98,33 @@ at::Tensor electric_force(
                     bin_center_x.data<scalar_t>(), bin_center_y.data<scalar_t>(), 
                     xl, yl, xh, yh, 
                     bin_size_x, bin_size_y, 
-                    num_nodes, num_movable_nodes, num_filler_nodes, 
+                    num_movable_nodes, 
                     grad_out.data<scalar_t>(), grad_out.data<scalar_t>()+num_nodes,
                     sorted_node_map.data<int>()
                     );
             });
+
+    if (num_filler_nodes)
+    {
+        int num_physical_nodes = num_nodes - num_filler_nodes;
+        AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeElectricForceCudaLauncher", [&] {
+                computeElectricForceCudaLauncher<scalar_t>(
+                        num_bins_x, num_bins_y, 
+                        num_filler_impacted_bins_x, num_filler_impacted_bins_y, 
+                        field_map_x.data<scalar_t>(), field_map_y.data<scalar_t>(), 
+                        pos.data<scalar_t>()+num_physical_nodes, pos.data<scalar_t>()+num_nodes+num_physical_nodes, 
+                        node_size_x_clamped.data<scalar_t>()+num_physical_nodes, node_size_y_clamped.data<scalar_t>()+num_physical_nodes, 
+                        offset_x.data<scalar_t>()+num_physical_nodes, offset_y.data<scalar_t>()+num_physical_nodes,
+                        ratio.data<scalar_t>()+num_physical_nodes,
+                        bin_center_x.data<scalar_t>(), bin_center_y.data<scalar_t>(), 
+                        xl, yl, xh, yh, 
+                        bin_size_x, bin_size_y, 
+                        num_filler_nodes, 
+                        grad_out.data<scalar_t>()+num_physical_nodes, grad_out.data<scalar_t>()+num_nodes+num_physical_nodes,
+                        NULL
+                        );
+                });
+    }
 
     return grad_out.mul_(grad_pos); 
 }
