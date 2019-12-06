@@ -43,8 +43,7 @@ int greedyLegalizationCPU(
         const T site_width, const T row_height, 
         int num_bins_x, int num_bins_y, 
         const int num_nodes, 
-        const int num_movable_nodes, 
-        const int num_filler_nodes
+        const int num_movable_nodes
         );
 
 DREAMPLACE_END_NAMESPACE

@@ -887,9 +887,19 @@ void __launch_bounds__(64*4, 4) compute_candidate_cost(
         if ((threadIdx.x&3) == 3)
         //if (threadIdx.x&1)
         {
-            // target_cost - orig_cost 
-            //cand.cost += cost[threadIdx.x]-cost[threadIdx.x-1];
-            cand.cost = cost[threadIdx.x]-cost[threadIdx.x-1] + cost[threadIdx.x-2]-cost[threadIdx.x-3];
+            // consider FENCE region 
+            if (db.num_regions 
+                    && ((cand.node_id[0] < db.num_movable_nodes && !db.inside_fence(cand.node_id[0], cand.node_xl[0][1], cand.node_yl[0][1]))
+                        || (cand.node_id[1] < db.num_movable_nodes && !db.inside_fence(cand.node_id[1], cand.node_xl[1][1], cand.node_yl[1][1]))))
+            {
+                cand.cost = cuda::numeric_limits<T>::max();
+            }
+            else 
+            {
+                // target_cost - orig_cost 
+                //cand.cost += cost[threadIdx.x]-cost[threadIdx.x-1];
+                cand.cost = cost[threadIdx.x]-cost[threadIdx.x-1] + cost[threadIdx.x-2]-cost[threadIdx.x-3];
+            }
         }
     }
 }
@@ -1189,7 +1199,8 @@ template <typename T>
 __global__ void initNode2NetMap_kernel(PitchNestedVector<int> node2net_map, DetailedPlaceDB<T> db, const int num_nodes)
 {
     const int node_id = blockIdx.x * blockDim.x + threadIdx.x;
-    if(node_id >= num_nodes){
+    if(node_id >= num_nodes)
+    {
         return;
     }
     int num_elements = 0;
@@ -1292,7 +1303,7 @@ int compute_max_num_nodes_per_bin(const DetailedPlaceDB<T>& db)
 }
 
 template <typename T>
-int globalSwapCUDALauncher(DetailedPlaceDB<T> db, int batch_size, int max_iters)
+int globalSwapCUDALauncher(DetailedPlaceDB<T> db, int batch_size, int max_iters, int num_threads)
 {
     dreamplacePrint(kDEBUG, "bins %dx%d, bin sizes %gx%g, die size %g, %g, %g, %g\n", db.num_bins_x, db.num_bins_y, (float)db.bin_size_x, (float)db.bin_size_y, (float)db.xl, (float)db.yl, (float)db.xh, (float)db.yh);
     hr_clock_rep total_time_start, total_time_stop; 
@@ -1333,13 +1344,13 @@ int globalSwapCUDALauncher(DetailedPlaceDB<T> db, int batch_size, int max_iters)
     std::vector<T> host_y (db.num_nodes+2); 
     std::vector<T> host_node_size_x (db.num_nodes+2); 
     std::vector<T> host_node_size_y (db.num_nodes+2); 
-    host_x[db.num_nodes] = db.xl; 
+    host_x[db.num_nodes] = db.xl-1; 
     host_y[db.num_nodes] = db.yl; 
-    host_node_size_x[db.num_nodes] = 0; 
+    host_node_size_x[db.num_nodes] = 1; 
     host_node_size_y[db.num_nodes] = db.yh-db.yl; 
     host_x[db.num_nodes+1] = db.xh; 
     host_y[db.num_nodes+1] = db.yl; 
-    host_node_size_x[db.num_nodes+1] = 0; 
+    host_node_size_x[db.num_nodes+1] = 1; 
     host_node_size_y[db.num_nodes+1] = db.yh-db.yl; 
     checkCUDA(cudaMemcpy(host_x.data(), db.x, sizeof(T)*db.num_nodes, cudaMemcpyDeviceToHost));
     checkCUDA(cudaMemcpy(host_y.data(), db.y, sizeof(T)*db.num_nodes, cudaMemcpyDeviceToHost));
@@ -1351,12 +1362,12 @@ int globalSwapCUDALauncher(DetailedPlaceDB<T> db, int batch_size, int max_iters)
     std::vector<std::vector<int> > host_row2node_map (db.num_sites_y);
     std::vector<RowMapIndex> host_node2row_map (db.num_movable_nodes);
     std::vector<Space<T> > host_spaces (db.num_movable_nodes); 
-    db.make_row2node_map(host_x, host_y, host_node_size_x, host_node_size_y, host_row2node_map, host_node2row_map, host_spaces);
+    db.make_row2node_map_with_spaces(host_x.data(), host_y.data(), host_node_size_x.data(), host_node_size_y.data(), host_row2node_map, host_node2row_map, host_spaces, num_threads);
     // distribute movable cells to bins on host 
     // bin map is column-major 
     std::vector<std::vector<int> > host_bin2node_map(db.num_bins_x*db.num_bins_y); 
     std::vector<BinMapIndex> host_node2bin_map(db.num_movable_nodes); 
-    db.make_bin2node_map(host_x, host_y, host_node_size_x, host_node_size_y, host_bin2node_map, host_node2bin_map); 
+    db.make_bin2node_map(host_x.data(), host_y.data(), host_node_size_x.data(), host_node_size_y.data(), host_bin2node_map, host_node2bin_map); 
     
     
     // initialize SwapState 
@@ -1470,13 +1481,15 @@ int globalSwapCUDALauncher(DetailedPlaceDB<T> db, int batch_size, int max_iters)
     void instantiateGlobalSwapCUDALauncher(\
             DetailedPlaceDB<T> db, \
             int batch_size, \
-            int max_iters \
+            int max_iters, \
+            int num_threads \
             )\
     {\
         globalSwapCUDALauncher<T>(\
                 db, \
                 batch_size, \
-                max_iters \
+                max_iters, \
+                num_threads \
                 );\
     }
 

@@ -29,7 +29,7 @@ sys.path.pop()
 
 import pdb 
 
-def test_ispd2015(design, device_str):
+def test_ispd2005(design, device_str):
     print("run design %s" % (design))
     with gzip.open(design, "rb") as f:
         if sys.version_info[0] < 3: 
@@ -56,8 +56,9 @@ def test_ispd2015(design, device_str):
         num_bins_x = data_collections[17]
         num_bins_y = data_collections[18]
         num_movable_nodes = data_collections[19]
-        num_filler_nodes = data_collections[20]
-        pos = data_collections[21]
+        num_terminal_NIs = data_collections[20]
+        num_filler_nodes = data_collections[21]
+        pos = data_collections[22]
 
         #net_mask = net_mask_ignore_large_degrees
         net_mask = np.ones_like(net_mask_ignore_large_degrees)
@@ -75,7 +76,7 @@ def test_ispd2015(design, device_str):
 
         device = torch.device(device_str)
 
-        print("num_movable_nodes %d, num_nodes %d" % (num_movable_nodes, node_size_x.numel()-num_filler_nodes))
+        print("num_movable_nodes %d, num_nodes %d" % (num_movable_nodes, node_size_x.numel()-num_filler_nodes-num_terminal_NIs))
 
         # test cpu/cuda  
         custom = k_reorder.KReorder(
@@ -88,6 +89,7 @@ def test_ispd2015(design, device_str):
                     site_width=site_width, row_height=row_height, 
                     num_bins_x=num_bins_x, num_bins_y=num_bins_y, 
                     num_movable_nodes=num_movable_nodes, 
+                    num_terminal_NIs=num_terminal_NIs, 
                     num_filler_nodes=num_filler_nodes, 
                     K=4, 
                     max_iters=2, 
@@ -108,6 +110,7 @@ def test_ispd2015(design, device_str):
         #        site_width, row_height, 
         #        num_bins_x, num_bins_y, 
         #        num_movable_nodes, 
+        #        num_terminal_NIs, 
         #        num_filler_nodes, 
         #        result.cpu()
         #        ), f)
@@ -119,5 +122,5 @@ if __name__ == '__main__':
     else:
         design = sys.argv[1]
         device_str = sys.argv[2]
-        test_ispd2015(design, device_str)
+        test_ispd2005(design, device_str)
 

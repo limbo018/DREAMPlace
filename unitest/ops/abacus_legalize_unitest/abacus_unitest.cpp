@@ -18,7 +18,6 @@ void test_row()
     double row_height = 10; 
     int num_nodes = 6; 
     int num_movable_nodes = 5;
-    int num_filler_nodes = 0; 
 
     std::vector<int> row_nodes = {0, 1, 2, 3, 4, 5};
     std::vector<AbacusCluster<double> > clusters (6);
@@ -33,7 +32,6 @@ void test_row()
             xl, xh, 
             num_nodes, 
             num_movable_nodes, 
-            num_filler_nodes, 
             row_nodes.data(), clusters.data(), num_row_nodes
             );
 

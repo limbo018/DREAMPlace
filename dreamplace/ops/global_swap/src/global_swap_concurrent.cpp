@@ -128,6 +128,10 @@ Space<T> get_space(const DetailedPlaceDB<T>& db, const SwapState<T>& state, int 
         int right_node_id = row2nodes[row_id.sub_id+1];
         space.xh = std::min(space.xh, db.x[right_node_id]);
     }
+    // align space to sites 
+    T space_xl = db.align2site(space.xl);
+    space.xl = (space_xl < space.xl)? space_xl+db.site_width : space.xl;
+    space.xh = db.align2site(space.xh);
     return space; 
 }
 
@@ -319,22 +323,32 @@ void compute_candidate_cost(
             auto& cand = candidates[j];
             if (cand.node_id[0] < db.num_movable_nodes && cand.node_id[1] < db.num_movable_nodes)
             {
-                cand.cost = -compute_pair_hpwl_general(db, state, 
-                        cand.node_id[0], cand.node_xl[0][0], cand.node_yl[0][0], 
-                        cand.node_id[1], cand.node_xl[1][0], cand.node_yl[1][0], 
-                        std::numeric_limits<int>::max());
-                cand.cost -= compute_pair_hpwl_general(db, state, 
-                        cand.node_id[1], cand.node_xl[1][0], cand.node_yl[1][0], 
-                        cand.node_id[0], cand.node_xl[0][0], cand.node_yl[0][0], 
-                        cand.node_id[0]);
-                cand.cost += compute_pair_hpwl_general(db, state, 
-                        cand.node_id[0], cand.node_xl[0][1], cand.node_yl[0][1], 
-                        cand.node_id[1], cand.node_xl[1][1], cand.node_yl[1][1], 
-                        std::numeric_limits<int>::max());
-                cand.cost += compute_pair_hpwl_general(db, state, 
-                        cand.node_id[1], cand.node_xl[1][1], cand.node_yl[1][1], 
-                        cand.node_id[0], cand.node_xl[0][1], cand.node_yl[0][1], 
-                        cand.node_id[0]);
+                // consider FENCE region 
+                if (db.num_regions 
+                        && (!db.inside_fence(cand.node_id[0], cand.node_xl[0][1], cand.node_yl[0][1])
+                            || !db.inside_fence(cand.node_id[1], cand.node_xl[1][1], cand.node_yl[1][1])))
+                {
+                    cand.cost = std::numeric_limits<T>::max();
+                }
+                else 
+                {
+                    cand.cost = -compute_pair_hpwl_general(db, state, 
+                            cand.node_id[0], cand.node_xl[0][0], cand.node_yl[0][0], 
+                            cand.node_id[1], cand.node_xl[1][0], cand.node_yl[1][0], 
+                            std::numeric_limits<int>::max());
+                    cand.cost -= compute_pair_hpwl_general(db, state, 
+                            cand.node_id[1], cand.node_xl[1][0], cand.node_yl[1][0], 
+                            cand.node_id[0], cand.node_xl[0][0], cand.node_yl[0][0], 
+                            cand.node_id[0]);
+                    cand.cost += compute_pair_hpwl_general(db, state, 
+                            cand.node_id[0], cand.node_xl[0][1], cand.node_yl[0][1], 
+                            cand.node_id[1], cand.node_xl[1][1], cand.node_yl[1][1], 
+                            std::numeric_limits<int>::max());
+                    cand.cost += compute_pair_hpwl_general(db, state, 
+                            cand.node_id[1], cand.node_xl[1][1], cand.node_yl[1][1], 
+                            cand.node_id[0], cand.node_xl[0][1], cand.node_yl[0][1], 
+                            cand.node_id[0]);
+                }
             }
         }
     }
@@ -381,7 +395,10 @@ void mark_dependent_nodes(const DetailedPlaceDBType& db, IndependentSetMatchingS
             {
                 int net_pin_id = db.flat_net2pin_map[net2pin_id];
                 int other_node_id = db.pin2node_map[net_pin_id];
-                state.node_markers[other_node_id] = value; 
+                if (other_node_id < db.num_nodes) // other_node_id may exceed db.num_nodes like IO pins
+                {
+                    state.node_markers[other_node_id] = value; 
+                }
             }
         }
     }
@@ -420,7 +437,7 @@ void apply_candidates(
                 mark_dependent_nodes(db, state, best_cand.node_id[1], 1);
 
 #ifdef DEBUG
-              dreamplaceAssert(best_cand.node_id[0] < db.num_movable_nodes && best_cand.node_id[1] < db.num_movable_nodes);
+                dreamplaceAssert(best_cand.node_id[0] < db.num_movable_nodes && best_cand.node_id[1] < db.num_movable_nodes);
 #endif
 
                 BinMapIndex& bin_id = state.node2bin_map.at(best_cand.node_id[0]); 
@@ -584,7 +601,7 @@ int globalSwapCPULauncher(DetailedPlaceDB<T> db, int batch_size, int max_iters,
     // distribute cells to rows 
     state.row2node_map.resize(db.num_sites_y);
     state.node2row_map.resize(db.num_nodes);
-    db.make_row2node_map(db.x, db.y, state.row2node_map); 
+    db.make_row2node_map(db.x, db.y, state.row2node_map, num_threads); 
     for (int i = 0; i < db.num_sites_y; ++i)
     {
         for (unsigned int j = 0; j < state.row2node_map[i].size(); ++j)
@@ -652,6 +669,9 @@ at::Tensor global_swap_forward(
         at::Tensor init_pos,
         at::Tensor node_size_x,
         at::Tensor node_size_y,
+        at::Tensor flat_region_boxes, 
+        at::Tensor flat_region_boxes_start, 
+        at::Tensor node2fence_region_map, 
         at::Tensor flat_net2pin_map, 
         at::Tensor flat_net2pin_start_map, 
         at::Tensor pin2net_map, 
@@ -669,6 +689,7 @@ at::Tensor global_swap_forward(
         int num_bins_x, 
         int num_bins_y,
         int num_movable_nodes, 
+        int num_terminal_NIs, 
         int num_filler_nodes, 
         int batch_size, 
         int max_iters, 
@@ -687,6 +708,7 @@ at::Tensor global_swap_forward(
                     init_pos,
                     pos, 
                     node_size_x, node_size_y,
+                    flat_region_boxes, flat_region_boxes_start, node2fence_region_map, 
                     flat_net2pin_map, flat_net2pin_start_map, pin2net_map, 
                     flat_node2pin_map, flat_node2pin_start_map, pin2node_map, 
                     pin_offset_x, pin_offset_y, 
@@ -694,7 +716,7 @@ at::Tensor global_swap_forward(
                     xl, yl, xh, yh, 
                     site_width, row_height, 
                     num_bins_x, num_bins_y,
-                    num_movable_nodes, num_filler_nodes
+                    num_movable_nodes, num_terminal_NIs, num_filler_nodes
                     );
             globalSwapCPULauncher(db, batch_size, max_iters, num_threads);
             });

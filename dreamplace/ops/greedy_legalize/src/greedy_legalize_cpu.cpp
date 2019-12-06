@@ -25,8 +25,7 @@ int greedyLegalizationCPU(
         const T site_width, const T row_height, 
         int num_bins_x, int num_bins_y, 
         const int num_nodes, 
-        const int num_movable_nodes, 
-        const int num_filler_nodes
+        const int num_movable_nodes
         )
 {
     float milliseconds = 0; 
@@ -63,7 +62,7 @@ int greedyLegalizationCPU(
                 bin_size_x, bin_size_y, 
                 xl, yl, xh, yh, 
                 num_bins_x, num_bins_y, 
-                num_nodes, num_movable_nodes, num_filler_nodes, 
+                num_nodes, num_movable_nodes, 
                 bin_cells
                 );
 
@@ -79,7 +78,7 @@ int greedyLegalizationCPU(
                 bin_size_x, bin_size_y, 
                 xl, yl, xh, yh, 
                 num_bins_x, num_bins_y, 
-                num_nodes, num_movable_nodes, num_filler_nodes, 
+                num_nodes, num_movable_nodes, 
                 bin_fixed_cells
                 ); 
 
@@ -201,16 +200,6 @@ int greedyLegalizationCPU(
         }
     }
 
-    legalityCheckKernelCPU(
-            init_x, init_y, 
-            node_size_x, node_size_y, 
-            x, y, 
-            site_width, row_height, 
-            xl, yl, xh, yh, 
-            num_nodes - num_filler_nodes, 
-            num_movable_nodes
-            );
-
     return 0; 
 }
 
@@ -223,8 +212,7 @@ int instantiateGreedyLegalizationCPU(
         const float site_width, const float row_height, 
         int num_bins_x, int num_bins_y, 
         const int num_nodes, 
-        const int num_movable_nodes, 
-        const int num_filler_nodes
+        const int num_movable_nodes
         )
 {
     return greedyLegalizationCPU(
@@ -236,8 +224,7 @@ int instantiateGreedyLegalizationCPU(
             site_width, row_height, 
             num_bins_x, num_bins_y, 
             num_nodes, 
-            num_movable_nodes, 
-            num_filler_nodes
+            num_movable_nodes
             );
 }
 
@@ -250,8 +237,7 @@ int instantiateGreedyLegalizationCPU(
         const double site_width, const double row_height, 
         int num_bins_x, int num_bins_y, 
         const int num_nodes, 
-        const int num_movable_nodes, 
-        const int num_filler_nodes
+        const int num_movable_nodes
         )
 {
     return greedyLegalizationCPU(
@@ -263,8 +249,7 @@ int instantiateGreedyLegalizationCPU(
             site_width, row_height, 
             num_bins_x, num_bins_y, 
             num_nodes, 
-            num_movable_nodes, 
-            num_filler_nodes
+            num_movable_nodes
             );
 }
 

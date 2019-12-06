@@ -43,7 +43,10 @@ __device__ void mark_dependent_nodes(const DetailedPlaceDBType& db, IndependentS
                 if (distance < state.skip_threshold)
                 {
 #endif
-                    state.dependent_markers[other_node_id] = value; 
+                    if (other_node_id < db.num_nodes) // other_node_id may exceed db.num_nodes like IO pins
+                    {
+                        state.dependent_markers[other_node_id] = value; 
+                    }
 #ifdef SOFT_DEPENDENCY
                 }
 #endif

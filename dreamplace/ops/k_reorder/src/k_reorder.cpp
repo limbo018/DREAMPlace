@@ -85,29 +85,13 @@ void compute_position(const DetailedPlaceDB<T>& db, KReorderState<T>& state, int
     for (int i = 0; i < K; ++i)
     {
         int node_id = row2nodes[i];
+        dreamplaceAssert(node_id < db.num_movable_nodes);
         target_sizes[permutation.at(i)] = state.node_space_x[node_id];
     }
     for (int i = 1; i < K; ++i)
     {
         target_x[i] = target_x[i-1] + target_sizes[i-1];
     }
-
-#ifdef DEBUG 
-    for (int i = 0; i < K; ++i)
-    {
-        int node_id = row2nodes[i];
-        if (node_id == 123651 || node_id == 123493 || node_id == 123652)
-        {
-            dreamplacePrint(kNONE, "[%d, %d]\n", idx_bgn, idx_end);
-            for (int j = 0; j < K; ++j)
-            {
-                int node = row2nodes[j];
-                dreamplacePrint(kNONE, "node[%d] = %g, size %g, got size %g\n", node, target_x[j], state.node_space_x[node], target_sizes[j]); 
-            }
-            break; 
-        }
-    }
-#endif
 }
 
 template <typename T>
@@ -134,8 +118,26 @@ T compute_reorder_hpwl(const DetailedPlaceDB<T>& db, KReorderState<T>& state, in
 
     compute_position(db, state, row_id, idx_bgn, idx_end, permute_id);
 
+
     int tid = omp_get_thread_num(); 
     auto& target_x = state.target_x[tid]; 
+
+    // consider FENCE region 
+    if (db.num_regions)
+    {
+        for (int i = idx_bgn; i < idx_end; ++i)
+        {
+            int node_id = row2nodes.at(i);
+            int permuted_offset = permutation.at(i - idx_bgn);
+            T node_xl = target_x.at(permuted_offset);
+            T node_yl = db.y[node_id];
+            if (!db.inside_fence(node_id, node_xl, node_yl))
+            {
+                return std::numeric_limits<T>::max();
+            }
+        }
+    }
+
     T cost = 0; 
     for (int i = idx_bgn; i < idx_end; ++i)
     {
@@ -226,32 +228,6 @@ void apply_reorder(DetailedPlaceDB<T>& db, KReorderState<T>& state, int row_id, 
     }
 }
 
-/// @brief mark a node and as first level connected nodes as dependent 
-/// only nodes with the same sizes are marked 
-template <typename DetailedPlaceDBType, typename StateType>
-void mark_dependent_nodes(const DetailedPlaceDBType& db, StateType& state, int node_id, unsigned char value)
-{
-    // in case all nets are masked 
-    int node2pin_start = db.flat_node2pin_start_map[node_id];
-    int node2pin_end = db.flat_node2pin_start_map[node_id+1];
-    for (int node2pin_id = node2pin_start; node2pin_id < node2pin_end; ++node2pin_id)
-    {
-        int node_pin_id = db.flat_node2pin_map[node2pin_id];
-        int net_id = db.pin2net_map[node_pin_id];
-        if (db.net_mask[net_id])
-        {
-            int net2pin_start = db.flat_net2pin_start_map[net_id];
-            int net2pin_end = db.flat_net2pin_start_map[net_id+1];
-            for (int net2pin_id = net2pin_start; net2pin_id < net2pin_end; ++net2pin_id)
-            {
-                int net_pin_id = db.flat_net2pin_map[net2pin_id];
-                int other_node_id = db.pin2node_map[net_pin_id];
-                state.dependent_markers[other_node_id] = value; 
-            }
-        }
-    }
-}
-
 /// @brief global swap algorithm for detailed placement 
 template <typename T>
 int kreorderCPULauncher(DetailedPlaceDB<T>& db, int K, int max_iters, int
@@ -280,23 +256,30 @@ int kreorderCPULauncher(DetailedPlaceDB<T>& db, int K, int max_iters, int
     //state.node2row_map.resize(db.num_nodes);
 
     // distribute cells to rows 
-    db.make_row2node_map(db.x, db.y, state.row2node_map); 
+    db.make_row2node_map(db.x, db.y, state.row2node_map, state.num_threads); 
 
-    state.node_space_x.resize(db.num_nodes);
+    state.node_space_x.resize(db.num_movable_nodes);
     for (int i = 0; i < db.num_sites_y; ++i)
     {
         for (unsigned int j = 0; j < state.row2node_map.at(i).size(); ++j)
         {
             int node_id = state.row2node_map[i][j];
-            auto& space = state.node_space_x[node_id];
-            T space_xl = db.x[node_id]; 
-            T space_xh = db.xh; 
-            if (j+1 < state.row2node_map[i].size())
+            if (node_id < db.num_movable_nodes)
             {
-                int right_node_id = state.row2node_map[i][j+1];
-                space_xh = std::min(space_xh, db.x[right_node_id]);
+                auto& space = state.node_space_x[node_id];
+                T space_xl = db.x[node_id]; 
+                T space_xh = db.xh; 
+                if (j+1 < state.row2node_map[i].size())
+                {
+                    int right_node_id = state.row2node_map[i][j+1];
+                    space_xh = std::min(space_xh, db.x[right_node_id]);
+                }
+                space = space_xh-space_xl;
+                // align space to sites, as I assume space_xl aligns to sites 
+                // I also assume node width should be integral numbers of sites 
+                space = floor(space / db.site_width) * db.site_width; 
+                dreamplaceAssertMsg(space >= db.node_size_x[node_id], "space %g, node_size_x[%d] %g, original space (%g, %g), site_width %g", space, node_id, db.node_size_x[node_id], space_xl, space_xh, db.site_width); 
             }
-            space = space_xh-space_xl;
 #ifdef DEBUG
             if (node_id < db.num_movable_nodes)
             {
@@ -447,6 +430,9 @@ at::Tensor k_reorder_forward(
         at::Tensor init_pos,
         at::Tensor node_size_x,
         at::Tensor node_size_y,
+        at::Tensor flat_region_boxes, 
+        at::Tensor flat_region_boxes_start, 
+        at::Tensor node2fence_region_map, 
         at::Tensor flat_net2pin_map, 
         at::Tensor flat_net2pin_start_map, 
         at::Tensor pin2net_map, 
@@ -464,6 +450,7 @@ at::Tensor k_reorder_forward(
         int num_bins_x, 
         int num_bins_y,
         int num_movable_nodes, 
+        int num_terminal_NIs, 
         int num_filler_nodes, 
         int K, 
         int max_iters, 
@@ -485,6 +472,7 @@ at::Tensor k_reorder_forward(
                     init_pos,
                     pos, 
                     node_size_x, node_size_y,
+                    flat_region_boxes, flat_region_boxes_start, node2fence_region_map, 
                     flat_net2pin_map, flat_net2pin_start_map, pin2net_map, 
                     flat_node2pin_map, flat_node2pin_start_map, pin2node_map, 
                     pin_offset_x, pin_offset_y, 
@@ -492,7 +480,7 @@ at::Tensor k_reorder_forward(
                     xl, yl, xh, yh, 
                     site_width, row_height, 
                     num_bins_x, num_bins_y,
-                    num_movable_nodes, num_filler_nodes
+                    num_movable_nodes, num_terminal_NIs, num_filler_nodes
                     );
             kreorderCPULauncher(db, K, max_iters, num_threads);
             });

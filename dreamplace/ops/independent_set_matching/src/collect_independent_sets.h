@@ -22,8 +22,8 @@ int partitioning_diamond(const DetailedPlaceDBType& db, IndependentSetMatchingSt
     int num_independent_sets = 0; 
     for (int i = 0; i < db.num_movable_nodes; ++i)
     {
-        int seed_node = state.ordered_nodes[i];
-        if (state.selected_markers[seed_node])
+        int seed_node = state.ordered_nodes.at(i);
+        if (state.selected_markers.at(seed_node))
         {
             typename DetailedPlaceDBType::type seed_height = db.node_size_y[seed_node];
             auto const& seed_bin = state.node2bin_map.at(seed_node);
@@ -38,8 +38,8 @@ int partitioning_diamond(const DetailedPlaceDBType& db, IndependentSetMatchingSt
             for (int j = 0; j < state.max_diamond_search_sequence; ++j)
             {
                 // get bin (bx, by)
-                int bx = seed_bin_x+state.search_grids[j].ic; 
-                int by = seed_bin_y+state.search_grids[j].ir; 
+                int bx = seed_bin_x+state.search_grids.at(j).ic; 
+                int by = seed_bin_y+state.search_grids.at(j).ir; 
                 if (bx < 0 || bx >= num_bins_x || by < 0 || by >= num_bins_y)
                 {
                     continue;
@@ -55,10 +55,10 @@ int partitioning_diamond(const DetailedPlaceDBType& db, IndependentSetMatchingSt
 #ifdef DEBUG
                     dreamplaceAssert(db.node_size_x[node_id] == db.node_size_x[seed_node]);
 #endif 
-                    if (db.node_size_y[node_id] == seed_height && state.selected_markers[node_id])
+                    if (db.node_size_y[node_id] == seed_height && state.selected_markers.at(node_id))
                     {
                         independent_set.push_back(node_id);
-                        state.selected_markers[node_id] = 0; 
+                        state.selected_markers.at(node_id) = 0; 
                         if (independent_set.size() >= (unsigned int)state.set_size)
                         {
                             break; 
@@ -559,7 +559,7 @@ int collect_independent_sets(const DetailedPlaceDBType& db, IndependentSetMatchi
     {
         if (i >= state.batch_size || state.independent_sets.at(i).size() < 3U)
         {
-            state.independent_sets[i].clear(); 
+            state.independent_sets.at(i).clear(); 
         }
         else 
         {
@@ -593,8 +593,8 @@ int collect_independent_sets(const DetailedPlaceDBType& db, IndependentSetMatchi
     int max_set_size = 0; 
     for (int i = 0; i < num_independent_sets; ++i)
     {
-        avg_set_size += state.independent_sets[i].size();
-        max_set_size = std::max(max_set_size, (int)state.independent_sets[i].size());
+        avg_set_size += state.independent_sets.at(i).size();
+        max_set_size = std::max(max_set_size, (int)state.independent_sets.at(i).size());
     }
     dreamplacePrint(kDEBUG, "%d sets, average set size %d, max set size %d\n", 
             num_independent_sets, avg_set_size/num_independent_sets, max_set_size);
@@ -603,7 +603,7 @@ int collect_independent_sets(const DetailedPlaceDBType& db, IndependentSetMatchi
     dreamplacePrint(kDEBUG, "#sizes = %lu, actual %d\n", size2id_map.size(), num_independent_sets);
     for (int i = 0; i < num_independent_sets; ++i)
     {
-        auto const& independent_set = state.independent_sets[i];
+        auto const& independent_set = state.independent_sets.at(i);
         dreamplacePrint(kNONE, "%lu ", independent_set.size());
         typename DetailedPlaceDBType::type width = 0; 
         for (auto node_id : independent_set)

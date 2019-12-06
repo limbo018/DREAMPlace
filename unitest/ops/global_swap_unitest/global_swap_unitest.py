@@ -197,8 +197,9 @@ class GlobalSwapOpTest(unittest.TestCase):
         xh = 5.0
         yh = 5.0
         num_terminals = 0 
+        num_terminal_NIs = 0 
         num_filler_nodes = 0
-        num_movable_nodes = len(xx)-num_terminals-num_filler_nodes
+        num_movable_nodes = len(xx)-num_terminals-num_terminal_NIs-num_filler_nodes
         site_width = 1 
         row_height = 2 
         num_bins_x = 2
@@ -215,7 +216,7 @@ class GlobalSwapOpTest(unittest.TestCase):
                 node_size_x, node_size_y, 
                 xl, yl, xh, yh, 
                 num_bins_x, num_bins_y, 
-                num_movable_nodes+num_terminals+num_filler_nodes, num_movable_nodes, num_movable_nodes+num_terminals, num_filler_nodes)
+                num_movable_nodes+num_terminals+num_terminal_NIs+num_filler_nodes, num_movable_nodes, num_movable_nodes+num_terminals+num_terminal_NIs, num_filler_nodes)
 
         # test cpu 
         custom = global_swap.GlobalSwap(
@@ -228,6 +229,7 @@ class GlobalSwapOpTest(unittest.TestCase):
                     site_width=site_width, row_height=row_height, 
                     num_bins_x=num_bins_x, num_bins_y=num_bins_y, 
                     num_movable_nodes=num_movable_nodes, 
+                    num_terminal_NIs=num_terminal_NIs, 
                     num_filler_nodes=num_filler_nodes, 
                     batch_size=batch_size
                     )
@@ -244,7 +246,7 @@ class GlobalSwapOpTest(unittest.TestCase):
                 node_size_x, node_size_y, 
                 xl, yl, xh, yh, 
                 num_bins_x, num_bins_y, 
-                num_movable_nodes+num_terminals+num_filler_nodes, num_movable_nodes, num_movable_nodes+num_terminals, num_filler_nodes)
+                num_movable_nodes+num_terminals+num_terminal_NIs+num_filler_nodes, num_movable_nodes, num_movable_nodes+num_terminals+num_terminal_NIs, num_filler_nodes)
 
         # test cuda 
         custom_cuda = global_swap.GlobalSwap(
@@ -257,6 +259,7 @@ class GlobalSwapOpTest(unittest.TestCase):
                     site_width=site_width, row_height=row_height, 
                     num_bins_x=num_bins_x, num_bins_y=num_bins_y, 
                     num_movable_nodes=num_movable_nodes, 
+                    num_terminal_NIs=num_terminal_NIs, 
                     num_filler_nodes=num_filler_nodes, 
                     batch_size=batch_size
                     )
@@ -267,7 +270,7 @@ class GlobalSwapOpTest(unittest.TestCase):
 
         #np.testing.assert_allclose(result, result_cuda.data.cpu())
 
-def test_ispd2015(design, algorithm, device_str):
+def test_ispd2005(design, algorithm, device_str):
     with gzip.open(design, "rb") as f:
         if sys.version_info[0] < 3: 
             data_collections = pickle.load(f)
@@ -365,4 +368,4 @@ if __name__ == '__main__':
         design = sys.argv[1]
         algorithm = sys.argv[2]
         device_str = sys.argv[3]
-        test_ispd2015(design, algorithm, device_str)
+        test_ispd2005(design, algorithm, device_str)

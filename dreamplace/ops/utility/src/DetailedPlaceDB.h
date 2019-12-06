@@ -43,6 +43,9 @@ struct DetailedPlaceDB
     const T* init_y; 
     const T* node_size_x; 
     const T* node_size_y; 
+    const T* flat_region_boxes; ///< number of boxes x 4
+    const int* flat_region_boxes_start; ///< number of regions + 1 
+    const int* node2fence_region_map; ///< length of number of movable cells 
     T* x; 
     T* y; 
     const int* flat_net2pin_map; 
@@ -70,6 +73,7 @@ struct DetailedPlaceDB
     int num_movable_nodes; 
     int num_nets;
     int num_pins; 
+    int num_regions; ///< number of regions for flat_region_boxes and flat_region_boxes_start
 
     inline int pos2site_x(T xx) const 
     {
@@ -231,7 +235,7 @@ struct DetailedPlaceDB
         return total_hpwl; 
     }
     /// @brief distribute cells to rows 
-    void make_row2node_map(const T* vx, const T* vy, std::vector<std::vector<int> >& row2node_map) const 
+    void make_row2node_map(const T* vx, const T* vy, std::vector<std::vector<int> >& row2node_map, int num_threads) const 
     {
         // distribute cells to rows 
         for (int i = 0; i < num_nodes; ++i)
@@ -259,15 +263,65 @@ struct DetailedPlaceDB
         }
 
         // sort cells within rows 
+        // it is safer to sort by center 
+        // sometimes there might be cells with 0 sizes 
+#ifdef _OPENMP
+#pragma omp parallel for num_threads (num_threads) schedule(dynamic, 1)
+#endif
         for (int i = 0; i < num_sites_y; ++i)
         {
-          // it is safer to sort by center 
-          // sometimes there might be cells with 0 sizes 
-            std::sort(row2node_map[i].begin(), row2node_map[i].end(), 
-                    [&] (int node_id1, int node_id2) {return
-                    vx[node_id1]+node_size_x[node_id1]/2 <
-                    vx[node_id2]+node_size_x[node_id2]/2;}
-                    );
+            auto& row2nodes = row2node_map[i];
+            // sort cells within rows according to left edges 
+            std::sort(row2nodes.begin(), row2nodes.end(), 
+                    [&] (int node_id1, int node_id2) {
+                    T x1 = vx[node_id1];
+                    T x2 = vx[node_id2];
+                    return x1 < x2 || (x1 == x2 && node_id1 < node_id2);
+                    });
+            // After sorting by left edge, 
+            // there is a special case for fixed cells where 
+            // one fixed cell is completely within another in a row. 
+            // This will cause failure to detect some overlaps. 
+            // We need to remove the "small" fixed cell that is inside another. 
+            if (!row2nodes.empty())
+            {
+                std::vector<int> tmp_nodes; 
+                tmp_nodes.reserve(row2nodes.size());
+                tmp_nodes.push_back(row2nodes.front()); 
+                for (int j = 1, je = row2nodes.size(); j < je; ++j)
+                {
+                    int node_id1 = row2nodes.at(j-1);
+                    int node_id2 = row2nodes.at(j);
+                    // two fixed cells 
+                    if (node_id1 >= num_movable_nodes && node_id2 >= num_movable_nodes)
+                    {
+                        T xl1 = vx[node_id1]; 
+                        T xl2 = vx[node_id2];
+                        T width1 = node_size_x[node_id1]; 
+                        T width2 = node_size_x[node_id2]; 
+                        T xh1 = xl1 + width1; 
+                        T xh2 = xl2 + width2; 
+                        // only collect node_id2 if its right edge is righter than node_id1 
+                        if (xh1 < xh2)
+                        {
+                            tmp_nodes.push_back(node_id2);
+                        }
+                    }
+                    else 
+                    {
+                        tmp_nodes.push_back(node_id2);
+                    }
+                }
+                row2nodes.swap(tmp_nodes);
+
+                // sort according to center 
+                std::sort(row2nodes.begin(), row2nodes.end(), 
+                        [&] (int node_id1, int node_id2) {
+                        T x1 = vx[node_id1] + node_size_x[node_id1]/2;
+                        T x2 = vx[node_id2] + node_size_x[node_id2]/2;
+                        return x1 < x2 || (x1 == x2 && node_id1 < node_id2);
+                        });
+            }
         }
     }
     /// @brief distribute movable cells to bins 
@@ -314,12 +368,54 @@ struct DetailedPlaceDB
         return legalityCheckKernelCPU(
                 init_x, init_y, 
                 node_size_x, node_size_y, 
+                flat_region_boxes, flat_region_boxes_start, node2fence_region_map, 
                 x, y, 
                 site_width, row_height, 
                 xl, yl, xh, yh,
                 num_nodes, 
-                num_movable_nodes
+                num_movable_nodes, 
+                num_regions
                 );
+    }
+    /// @brief check whether a cell is within its fence region 
+    bool inside_fence(int node_id, T xx, T yy) const 
+    {
+        T node_xl = xx; 
+        T node_yl = yy;
+        T node_xh = node_xl + node_size_x[node_id];
+        T node_yh = node_yl + node_size_y[node_id];
+
+        bool legal_flag = true; 
+        int region_id = node2fence_region_map[node_id]; 
+        if (region_id < num_regions)
+        {
+            int box_bgn = flat_region_boxes_start[region_id];
+            int box_end = flat_region_boxes_start[region_id + 1];
+            T node_area = (node_xh - node_xl) * (node_yh - node_yl);
+            // I assume there is no overlap between boxes of a region 
+            // otherwise, preprocessing is required 
+            for (int box_id = box_bgn; box_id < box_end; ++box_id)
+            {
+                int box_offset = box_id*4; 
+                T box_xl = flat_region_boxes[box_offset];
+                T box_yl = flat_region_boxes[box_offset + 1];
+                T box_xh = flat_region_boxes[box_offset + 2];
+                T box_yh = flat_region_boxes[box_offset + 3];
+
+                T dx = std::max(std::min(node_xh, box_xh) - std::max(node_xl, box_xl), (T)0); 
+                T dy = std::max(std::min(node_yh, box_yh) - std::max(node_yl, box_yl), (T)0); 
+                T overlap = dx*dy; 
+                if (overlap > 0)
+                {
+                    node_area -= overlap; 
+                }
+            }
+            if (node_area > 0) // not consumed by boxes within a region 
+            {
+                legal_flag = false; 
+            }
+        }
+        return legal_flag; 
     }
     /// @brief draw placement 
     void draw_place(const char* filename) const 

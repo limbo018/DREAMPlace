@@ -62,26 +62,35 @@ void cost_matrix_construction(const DetailedPlaceDBType& db, IndependentSetMatch
             int pos_id = independent_set[j]; 
             T target_x = db.x[pos_id]; 
             T target_y = db.y[pos_id]; 
-            auto const& target_space = state.spaces[pos_id];
             T target_hpwl = 0; 
+
+            auto const& target_space = state.spaces[pos_id];
             if (adjust_pos(target_x, node_width, target_space))
             {
-                adjust_pos(target_x, db.node_size_x[pos_id], target_space);
-                idx = 0; 
-                for (int node2pin_id = db.flat_node2pin_start_map[node_id]; node2pin_id < db.flat_node2pin_start_map[node_id+1]; ++node2pin_id, ++idx)
+                //adjust_pos(target_x, db.node_size_x[pos_id], target_space);
+                // consider FENCE region 
+                if (db.num_regions && !db.inside_fence(node_id, target_x, target_y))
                 {
-                    int node_pin_id = db.flat_node2pin_map[node2pin_id];
-                    int net_id = db.pin2net_map[node_pin_id];
-                    const Box<T>& box = bboxes[idx];
-                    if (db.net_mask[net_id])
+                    target_hpwl = state.large_number; 
+                }
+                else 
+                {
+                    idx = 0; 
+                    for (int node2pin_id = db.flat_node2pin_start_map[node_id]; node2pin_id < db.flat_node2pin_start_map[node_id+1]; ++node2pin_id, ++idx)
                     {
-                        T xxl = target_x;
-                        T yyl = target_y;
-                        T bxl = std::min(box.xl, xxl+db.pin_offset_x[node_pin_id]);
-                        T bxh = std::max(box.xh, xxl+db.pin_offset_x[node_pin_id]);
-                        T byl = std::min(box.yl, yyl+db.pin_offset_y[node_pin_id]);
-                        T byh = std::max(box.yh, yyl+db.pin_offset_y[node_pin_id]);
-                        target_hpwl += (bxh-bxl) + (byh-byl); 
+                        int node_pin_id = db.flat_node2pin_map[node2pin_id];
+                        int net_id = db.pin2net_map[node_pin_id];
+                        const Box<T>& box = bboxes[idx];
+                        if (db.net_mask[net_id])
+                        {
+                            T xxl = target_x;
+                            T yyl = target_y;
+                            T bxl = std::min(box.xl, xxl+db.pin_offset_x[node_pin_id]);
+                            T bxh = std::max(box.xh, xxl+db.pin_offset_x[node_pin_id]);
+                            T byl = std::min(box.yl, yyl+db.pin_offset_y[node_pin_id]);
+                            T byh = std::max(box.yh, yyl+db.pin_offset_y[node_pin_id]);
+                            target_hpwl += (bxh-bxl) + (byh-byl); 
+                        }
                     }
                 }
             }
@@ -90,6 +99,7 @@ void cost_matrix_construction(const DetailedPlaceDBType& db, IndependentSetMatch
                 //dreamplaceAssertMsg(node_id != pos_id, "node %d, pos %d", node_id, pos_id);
                 target_hpwl = state.large_number; 
             }
+
             if (!major) // row major 
             {
                 cost_matrix[independent_set.size()*k + j] = target_hpwl; 

@@ -33,13 +33,17 @@ DREAMPLACE_BEGIN_NAMESPACE
 /// @param num_bins_y number of bins in vertical direction 
 /// @param num_nodes total number of nodes, including movable nodes, fixed nodes, and filler nodes; fixed nodes are in the range of [num_movable_nodes, num_nodes-num_filler_nodes)
 /// @param num_movable_nodes number of movable nodes, movable nodes are in the range of [0, num_movable_nodes)
-/// @param number of filler nodes, filler nodes are in the range of [num_nodes-num_filler_nodes, num_nodes)
+/// @param num_terminal_NIs number of terminal_NIs, essential fixed IO pins, in the range of [num_movable_nodes+num_terminal, num_nodes-num_filler_nodes)
+/// @param num_filler_nodes number of filler nodes, filler nodes are in the range of [num_nodes-num_filler_nodes, num_nodes)
 template <typename T>
 DetailedPlaceDB<T> make_placedb(
         at::Tensor init_pos,
         at::Tensor pos, 
         at::Tensor node_size_x,
         at::Tensor node_size_y,
+        at::Tensor flat_region_boxes, 
+        at::Tensor flat_region_boxes_start, 
+        at::Tensor node2fence_region_map, 
         at::Tensor flat_net2pin_map, 
         at::Tensor flat_net2pin_start_map, 
         at::Tensor pin2net_map, 
@@ -57,6 +61,7 @@ DetailedPlaceDB<T> make_placedb(
         int num_bins_x, 
         int num_bins_y,
         int num_movable_nodes, 
+        int num_terminal_NIs, 
         int num_filler_nodes
         )
 {
@@ -67,6 +72,9 @@ DetailedPlaceDB<T> make_placedb(
     db.init_y = init_pos.data<T>()+num_nodes; 
     db.node_size_x = node_size_x.data<T>(); 
     db.node_size_y = node_size_y.data<T>(); 
+    db.flat_region_boxes = flat_region_boxes.data<T>();
+    db.flat_region_boxes_start = flat_region_boxes_start.data<int>();
+    db.node2fence_region_map = node2fence_region_map.data<int>();
     db.x = pos.data<T>(); 
     db.y = pos.data<T>()+num_nodes; 
     db.flat_net2pin_map = flat_net2pin_map.data<int>(); 
@@ -90,10 +98,11 @@ DetailedPlaceDB<T> make_placedb(
     db.num_bins_y = num_bins_y; 
     db.num_sites_x = (xh-xl)/site_width; 
     db.num_sites_y = (yh-yl)/row_height; 
-    db.num_nodes = num_nodes-num_filler_nodes; 
+    db.num_nodes = num_nodes - num_filler_nodes - num_terminal_NIs; 
     db.num_movable_nodes = num_movable_nodes; 
     db.num_nets = flat_net2pin_start_map.numel()-1;
     db.num_pins = pin2net_map.numel();
+    db.num_regions = flat_region_boxes_start.numel()-1;
 
     return db; 
 }

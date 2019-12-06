@@ -38,7 +38,10 @@ void mark_dependent_nodes(const DetailedPlaceDBType& db, IndependentSetMatchingS
                 if (std::abs(node_xl-other_node_xl) + std::abs(node_yl-other_node_yl) < state.skip_threshold)
                 {
 #endif
-                    state.dependent_markers[other_node_id] = value; 
+                    if (other_node_id < db.num_nodes) // other_node_id may exceed db.num_nodes like IO pins
+                    {
+                        state.dependent_markers[other_node_id] = value; 
+                    }
 #ifdef SOFT_DEPENDENCY
                 }
 #endif

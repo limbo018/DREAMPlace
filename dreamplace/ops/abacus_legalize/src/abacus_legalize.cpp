@@ -58,6 +58,9 @@ at::Tensor abacus_legalization_forward(
         at::Tensor pos, 
         at::Tensor node_size_x,
         at::Tensor node_size_y,
+        at::Tensor flat_region_boxes, 
+        at::Tensor flat_region_boxes_start, 
+        at::Tensor node2fence_region_map, 
         double xl, 
         double yl, 
         double xh, 
@@ -66,6 +69,7 @@ at::Tensor abacus_legalization_forward(
         int num_bins_x, 
         int num_bins_y,
         int num_movable_nodes, 
+        int num_terminal_NIs, 
         int num_filler_nodes
         )
 {
@@ -84,11 +88,13 @@ at::Tensor abacus_legalization_forward(
                     pos_copy, 
                     node_size_x, 
                     node_size_y, 
+                    flat_region_boxes, flat_region_boxes_start, node2fence_region_map, 
                     xl, yl, xh, yh, 
                     site_width, row_height, 
                     num_bins_x, 
                     num_bins_y, 
                     num_movable_nodes, 
+                    num_terminal_NIs, 
                     num_filler_nodes
                     );
             abacusLegalizationLauncher<scalar_t>(db);
@@ -110,19 +116,10 @@ int abacusLegalizationLauncher(LegalizationDB<T> db)
             db.site_width, db.row_height, 
             1, db.num_bins_y, 
             db.num_nodes, 
-            db.num_movable_nodes, 
-            0
+            db.num_movable_nodes 
             );
 
-    legalityCheckKernelCPU(
-            db.init_x, db.init_y, 
-            db.node_size_x, db.node_size_y, 
-            db.x, db.y, 
-            db.site_width, db.row_height, 
-            db.xl, db.yl, db.xh, db.yh, 
-            db.num_nodes, 
-            db.num_movable_nodes
-            );
+    db.check_legality();
 
     return 0; 
 }

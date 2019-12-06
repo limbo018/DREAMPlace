@@ -33,7 +33,6 @@ void macroLegalizationLauncher(LegalizationDB<T> db);
 /// @param num_bins_y number of bins in vertical direction 
 /// @param num_nodes total number of nodes, including movable nodes, fixed nodes, and filler nodes; fixed nodes are in the range of [num_movable_nodes, num_nodes-num_filler_nodes)
 /// @param num_movable_nodes number of movable nodes, movable nodes are in the range of [0, num_movable_nodes)
-/// @param number of filler nodes, filler nodes are in the range of [num_nodes-num_filler_nodes, num_nodes)
 template <typename T>
 int macroLegalizationLauncher(
         const T* init_x, const T* init_y, 
@@ -43,8 +42,7 @@ int macroLegalizationLauncher(
         const T site_width, const T row_height, 
         int num_bins_x, int num_bins_y, 
         const int num_nodes, 
-        const int num_movable_nodes, 
-        const int num_filler_nodes 
+        const int num_movable_nodes
         )
 {
     macroLegalizationCPU(
@@ -55,8 +53,7 @@ int macroLegalizationLauncher(
             site_width, row_height, 
             num_bins_x, num_bins_y, 
             num_nodes, 
-            num_movable_nodes, 
-            num_filler_nodes
+            num_movable_nodes
             );
     return 0; 
 }
@@ -87,6 +84,9 @@ at::Tensor macro_legalization_forward(
         at::Tensor pos, 
         at::Tensor node_size_x,
         at::Tensor node_size_y,
+        at::Tensor flat_region_boxes, 
+        at::Tensor flat_region_boxes_start, 
+        at::Tensor node2fence_region_map, 
         double xl, 
         double yl, 
         double xh, 
@@ -95,6 +95,7 @@ at::Tensor macro_legalization_forward(
         int num_bins_x, 
         int num_bins_y,
         int num_movable_nodes, 
+        int num_terminal_NIs, 
         int num_filler_nodes
         )
 {
@@ -113,11 +114,13 @@ at::Tensor macro_legalization_forward(
                     pos_copy, 
                     node_size_x, 
                     node_size_y, 
+                    flat_region_boxes, flat_region_boxes_start, node2fence_region_map, 
                     xl, yl, xh, yh, 
                     site_width, row_height, 
                     num_bins_x, 
                     num_bins_y, 
                     num_movable_nodes, 
+                    num_terminal_NIs, 
                     num_filler_nodes
                     );
             macroLegalizationLauncher<scalar_t>(db);

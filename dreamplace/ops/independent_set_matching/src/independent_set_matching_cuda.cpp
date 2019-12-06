@@ -17,7 +17,7 @@ DREAMPLACE_BEGIN_NAMESPACE
 
 /// @brief independent set matching algorithm for detailed placement 
 template <typename T>
-int independentSetMatchingCUDALauncher(DetailedPlaceDB<T> db, int batch_size, int set_size, int max_iters);
+int independentSetMatchingCUDALauncher(DetailedPlaceDB<T> db, int batch_size, int set_size, int max_iters, int num_threads);
 
 #define CHECK_FLAT(x) AT_ASSERTM(x.is_cuda() && x.ndimension() == 1, #x "must be a flat tensor on CPU")
 #define CHECK_EVEN(x) AT_ASSERTM((x.numel()&1) == 0, #x "must have even number of elements")
@@ -40,6 +40,9 @@ at::Tensor independent_set_matching_cuda_forward(
         at::Tensor init_pos,
         at::Tensor node_size_x,
         at::Tensor node_size_y,
+        at::Tensor flat_region_boxes, 
+        at::Tensor flat_region_boxes_start, 
+        at::Tensor node2fence_region_map, 
         at::Tensor flat_net2pin_map, 
         at::Tensor flat_net2pin_start_map, 
         at::Tensor pin2net_map, 
@@ -57,10 +60,12 @@ at::Tensor independent_set_matching_cuda_forward(
         int num_bins_x, 
         int num_bins_y,
         int num_movable_nodes, 
+        int num_terminal_NIs, 
         int num_filler_nodes, 
         int batch_size, 
         int set_size, 
-        int max_iters
+        int max_iters,
+        int num_threads
         )
 {
     CHECK_FLAT(init_pos); 
@@ -75,6 +80,7 @@ at::Tensor independent_set_matching_cuda_forward(
                     init_pos,
                     pos, 
                     node_size_x, node_size_y,
+                    flat_region_boxes, flat_region_boxes_start, node2fence_region_map, 
                     flat_net2pin_map, flat_net2pin_start_map, pin2net_map, 
                     flat_node2pin_map, flat_node2pin_start_map, pin2node_map, 
                     pin_offset_x, pin_offset_y, 
@@ -82,9 +88,9 @@ at::Tensor independent_set_matching_cuda_forward(
                     xl, yl, xh, yh, 
                     site_width, row_height, 
                     num_bins_x, num_bins_y,
-                    num_movable_nodes, num_filler_nodes
+                    num_movable_nodes, num_terminal_NIs, num_filler_nodes
                     );
-            independentSetMatchingCUDALauncher(db, batch_size, set_size, max_iters);
+            independentSetMatchingCUDALauncher(db, batch_size, set_size, max_iters, num_threads);
             });
 
     return pos; 

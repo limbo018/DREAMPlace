@@ -32,6 +32,9 @@ LegalizationDB<T> make_placedb(
         at::Tensor pos, 
         at::Tensor node_size_x,
         at::Tensor node_size_y,
+        at::Tensor flat_region_boxes, 
+        at::Tensor flat_region_boxes_start, 
+        at::Tensor node2fence_region_map, 
         double xl, 
         double yl, 
         double xh, 
@@ -40,6 +43,7 @@ LegalizationDB<T> make_placedb(
         int num_bins_x, 
         int num_bins_y,
         int num_movable_nodes, 
+        int num_terminal_NIs, 
         int num_filler_nodes
         )
 {
@@ -50,6 +54,9 @@ LegalizationDB<T> make_placedb(
     db.init_y = init_pos.data<T>()+num_nodes; 
     db.node_size_x = node_size_x.data<T>(); 
     db.node_size_y = node_size_y.data<T>(); 
+    db.flat_region_boxes = flat_region_boxes.data<T>();
+    db.flat_region_boxes_start = flat_region_boxes_start.data<int>();
+    db.node2fence_region_map = node2fence_region_map.data<int>();
     db.x = pos.data<T>(); 
     db.y = pos.data<T>()+num_nodes; 
     db.xl = xl; 
@@ -64,9 +71,10 @@ LegalizationDB<T> make_placedb(
     db.num_bins_y = num_bins_y; 
     db.num_sites_x = (xh-xl)/site_width; 
     db.num_sites_y = (yh-yl)/row_height; 
-    // ignore fillers 
-    db.num_nodes = num_nodes-num_filler_nodes; 
+    // ignore fillers and terminal_NIs 
+    db.num_nodes = num_nodes - num_filler_nodes - num_terminal_NIs; 
     db.num_movable_nodes = num_movable_nodes; 
+    db.num_regions = flat_region_boxes_start.numel()-1;
 
     return db; 
 }

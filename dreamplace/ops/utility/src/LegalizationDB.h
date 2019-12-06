@@ -10,6 +10,7 @@
 #include <algorithm>
 #include "utility/src/Msg.h"
 #include "utility/src/utils.h"
+#include "greedy_legalize/src/legality_check_cpu.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
 
@@ -23,6 +24,9 @@ struct LegalizationDB
     const T* init_y; 
     const T* node_size_x;
     const T* node_size_y;
+    const T* flat_region_boxes; ///< number of boxes x 4
+    const int* flat_region_boxes_start; ///< number of regions + 1 
+    const int* node2fence_region_map; ///< length of number of movable cells 
     T* x; 
     T* y; 
 
@@ -43,6 +47,7 @@ struct LegalizationDB
 
     int num_nodes; 
     int num_movable_nodes; 
+    int num_regions; ///< number of regions for flat_region_boxes and flat_region_boxes_start
 
     /// @brief check whether a cell is regarded as movable macros in legalization. 
     /// This is mainly because it is painful to handle these cells for legalization. 
@@ -67,6 +72,21 @@ struct LegalizationDB
         T xx = std::max(std::min(x, xh-width), xl);
         xx = floor((xx-xl)/site_width)*site_width+xl; 
         return xx; 
+    }
+    /// @brief check whether placement is legal 
+    bool check_legality() const 
+    {
+        return legalityCheckKernelCPU(
+                init_x, init_y, 
+                node_size_x, node_size_y, 
+                flat_region_boxes, flat_region_boxes_start, node2fence_region_map, 
+                x, y, 
+                site_width, row_height, 
+                xl, yl, xh, yh,
+                num_nodes, 
+                num_movable_nodes, 
+                num_regions
+                );
     }
 };
 

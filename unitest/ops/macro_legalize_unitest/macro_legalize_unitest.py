@@ -144,8 +144,9 @@ class MacroLegalizeOpTest(unittest.TestCase):
         num_nodes = len(xx)
         
         num_terminals = 0 
+        num_terminal_NIs = 0
         num_filler_nodes = 0
-        num_movable_nodes = len(xx)-num_terminals-num_filler_nodes
+        num_movable_nodes = len(xx)-num_terminals-num_terminal_NIs-num_filler_nodes
         site_width = 1 
         row_height = 2 
         num_bins_x = 2
@@ -158,7 +159,7 @@ class MacroLegalizeOpTest(unittest.TestCase):
                 node_size_x, node_size_y, 
                 xl, yl, xh, yh, 
                 num_bins_x, num_bins_y, 
-                num_movable_nodes+num_terminals+num_filler_nodes, num_movable_nodes, num_movable_nodes+num_terminals, num_filler_nodes)
+                num_movable_nodes+num_terminals+num_terminal_NIs+num_filler_nodes, num_movable_nodes, num_movable_nodes+num_terminals+num_terminal_NIs, num_filler_nodes)
 
         # test cpu 
         custom = macro_legalize.MacroLegalize(
@@ -167,6 +168,7 @@ class MacroLegalizeOpTest(unittest.TestCase):
                     site_width=site_width, row_height=row_height, 
                     num_bins_x=num_bins_x, num_bins_y=num_bins_y, 
                     num_movable_nodes=num_movable_nodes, 
+                    num_terminal_NIs=num_terminal_NIs, 
                     num_filler_nodes=num_filler_nodes)
 
         pos = Variable(torch.from_numpy(np.concatenate([xx, yy])))
@@ -180,7 +182,7 @@ class MacroLegalizeOpTest(unittest.TestCase):
                 node_size_x, node_size_y, 
                 xl, yl, xh, yh, 
                 num_bins_x, num_bins_y, 
-                num_movable_nodes+num_terminals+num_filler_nodes, num_movable_nodes, num_movable_nodes+num_terminals, num_filler_nodes)
+                num_movable_nodes+num_terminals+num_terminal_NIs+num_filler_nodes, num_movable_nodes, num_movable_nodes+num_terminals+num_terminal_NIs, num_filler_nodes)
 
         # test cuda 
         if torch.cuda.device_count(): 
@@ -190,6 +192,7 @@ class MacroLegalizeOpTest(unittest.TestCase):
                         site_width=site_width, row_height=row_height, 
                         num_bins_x=num_bins_x, num_bins_y=num_bins_y, 
                         num_movable_nodes=num_movable_nodes, 
+                        num_terminal_NIs=num_terminal_NIs, 
                         num_filler_nodes=num_filler_nodes)
 
             pos = Variable(torch.from_numpy(np.concatenate([xx, yy]))).cuda()

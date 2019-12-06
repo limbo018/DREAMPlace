@@ -23,7 +23,6 @@
 #include "utility/src/DetailedPlaceDB.h"
 #include "utility/src/DetailedPlaceDBUtils.h"
 #include "utility/src/diamond_search.h"
-#include "greedy_legalize/src/legality_check_cpu.h"
 #include "draw_place/src/draw_place.h"
 #include "independent_set_matching/src/bin2node_3d_map.h"
 #include "independent_set_matching/src/bin2node_map.h"
@@ -233,7 +232,7 @@ void independentSetMatchingCPULauncher(DetailedPlaceDB<T> db,
     state.large_number = (db.xh-db.xl + db.yh-db.yl)*10; 
 
     make_bin2node_map(db, db.x, db.y, db.node_size_x, db.node_size_y, state);
-    construct_spaces(db, db.x, db.y, db.node_size_x, db.node_size_y, state.spaces);
+    construct_spaces(db, db.x, db.y, state.spaces, 1);
 #ifdef DEBUG
     for (int node_id = 0; node_id < db.num_movable_nodes; ++node_id)
     {
@@ -408,15 +407,7 @@ void independentSetMatchingCPULauncher(DetailedPlaceDB<T> db,
         }
     }
 
-    bool legal_flag = legalityCheckKernelCPU(
-            db.init_x, db.init_y, 
-            db.node_size_x, db.node_size_y, 
-            db.x, db.y, 
-            db.site_width, db.row_height, 
-            db.xl, db.yl, db.xh, db.yh,
-            db.num_nodes, 
-            db.num_movable_nodes
-            );
+    bool legal_flag = db.check_legality();
     dreamplacePrint(kDEBUG, "legal_flag = %d\n", (int)legal_flag);
 
     //drawPlaceLauncher<T>(
@@ -443,6 +434,9 @@ at::Tensor independent_set_matching_forward(
         at::Tensor init_pos,
         at::Tensor node_size_x,
         at::Tensor node_size_y,
+        at::Tensor flat_region_boxes, 
+        at::Tensor flat_region_boxes_start, 
+        at::Tensor node2fence_region_map, 
         at::Tensor flat_net2pin_map, 
         at::Tensor flat_net2pin_start_map, 
         at::Tensor pin2net_map, 
@@ -460,6 +454,7 @@ at::Tensor independent_set_matching_forward(
         int num_bins_x, 
         int num_bins_y,
         int num_movable_nodes, 
+        int num_terminal_NIs, 
         int num_filler_nodes, 
         int batch_size, 
         int set_size, 
@@ -481,6 +476,7 @@ at::Tensor independent_set_matching_forward(
                     init_pos,
                     pos, 
                     node_size_x, node_size_y,
+                    flat_region_boxes, flat_region_boxes_start, node2fence_region_map, 
                     flat_net2pin_map, flat_net2pin_start_map, pin2net_map, 
                     flat_node2pin_map, flat_node2pin_start_map, pin2node_map, 
                     pin_offset_x, pin_offset_y, 
@@ -488,7 +484,7 @@ at::Tensor independent_set_matching_forward(
                     xl, yl, xh, yh, 
                     site_width, row_height, 
                     num_bins_x, num_bins_y,
-                    num_movable_nodes, num_filler_nodes
+                    num_movable_nodes, num_terminal_NIs, num_filler_nodes
                     );
             independentSetMatchingCPULauncher<scalar_t>(db, set_size, max_iters);
             });

@@ -217,7 +217,7 @@ __global__ void print_solution(const T* solution, int n)
 
 template <typename T>
 int independentSetMatchingCUDALauncher(DetailedPlaceDB<T> db, 
-        int batch_size, int set_size, int max_iters)
+        int batch_size, int set_size, int max_iters, int num_threads)
 {
     //size_t printf_size = 0; 
     //cudaDeviceGetLimit(&printf_size,cudaLimitPrintfFifoSize);
@@ -265,7 +265,7 @@ int independentSetMatchingCUDALauncher(DetailedPlaceDB<T> db,
     ////std::vector<int> host_ordered_nodes (db.num_movable_nodes);
     ////std::iota(host_ordered_nodes.begin(), host_ordered_nodes.end(), 0);
     std::vector<Space<T> > host_spaces (db.num_movable_nodes);
-    construct_spaces(db, host_db.x.data(), host_db.y.data(), host_db.node_size_x.data(), host_db.node_size_y.data(), host_spaces);
+    construct_spaces(db, host_db.x.data(), host_db.y.data(), host_db.node_size_x.data(), host_db.node_size_y.data(), host_spaces, num_threads);
 
     ////// initialize size information 
     ////{
@@ -537,14 +537,16 @@ int independentSetMatchingCUDALauncher(DetailedPlaceDB<T> db,
             DetailedPlaceDB<T> db, \
             int batch_size, \
             int set_size, \
-            int max_iters \
+            int max_iters, \
+            int num_threads \
             )\
     {\
         independentSetMatchingCUDALauncher<T>(\
                 db, \
                 batch_size, \
                 set_size, \
-                max_iters \
+                max_iters, \
+                num_threads \
                 );\
     }
 

@@ -104,42 +104,49 @@ __global__ void compute_cost_matrix_kernel(DetailedPlaceDBType db, IndependentSe
             typename DetailedPlaceDBType::type target_y = db.y[pos_id]; 
             auto const& target_space = state.spaces[pos_id];
             int target_hpwl = 0; 
-
             if (adjust_pos(target_x, node_width, target_space))
             {
-                int idx = 0; 
-                for (int node2pin_id = node2pin_id_bgn; node2pin_id < node2pin_id_end; ++node2pin_id, ++idx)
+                // consider FENCE region 
+                if (db.num_regions && !db.inside_fence(node_id, target_x, target_y))
                 {
-#ifdef DEBUG
-                    assert(node2pin_id >= 0 && node2pin_id < db.num_pins);
-#endif
-                    int node_pin_id = db.flat_node2pin_map[node2pin_id];
-#ifdef DEBUG
-                    assert(node_pin_id >= 0 && node_pin_id < db.num_pins);
-#endif
-                    int net_id = db.pin2net_map[node_pin_id];
-#ifdef DEBUG
-                    assert(net_id >= 0 && net_id < db.num_nets);
-#endif
-                    auto const& box = net_boxes[idx];
-                    if (db.net_mask[net_id])
-                    {
-                        typename DetailedPlaceDBType::type xxl = target_x+db.pin_offset_x[node_pin_id];
-                        typename DetailedPlaceDBType::type yyl = target_y+db.pin_offset_y[node_pin_id];
-                        typename DetailedPlaceDBType::type bxl = min(box.xl, xxl);
-                        typename DetailedPlaceDBType::type bxh = max(box.xh, xxl);
-                        typename DetailedPlaceDBType::type byl = min(box.yl, yyl);
-                        typename DetailedPlaceDBType::type byh = max(box.yh, yyl);
-                        target_hpwl += (bxh-bxl) + (byh-byl); 
-                    }
+                    cost = BIG_NEGATIVE; // as a marker for post processing 
                 }
-                //target_hpwl = target_hpwl*db.row_height + (abs(target_x-node_x) + abs(target_y-node_y));
-                // row major 
+                else 
+                {
+                    int idx = 0; 
+                    for (int node2pin_id = node2pin_id_bgn; node2pin_id < node2pin_id_end; ++node2pin_id, ++idx)
+                    {
 #ifdef DEBUG
-                assert(state.set_size*j + k >= 0 && state.set_size*j + k < state.cost_matrix_size);
-                assert(state.large_number > target_hpwl);
+                        assert(node2pin_id >= 0 && node2pin_id < db.num_pins);
 #endif
-                cost = target_hpwl; 
+                        int node_pin_id = db.flat_node2pin_map[node2pin_id];
+#ifdef DEBUG
+                        assert(node_pin_id >= 0 && node_pin_id < db.num_pins);
+#endif
+                        int net_id = db.pin2net_map[node_pin_id];
+#ifdef DEBUG
+                        assert(net_id >= 0 && net_id < db.num_nets);
+#endif
+                        auto const& box = net_boxes[idx];
+                        if (db.net_mask[net_id])
+                        {
+                            typename DetailedPlaceDBType::type xxl = target_x+db.pin_offset_x[node_pin_id];
+                            typename DetailedPlaceDBType::type yyl = target_y+db.pin_offset_y[node_pin_id];
+                            typename DetailedPlaceDBType::type bxl = min(box.xl, xxl);
+                            typename DetailedPlaceDBType::type bxh = max(box.xh, xxl);
+                            typename DetailedPlaceDBType::type byl = min(box.yl, yyl);
+                            typename DetailedPlaceDBType::type byh = max(box.yh, yyl);
+                            target_hpwl += (bxh-bxl) + (byh-byl); 
+                        }
+                    }
+                    //target_hpwl = target_hpwl*db.row_height + (abs(target_x-node_x) + abs(target_y-node_y));
+                    // row major 
+#ifdef DEBUG
+                    assert(state.set_size*j + k >= 0 && state.set_size*j + k < state.cost_matrix_size);
+                    assert(state.large_number > target_hpwl);
+#endif
+                    cost = target_hpwl; 
+                }
             }
             else 
             {

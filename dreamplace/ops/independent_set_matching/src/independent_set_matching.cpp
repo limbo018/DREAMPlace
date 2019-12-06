@@ -24,7 +24,6 @@
 #include "utility/src/DetailedPlaceDB.h"
 #include "utility/src/DetailedPlaceDBUtils.h"
 #include "utility/src/diamond_search.h"
-#include "greedy_legalize/src/legality_check_cpu.h"
 #include "draw_place/src/draw_place.h"
 #include "independent_set_matching/src/bin2node_3d_map.h"
 #include "independent_set_matching/src/bin2node_map.h"
@@ -86,7 +85,7 @@ void independentSetMatchingCPULauncher(DetailedPlaceDB<T> db,
     state.bin2node_map.resize(db.num_bins_x*db.num_bins_y);
     state.node2bin_map.resize(db.num_movable_nodes);
     //make_bin2node_map(db, db.x, db.y, db.node_size_x, db.node_size_y, state);
-    construct_spaces(db, db.x, db.y, db.node_size_x, db.node_size_y, state.spaces);
+    construct_spaces(db, db.x, db.y, state.spaces, state.num_threads);
     state.grid_size = ceil_power2(std::max(db.num_bins_x, db.num_bins_y)/8);
     state.max_diamond_search_sequence = state.grid_size*state.grid_size/2; 
     dreamplacePrint(kINFO, "diamond search grid size %d, sequence length %d\n", state.grid_size, state.max_diamond_search_sequence);
@@ -117,8 +116,8 @@ void independentSetMatchingCPULauncher(DetailedPlaceDB<T> db,
     hr_clock_rep random_shuffle_time = 0, maximal_independent_set_time = 0, collect_independent_sets_time = 0, cost_matrix_construction_time = 0, hungarian_time = 0, apply_solution_time = 0; 
 
     std::vector<T> hpwls (max_iters+1); 
-    hpwls[0] = db.compute_total_hpwl();
-    dreamplacePrint(kINFO, "initial hpwl %g\n", hpwls[0]);
+    hpwls.at(0) = db.compute_total_hpwl();
+    dreamplacePrint(kINFO, "initial hpwl %g\n", hpwls.at(0));
     for (int iter = 0; iter < max_iters; ++iter)
     {
         iter_timer_start = get_globaltime();
@@ -126,7 +125,7 @@ void independentSetMatchingCPULauncher(DetailedPlaceDB<T> db,
         timer_start = get_globaltime();
         //std::random_shuffle(state.ordered_nodes.begin(), state.ordered_nodes.end()); 
         std::sort(state.ordered_nodes.begin(), state.ordered_nodes.end(), 
-                [&](int node_id1, int node_id2){return state.num_selected_markers[node_id1] < state.num_selected_markers[node_id2];});
+                [&](int node_id1, int node_id2){return state.num_selected_markers.at(node_id1) < state.num_selected_markers.at(node_id2);});
         timer_stop = get_globaltime();
         random_shuffle_time += timer_stop-timer_start; 
         random_shuffle_runs += 1; 
@@ -153,11 +152,11 @@ void independentSetMatchingCPULauncher(DetailedPlaceDB<T> db,
 #pragma omp parallel for num_threads(state.num_threads) 
         for (int i = 0; i < num_independent_sets; ++i)
         {
-            for (auto node_id : state.independent_sets[i])
+            for (auto node_id : state.independent_sets.at(i))
             {
                 if (node_id < db.num_movable_nodes)
                 {
-                    state.num_selected_markers[node_id] += 1; 
+                    state.num_selected_markers.at(node_id) += 1; 
                 }
             }
         }
@@ -206,7 +205,7 @@ void independentSetMatchingCPULauncher(DetailedPlaceDB<T> db,
             orig_cost = 0; 
             for (unsigned int j = 0; j < independent_set.size(); ++j)
             {
-                orig_cost += cost_matrix[j*independent_set.size()+j];
+                orig_cost += cost_matrix.at(j*independent_set.size()+j);
             }
             int tid = omp_get_thread_num();
             target_cost = solvers.at(tid).run(cost_matrix.data(), solution.data(), independent_set.size());
@@ -226,7 +225,7 @@ void independentSetMatchingCPULauncher(DetailedPlaceDB<T> db,
         apply_solution_runs += 1; 
 
         iter_timer_stop = get_globaltime(); 
-        hpwls[iter+1] = db.compute_total_hpwl(); 
+        hpwls.at(iter+1) = db.compute_total_hpwl(); 
         if ((iter%(std::max(max_iters/10, 1))) == 0 || iter+1 == max_iters)
         {
             state.num_moved = 0; 
@@ -239,14 +238,14 @@ void independentSetMatchingCPULauncher(DetailedPlaceDB<T> db,
             }
             dreamplacePrint(kINFO, "iteration %d, target hpwl %g, delta %g(%g%%), solved %d sets, moved %g%% cells, runtime %g ms\n", 
                     iter, 
-                    hpwls[iter+1], hpwls[iter+1]-hpwls[0], (hpwls[iter+1]-hpwls[0])/hpwls[0]*100, 
+                    hpwls.at(iter+1), hpwls.at(iter+1)-hpwls.at(0), (hpwls.at(iter+1)-hpwls.at(0))/hpwls.at(0)*100, 
                     num_independent_sets, 
                     state.num_moved/(double)db.num_movable_nodes*100, 
                     get_timer_period()*(iter_timer_stop-iter_timer_start)
                     );
         }
 
-        //if (iter && hpwls[iter]-hpwls[iter+1] < threshold*hpwls[iter])
+        //if (iter && hpwls.at(iter)-hpwls.at(iter+1) < threshold*hpwls.at(iter))
         //{
         //    break; 
         //}
@@ -265,15 +264,7 @@ void independentSetMatchingCPULauncher(DetailedPlaceDB<T> db,
     dreamplacePrint(kDEBUG, "apply solution takes %g ms, %d runs, average %g ms\n", 
             get_timer_period()*apply_solution_time, apply_solution_runs, get_timer_period()*apply_solution_time/apply_solution_runs);
 
-    bool legal_flag = legalityCheckKernelCPU(
-            db.init_x, db.init_y, 
-            db.node_size_x, db.node_size_y, 
-            db.x, db.y, 
-            db.site_width, db.row_height, 
-            db.xl, db.yl, db.xh, db.yh,
-            db.num_nodes, 
-            db.num_movable_nodes
-            );
+    bool legal_flag = db.check_legality();
     dreamplacePrint(kDEBUG, "legal_flag = %d\n", (int)legal_flag);
 
     //drawPlaceLauncher<T>(
@@ -300,6 +291,9 @@ at::Tensor independent_set_matching_forward(
         at::Tensor init_pos,
         at::Tensor node_size_x,
         at::Tensor node_size_y,
+        at::Tensor flat_region_boxes, 
+        at::Tensor flat_region_boxes_start, 
+        at::Tensor node2fence_region_map, 
         at::Tensor flat_net2pin_map, 
         at::Tensor flat_net2pin_start_map, 
         at::Tensor pin2net_map, 
@@ -317,6 +311,7 @@ at::Tensor independent_set_matching_forward(
         int num_bins_x, 
         int num_bins_y,
         int num_movable_nodes, 
+        int num_terminal_NIs, 
         int num_filler_nodes, 
         int batch_size, 
         int set_size, 
@@ -338,6 +333,7 @@ at::Tensor independent_set_matching_forward(
                     init_pos,
                     pos, 
                     node_size_x, node_size_y,
+                    flat_region_boxes, flat_region_boxes_start, node2fence_region_map, 
                     flat_net2pin_map, flat_net2pin_start_map, pin2net_map, 
                     flat_node2pin_map, flat_node2pin_start_map, pin2node_map, 
                     pin_offset_x, pin_offset_y, 
@@ -345,7 +341,7 @@ at::Tensor independent_set_matching_forward(
                     xl, yl, xh, yh, 
                     site_width, row_height, 
                     num_bins_x, num_bins_y,
-                    num_movable_nodes, num_filler_nodes
+                    num_movable_nodes, num_terminal_NIs, num_filler_nodes
                     );
             independentSetMatchingCPULauncher<scalar_t>(db, batch_size,
                                                         set_size, max_iters,

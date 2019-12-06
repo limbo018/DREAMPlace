@@ -147,7 +147,7 @@ int globalSwapCPULauncher(DetailedPlaceDB<T> db, int max_iters)
     std::vector<int> node2row2node_index_map (db.num_nodes);
 
     // distribute cells to rows 
-    db.make_row2node_map(db.x, db.y, row2node_map); 
+    db.make_row2node_map(db.x, db.y, row2node_map, 1); 
 
     // set node2row2node_index_map 
     for (int i = 0; i < db.num_sites_y; ++i)
@@ -214,9 +214,20 @@ int globalSwapCPULauncher(DetailedPlaceDB<T> db, int max_iters)
         }
         node_yl = db.y[target_node_id];
         target_node_yl = db.y[node_id];
-        T orig_cost = compute_pair_hpwl(node_id, db.x[node_id], db.y[node_id], target_node_id, db.x[target_node_id], db.y[target_node_id]);
-        T target_cost = compute_pair_hpwl(node_id, node_xl, node_yl, target_node_id, target_node_xl, target_node_yl);
-        T cost = target_cost-orig_cost; 
+        T cost = 0; 
+        // consider FENCE region 
+        if (db.num_regions 
+                && (!db.inside_fence(node_id, node_xl, node_yl)
+                    || !db.inside_fence(target_node_id, target_node_xl, target_node_yl)))
+        {
+            cost = std::numeric_limits<T>::max();
+        }
+        else 
+        {
+            T orig_cost = compute_pair_hpwl(node_id, db.x[node_id], db.y[node_id], target_node_id, db.x[target_node_id], db.y[target_node_id]);
+            T target_cost = compute_pair_hpwl(node_id, node_xl, node_yl, target_node_id, target_node_xl, target_node_yl);
+            cost = target_cost-orig_cost; 
+        }
         return cost; 
     };
 
@@ -470,6 +481,9 @@ at::Tensor global_swap_forward(
         at::Tensor init_pos,
         at::Tensor node_size_x,
         at::Tensor node_size_y,
+        at::Tensor flat_region_boxes, 
+        at::Tensor flat_region_boxes_start, 
+        at::Tensor node2fence_region_map, 
         at::Tensor flat_net2pin_map, 
         at::Tensor flat_net2pin_start_map, 
         at::Tensor pin2net_map, 
@@ -487,6 +501,7 @@ at::Tensor global_swap_forward(
         int num_bins_x, 
         int num_bins_y,
         int num_movable_nodes, 
+        int num_terminal_NIs, 
         int num_filler_nodes, 
         int max_iters
         )
@@ -505,6 +520,7 @@ at::Tensor global_swap_forward(
                     init_pos,
                     pos, 
                     node_size_x, node_size_y,
+                    flat_region_boxes, flat_region_boxes_start, node2fence_region_map, 
                     flat_net2pin_map, flat_net2pin_start_map, pin2net_map, 
                     flat_node2pin_map, flat_node2pin_start_map, pin2node_map, 
                     pin_offset_x, pin_offset_y, 
@@ -512,7 +528,7 @@ at::Tensor global_swap_forward(
                     xl, yl, xh, yh, 
                     site_width, row_height, 
                     num_bins_x, num_bins_y,
-                    num_movable_nodes, num_filler_nodes
+                    num_movable_nodes, num_terminal_NIs, num_filler_nodes
                     );
             globalSwapCPULauncher(db, max_iters);
             });

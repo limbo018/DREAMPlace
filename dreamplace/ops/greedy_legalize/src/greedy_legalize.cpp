@@ -40,9 +40,9 @@ int greedyLegalizationLauncher(LegalizationDB<T> db)
             db.site_width, db.row_height, 
             db.num_bins_x, db.num_bins_y, 
             db.num_nodes, 
-            db.num_movable_nodes, 
-            0
+            db.num_movable_nodes
             );
+
     return 0; 
 }
 
@@ -72,6 +72,9 @@ at::Tensor greedy_legalization_forward(
         at::Tensor pos, 
         at::Tensor node_size_x,
         at::Tensor node_size_y,
+        at::Tensor flat_region_boxes, 
+        at::Tensor flat_region_boxes_start, 
+        at::Tensor node2fence_region_map, 
         double xl, 
         double yl, 
         double xh, 
@@ -80,6 +83,7 @@ at::Tensor greedy_legalization_forward(
         int num_bins_x, 
         int num_bins_y,
         int num_movable_nodes, 
+        int num_terminal_NIs, 
         int num_filler_nodes
         )
 {
@@ -98,14 +102,17 @@ at::Tensor greedy_legalization_forward(
                     pos_copy, 
                     node_size_x, 
                     node_size_y, 
+                    flat_region_boxes, flat_region_boxes_start, node2fence_region_map, 
                     xl, yl, xh, yh, 
                     site_width, row_height, 
                     num_bins_x, 
                     num_bins_y, 
                     num_movable_nodes, 
+                    num_terminal_NIs, 
                     num_filler_nodes
                     );
             greedyLegalizationLauncher<scalar_t>(db);
+            db.check_legality();
             });
     timer_stop = get_globaltime(); 
     dreamplacePrint(kINFO, "Greedy legalization takes %g ms\n", (timer_stop-timer_start)*get_timer_period());

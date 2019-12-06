@@ -116,6 +116,7 @@ void compute_position(
     for (int i = 0; i < K; ++i)
     {
         int node_id = row2nodes[i];
+        assert(node_id < db.num_movable_nodes);
         target_sizes[permutation[i]] = state.node_space_x[node_id];
     }
     for (int i = 1; i < K; ++i)
@@ -269,25 +270,28 @@ void compute_instance_net_boxes(
                 {
                     int net_pin_id = db.flat_net2pin_map[net2pin_id];
                     int other_node_id = db.pin2node_map[net_pin_id];
-                    int other_node_found = (state.node2inst_map[other_node_id] == inst_id);
-                    if (!other_node_found) // not found 
+                    if (other_node_id < db.num_nodes) // other_node_id may exceed db.num_nodes like IO pins 
                     {
-                        T other_node_xl = db.x[other_node_id];
-                        auto pin_offset_x = db.pin_offset_x[net_pin_id];
-                        if (abs(db.y[other_node_id]-row_yl) < db.row_height) // in the same row  
+                        int other_node_found = (state.node2inst_map[other_node_id] == inst_id);
+                        if (!other_node_found) // not found 
                         {
-                            if (other_node_xl < segment_xl) // left of the segment 
+                            T other_node_xl = db.x[other_node_id];
+                            auto pin_offset_x = db.pin_offset_x[net_pin_id];
+                            if (abs(db.y[other_node_id]-row_yl) < db.row_height) // in the same row  
                             {
-                                other_node_xl = db.xl;
+                                if (other_node_xl < segment_xl) // left of the segment 
+                                {
+                                    other_node_xl = db.xl;
+                                }
+                                else if (other_node_xl > segment_xh) // right of the segment 
+                                {
+                                    other_node_xl = db.xh;
+                                }
                             }
-                            else if (other_node_xl > segment_xh) // right of the segment 
-                            {
-                                other_node_xl = db.xh;
-                            }
+                            other_node_xl += pin_offset_x;
+                            instance_net.bxl = min(instance_net.bxl, other_node_xl);
+                            instance_net.bxh = max(instance_net.bxh, other_node_xl);
                         }
-                        other_node_xl += pin_offset_x;
-                        instance_net.bxl = min(instance_net.bxl, other_node_xl);
-                        instance_net.bxh = max(instance_net.bxh, other_node_xl);
                     }
                 }
             }
@@ -365,28 +369,47 @@ void compute_reorder_hpwl(
             //        target_sizes
             //        );
 
-            auto instance_nets = state.instance_nets + inst_id*MAX_NUM_NETS_PER_INSTANCE; 
-            auto const& instance_nets_size = state.instance_nets_size[inst_id]; 
             T cost = 0; 
-            for (int idx = 0; idx < instance_nets_size; ++idx)
+            // consider FENCE region 
+            if (db.num_regions)
             {
-                auto& instance_net = instance_nets[idx]; 
-                T bxl = instance_net.bxl; 
-                T bxh = instance_net.bxh; 
-
-                for (int j = 0; j < K; ++j)
+                for (int idx = 0; idx < K; ++idx)
                 {
-                    int flag = (1<<j); 
-                    if ((instance_net.node_marker & flag))
+                    int node_id = row2nodes[idx];
+                    int permuted_offset = permutation[idx];
+                    T node_xl = target_x[permuted_offset];
+                    T node_yl = db.y[node_id];
+                    if (!db.inside_fence(node_id, node_xl, node_yl))
                     {
-                        int permuted_offset = permutation[j];
-                        T other_node_xl = target_x[permuted_offset];
-                        other_node_xl += instance_net.pin_offset_x[j];
-                        bxl = min(bxl, other_node_xl);
-                        bxh = max(bxh, other_node_xl);
+                        cost = cuda::numeric_limits<T>::max();
+                        break; 
                     }
                 }
-                cost += bxh-bxl; 
+            }
+            if (cost == 0)
+            {
+                auto instance_nets = state.instance_nets + inst_id*MAX_NUM_NETS_PER_INSTANCE; 
+                auto const& instance_nets_size = state.instance_nets_size[inst_id]; 
+                for (int idx = 0; idx < instance_nets_size; ++idx)
+                {
+                    auto& instance_net = instance_nets[idx]; 
+                    T bxl = instance_net.bxl; 
+                    T bxh = instance_net.bxh; 
+
+                    for (int j = 0; j < K; ++j)
+                    {
+                        int flag = (1<<j); 
+                        if ((instance_net.node_marker & flag))
+                        {
+                            int permuted_offset = permutation[j];
+                            T other_node_xl = target_x[permuted_offset];
+                            other_node_xl += instance_net.pin_offset_x[j];
+                            bxl = min(bxl, other_node_xl);
+                            bxh = max(bxh, other_node_xl);
+                        }
+                    }
+                    cost += bxh-bxl; 
+                }
             }
             state.costs[i] = cost; 
         }
@@ -678,21 +701,24 @@ __global__ void compute_instance_nets(DetailedPlaceDB<T> db, KReorderState<T> st
                 int net_pin_id = db.flat_net2pin_map[net2pin_id];
                 int other_node_id = db.pin2node_map[net_pin_id];
 
-                int inst_id = state.node2inst_map[other_node_id]; 
-                if (inst_id < cuda::numeric_limits<int>::max())
+                if (other_node_id < db.num_nodes) // other_node_id may exceed db.num_nodes like IO pins 
                 {
-                    auto instance_nets_size = state.instance_nets_size + inst_id; 
-
-                    int index = atomicAdd(instance_nets_size, 1); 
-                    if (index < MAX_NUM_NETS_PER_INSTANCE)
+                    int inst_id = state.node2inst_map[other_node_id]; 
+                    if (inst_id < cuda::numeric_limits<int>::max())
                     {
-                        auto& instance_net = state.instance_nets[inst_id*MAX_NUM_NETS_PER_INSTANCE + index]; 
+                        auto instance_nets_size = state.instance_nets_size + inst_id; 
 
-                        instance_net.net_id = net_id; 
-                        instance_net.node_marker = (1<<state.node_markers[other_node_id]); 
-                        instance_net.pin_offset_x[state.node_markers[other_node_id]] = db.pin_offset_x[net_pin_id]; 
+                        int index = atomicAdd(instance_nets_size, 1); 
+                        if (index < MAX_NUM_NETS_PER_INSTANCE)
+                        {
+                            auto& instance_net = state.instance_nets[inst_id*MAX_NUM_NETS_PER_INSTANCE + index]; 
+
+                            instance_net.net_id = net_id; 
+                            instance_net.node_marker = (1<<state.node_markers[other_node_id]); 
+                            instance_net.pin_offset_x[state.node_markers[other_node_id]] = db.pin_offset_x[net_pin_id]; 
+                        }
+                        // I do not expect the else condition to happen 
                     }
-                    // I do not expect the else condition to happen 
                 }
             }
         }
@@ -1081,7 +1107,7 @@ int kreorderCUDALauncher(DetailedPlaceDB<T> db, int K, int max_iters, int num_th
         allocateCopyCPU(cpu_db.node_size_x, db.node_size_x, db.num_nodes, T); 
         allocateCopyCPU(cpu_db.node_size_y, db.node_size_y, db.num_nodes, T); 
 
-        make_row2node_map(cpu_db, cpu_db.x, cpu_db.y, host_row2node_map);
+        make_row2node_map(cpu_db, cpu_db.x, cpu_db.y, host_row2node_map, num_threads);
         host_node_space_x.resize(cpu_db.num_nodes);
         for (int i = 0; i < cpu_db.num_sites_y; ++i)
         {

@@ -22,7 +22,7 @@ void distributeCells2BinsCPU(
         T bin_size_x, T bin_size_y, 
         T xl, T yl, T xh, T yh, 
         int num_bins_x, int num_bins_y, 
-        int num_nodes, int num_movable_nodes, int num_filler_nodes, 
+        int num_nodes, int num_movable_nodes, 
         std::vector<std::vector<int> >& bin_cells
         )
 {
@@ -53,12 +53,12 @@ void distributeFixedCells2BinsCPU(
         T bin_size_x, T bin_size_y, 
         T xl, T yl, T xh, T yh, 
         int num_bins_x, int num_bins_y, 
-        int num_nodes, int num_movable_nodes, int num_filler_nodes, 
+        int num_nodes, int num_movable_nodes, 
         std::vector<std::vector<int> >& bin_cells
         )
 {
     // one cell can be assigned to multiple bins 
-    for (int i = 0; i < num_nodes-num_filler_nodes; i += 1) 
+    for (int i = 0; i < num_nodes; i += 1) 
     {
         if (db.is_dummy_fixed(i) || i >= num_movable_nodes)
         {

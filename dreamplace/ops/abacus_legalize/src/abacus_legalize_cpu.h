@@ -41,37 +41,17 @@ struct AbacusCluster
 };
 
 template <typename T>
-struct CompareByNodeCenterXCPU 
-{
-    CompareByNodeCenterXCPU(const T* x, const T* size_x) 
-        : node_x(x)
-        , node_size_x(size_x)
-    {
-    }
-
-    bool operator()(const int i, const int j) const 
-    {
-        T xi = node_x[i]+node_size_x[i]/2;
-        T xj = node_x[j]+node_size_x[j]/2;
-        return xi < xj || (xi == xj && i < j); 
-    }
-
-    const T* node_x; ///< xl 
-    const T *node_size_x; ///< width 
-}; 
-
-template <typename T>
 void distributeMovableAndFixedCells2BinsCPU(
         const T* x, const T* y, 
         const T* node_size_x, const T* node_size_y, 
         T bin_size_x, T bin_size_y, 
         T xl, T yl, T xh, T yh, 
         int num_bins_x, int num_bins_y, 
-        int num_nodes, int num_movable_nodes, int num_filler_nodes, 
+        int num_nodes, int num_movable_nodes, 
         std::vector<std::vector<int> >& bin_cells
         )
 {
-    for (int i = 0; i < num_nodes-num_filler_nodes; i += 1) 
+    for (int i = 0; i < num_nodes; i += 1) 
     {
         if (i < num_movable_nodes && node_size_y[i] <= bin_size_y) // single-row movable nodes only distribute to one bin 
         {
@@ -119,7 +99,6 @@ bool abacusPlaceRowCPU(
         const T xl, const T xh, 
         const int num_nodes, 
         const int num_movable_nodes, 
-        const int num_filler_nodes, 
         int* row_nodes, AbacusCluster<T>* clusters, const int num_row_nodes
         )
 {
@@ -196,9 +175,6 @@ bool abacusPlaceRowCPU(
             }
         }
     };
-
-    // sort row_nodes from left to right 
-    std::sort(row_nodes, row_nodes+num_row_nodes, CompareByNodeCenterXCPU<T>(x, node_size_x));
 
     // initial cluster has only one cell 
     for (int i = 0; i < num_row_nodes; ++i)
@@ -296,16 +272,70 @@ void abacusLegalizeRowCPU(
         const int num_bins_x, const int num_bins_y, 
         const int num_nodes, 
         const int num_movable_nodes, 
-        const int num_filler_nodes, 
         std::vector<std::vector<int> >& bin_cells, 
         std::vector<std::vector<AbacusCluster<T> > >& bin_clusters
         )
 {
     for (unsigned int i = 0; i < bin_cells.size(); i += 1)
     {
-        int* cells = &(bin_cells.at(i)[0]);
-        AbacusCluster<T>* clusters = &(bin_clusters.at(i)[0]);
-        int num_row_nodes = bin_cells.at(i).size();
+        auto& row2nodes = bin_cells.at(i);
+
+        // sort bin cells from left to right 
+        // we need to remove fixed cells if it is inside another fixed cell 
+        // first sort by left edge 
+        std::sort(row2nodes.begin(), row2nodes.end(), 
+                    [&] (int node_id1, int node_id2) {
+                    T x1 = x[node_id1];
+                    T x2 = x[node_id2];
+                    return x1 < x2 || (x1 == x2 && node_id1 < node_id2);
+                    });
+        // After sorting by left edge, 
+        // there is a special case for fixed cells where 
+        // one fixed cell is completely within another in a row. 
+        // This will cause failure to detect some overlaps. 
+        // We need to remove the "small" fixed cell that is inside another. 
+        if (!row2nodes.empty())
+        {
+            std::vector<int> tmp_nodes; 
+            tmp_nodes.reserve(row2nodes.size());
+            tmp_nodes.push_back(row2nodes.front()); 
+            for (int j = 1, je = row2nodes.size(); j < je; ++j)
+            {
+                int node_id1 = row2nodes.at(j-1);
+                int node_id2 = row2nodes.at(j);
+                // two fixed cells 
+                if (node_id1 >= num_movable_nodes && node_id2 >= num_movable_nodes)
+                {
+                    T xl1 = x[node_id1]; 
+                    T xl2 = x[node_id2];
+                    T width1 = node_size_x[node_id1]; 
+                    T width2 = node_size_x[node_id2]; 
+                    T xh1 = xl1 + width1; 
+                    T xh2 = xl2 + width2; 
+                    // only collect node_id2 if its right edge is righter than node_id1 
+                    if (xh1 < xh2)
+                    {
+                        tmp_nodes.push_back(node_id2);
+                    }
+                }
+                else 
+                {
+                    tmp_nodes.push_back(node_id2);
+                }
+            }
+            row2nodes.swap(tmp_nodes);
+
+            // sort according to center 
+            std::sort(row2nodes.begin(), row2nodes.end(), 
+                    [&] (int node_id1, int node_id2) {
+                    T x1 = x[node_id1] + node_size_x[node_id1]/2;
+                    T x2 = x[node_id2] + node_size_x[node_id2]/2;
+                    return x1 < x2 || (x1 == x2 && node_id1 < node_id2);
+                    });
+        }
+
+        auto& clusters = bin_clusters.at(i);
+        int num_row_nodes = row2nodes.size();
 
         int bin_id_x = i/num_bins_y; 
         //int bin_id_y = i-bin_id_x*num_bins_y; 
@@ -321,9 +351,8 @@ void abacusLegalizeRowCPU(
                 bin_xl, bin_xh, 
                 num_nodes, 
                 num_movable_nodes, 
-                num_filler_nodes, 
-                cells, 
-                clusters, 
+                row2nodes.data(), 
+                clusters.data(), 
                 num_row_nodes
                 );
     }
@@ -344,8 +373,7 @@ void abacusLegalizationCPU(
         const T site_width, const T row_height, 
         int num_bins_x, int num_bins_y, 
         const int num_nodes, 
-        const int num_movable_nodes, 
-        const int num_filler_nodes
+        const int num_movable_nodes
         )
 {
     // adjust bin sizes 
@@ -363,9 +391,10 @@ void abacusLegalizationCPU(
             bin_size_x, bin_size_y, 
             xl, yl, xh, yh, 
             num_bins_x, num_bins_y, 
-            num_nodes, num_movable_nodes, num_filler_nodes, 
+            num_nodes, num_movable_nodes, 
             bin_cells
             );
+
     std::vector<std::vector<AbacusCluster<T> > > bin_clusters (num_bins_x*num_bins_y);
     for (unsigned int i = 0; i < bin_cells.size(); ++i)
     {
@@ -380,8 +409,7 @@ void abacusLegalizationCPU(
             bin_size_x, bin_size_y, 
             num_bins_x, num_bins_y,
             num_nodes, 
-            num_movable_nodes, 
-            num_filler_nodes, 
+            num_movable_nodes,
             bin_cells, 
             bin_clusters
             );
@@ -398,7 +426,7 @@ void abacusLegalizationCPU(
                 x[node_id] = floor((x[node_id]-xxl)/site_width)*site_width+xxl; 
                 xxl += ceil(node_size_x[node_id]/site_width)*site_width; 
             }
-            else if (node_id < num_nodes-num_filler_nodes)
+            else if (node_id < num_nodes)
             {
                 xxl = ceil((x[node_id]+node_size_x[node_id]-xl)/site_width)*site_width+xl; 
             }

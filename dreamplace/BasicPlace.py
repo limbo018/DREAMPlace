@@ -68,6 +68,11 @@ class PlaceDataCollection (object):
             logging.warning("net weights are all the same, ignored")
             self.net_weights = torch.Tensor().to(device)
 
+        # regions 
+        self.flat_region_boxes = torch.from_numpy(placedb.flat_region_boxes).to(device)
+        self.flat_region_boxes_start = torch.from_numpy(placedb.flat_region_boxes_start).to(device)
+        self.node2fence_region_map = torch.from_numpy(placedb.node2fence_region_map).to(device)
+        
         self.net_mask_all = torch.from_numpy(np.ones(placedb.num_nets, dtype=np.uint8)).to(device) # all nets included 
         net_degrees = np.array([len(net2pin) for net2pin in placedb.net2pin_map])
         net_mask = np.logical_and(2 <= net_degrees, net_degrees < params.ignore_net_degree).astype(np.uint8)
@@ -387,30 +392,36 @@ class BasicPlace (nn.Module):
         # the number of bins control the search granularity 
         ml = macro_legalize.MacroLegalize(
                 node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
+                flat_region_boxes=data_collections.flat_region_boxes, flat_region_boxes_start=data_collections.flat_region_boxes_start, node2fence_region_map=data_collections.node2fence_region_map, 
                 xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
                 site_width=placedb.site_width, row_height=placedb.row_height, 
                 num_bins_x=params.num_bins_x, num_bins_y=params.num_bins_y, 
                 num_movable_nodes=placedb.num_movable_nodes, 
+                num_terminal_NIs=placedb.num_terminal_NIs, 
                 num_filler_nodes=placedb.num_filler_nodes
                 )
         # for standard cell legalization
         gl = greedy_legalize.GreedyLegalize(
                 node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
+                flat_region_boxes=data_collections.flat_region_boxes, flat_region_boxes_start=data_collections.flat_region_boxes_start, node2fence_region_map=data_collections.node2fence_region_map, 
                 xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
                 site_width=placedb.site_width, row_height=placedb.row_height, 
                 num_bins_x=1, num_bins_y=64, 
                 #num_bins_x=64, num_bins_y=64, 
                 num_movable_nodes=placedb.num_movable_nodes, 
+                num_terminal_NIs=placedb.num_terminal_NIs, 
                 num_filler_nodes=placedb.num_filler_nodes
                 )
         # for standard cell legalization
         al = abacus_legalize.AbacusLegalize(
                 node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
+                flat_region_boxes=data_collections.flat_region_boxes, flat_region_boxes_start=data_collections.flat_region_boxes_start, node2fence_region_map=data_collections.node2fence_region_map, 
                 xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
                 site_width=placedb.site_width, row_height=placedb.row_height, 
                 num_bins_x=1, num_bins_y=64, 
                 #num_bins_x=64, num_bins_y=64, 
                 num_movable_nodes=placedb.num_movable_nodes, 
+                num_terminal_NIs=placedb.num_terminal_NIs, 
                 num_filler_nodes=placedb.num_filler_nodes
                 )
         def build_legalization_op(pos): 
@@ -430,6 +441,7 @@ class BasicPlace (nn.Module):
         """
         gs = global_swap.GlobalSwap(
                 node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
+                flat_region_boxes=data_collections.flat_region_boxes, flat_region_boxes_start=data_collections.flat_region_boxes_start, node2fence_region_map=data_collections.node2fence_region_map, 
                 flat_net2pin_map=data_collections.flat_net2pin_map, flat_net2pin_start_map=data_collections.flat_net2pin_start_map, pin2net_map=data_collections.pin2net_map, 
                 flat_node2pin_map=data_collections.flat_node2pin_map, flat_node2pin_start_map=data_collections.flat_node2pin_start_map, pin2node_map=data_collections.pin2node_map, 
                 pin_offset_x=data_collections.pin_offset_x, pin_offset_y=data_collections.pin_offset_y, 
@@ -439,6 +451,7 @@ class BasicPlace (nn.Module):
                 #num_bins_x=placedb.num_bins_x//16, num_bins_y=placedb.num_bins_y//16, 
                 num_bins_x=placedb.num_bins_x//2, num_bins_y=placedb.num_bins_y//2, 
                 num_movable_nodes=placedb.num_movable_nodes, 
+                num_terminal_NIs=placedb.num_terminal_NIs, 
                 num_filler_nodes=placedb.num_filler_nodes, 
                 batch_size=256, 
                 max_iters=2, 
@@ -447,6 +460,7 @@ class BasicPlace (nn.Module):
                 )
         kr = k_reorder.KReorder(
                 node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
+                flat_region_boxes=data_collections.flat_region_boxes, flat_region_boxes_start=data_collections.flat_region_boxes_start, node2fence_region_map=data_collections.node2fence_region_map, 
                 flat_net2pin_map=data_collections.flat_net2pin_map, flat_net2pin_start_map=data_collections.flat_net2pin_start_map, pin2net_map=data_collections.pin2net_map, 
                 flat_node2pin_map=data_collections.flat_node2pin_map, flat_node2pin_start_map=data_collections.flat_node2pin_start_map, pin2node_map=data_collections.pin2node_map, 
                 pin_offset_x=data_collections.pin_offset_x, pin_offset_y=data_collections.pin_offset_y, 
@@ -455,6 +469,7 @@ class BasicPlace (nn.Module):
                 site_width=placedb.site_width, row_height=placedb.row_height, 
                 num_bins_x=placedb.num_bins_x, num_bins_y=placedb.num_bins_y, 
                 num_movable_nodes=placedb.num_movable_nodes, 
+                num_terminal_NIs=placedb.num_terminal_NIs, 
                 num_filler_nodes=placedb.num_filler_nodes, 
                 K=4, 
                 max_iters=2, 
@@ -462,6 +477,7 @@ class BasicPlace (nn.Module):
                 )
         ism = independent_set_matching.IndependentSetMatching(
                 node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
+                flat_region_boxes=data_collections.flat_region_boxes, flat_region_boxes_start=data_collections.flat_region_boxes_start, node2fence_region_map=data_collections.node2fence_region_map, 
                 flat_net2pin_map=data_collections.flat_net2pin_map, flat_net2pin_start_map=data_collections.flat_net2pin_start_map, pin2net_map=data_collections.pin2net_map, 
                 flat_node2pin_map=data_collections.flat_node2pin_map, flat_node2pin_start_map=data_collections.flat_node2pin_start_map, pin2node_map=data_collections.pin2node_map, 
                 pin_offset_x=data_collections.pin_offset_x, pin_offset_y=data_collections.pin_offset_y, 
@@ -470,6 +486,7 @@ class BasicPlace (nn.Module):
                 site_width=placedb.site_width, row_height=placedb.row_height, 
                 num_bins_x=placedb.num_bins_x, num_bins_y=placedb.num_bins_y, 
                 num_movable_nodes=placedb.num_movable_nodes, 
+                num_terminal_NIs=placedb.num_terminal_NIs, 
                 num_filler_nodes=placedb.num_filler_nodes, 
                 batch_size=2048, 
                 set_size=128, 
@@ -549,6 +566,7 @@ class BasicPlace (nn.Module):
                 placedb.site_width, placedb.row_height, 
                 placedb.num_bins_x, placedb.num_bins_y, 
                 placedb.num_movable_nodes, 
+                placedb.num_terminal_NIs, 
                 placedb.num_filler_nodes, 
                 pos 
                 ), f)

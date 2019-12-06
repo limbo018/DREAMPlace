@@ -24,6 +24,7 @@ PlaceDB::PlaceDB()
     m_numMacro = 0;
     m_numIOPin = 0;
     m_numIgnoredNet = 0;
+    m_numPlaceBlockages = 0; 
 
     m_lefUnit = 0;
     m_defUnit = 0;
@@ -416,14 +417,131 @@ void PlaceDB::add_def_net(DefParser::Net const& n)
 }
 void PlaceDB::resize_def_blockage(int n)
 {
-    m_vPlaceBlockage.reserve(n);
+    m_numPlaceBlockages = 0; 
+    m_vPlaceBlockageIndex.reserve(n);
 }
-void PlaceDB::add_def_placement_blockage(int xl, int yl, int xh, int yh)
+void PlaceDB::add_def_placement_blockage(std::vector<std::vector<int> > const& vBbox)
 {
-    m_vPlaceBlockage.push_back(Box<coordinate_type>(xl, yl, xh, yh));
+    char buf[128];
+    std::string name; 
+    for (std::vector<std::vector<int> >::const_iterator it = vBbox.begin(), ite = vBbox.end(); it != ite; ++it)
+    {
+        std::vector<int> const& bbox = *it; 
+
+        // create virtual macro
+        dreamplaceSPrint(kNONE, buf, "DREAMPlacePlaceBlockage%lu", m_vPlaceBlockageIndex.size());
+        name = buf; 
+        std::pair<index_type, bool> insertMacroRet = addMacro(name);
+        dreamplaceAssertMsg(insertMacroRet.second, "failed to create virtual macro for placement blockage: %s", name.c_str());
+        Macro& macro = m_vMacro.at(insertMacroRet.first);
+
+        macro.setInitOrigin(bbox[0], bbox[1]);
+        macro.set(0, 0, bbox[2]-bbox[0], bbox[3]-bbox[1]); // adjust to origin (0, 0)
+
+        // create and add virtual node
+        std::pair<index_type, bool> insertNodeRet = addNode(name);
+        dreamplaceAssertMsg(insertNodeRet.second, "failed to create virtual node for placement blockage %s", name.c_str());
+        Node& node = m_vNode.at(insertNodeRet.first);
+        NodeProperty& property = m_vNodeProperty.at(node.id());
+
+        property.setMacroId(macro.id());
+        node.setStatus(PlaceStatusEnum::FIXED); // placement blockages should always be fixed
+        node.setOrient(OrientEnum::UNKNOWN);
+        deriveMultiRowAttr(node);
+        node.set(bbox[0], bbox[1], bbox[2], bbox[3]);
+        node.setInitPos(ll(node));
+
+        m_vPlaceBlockageIndex.push_back(node.id());
+        ++m_numPlaceBlockages;
+    }
 }
-void PlaceDB::add_def_routing_blockage(int, int, int, int)
+void PlaceDB::resize_def_region(int n)
 {
+    m_vRegion.reserve(n);
+}
+void PlaceDB::add_def_region(DefParser::Region const& r)
+{
+    index_type regionId; 
+    string2index_map_type::iterator foundRegion = m_mRegionName2Index.find(r.region_name);
+    if (foundRegion != m_mRegionName2Index.end())
+    {
+        dreamplacePrint(kWARN, "duplicate region %s found\n", r.region_name.c_str());
+        regionId = foundRegion->second;
+    }
+    else
+    {
+        regionId = m_vRegion.size();
+        std::pair<string2index_map_type::iterator, bool> insertRet = m_mRegionName2Index.insert(std::make_pair(r.region_name, regionId));
+        dreamplaceAssertMsg(insertRet.second, "failed to insert region %s to m_mRegionName2Index", r.region_name.c_str());
+        m_vRegion.push_back(Region()); 
+    }
+    Region& region = m_vRegion.at(regionId); 
+    region.setId(regionId);
+    region.setName(r.region_name);
+    region.setType(r.region_type);
+    std::vector<Region::box_type>& boxes = region.boxes();
+    boxes.reserve(r.vRectangle.size());
+    for (index_type i = 0, ie = r.vRectangle.size(); i < ie; ++i)
+    {
+        boxes.push_back(Region::box_type(
+                    r.vRectangle[i].at(0), 
+                    r.vRectangle[i].at(1), 
+                    r.vRectangle[i].at(2), 
+                    r.vRectangle[i].at(3) 
+                    ));
+    }
+    // check whether boxes in region overlap with each other 
+    // as I have the assumption that the boxes should not overlap 
+    for (index_type i = 0, ie = boxes.size(); i < ie; ++i)
+    {
+        Region::box_type box1 = boxes[i];
+        for (index_type j = i+1; j < ie; ++j)
+        {
+            Region::box_type box2 = boxes[j];
+            Region::box_type::coordinate_type dx = std::min(box1.xh(), box2.xh()) - std::max(box1.xl(), box2.xl());
+            Region::box_type::coordinate_type dy = std::min(box1.yh(), box2.yh()) - std::max(box1.yl(), box2.yl());
+            if (dx > 0 && dy > 0)
+            {
+                dreamplacePrint(kWARN, "region %s (%u) has overlapped boxes (%d, %d, %d, %d) (%d, %d, %d, %d)\n", 
+                        region.name().c_str(), regionId, 
+                        box1.xl(), box1.yl(), box1.xh(), box1.yh(), 
+                        box2.xl(), box2.yl(), box2.xh(), box2.yh()
+                        );
+            }
+        }
+    }
+}
+void PlaceDB::resize_def_group(int n)
+{
+    m_vGroup.reserve(n);
+}
+void PlaceDB::add_def_group(DefParser::Group const& g)
+{
+    index_type groupId; 
+    string2index_map_type::iterator foundGroup = m_mGroupName2Index.find(g.group_name);
+    if (foundGroup != m_mGroupName2Index.end())
+    {
+        dreamplacePrint(kWARN, "duplicate group %s found\n", g.group_name.c_str());
+        groupId = foundGroup->second;
+    }
+    else
+    {
+        groupId = m_vGroup.size();
+        std::pair<string2index_map_type::iterator, bool> insertRet = m_mGroupName2Index.insert(std::make_pair(g.group_name, groupId));
+        dreamplaceAssertMsg(insertRet.second, "failed to insert group %s to m_mGroupName2Index", g.group_name.c_str());
+        m_vGroup.push_back(Group()); 
+    }
+    Group& group = m_vGroup.at(groupId); 
+    group.setId(groupId);
+    group.setName(g.group_name);
+    group.nodeNames() = g.vGroupMember; 
+
+    string2index_map_type::const_iterator foundRegion = m_mRegionName2Index.find(g.region_name); 
+    dreamplaceAssertMsg(foundRegion != m_mRegionName2Index.end(), "failed to find region name %s", g.region_name.c_str());
+    group.setRegion(foundRegion->second);
+
+    // node indices in group are not set yet 
+    // they need to be set in the adjustParams() function 
 }
 void PlaceDB::end_def_design()
 {
@@ -773,6 +891,7 @@ void PlaceDB::reportStatsKernel()
         m_benchMetrics.numMovable = numMovable();
         m_benchMetrics.numFixed = numFixed();
         m_benchMetrics.numIOPin = numIOPin();
+        m_benchMetrics.numPlaceBlockage = numPlaceBlockages();
         m_benchMetrics.numMultiRowMovable = numMultiRowMovable();
         if (m_benchMetrics.numMultiRowMovable) // only evaluate when there are multi-row cells
         {
@@ -789,7 +908,6 @@ void PlaceDB::reportStatsKernel()
         m_benchMetrics.numNets = nets().size();
         m_benchMetrics.numRows = rows().size();
         m_benchMetrics.numPins = pins().size();
-        m_benchMetrics.numPlaceBlockage = placeBlockages().size();
         m_benchMetrics.siteWidth = siteWidth();
         m_benchMetrics.rowHeight = rowHeight();
         m_benchMetrics.dieArea.set(dieArea().xl(), dieArea().yl(), dieArea().xh(), dieArea().yh());
@@ -1007,7 +1125,7 @@ void PlaceDB::prepare(unsigned numRows, unsigned numNodes, unsigned numIOPin, un
     m_vNet.reserve(numNets);
     m_vNetProperty.reserve(numNets);
     m_vNetIgnoreFlag.reserve(numNets);
-    m_vPlaceBlockage.reserve(numBlockages);
+    m_vPlaceBlockageIndex.reserve(numBlockages);
 }
 
 PlaceDB::coordinate_type PlaceDB::pinPos(PlaceDB::index_type pinId, Direction1DType d) const
@@ -1085,24 +1203,24 @@ FixedNodeConstIterator PlaceDB::fixedNodeEnd() const
 }
 IOPinNodeIterator PlaceDB::iopinNodeBegin()
 {
-    index_type first = m_numMovable+m_numFixed;
+    index_type first = m_numMovable+m_numFixed+m_numPlaceBlockages;
     return IOPinNodeIterator(first, first, m_vNode.size(), this);
 }
 IOPinNodeIterator PlaceDB::iopinNodeEnd()
 {
-    index_type first = m_numMovable+m_numFixed;
+    index_type first = m_numMovable+m_numFixed+m_numPlaceBlockages;
     index_type last = m_vNode.size();
     return IOPinNodeIterator(last, first, last, this);
 }
 IOPinNodeConstIterator PlaceDB::iopinNodeBegin() const
 {
-    index_type first = m_numMovable+m_numFixed;
+    index_type first = m_numMovable+m_numFixed+m_numPlaceBlockages;
     index_type last = m_vNode.size();
     return IOPinNodeConstIterator(first, first, last, this);
 }
 IOPinNodeConstIterator PlaceDB::iopinNodeEnd() const
 {
-    index_type first = m_numMovable+m_numFixed;
+    index_type first = m_numMovable+m_numFixed+m_numPlaceBlockages;
     index_type last = m_vNode.size();
     return IOPinNodeConstIterator(last, first, last, this);
 }
@@ -1178,6 +1296,34 @@ void PlaceDB::adjustParams()
     {
         Node const& node = this->node(i);
         updateNodePinOffset(node, OrientEnum::N, node.orient());
+    }
+
+    // set node indices in groups 
+    // according to node names 
+    WildcardMatch matcher; 
+    std::vector<unsigned char> markers (numMovable()+numFixed(), 0);
+    for (index_type i = 0, ie = numMovable()+numFixed(); i < ie; ++i)
+    {
+        Node const& node = this->node(i); 
+        std::string const& name = this->nodeName(node);
+
+        for (index_type j = 0, je = m_vGroup.size(); j < je; ++j)
+        {
+            Group& group = m_vGroup[j]; 
+            for (std::vector<std::string>::const_iterator it = group.nodeNames().begin(), ite = group.nodeNames().end(); it != ite; ++it)
+            {
+                std::string const& pattern = *it; 
+                if (matcher(name.c_str(), pattern.c_str(), name.size(), pattern.size()))
+                {
+                    if (markers.at(node.id()))
+                    {
+                        dreamplacePrint(kWARN, "node %u in multiple groups, currently add to group %u\n", node.id(), group.id());
+                    }
+                    group.nodes().push_back(node.id());
+                    markers.at(node.id()) = 1; 
+                }
+            }
+        }
     }
 }
 
@@ -1452,55 +1598,54 @@ void PlaceDB::sortNetByDegree()
 #endif
 }
 
-struct ArgSortNodeByPlaceStatus
-{
-    std::vector<Node> const& vNode;
-
-    ArgSortNodeByPlaceStatus(std::vector<Node> const& v) : vNode(v)
-    {
-    }
-    /// @brief Sort cells the following order
-    /// UNPLACED cells, PLACED cells, DUMMY_FIXED cells, FIXED cells
-    bool operator()(PlaceDB::index_type i, PlaceDB::index_type j) const
-    {
-        PlaceStatusEnum::PlaceStatusType status1 = vNode[i].status();
-        PlaceStatusEnum::PlaceStatusType status2 = vNode[j].status();
-        int order1 = statusOrder(status1);
-        int order2 = statusOrder(status2);
-        return order1 < order2 || (order1 == order2 && i < j);
-    }
-    static int statusOrder(int status)
-    {
-        return (status == PlaceStatusEnum::UNPLACED)
-            + (status == PlaceStatusEnum::PLACED)*8
-            + (status == PlaceStatusEnum::DUMMY_FIXED)*64
-            + (status == PlaceStatusEnum::FIXED)*512;
-    }
-};
-
 void PlaceDB::sortNodeByPlaceStatus()
 {
     dreamplacePrint(kINFO, "sort nodes in the order of movable and fixed\n");
     // sort m_vNode, m_vNodeProperty, m_mNodeName2Index
     // map order to node id
-    std::vector<index_type> vNodeOrder (m_vNode.size());
+    // only work on movable and fixed cells, excluding IO pins 
+    std::vector<index_type> vNodeOrder (numMovable() + numFixed());
     for (index_type i = 0, ie = vNodeOrder.size(); i != ie; ++i)
         vNodeOrder[i] = i;
 
-    std::sort(vNodeOrder.begin(), vNodeOrder.end(), ArgSortNodeByPlaceStatus(m_vNode));
+    // so far the data layout in m_vNode
+    // mixed UNPLACED/PLACED, DUMMY_FIXED, and FIXED, IO pins, placement blockages
+    // target order is 
+    // UNPLACED, PLACED, DUMMY_FIXED, FIXED, placement blockages, IO pins 
+    
+    // 1. we first work on movable and fixed cells 
+    dreamplaceAssert(vNodeOrder.size() <= m_vNode.size());
+    auto statusOrder = [&](index_type i){
+        PlaceStatusEnum::PlaceStatusType status = m_vNode[i].status();
+        index_type order = (status == PlaceStatusEnum::FIXED)*512
+            + (status == PlaceStatusEnum::DUMMY_FIXED)*64
+            + (status == PlaceStatusEnum::PLACED)*8
+            + (status == PlaceStatusEnum::UNPLACED)
+            ;
+        return order; 
+    };
+    std::sort(vNodeOrder.begin(), vNodeOrder.end(), 
+            [&](index_type i, index_type j){
+            index_type order1 = statusOrder(i); 
+            index_type order2 = statusOrder(j); 
+            return (order1 < order2 || (order1 == order2 && i < j));
+            });
 
     // map node id to order
-    std::vector<index_type> vNodeId2Order (m_vNode.size());
+    std::vector<index_type> vNodeId2Order (vNodeOrder.size());
     for (index_type i = 0, ie = vNodeOrder.size(); i != ie; ++i)
         vNodeId2Order[vNodeOrder[i]] = i;
     // update m_mNodeName2Index
     for (string2index_map_type::iterator it = m_mNodeName2Index.begin(), ite = m_mNodeName2Index.end(); it != ite; ++it)
     {
-        it->second = vNodeId2Order[it->second];
+        if (it->second < vNodeOrder.size())
+        {
+            it->second = vNodeId2Order[it->second];
+        }
     }
 
     // for all elements to put in place
-    for( index_type i = 0; i < m_vNode.size() - 1; ++i )
+    for( index_type i = 0; i < vNodeOrder.size() - 1; ++i )
     {
         // while the element i is not yet in place
         while( i != vNodeId2Order[i] )
@@ -1517,10 +1662,14 @@ void PlaceDB::sortNodeByPlaceStatus()
     for (index_type i = 1, ie = vNodeOrder.size(); i != ie; ++i)
     {
         dreamplaceAssert(m_vNode[i].id() == vNodeOrder[i]);
-        dreamplaceAssertMsg(ArgSortNodeByPlaceStatus::statusOrder(m_vNode[i-1].status()) <= ArgSortNodeByPlaceStatus::statusOrder(m_vNode[i].status()), "permuting nodes error");
+        dreamplaceAssertMsg(statusOrder(i-1) <= statusOrder(i), "permuting nodes error: i = %u, order %u (%s, %d) vs %u (%s, %d)", 
+                i, 
+                statusOrder(i-1), nodeName(i-1).c_str(), int(m_vNode[i-1].status()), 
+                statusOrder(i), nodeName(i).c_str(), int(m_vNode[i].status())
+                );
     }
     // update node id and pin to node id
-    for (index_type i = 0, ie = m_vNode.size(); i != ie; ++i)
+    for (index_type i = 0, ie = vNodeOrder.size(); i != ie; ++i)
     {
         Node& node = m_vNode[i];
         for (std::vector<index_type>::const_iterator it = node.pins().begin(), ite = node.pins().end(); it != ite; ++it)
@@ -1535,7 +1684,7 @@ void PlaceDB::sortNodeByPlaceStatus()
 
     m_vMovableNodeIndex.clear();
     m_vFixedNodeIndex.clear();
-    for (std::vector<Node>::const_iterator it = m_vNode.begin(), ite = m_vNode.end(); it != ite; ++it)
+    for (std::vector<Node>::const_iterator it = m_vNode.begin(), ite = m_vNode.begin() + numMovable() + numFixed(); it != ite; ++it)
     {
         Node const& node = *it;
         if (node.status() == PlaceStatusEnum::FIXED)
@@ -1548,6 +1697,52 @@ void PlaceDB::sortNodeByPlaceStatus()
         }
     }
 
+    // 2. now we work on swapping IO pins and placement blockages 
+    if (numPlaceBlockages())
+    {
+        // temporary storage for blockages 
+        std::vector<Node> vTmpBlockageNode (m_vNode.begin() + numMovable() + numFixed() + numIOPin(), m_vNode.end()); 
+        std::vector<NodeProperty> vTmpBlockageProperty (m_vNodeProperty.begin() + numMovable() + numFixed() + numIOPin(), m_vNodeProperty.end()); 
+        // copy IO pins 
+        for (index_type i = 0, ie = numIOPin(); i < ie; ++i)
+        {
+            index_type target = m_vNode.size() - i - 1;
+            index_type source = numMovable() + numFixed() + numIOPin() - i - 1;
+            m_vNode[target] = m_vNode[source];
+            m_vNodeProperty[target] = m_vNodeProperty[source];
+        }
+        // copy blockages 
+        std::copy(vTmpBlockageNode.begin(), vTmpBlockageNode.end(), m_vNode.begin() + numMovable() + numFixed());
+        std::copy(vTmpBlockageProperty.begin(), vTmpBlockageProperty.end(), m_vNodeProperty.begin() + numMovable() + numFixed());
+        // update m_mNodeName2Index
+        for (index_type i = numMovable() + numFixed(), ie = m_vNode.size(); i < ie; ++i)
+        {
+            m_mNodeName2Index[m_vNodeProperty[i].name()] = i; 
+        }
+        // update node id and pin to node id for IO pins 
+        for (index_type i = m_vNode.size() - numIOPin() - numPlaceBlockages(), ie = m_vNode.size(); i < ie; ++i)
+        {
+            Node& node = m_vNode[i]; 
+            for (std::vector<index_type>::const_iterator it = node.pins().begin(), ite = node.pins().end(); it != ite; ++it)
+            {
+                // we have not update the node id yet
+                // so it should be consistent
+                dreamplaceAssert(m_vPin[*it].nodeId() == node.id());
+                m_vPin[*it].setNodeId(i);
+            }
+            node.setId(i);
+        }
+
+        // update blockage indices
+        m_vPlaceBlockageIndex.clear();
+        for (std::vector<Node>::const_iterator it = m_vNode.begin() + numMovable() + numFixed(), ite = m_vNode.begin() + numMovable() + numFixed() + numPlaceBlockages(); it != ite; ++it)
+        {
+            Node const& node = *it; 
+            dreamplaceAssert(node.status() == PlaceStatusEnum::FIXED); 
+            m_vPlaceBlockageIndex.push_back(node.id());
+        }
+    }
+
 #ifdef DEBUG
     // check pins, nodes, and nets
     for (std::vector<Node>::const_iterator it = m_vNode.begin(), ite = m_vNode.end(); it != ite; ++it)
@@ -1555,7 +1750,7 @@ void PlaceDB::sortNodeByPlaceStatus()
         Node const& node = *it;
         for (std::vector<index_type>::const_iterator itp = node.pins().begin(), itpe = node.pins().end(); itp != itpe; ++itp)
         {
-            Pin const& pin = m_vPin[*itp];
+            Pin const& pin = m_vPin.at(*itp);
             dreamplaceAssert(pin.nodeId() == node.id());
         }
     }
@@ -1564,7 +1759,7 @@ void PlaceDB::sortNodeByPlaceStatus()
         Net const& net = *it;
         for (std::vector<index_type>::const_iterator itp = net.pins().begin(), itpe = net.pins().end(); itp != itpe; ++itp)
         {
-            Pin const& pin = m_vPin[*itp];
+            Pin const& pin = m_vPin.at(*itp);
             dreamplaceAssert(pin.netId() == net.id());
         }
     }

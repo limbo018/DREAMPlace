@@ -43,16 +43,18 @@ setup(
         ext_modules=[
             CppExtension('place_io_cpp', 
                 [
-                    add_prefix('place_io.cpp'),  
                     add_prefix('BenchMetrics.cpp'),  
                     add_prefix('BinMap.cpp'),  
                     add_prefix('Enums.cpp'),  
                     add_prefix('Net.cpp'),  
                     add_prefix('Node.cpp'),  
+                    add_prefix('Region.cpp'),  
+                    add_prefix('Group.cpp'),  
                     add_prefix('Params.cpp'),  
                     add_prefix('PlaceDB.cpp'),  
                     add_prefix('DefWriter.cpp'),
-                    add_prefix('BookshelfWriter.cpp')
+                    add_prefix('BookshelfWriter.cpp'),
+                    add_prefix('place_io.cpp'),  
                     ],
                 include_dirs=copy.deepcopy(include_dirs), 
                 library_dirs=copy.deepcopy(lib_dirs),

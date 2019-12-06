@@ -67,6 +67,10 @@ bool DefWriter::write(std::string const& outFile, std::string const& inFile,
                         row.numSites(kX), (row.step(kY) == 0)? 1 : row.numSites(kY), row.step(kX), row.step(kY));
                 ++rowCount;
             }
+            else if (line == ";")
+            {
+                /* skip lines only containing ; */
+            }
             else fprintf(out, "%s\n", line.c_str()); 
         }
     }

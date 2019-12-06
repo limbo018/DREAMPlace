@@ -27,6 +27,9 @@ class GlobalSwapFunction(Function):
           pos,
           node_size_x,
           node_size_y,
+          flat_region_boxes, 
+          flat_region_boxes_start, 
+          node2fence_region_map, 
           flat_net2pin_map, 
           flat_net2pin_start_map, 
           pin2net_map, 
@@ -45,6 +48,7 @@ class GlobalSwapFunction(Function):
           num_bins_x, 
           num_bins_y, 
           num_movable_nodes, 
+          num_terminal_NIs, 
           num_filler_nodes, 
           batch_size, 
           max_iters, 
@@ -56,6 +60,9 @@ class GlobalSwapFunction(Function):
                     pos.view(pos.numel()), 
                     node_size_x,
                     node_size_y,
+                    flat_region_boxes, 
+                    flat_region_boxes_start, 
+                    node2fence_region_map, 
                     flat_net2pin_map, 
                     flat_net2pin_start_map, 
                     pin2net_map, 
@@ -74,9 +81,11 @@ class GlobalSwapFunction(Function):
                     num_bins_x, 
                     num_bins_y, 
                     num_movable_nodes, 
+                    num_terminal_NIs, 
                     num_filler_nodes, 
                     batch_size, 
-                    max_iters
+                    max_iters, 
+                    num_threads
                     )
         else:
             if algorithm == 'concurrent': 
@@ -84,6 +93,9 @@ class GlobalSwapFunction(Function):
                         pos.view(pos.numel()), 
                         node_size_x,
                         node_size_y,
+                        flat_region_boxes, 
+                        flat_region_boxes_start, 
+                        node2fence_region_map, 
                         flat_net2pin_map, 
                         flat_net2pin_start_map, 
                         pin2net_map, 
@@ -102,6 +114,7 @@ class GlobalSwapFunction(Function):
                         num_bins_x, 
                         num_bins_y, 
                         num_movable_nodes, 
+                        num_terminal_NIs, 
                         num_filler_nodes, 
                         batch_size, 
                         max_iters, 
@@ -112,6 +125,9 @@ class GlobalSwapFunction(Function):
                         pos.view(pos.numel()), 
                         node_size_x,
                         node_size_y,
+                        flat_region_boxes, 
+                        flat_region_boxes_start, 
+                        node2fence_region_map, 
                         flat_net2pin_map, 
                         flat_net2pin_start_map, 
                         pin2net_map, 
@@ -130,6 +146,7 @@ class GlobalSwapFunction(Function):
                         num_bins_x, 
                         num_bins_y, 
                         num_movable_nodes, 
+                        num_terminal_NIs, 
                         num_filler_nodes, 
                         max_iters
                         )
@@ -140,6 +157,7 @@ class GlobalSwap(object):
     """
     def __init__(self, 
             node_size_x, node_size_y, 
+            flat_region_boxes, flat_region_boxes_start, node2fence_region_map, 
             flat_net2pin_map, flat_net2pin_start_map, pin2net_map, 
             flat_node2pin_map, flat_node2pin_start_map, pin2node_map, 
             pin_offset_x, pin_offset_y, 
@@ -147,7 +165,7 @@ class GlobalSwap(object):
             xl, yl, xh, yh, 
             site_width, row_height, 
             num_bins_x, num_bins_y, 
-            num_movable_nodes, num_filler_nodes, 
+            num_movable_nodes, num_terminal_NIs, num_filler_nodes, 
             batch_size=32, 
             max_iters=10, 
             algorithm='concurrent', 
@@ -155,6 +173,9 @@ class GlobalSwap(object):
         super(GlobalSwap, self).__init__()
         self.node_size_x = node_size_x
         self.node_size_y = node_size_y
+        self.flat_region_boxes = flat_region_boxes 
+        self.flat_region_boxes_start = flat_region_boxes_start 
+        self.node2fence_region_map = node2fence_region_map
         self.flat_net2pin_map = flat_net2pin_map 
         self.flat_net2pin_start_map = flat_net2pin_start_map 
         self.pin2net_map = pin2net_map 
@@ -173,6 +194,7 @@ class GlobalSwap(object):
         self.num_bins_x = num_bins_x 
         self.num_bins_y = num_bins_y
         self.num_movable_nodes = num_movable_nodes
+        self.num_terminal_NIs = num_terminal_NIs 
         self.num_filler_nodes = num_filler_nodes
         self.batch_size = batch_size
         self.max_iters = max_iters
@@ -183,6 +205,9 @@ class GlobalSwap(object):
                 pos,
                 node_size_x=self.node_size_x,
                 node_size_y=self.node_size_y,
+                flat_region_boxes=self.flat_region_boxes, 
+                flat_region_boxes_start=self.flat_region_boxes_start, 
+                node2fence_region_map=self.node2fence_region_map, 
                 flat_net2pin_map=self.flat_net2pin_map, 
                 flat_net2pin_start_map=self.flat_net2pin_start_map, 
                 pin2net_map=self.pin2net_map, 
@@ -201,6 +226,7 @@ class GlobalSwap(object):
                 num_bins_x=self.num_bins_x, 
                 num_bins_y=self.num_bins_y,
                 num_movable_nodes=self.num_movable_nodes, 
+                num_terminal_NIs=self.num_terminal_NIs, 
                 num_filler_nodes=self.num_filler_nodes, 
                 batch_size=self.batch_size, 
                 max_iters=self.max_iters, 
