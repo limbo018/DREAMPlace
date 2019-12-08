@@ -125,6 +125,8 @@ if __name__ == "__main__":
     # load parameters 
     params.load(sys.argv[1])
     logging.info("parameters = %s" % (params))
+    # control numpy multithreading
+    os.environ["OMP_NUM_THREADS"] = "%d" % (params.num_threads)
 
     # run placement 
     tt = time.time()
