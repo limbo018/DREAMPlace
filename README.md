@@ -182,6 +182,44 @@ Descriptions of options in JSON configuration file can be found by running the f
 python dreamplace/Placer.py --help
 ```
 
+The list of configurations as follows will be shown. 
+
+| JSON Parameter                   | Default                 | Description                                                                                                                                                       |
+| -------------------------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| aux_input                        | required for Bookshelf  | input .aux file                                                                                                                                                   |
+| lef_input                        | required for LEF/DEF    | input LEF file                                                                                                                                                    |
+| def_input                        | required for LEF/DEF    | input DEF file                                                                                                                                                    |
+| verilog_input                    | optional for LEF/DEF    | input VERILOG file, provide circuit netlist information if it is not included in DEF file                                                                         |
+| gpu                              | 1                       | enable gpu or not                                                                                                                                                 |
+| num_bins_x                       | 512                     | number of bins in horizontal direction                                                                                                                            |
+| num_bins_y                       | 512                     | number of bins in vertical direction                                                                                                                              |
+| global_place_stages              | required                | global placement configurations of each stage, a dictionary of {"num_bins_x", "num_bins_y", "iteration", "learning_rate"}, learning_rate is relative to bin size  |
+| target_density                   | 0.8                     | target density                                                                                                                                                    |
+| density_weight                   | 1.0                     | initial weight of density cost                                                                                                                                    |
+| gamma                            | 0.5                     | initial coefficient for log-sum-exp and weighted-average wirelength                                                                                               |
+| random_seed                      | 1000                    | random seed                                                                                                                                                       |
+| result_dir                       | results                 | result directory for output                                                                                                                                       |
+| scale_factor                     | 1.0                     | scale factor to avoid numerical overflow                                                                                                                          |
+| ignore_net_degree                | 100                     | ignore net degree larger than some value                                                                                                                          |
+| gp_noise_ratio                   | 0.025                   | noise to initial positions for global placement                                                                                                                   |
+| enable_fillers                   | 1                       | enable filler cells                                                                                                                                               |
+| global_place_flag                | 1                       | whether use global placement                                                                                                                                      |
+| legalize_flag                    | 1                       | whether use internal legalization                                                                                                                                 |
+| detailed_place_flag              | 1                       | whether use internal detailed placement                                                                                                                           |
+| stop_overflow                    | 0.1                     | stopping criteria, consider stop when the overflow reaches to a ratio                                                                                             |
+| dtype                            | float32                 | data type, float32 | float64                                                                                                                                      |
+| detailed_place_engine            |                         | external detailed placement engine to be called after placement                                                                                                   |
+| detailed_place_command           | -nolegal -nodetail      | commands for external detailed placement engine                                                                                                                   |
+| plot_flag                        | 0                       | whether plot solution or not                                                                                                                                      |
+| RePlAce_ref_hpwl                 | 350000                  | reference HPWL used in RePlAce for updating density weight                                                                                                        |
+| RePlAce_LOWER_PCOF               | 0.95                    | lower bound ratio used in RePlAce for updating density weight                                                                                                     |
+| RePlAce_UPPER_PCOF               | 1.05                    | upper bound ratio used in RePlAce for updating density weight                                                                                                     |
+| random_center_init_flag          | 1                       | whether perform random initialization around the center for global placement                                                                                      |
+| sort_nets_by_degree              | 0                       | whether sort nets by degree or not                                                                                                                                |
+| num_threads                      | 8                       | number of CPU threads                                                                                                                                             |
+| dump_global_place_solution_flag  | 0                       | whether dump intermediate global placement solution as a compressed pickle object                                                                                 |
+| dump_legalize_solution_flag      | 0                       | whether dump intermediate legalization solution as a compressed pickle object                                                                                     |
+
 # Authors
 
 * [Yibo Lin](http://yibolin.com), supervised by [David Z. Pan](http://users.ece.utexas.edu/~dpan), composed the initial release. 
