@@ -182,7 +182,7 @@ Descriptions of options in JSON configuration file can be found by running the f
 python dreamplace/Placer.py --help
 ```
 
-The list of configurations as follows will be shown. 
+The list of options as follows will be shown. 
 
 | JSON Parameter                   | Default                 | Description                                                                                                                                                       |
 | -------------------------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
