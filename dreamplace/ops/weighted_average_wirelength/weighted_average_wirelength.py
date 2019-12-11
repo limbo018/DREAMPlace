@@ -264,7 +264,7 @@ class WeightedAverageWirelengthMergedFunction(Function):
         ctx.pos = pos
         if pos.is_cuda:
             torch.cuda.synchronize()
-        logger.debug("twirelength forward %.3f ms" % ((time.time()-tt)*1000))
+        logger.debug("wirelength forward %.3f ms" % ((time.time()-tt)*1000))
         return output[0]
 
     @staticmethod

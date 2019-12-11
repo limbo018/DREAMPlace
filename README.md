@@ -133,7 +133,7 @@ To build, go to the root directory.
 ```
 mkdir build 
 cd build 
-cmake ..
+cmake .. -DCMAKE_INSTALL_PREFIX=your_install_path
 make 
 make install
 ```
