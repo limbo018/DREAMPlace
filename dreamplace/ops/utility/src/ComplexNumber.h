@@ -8,7 +8,7 @@
 #ifndef DREAMPLACE_UTILITY_COMPLEXNUMBER_H
 #define DREAMPLACE_UTILITY_COMPLEXNUMBER_H
 
-#include "utility/src/Namespace.h"
+#include "utility/src/Msg.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
 

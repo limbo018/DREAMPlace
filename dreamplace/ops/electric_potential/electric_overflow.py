@@ -166,7 +166,18 @@ class ElectricOverflow(nn.Module):
         self.node_size_y = node_size_y
         self.node_size_y_clamped = node_size_y.clamp(min=bin_size_y*sqrt2)
         self.offset_y = (node_size_y - self.node_size_y_clamped).mul(0.5)
-        self.ratio = node_size_x * node_size_y / (self.node_size_x_clamped * self.node_size_y_clamped)
+        node_area = node_size_x * node_size_y
+        self.ratio = node_area / (self.node_size_x_clamped * self.node_size_y_clamped)
+
+        # detect movable macros and scale down the density to avoid halos 
+        # the definition of movable macros should be different according to algorithms 
+        # so I prefer to code it inside an operator 
+        # I use a heuristic that cells whose areas are 10x of the mean area will be regarded movable macros in global placement 
+        if target_density < 1: 
+            mean_area = node_area[:num_movable_nodes].mean().mul_(10)
+            row_height = node_size_y[:num_movable_nodes].min().mul_(2)
+            movable_macro_mask = (node_area[:num_movable_nodes] > mean_area) & (self.node_size_y[:num_movable_nodes] > row_height)
+            self.ratio[:num_movable_nodes][movable_macro_mask] = target_density
 
         self.bin_center_x = bin_center_x
         self.bin_center_y = bin_center_y

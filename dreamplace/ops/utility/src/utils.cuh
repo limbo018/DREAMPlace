@@ -9,7 +9,7 @@
 #include <chrono>
 #include <cuda.h>
 #include <cuda_runtime.h>
-#include "utility/src/utils.h"
+#include "utility/src/Msg.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
 
@@ -184,7 +184,8 @@ inline void fill_array(T* array, int n, T v)
     fill_array_kernel<<<CPUCeilDiv(n, 512), 512>>>(array, n, v);
 }
 
-__global__ void reset_element_set_sizes_kernel(int num_sets, int* element_set_sizes)
+template <typename T>
+__global__ void reset_element_set_sizes_kernel(int num_sets, T* element_set_sizes)
 {
     int i = blockIdx.x*blockDim.x + threadIdx.x;
     if (i < num_sets)
@@ -213,12 +214,13 @@ __global__ void collect_element_sets_kernel(int n, int num_sets, int max_set_siz
     }
 }
 
-__global__ void correct_element_set_sizes_kernel(int num_sets, int max_set_size, int* element_set_sizes)
+template <typename T>
+__global__ void correct_element_set_sizes_kernel(int num_sets, T max_set_size, T* element_set_sizes)
 {
     int i = blockIdx.x*blockDim.x + threadIdx.x;
     if (i < num_sets)
     {
-        int& size = element_set_sizes[i]; 
+        T& size = element_set_sizes[i]; 
         size = min(size, max_set_size); 
     }
 }

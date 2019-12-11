@@ -540,7 +540,8 @@ class BasicPlace (nn.Module):
         @param pos locations of cells 
         """
         tt = time.time()
-        figname = "%s/plot/iter%s.png" % (params.result_dir, '{:04}'.format(iteration))
+        path = "%s/%s" % (params.result_dir, params.design_name())
+        figname = "%s/plot/iter%s.png" % (path, '{:04}'.format(iteration))
         os.system("mkdir -p %s" % (os.path.dirname(figname)))
         if isinstance(pos, np.ndarray):
             pos = torch.from_numpy(pos)

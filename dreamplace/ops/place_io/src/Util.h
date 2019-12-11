@@ -12,7 +12,6 @@
 #include <string>
 #include <vector>
 #include <limbo/string/String.h>
-#include "utility/src/Namespace.h"
 #include "utility/src/Msg.h"
 
 /// headers for hash tables 

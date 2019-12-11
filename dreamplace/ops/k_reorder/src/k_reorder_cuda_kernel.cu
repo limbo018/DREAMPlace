@@ -771,24 +771,6 @@ __global__ void unique_instance_nets(DetailedPlaceDB<T> db, KReorderState<T> sta
     }
 }
 
-template <typename T>
-__global__ void fill_array(T* a, int n, T value)
-{
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x)
-    {
-        a[i] = value; 
-    }
-}
-
-/// generate array from 0 to n-1
-__global__ void iota(int* ptr, int n)
-{
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x)
-    {
-        ptr[i] = i; 
-    }
-}
-
 template <typename StateType>
 __global__ void print_costs(StateType state, int group_id, int offset)
 {

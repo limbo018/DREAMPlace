@@ -147,7 +147,7 @@ at::Tensor density_map(
     if (num_filler_nodes)
     {
         int num_physical_nodes = num_nodes - num_filler_nodes;
-        AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeTriangleDensityMapCudaLauncher", [&] {
+        DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeTriangleDensityMapCudaLauncher", [&] {
                 computeTriangleDensityMapCudaLauncher<scalar_t>(
                         pos.data<scalar_t>()+num_physical_nodes, pos.data<scalar_t>()+num_nodes+num_physical_nodes, 
                         node_size_x_clamped.data<scalar_t>()+num_physical_nodes, node_size_y_clamped.data<scalar_t>()+num_physical_nodes,
@@ -204,7 +204,7 @@ at::Tensor fixed_density_map(
     // Call the cuda kernel launcher
     if (num_terminals && num_fixed_impacted_bins_x && num_fixed_impacted_bins_y)
     {
-        AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeExactDensityMapCudaLauncher", [&] {
+        DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeExactDensityMapCudaLauncher", [&] {
                 computeExactDensityMapCellByCellCudaLauncher<scalar_t>(
                         pos.data<scalar_t>()+num_movable_nodes, pos.data<scalar_t>()+num_nodes+num_movable_nodes, 
                         node_size_x.data<scalar_t>()+num_movable_nodes, node_size_y.data<scalar_t>()+num_movable_nodes, 
