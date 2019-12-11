@@ -7,11 +7,11 @@
 import time
 import numpy as np
 import unittest
+import logging
 
 import torch
 from torch.autograd import Function, Variable
 import os
-import imp
 import sys
 import gzip
 
@@ -35,421 +35,31 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 
 
-def spectral(x, transform_type, normalize=False):
-    M = x.shape[0]
-    N = x.shape[1]
-    y = np.zeros([M, N])
-    for u in range(M):
-        for v in range(N):
-            for i in range(M):
-                for j in range(N):
-                    if transform_type == 'coscos':
-                        y[u, v] += x[i, j] * np.cos(2 * np.pi / M * i * u) * np.cos(2 * np.pi / N * j * v)
-                    elif transform_type == 'cossin':
-                        y[u, v] += x[i, j] * np.cos(2 * np.pi / M * i * u) * np.sin(2 * np.pi / N * j * v)
-                    elif transform_type == 'sincos':
-                        y[u, v] += x[i, j] * np.sin(2 * np.pi / M * i * u) * np.cos(2 * np.pi / N * j * v)
-                    elif transform_type == 'sinsin':
-                        y[u, v] += x[i, j] * np.sin(2 * np.pi / M * i * u) * np.sin(2 * np.pi / N * j * v)
-            if normalize:
-                y[u, v] *= 1.0 / (M * N)
-    return y
-
-
-def naive_idct(x):
-    N = len(x)
-    y = np.zeros(N)
-    y += 0.5 * x[0]
-    for u in range(N):
-        for k in range(1, N):
-            y[u] += x[k] * np.cos(np.pi / (2 * N) * k * (2 * u + 1))
-
-    return y
-
-
-def naive_idct2(x):
-    M = x.shape[0]
-    N = x.shape[1]
-
-    y = np.zeros_like(x)
-
-    # for u in range(M):
-    #    y[u] = naive_idct(x[u])
-    #y = np.transpose(y)
-    # for v in range(N):
-    #    y[v] = naive_idct(y[v])
-    #y = np.transpose(y)
-
-    for u in range(M):
-        for v in range(N):
-            for p in range(M):
-                for q in range(N):
-                    a = 1  # if p == 0 else 2
-                    b = 1  # if q == 0 else 2
-                    y[u, v] += a * b * x[p, q] * np.cos(np.pi / M * p * (u + 0.5)) * np.cos(np.pi / N * q * (v + 0.5))
-    return y
-
-
-def naive_idct2_grad_x(x):
-    M = x.shape[0]
-    N = x.shape[1]
-
-    y = np.zeros_like(x)
-    for u in range(M):
-        for v in range(N):
-            for p in range(M):
-                for q in range(N):
-                    a = 1  # if p == 0 else 2
-                    b = 1  # if q == 0 else 2
-                    y[u, v] += -a * b * x[p, q] * (np.pi / M * p) * np.sin(np.pi / M *
-                                                                           p * (u + 0.5)) * np.cos(np.pi / N * q * (v + 0.5))
-    return y
-
-
-def naive_idct2_grad_y(x):
-    M = x.shape[0]
-    N = x.shape[1]
-
-    y = np.zeros_like(x)
-    for u in range(M):
-        for v in range(N):
-            for p in range(M):
-                for q in range(N):
-                    a = 1  # if p == 0 else 2
-                    b = 1  # if q == 0 else 2
-                    y[u, v] += -a * b * x[p, q] * (np.pi / N * q) * np.cos(np.pi / M *
-                                                                           p * (u + 0.5)) * np.sin(np.pi / N * q * (v + 0.5))
-    return y
-
-
-def naive_idsct2(x):
-    M = x.shape[0]
-    N = x.shape[1]
-
-    y = np.zeros_like(x)
-    for u in range(M):
-        for v in range(N):
-            for p in range(M):
-                for q in range(N):
-                    a = 1  # if p == 0 else 2
-                    b = 1  # if q == 0 else 2
-                    y[u, v] += -a * b * x[p, q] * np.sin(np.pi / M * p * (u + 0.5)) * np.cos(np.pi / N * q * (v + 0.5))
-    return y
-
-
-def naive_idsct2_2(x):
-    M = x.shape[0]
-    N = x.shape[1]
-
-    y1 = np.zeros_like(x)
-
-    # for u in range(M):
-    #    y1[u] = naive_idct(x[u])
-    for v in range(N):
-        for p in range(M):
-            for q in range(N):
-                y1[p, v] += x[p, q] * np.cos(np.pi / N * q * (v + 0.5))
-    #print("y1 = ", y1)
-    # for u in range(M):
-    #    for v in range(N):
-    #        for p in range(M):
-    #            for q in range(N):
-    #                y1[u, p] += x[p, q]*np.cos(np.pi/N*q*(v+0.5))
-
-    #y1 = np.transpose(y1)
-    y2 = np.zeros_like(x)
-    for u in range(M):
-        for v in range(N):
-            for p in range(M):
-                y2[u, v] += -y1[p, v] * np.sin(np.pi / M * p * (u + 0.5))
-    # for u in range(M):
-    #    for v in range(N):
-    #        for p in range(M):
-    #            for q in range(N):
-    #                y2[u, v] += -y1[u, p]*np.sin(np.pi/M*p*(u+0.5))
-    #y = np.transpose(y2)
-
-    return y1, y2
-
-
-"""
-class DctOpTest(unittest.TestCase):
-    def test_dct(self):
-        xx = np.array([[1, 2], [3, 4]]).astype(np.float64).ravel()
-        x = Variable(torch.from_numpy(xx), requires_grad=False)
-
-        golden_value = fftpack.dct(xx)
-        print("dct 1d even golden_value = ", golden_value)
-
-        result = discrete_spectral_transform.dct(x)
-        print("dct 1d even result = ", result)
-
-        np.testing.assert_allclose(result.numpy(), golden_value, atol=1e-12)
-
-        xx = xx.reshape([2, 2])
-        x = x.view([2, 2])
-        golden_value = fftpack.dct(xx)
-        print("dct batch golden_value = ", golden_value)
-
-        result = discrete_spectral_transform.dct(x)
-        print("dct batch result = ", result)
-
-        np.testing.assert_allclose(result.numpy(), golden_value, atol=1e-12)
-
-        xx = np.array([[1, 2], [3, 4], [5, 6]]).astype(np.float64).ravel()
-        x = Variable(torch.from_numpy(xx), requires_grad=False)
-
-        golden_value = fftpack.dct(xx)
-        print("dct 1d odd golden_value = ", golden_value)
-
-        result = discrete_spectral_transform.dct(x)
-        print("dct 1d odd result = ", result)
-
-        np.testing.assert_allclose(result.numpy(), golden_value, atol=1e-12)
-
-    def test_dct2(self):
-        xx = np.array([[1, 2], [3, 4]]).astype(np.float64)
-        x = Variable(torch.from_numpy(xx), requires_grad=False)
-
-        golden_value = fftpack.dct(fftpack.dct(xx.T, norm=None).T, norm=None)
-        print("dct 2d even golden_value = ", golden_value)
-
-        result = discrete_spectral_transform.dct2(x)
-        print("dct 2d even result = ", result)
-
-        np.testing.assert_allclose(result.numpy(), golden_value, atol=1e-12)
-
-    def test_idct(self):
-        xx = np.array([[1, 2], [3, 4]]).astype(np.float64).ravel()
-        yy = fftpack.dct(xx)
-        y = Variable(torch.from_numpy(yy), requires_grad=False)
-
-        print("original signal = ", xx)
-
-        golden_value = fftpack.idct(yy)
-        print("idct 1d even golden_value = ", golden_value)
-
-        print("idct 1d even native_value = ", naive_idct(yy))
-
-        result = discrete_spectral_transform.idct(y)*xx.size
-        print("idct 1d even result = ", result)
-
-        np.testing.assert_allclose(result.numpy(), golden_value, atol=1e-12)
-
-        xx = np.array([[1, 2], [3, 4], [5, 6]]).astype(np.float64).ravel()
-        yy = fftpack.dct(xx)
-        y = Variable(torch.from_numpy(yy), requires_grad=False)
-
-        print("original signal = ", xx)
-
-        golden_value = fftpack.idct(yy)
-        print("idct 1d even golden_value = ", golden_value)
-
-        print("idct 1d even native_value = ", naive_idct(yy))
-
-        result = discrete_spectral_transform.idct(y)*xx.size
-        print("idct 1d even result = ", result)
-
-        np.testing.assert_allclose(result.numpy(), golden_value, atol=1e-12)
-
-    def test_idct2(self):
-        xx = np.array([[1, 2], [3, 4]]).astype(np.float64)
-        yy = fftpack.dct(fftpack.dct(xx.T, norm=None).T, norm=None)
-        y = Variable(torch.from_numpy(yy), requires_grad=False)
-
-        print("original signal = ", xx)
-
-        golden_value = fftpack.idct(fftpack.idct(yy.T, norm=None).T, norm=None)
-        print("idct 2d even golden_value = ", golden_value)
-
-        result = discrete_spectral_transform.idct2(y)*xx.size
-        print("idct 2d even result = ", result)
-
-        np.testing.assert_allclose(result.numpy(), golden_value, atol=1e-12)
-
-        xx = np.array([[1, 2], [3, 4], [5, 6]]).astype(np.float64)
-        yy = fftpack.dct(fftpack.dct(xx.T, norm=None).T, norm=None)
-        y = Variable(torch.from_numpy(yy), requires_grad=False)
-
-        print("original signal = ", xx)
-
-        golden_value = fftpack.idct(fftpack.idct(yy.T, norm=None).T, norm=None)
-        print("idct 2d even golden_value = ", golden_value)
-
-        result = discrete_spectral_transform.idct2(y)*xx.size
-        print("idct 2d even result = ", result)
-
-        np.testing.assert_allclose(result.numpy(), golden_value, atol=1e-12)
-
-    #def test_idct2(self):
-    #    xx = np.array([[1, 2], [3, 4]]).astype(np.float64)
-    #    x = Variable(torch.from_numpy(xx), requires_grad=False)
-
-    #    golden_value = fftpack.idct(fftpack.idct(xx.T, norm=None).T, norm=None)
-    #    print("idct 2d even golden_value = ", golden_value)
-
-    #    result = discrete_spectral_transform.idct2(x)
-    #    print("idct 2d even result = ", result)
-
-    #    np.testing.assert_allclose(result.numpy(), golden_value, atol=1e-12)
-
-class DstOpTest(unittest.TestCase):
-    def test_dst(self):
-        xx = np.array([[1, 2], [3, 4]]).astype(np.float64).ravel()
-        x = Variable(torch.from_numpy(xx), requires_grad=False)
-
-        golden_value = fftpack.dst(xx)
-        print("dst 1d even golden_value = ", golden_value)
-
-        result = discrete_spectral_transform.dst(x)
-        print("dst 1d even result = ", result)
-
-        np.testing.assert_allclose(result.numpy(), golden_value, atol=1e-12)
-
-        xx = xx.reshape([2, 2])
-        x = x.view([2, 2])
-        golden_value = fftpack.dst(xx)
-        print("dst batch golden_value = ", golden_value)
-
-        result = discrete_spectral_transform.dst(x)
-        print("dst batch result = ", result)
-
-        np.testing.assert_allclose(result.numpy(), golden_value, atol=1e-12)
-
-        xx = np.array([[1, 2], [3, 4], [5, 6]]).astype(np.float64).ravel()
-        x = Variable(torch.from_numpy(xx), requires_grad=False)
-
-        golden_value = fftpack.dst(xx)
-        print("dst 1d odd golden_value = ", golden_value)
-
-        result = discrete_spectral_transform.dst(x)
-        print("dst 1d odd result = ", result)
-
-        np.testing.assert_allclose(result.numpy(), golden_value, atol=1e-12)
-
-    def test_dst2(self):
-        xx = np.array([[1, 2], [3, 4]]).astype(np.float64)
-        x = Variable(torch.from_numpy(xx), requires_grad=False)
-
-        golden_value = fftpack.dst(fftpack.dst(xx.T, norm=None).T, norm=None)
-        print("dst 2d even golden_value = ", golden_value)
-
-        result = discrete_spectral_transform.dst2(x)
-        print("dst 2d even result = ", result)
-
-        np.testing.assert_allclose(result.numpy(), golden_value, atol=1e-12)
-"""
-
-# class SpectralOpTest(unittest.TestCase):
-#    def test_spectral_even(self):
-#
-#        xx = np.array([[1, 2], [3, 4]]).astype(np.float64)
-#        x = Variable(torch.from_numpy(xx), requires_grad=False)
-#
-#        # coscos
-#        golden_value = spectral(xx, 'coscos')
-#        print("coscos golden_value = ", golden_value)
-#
-#        result = discrete_spectral_transform.DiscreteCosCosTransform(x)
-#        print("coscos custom = ", result)
-#
-#        np.testing.assert_allclose(result.numpy(), golden_value, atol=1e-12)
-#
-#        # cossin
-#        golden_value = spectral(xx, 'cossin')
-#        print("cossin golden_value = ", golden_value)
-#
-#        result = discrete_spectral_transform.DiscreteCosSinTransform(x)
-#        print("cossin custom = ", result)
-#
-#        np.testing.assert_allclose(result.numpy(), golden_value, atol=1e-12)
-#
-#        # sincos
-#        golden_value = spectral(xx, 'sincos')
-#        print("sincos golden_value = ", golden_value)
-#
-#        result = discrete_spectral_transform.DiscreteSinCosTransform(x)
-#        print("sincos custom = ", result)
-#
-#        np.testing.assert_allclose(result.numpy(), golden_value, atol=1e-12)
-#
-#        # sinsin
-#        golden_value = spectral(xx, 'sinsin')
-#        print("sinsin golden_value = ", golden_value)
-#
-#        result = discrete_spectral_transform.DiscreteSinSinTransform(x)
-#        print("sinsin custom = ", result)
-#
-#        np.testing.assert_allclose(result.numpy(), golden_value, atol=1e-12)
-#
-#    def test_spectral_odd(self):
-#
-#        xx = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]).astype(np.float64)
-#        x = Variable(torch.from_numpy(xx), requires_grad=False)
-#
-#        # coscos
-#        golden_value = spectral(xx, 'coscos')
-#        print("coscos golden_value = ", golden_value)
-#
-#        result = discrete_spectral_transform.DiscreteCosCosTransform(x)
-#        print("coscos custom = ", result)
-#
-#        np.testing.assert_allclose(result.numpy(), golden_value, atol=1e-12)
-#
-#        # cossin
-#        golden_value = spectral(xx, 'cossin')
-#        print("cossin golden_value = ", golden_value)
-#
-#        result = discrete_spectral_transform.DiscreteCosSinTransform(x)
-#        print("cossin custom = ", result)
-#
-#        np.testing.assert_allclose(result.numpy(), golden_value, atol=1e-12)
-#
-#        # sincos
-#        golden_value = spectral(xx, 'sincos')
-#        print("sincos golden_value = ", golden_value)
-#
-#        result = discrete_spectral_transform.DiscreteSinCosTransform(x)
-#        print("sincos custom = ", result)
-#
-#        np.testing.assert_allclose(result.numpy(), golden_value, atol=1e-12)
-#
-#        # sinsin
-#        golden_value = spectral(xx, 'sinsin')
-#        print("sinsin golden_value = ", golden_value)
-#
-#        result = discrete_spectral_transform.DiscreteSinSinTransform(x)
-#        print("sinsin custom = ", result)
-#
-#        np.testing.assert_allclose(result.numpy(), golden_value, atol=1e-12)
-#
-#
-
-
 class ElectricPotentialOpTest(unittest.TestCase):
     def test_densityOverflowRandom(self):
         dtype = np.float64
-        xx = np.array([1.0, 2.0]).astype(dtype)
-        yy = np.array([2.0, 1.5]).astype(dtype)
-        node_size_x = np.array([0.5, 1.0]).astype(dtype)
-        node_size_y = np.array([1.0, 1.0]).astype(dtype)
+        xx = np.array([1000, 11148 , 11148 , 11148 , 11148 , 11148 , 11124 , 11148 , 11148 , 11137 , 11126 , 11148 , 11130 , 11148 , 11148 , 11148 , 11148 , 11148 , 11148 , 0 , 11148 , 11148 , 11150 , 11134 , 11148 , 11148 , 11148 , 10550 , 11148 , 11148 , 11144 , 11148 , 11148 , 11148 , 11148 , 11140 , 11120 , 11154 , 11148 , 11133 , 11148 , 11148 , 11134 , 11125 , 11148 , 11148 , 11148 , 11155 , 11127 , 11148 , 11148 , 11148 , 11148 , 11131 , 11148 , 11148 , 11148 , 11148 , 11136 , 11148 , 11146 , 11148 , 11135 , 11148 , 11125 , 11150 , 11148 , 11139 , 11148 , 11148 , 11130 , 11148 , 11128 , 11148 , 11138 , 11148 , 11148 , 11148 , 11130 , 11148 , 11132 , 11148 , 11148 , 11090]).astype(dtype)
+        yy = np.array([1000, 11178 , 11178 , 11190 , 11400 , 11178 , 11172 , 11178 , 11178 , 11418 , 11418 , 11178 , 11418 , 11178 , 11178 , 11178 , 11178 , 11178 , 11178 , 11414 , 11178 , 11178 , 11172 , 11418 , 11406 , 11184 , 11178 , 10398 , 11178 , 11178 , 11172 , 11178 , 11178 , 11178 , 11178 , 11418 , 11418 , 11172 , 11178 , 11418 , 11178 , 11178 , 11172 , 11418 , 11178 , 11178 , 11178 , 11418 , 11418 , 11178 , 11178 , 11178 , 11178 , 11418 , 11178 , 11178 , 11394 , 11178 , 11418 , 11178 , 11418 , 11178 , 11418 , 11178 , 11418 , 11418 , 11178 , 11172 , 11178 , 11178 , 11418 , 11178 , 11418 , 11178 , 11418 , 11412 , 11178 , 11178 , 11172 , 11178 , 11418 , 11178 , 11178 , 11414]).astype(dtype)
+        node_size_x = np.array([6, 3 , 3 , 3 , 3 , 3 , 5 , 3 , 3 , 1 , 1 , 3 , 1 , 3 , 3 , 3 , 3 , 3 , 3 , 16728 , 3 , 3 , 5 , 1 , 3 , 3 , 3 , 740 , 3 , 3 , 5 , 3 , 3 , 3 , 3 , 5 , 5 , 5 , 3 , 1 , 3 , 3 , 5 , 1 , 3 , 3 , 3 , 5 , 1 , 3 , 3 , 3 , 3 , 1 , 3 , 3 , 3 , 3 , 5 , 3 , 5 , 3 , 1 , 3 , 5 , 5 , 3 , 5 , 3 , 3 , 5 , 3 , 1 , 3 , 1 , 3 , 3 , 3 , 5 , 3 , 1 , 3 , 3 , 67]).astype(dtype)
+        node_size_y = np.array([6, 240 , 240 , 6 , 6 , 240 , 6 , 240 , 240 , 6 , 6 , 240 , 6 , 240 , 240 , 240 , 240 , 240 , 240 , 10 , 240 , 6 , 6 , 6 , 6 , 6 , 240 , 780 , 240 , 240 , 6 , 240 , 240 , 240 , 240 , 6 , 6 , 6 , 240 , 6 , 240 , 240 , 6 , 6 , 240 , 240 , 240 , 6 , 6 , 240 , 240 , 240 , 240 , 6 , 240 , 240 , 6 , 240 , 6 , 240 , 6 , 240 , 6 , 240 , 6 , 6 , 240 , 6 , 240 , 240 , 6 , 240 , 6 , 240 , 6 , 6 , 240 , 240 , 6 , 240 , 6 , 240 , 240 , 10]).astype(dtype)
         #xx = np.array([2.0]).astype(dtype)
         #yy = np.array([1.5]).astype(dtype)
         #node_size_x = np.array([1.0]).astype(dtype)
         #node_size_y = np.array([1.0]).astype(dtype)
         num_nodes = len(xx)
+        num_terminals = len(xx)-1
 
         scale_factor = 1.0
 
         xl = 0.0
-        yl = 0.0
-        xh = 6.0
-        yh = 6.0
-        bin_size_x = 1.0
-        bin_size_y = 1.0
-        target_density = 0.1
-        num_bins_x = int(np.ceil((xh - xl) / bin_size_x))
-        num_bins_y = int(np.ceil((yh - yl) / bin_size_y))
+        yl = 6.0
+        xh = 16728.0
+        yh = 11430.0
+        target_density = 0.7
+        num_bins_x = 1024
+        num_bins_y = 1024
+        bin_size_x = (xh-xl)/num_bins_x
+        bin_size_y = (yh-yl)/num_bins_y
 
         """
         return bin xl
@@ -501,8 +111,8 @@ class ElectricPotentialOpTest(unittest.TestCase):
             target_density=torch.tensor(target_density, requires_grad=False, dtype=dtype),
             xl=xl, yl=yl, xh=xh, yh=yh,
             bin_size_x=bin_size_x, bin_size_y=bin_size_y,
-            num_movable_nodes=num_nodes,
-            num_terminals=0,
+            num_movable_nodes=num_nodes-num_terminals,
+            num_terminals=num_terminals,
             num_filler_nodes=0,
             padding=0,
             sorted_node_map=sorted_node_map
@@ -524,8 +134,8 @@ class ElectricPotentialOpTest(unittest.TestCase):
                         target_density=torch.tensor(target_density, requires_grad=False, dtype=dtype).cuda(),
                         xl=xl, yl=yl, xh=xh, yh=yh,
                         bin_size_x=bin_size_x, bin_size_y=bin_size_y,
-                        num_movable_nodes=num_nodes,
-                        num_terminals=0,
+                        num_movable_nodes=num_nodes-num_terminals,
+                        num_terminals=num_terminals,
                         num_filler_nodes=0,
                         padding=0,
                         sorted_node_map=sorted_node_map.cuda()
@@ -651,6 +261,8 @@ def eval_runtime(design):
 
 
 if __name__ == '__main__':
+    logging.root.name = 'DREAMPlace'
+    logging.basicConfig(level=logging.DEBUG, format='[%(levelname)-7s] %(name)s - %(message)s', stream=sys.stdout)
     if len(sys.argv) < 2: 
         unittest.main()
     else:

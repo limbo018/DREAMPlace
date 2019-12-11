@@ -379,10 +379,14 @@ class ElectricPotential(nn.Module):
         self.num_bins_x = int(math.ceil((xh - xl) / bin_size_x))
         self.num_bins_y = int(math.ceil((yh - yl) / bin_size_y))
 
-        self.num_movable_impacted_bins_x = int(
-            ((node_size_x[:num_movable_nodes].max() + 2 * sqrt2 * self.bin_size_x) / self.bin_size_x).ceil().clamp(max=self.num_bins_x))
-        self.num_movable_impacted_bins_y = int(
-            ((node_size_y[:num_movable_nodes].max() + 2 * sqrt2 * self.bin_size_y) / self.bin_size_y).ceil().clamp(max=self.num_bins_y))
+        if num_movable_nodes: 
+            self.num_movable_impacted_bins_x = int(
+                ((node_size_x[:num_movable_nodes].max() + 2 * sqrt2 * self.bin_size_x) / self.bin_size_x).ceil().clamp(max=self.num_bins_x))
+            self.num_movable_impacted_bins_y = int(
+                ((node_size_y[:num_movable_nodes].max() + 2 * sqrt2 * self.bin_size_y) / self.bin_size_y).ceil().clamp(max=self.num_bins_y))
+        else:
+            self.num_movable_impacted_bins_x = 0
+            self.num_movable_impacted_bins_y = 0
         if num_filler_nodes:
             self.num_filler_impacted_bins_x = int(
                 ((node_size_x[-num_filler_nodes:].max() + 2 * sqrt2 * self.bin_size_x) / self.bin_size_x).ceil().clamp(max=self.num_bins_x))
@@ -460,6 +464,7 @@ class ElectricPotential(nn.Module):
                 )
 
             # plot(0, self.initial_density_map.clone().div(self.bin_size_x*self.bin_size_y).cpu().numpy(), self.padding, 'summary/initial_potential_map')
+            logger.info("fixed density map: average %g, max %g, bin area %g" % (self.initial_density_map.mean(), self.initial_density_map.max(), self.bin_size_x*self.bin_size_y))
 
             # scale density of fixed macros
             self.initial_density_map.mul_(self.target_density)

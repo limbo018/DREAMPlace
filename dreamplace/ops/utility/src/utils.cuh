@@ -11,6 +11,12 @@
 #include <cuda_runtime.h>
 #include "utility/src/utils.h"
 
+DREAMPLACE_BEGIN_NAMESPACE
+
+/// namespace definition to make functions like 
+/// min/max general between C++ and CUDA
+#define DREAMPLACE_STD_NAMESPACE 
+
 #define allocateCUDA(var, size, type) \
 {\
     cudaError_t status = cudaMalloc(&(var), (size)*sizeof(type)); \
@@ -239,5 +245,7 @@ inline __host__ void gather(int n, int num_sets, int max_set_size,
     collect_element_sets_kernel<<<CPUCeilDiv(n, 512), 512>>>(n, num_sets, max_set_size, elements, element2partition_map, element_sets, element_set_sizes); 
     correct_element_set_sizes_kernel<<<CPUCeilDiv(num_sets, 512), 512>>>(num_sets, max_set_size, element_set_sizes);
 }
+
+DREAMPLACE_END_NAMESPACE
 
 #endif
