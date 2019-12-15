@@ -23,9 +23,14 @@ import dreamplace.ops.hpwl.hpwl as hpwl
 import dreamplace.ops.density_overflow.density_overflow as density_overflow 
 import dreamplace.ops.electric_potential.electric_overflow as electric_overflow 
 import dreamplace.ops.rmst_wl.rmst_wl as rmst_wl 
+import dreamplace.ops.macro_legalize.macro_legalize as macro_legalize 
 import dreamplace.ops.greedy_legalize.greedy_legalize as greedy_legalize 
+import dreamplace.ops.abacus_legalize.abacus_legalize as abacus_legalize 
 import dreamplace.ops.draw_place.draw_place as draw_place 
 import dreamplace.ops.pin_pos.pin_pos as pin_pos
+import dreamplace.ops.global_swap.global_swap as global_swap 
+import dreamplace.ops.k_reorder.k_reorder as k_reorder
+import dreamplace.ops.independent_set_matching.independent_set_matching as independent_set_matching
 import pdb 
 
 class PlaceDataCollection (object):
@@ -63,6 +68,11 @@ class PlaceDataCollection (object):
             logging.warning("net weights are all the same, ignored")
             self.net_weights = torch.Tensor().to(device)
 
+        # regions 
+        self.flat_region_boxes = torch.from_numpy(placedb.flat_region_boxes).to(device)
+        self.flat_region_boxes_start = torch.from_numpy(placedb.flat_region_boxes_start).to(device)
+        self.node2fence_region_map = torch.from_numpy(placedb.node2fence_region_map).to(device)
+        
         self.net_mask_all = torch.from_numpy(np.ones(placedb.num_nets, dtype=np.uint8)).to(device) # all nets included 
         net_degrees = np.array([len(net2pin) for net2pin in placedb.net2pin_map])
         net_mask = np.logical_and(2 <= net_degrees, net_degrees < params.ignore_net_degree).astype(np.uint8)
@@ -81,10 +91,10 @@ class PlaceDataCollection (object):
         self.sorted_node_map = self.sorted_node_map.to(torch.int32) 
         # self.sorted_node_map = torch.arange(0, placedb.num_movable_nodes, dtype=torch.int32, device=device)
 
-        # print(self.node_size_x[placedb.num_movable_nodes//2 :placedb.num_movable_nodes//2+20])
-        # print(self.sorted_node_map[placedb.num_movable_nodes//2 :placedb.num_movable_nodes//2+20])
-        # print(self.node_size_x[self.sorted_node_map[0: 10].long()])
-        # print(self.node_size_x[self.sorted_node_map[-10:].long()])
+        # logging.debug(self.node_size_x[placedb.num_movable_nodes//2 :placedb.num_movable_nodes//2+20])
+        # logging.debug(self.sorted_node_map[placedb.num_movable_nodes//2 :placedb.num_movable_nodes//2+20])
+        # logging.debug(self.node_size_x[self.sorted_node_map[0: 10].long()])
+        # logging.debug(self.node_size_x[self.sorted_node_map[-10:].long()])
 
         
     def bin_center_x_padded(self, placedb, padding): 
@@ -130,7 +140,7 @@ class PlaceOpCollection (object):
         self.hpwl_op = None
         self.rmst_wl_op = None 
         self.density_overflow_op = None 
-        self.greedy_legalize_op = None 
+        self.legalize_op = None 
         self.detailed_place_op = None
         self.wirelength_op = None 
         self.update_gamma_op = None 
@@ -204,7 +214,9 @@ class BasicPlace (nn.Module):
         #self.op_collections.density_overflow_op = self.build_density_overflow(params, placedb, self.data_collections, self.device)
         self.op_collections.density_overflow_op = self.build_electric_overflow(params, placedb, self.data_collections, self.device)
         # legalization 
-        self.op_collections.greedy_legalize_op = self.build_greedy_legalization(params, placedb, self.data_collections, self.device)
+        self.op_collections.legalize_op = self.build_legalization(params, placedb, self.data_collections, self.device)
+        # detailed placement 
+        self.op_collections.detailed_place_op = self.build_detailed_placement(params, placedb, self.data_collections, self.device)
         # draw placement 
         self.op_collections.draw_place_op = self.build_draw_placement(params, placedb)
 
@@ -368,23 +380,132 @@ class BasicPlace (nn.Module):
                 num_threads=params.num_threads
                 )
 
-    def build_greedy_legalization(self, params, placedb, data_collections, device):
+    def build_legalization(self, params, placedb, data_collections, device):
         """
-        @brief greedy legalization 
+        @brief legalization 
         @param params parameters 
         @param placedb placement database 
         @param data_collections a collection of all data and variables required for constructing the ops 
         @param device cpu or cuda 
         """
-        return greedy_legalize.GreedyLegalize(
+        # for movable macro legalization 
+        # the number of bins control the search granularity 
+        ml = macro_legalize.MacroLegalize(
                 node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
+                flat_region_boxes=data_collections.flat_region_boxes, flat_region_boxes_start=data_collections.flat_region_boxes_start, node2fence_region_map=data_collections.node2fence_region_map, 
+                xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
+                site_width=placedb.site_width, row_height=placedb.row_height, 
+                num_bins_x=params.num_bins_x, num_bins_y=params.num_bins_y, 
+                num_movable_nodes=placedb.num_movable_nodes, 
+                num_terminal_NIs=placedb.num_terminal_NIs, 
+                num_filler_nodes=placedb.num_filler_nodes
+                )
+        # for standard cell legalization
+        gl = greedy_legalize.GreedyLegalize(
+                node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
+                flat_region_boxes=data_collections.flat_region_boxes, flat_region_boxes_start=data_collections.flat_region_boxes_start, node2fence_region_map=data_collections.node2fence_region_map, 
                 xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
                 site_width=placedb.site_width, row_height=placedb.row_height, 
                 num_bins_x=1, num_bins_y=64, 
                 #num_bins_x=64, num_bins_y=64, 
                 num_movable_nodes=placedb.num_movable_nodes, 
+                num_terminal_NIs=placedb.num_terminal_NIs, 
                 num_filler_nodes=placedb.num_filler_nodes
                 )
+        # for standard cell legalization
+        al = abacus_legalize.AbacusLegalize(
+                node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
+                flat_region_boxes=data_collections.flat_region_boxes, flat_region_boxes_start=data_collections.flat_region_boxes_start, node2fence_region_map=data_collections.node2fence_region_map, 
+                xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
+                site_width=placedb.site_width, row_height=placedb.row_height, 
+                num_bins_x=1, num_bins_y=64, 
+                #num_bins_x=64, num_bins_y=64, 
+                num_movable_nodes=placedb.num_movable_nodes, 
+                num_terminal_NIs=placedb.num_terminal_NIs, 
+                num_filler_nodes=placedb.num_filler_nodes
+                )
+        def build_legalization_op(pos): 
+            logging.info("Start legalization")
+            pos1 = ml(pos, pos)
+            pos2 = gl(pos1, pos1)
+            return al(pos1, pos2)
+        return build_legalization_op
+
+    def build_detailed_placement(self, params, placedb, data_collections, device):
+        """
+        @brief detailed placement consisting of global swap and independent set matching 
+        @param params parameters 
+        @param placedb placement database 
+        @param data_collections a collection of all data and variables required for constructing the ops 
+        @param device cpu or cuda 
+        """
+        gs = global_swap.GlobalSwap(
+                node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
+                flat_region_boxes=data_collections.flat_region_boxes, flat_region_boxes_start=data_collections.flat_region_boxes_start, node2fence_region_map=data_collections.node2fence_region_map, 
+                flat_net2pin_map=data_collections.flat_net2pin_map, flat_net2pin_start_map=data_collections.flat_net2pin_start_map, pin2net_map=data_collections.pin2net_map, 
+                flat_node2pin_map=data_collections.flat_node2pin_map, flat_node2pin_start_map=data_collections.flat_node2pin_start_map, pin2node_map=data_collections.pin2node_map, 
+                pin_offset_x=data_collections.pin_offset_x, pin_offset_y=data_collections.pin_offset_y, 
+                net_mask=data_collections.net_mask_ignore_large_degrees, 
+                xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
+                site_width=placedb.site_width, row_height=placedb.row_height, 
+                #num_bins_x=placedb.num_bins_x//16, num_bins_y=placedb.num_bins_y//16, 
+                num_bins_x=placedb.num_bins_x//2, num_bins_y=placedb.num_bins_y//2, 
+                num_movable_nodes=placedb.num_movable_nodes, 
+                num_terminal_NIs=placedb.num_terminal_NIs, 
+                num_filler_nodes=placedb.num_filler_nodes, 
+                batch_size=256, 
+                max_iters=2, 
+                algorithm='concurrent', 
+                num_threads=params.num_threads
+                )
+        kr = k_reorder.KReorder(
+                node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
+                flat_region_boxes=data_collections.flat_region_boxes, flat_region_boxes_start=data_collections.flat_region_boxes_start, node2fence_region_map=data_collections.node2fence_region_map, 
+                flat_net2pin_map=data_collections.flat_net2pin_map, flat_net2pin_start_map=data_collections.flat_net2pin_start_map, pin2net_map=data_collections.pin2net_map, 
+                flat_node2pin_map=data_collections.flat_node2pin_map, flat_node2pin_start_map=data_collections.flat_node2pin_start_map, pin2node_map=data_collections.pin2node_map, 
+                pin_offset_x=data_collections.pin_offset_x, pin_offset_y=data_collections.pin_offset_y, 
+                net_mask=data_collections.net_mask_ignore_large_degrees, 
+                xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
+                site_width=placedb.site_width, row_height=placedb.row_height, 
+                num_bins_x=placedb.num_bins_x, num_bins_y=placedb.num_bins_y, 
+                num_movable_nodes=placedb.num_movable_nodes, 
+                num_terminal_NIs=placedb.num_terminal_NIs, 
+                num_filler_nodes=placedb.num_filler_nodes, 
+                K=4, 
+                max_iters=2, 
+                num_threads=params.num_threads
+                )
+        ism = independent_set_matching.IndependentSetMatching(
+                node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
+                flat_region_boxes=data_collections.flat_region_boxes, flat_region_boxes_start=data_collections.flat_region_boxes_start, node2fence_region_map=data_collections.node2fence_region_map, 
+                flat_net2pin_map=data_collections.flat_net2pin_map, flat_net2pin_start_map=data_collections.flat_net2pin_start_map, pin2net_map=data_collections.pin2net_map, 
+                flat_node2pin_map=data_collections.flat_node2pin_map, flat_node2pin_start_map=data_collections.flat_node2pin_start_map, pin2node_map=data_collections.pin2node_map, 
+                pin_offset_x=data_collections.pin_offset_x, pin_offset_y=data_collections.pin_offset_y, 
+                net_mask=data_collections.net_mask_ignore_large_degrees, 
+                xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
+                site_width=placedb.site_width, row_height=placedb.row_height, 
+                num_bins_x=placedb.num_bins_x, num_bins_y=placedb.num_bins_y, 
+                num_movable_nodes=placedb.num_movable_nodes, 
+                num_terminal_NIs=placedb.num_terminal_NIs, 
+                num_filler_nodes=placedb.num_filler_nodes, 
+                batch_size=2048, 
+                set_size=128, 
+                max_iters=50, 
+                algorithm='concurrent', 
+                num_threads=params.num_threads
+                )
+
+        # wirelength for position 
+        def build_detailed_placement_op(pos): 
+            logging.info("Start ABCDPlace for refinement")
+            pos1 = pos 
+            for i in range(1): 
+                pos1 = kr(pos1)
+                pos1 = ism(pos1)
+                pos1 = gs(pos1)
+                pos1 = kr(pos1)
+            return pos1 
+        return build_detailed_placement_op
 
     def build_draw_placement(self, params, placedb):
         """
@@ -419,9 +540,34 @@ class BasicPlace (nn.Module):
         @param pos locations of cells 
         """
         tt = time.time()
-        figname = "%s/plot/iter%s.png" % (params.result_dir, '{:04}'.format(iteration))
+        path = "%s/%s" % (params.result_dir, params.design_name())
+        figname = "%s/plot/iter%s.png" % (path, '{:04}'.format(iteration))
         os.system("mkdir -p %s" % (os.path.dirname(figname)))
         if isinstance(pos, np.ndarray):
             pos = torch.from_numpy(pos)
         self.op_collections.draw_place_op(pos, figname)
         logging.info("plotting to %s takes %.3f seconds" % (figname, time.time()-tt))
+
+    def dump(self, params, placedb, pos, filename):
+        """
+        @brief dump intermediate solution as compressed pickle file (.pklz)
+        @param params parameters 
+        @param placedb placement database 
+        @param iteration optimization step 
+        @param pos locations of cells 
+        @param filename output file name 
+        """
+        with gzip.open(filename, "wb") as f:
+            pickle.dump((self.data_collections.node_size_x.cpu(), self.data_collections.node_size_y.cpu(), 
+                self.data_collections.flat_net2pin_map.cpu(), self.data_collections.flat_net2pin_start_map.cpu(), self.data_collections.pin2net_map.cpu(), 
+                self.data_collections.flat_node2pin_map.cpu(), self.data_collections.flat_node2pin_start_map.cpu(), self.data_collections.pin2node_map.cpu(), 
+                self.data_collections.pin_offset_x.cpu(), self.data_collections.pin_offset_y.cpu(), 
+                self.data_collections.net_mask_ignore_large_degrees.cpu(), 
+                placedb.xl, placedb.yl, placedb.xh, placedb.yh, 
+                placedb.site_width, placedb.row_height, 
+                placedb.num_bins_x, placedb.num_bins_y, 
+                placedb.num_movable_nodes, 
+                placedb.num_terminal_NIs, 
+                placedb.num_filler_nodes, 
+                pos 
+                ), f)

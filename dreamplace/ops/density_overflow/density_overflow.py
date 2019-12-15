@@ -109,11 +109,11 @@ class DensityOverflowFunction(Function):
                     num_filler_nodes, 
                     num_threads
                     )
-        #print("overflow initial_density_map")
-        #print(initial_density_map/(bin_size_x*bin_size_y))
-        #print("overflow density_map")
-        #print(output[1]/(bin_size_x*bin_size_y))
-        #plot(output[1].clone().div(bin_size_x*bin_size_y).cpu().numpy(), 'density_map')
+        # logger.debug("overflow initial_density_map")
+        # logger.debug(initial_density_map/(bin_size_x*bin_size_y))
+        # logger.debug("overflow density_map")
+        # logger.debug(output[1]/(bin_size_x*bin_size_y))
+        # plot(output[1].clone().div(bin_size_x*bin_size_y).cpu().numpy(), 'density_map')
         # output consists of (overflow, density_map, max_density)
         return output[0], output[2]
 

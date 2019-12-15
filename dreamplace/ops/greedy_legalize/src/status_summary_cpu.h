@@ -3,8 +3,8 @@
  * @author Yibo Lin
  * @date   Oct 2018
  */
-#ifndef GPUPLACE_NODE_STATUS_SUMMARY_H
-#define GPUPLACE_NODE_STATUS_SUMMARY_H
+#ifndef DREAMPLACE_NODE_STATUS_SUMMARY_H
+#define DREAMPLACE_NODE_STATUS_SUMMARY_H
 
 #include <vector>
 #include <limits>

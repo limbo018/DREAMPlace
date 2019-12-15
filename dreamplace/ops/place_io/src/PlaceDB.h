@@ -20,6 +20,8 @@
 #include "Pin.h"
 #include "Macro.h"
 #include "Row.h"
+#include "Region.h"
+#include "Group.h"
 #include "Site.h"
 #include "Params.h"
 #include "BenchMetrics.h"
@@ -107,9 +109,6 @@ class PlaceDB : public DefParser::DefDataBase
         Row const& row(index_type id) const {return m_vRow.at(id);}
         Row& row(index_type id) {return m_vRow.at(id);}
 
-        std::vector<Box<coordinate_type> > const& placeBlockages() const {return m_vPlaceBlockage;}
-        std::vector<Box<coordinate_type> >& placeBlockages() {return m_vPlaceBlockage;}
-
         Site const& site() const {return m_site;}
         area_type siteArea() const {return siteWidth()*rowHeight();}
         
@@ -128,12 +127,26 @@ class PlaceDB : public DefParser::DefDataBase
         std::size_t numMacro() const {return m_numMacro;}
         std::size_t numIOPin() const {return m_numIOPin;}
         std::size_t numIgnoredNet() const {return m_numIgnoredNet;}
+        std::size_t numPlaceBlockages() const {return m_numPlaceBlockages;}
 
         std::vector<index_type> const& movableNodeIndices() const {return m_vMovableNodeIndex;}
         std::vector<index_type>& movableNodeIndices() {return m_vMovableNodeIndex;}
 
         std::vector<index_type> const& fixedNodeIndices() const {return m_vFixedNodeIndex;}
         std::vector<index_type>& fixedNodeIndices() {return m_vFixedNodeIndex;}
+
+        std::vector<index_type> const& placeBlockageIndices() const {return m_vPlaceBlockageIndex;}
+        std::vector<index_type>& placeBlockageIndices() {return m_vPlaceBlockageIndex;}
+
+        std::vector<Region> const& regions() const {return m_vRegion;}
+        std::vector<Region>& regions() {return m_vRegion;}
+        Region const& region(index_type i) const {return m_vRegion.at(i);}
+        Region& region(index_type i) {return m_vRegion.at(i);}
+
+        std::vector<Group> const& groups() const {return m_vGroup;}
+        std::vector<Group>& groups() {return m_vGroup;}
+        Group const& group(index_type i) const {return m_vGroup.at(i);}
+        Group& group(index_type i) {return m_vGroup.at(i);}
 
         int lefUnit() const {return m_lefUnit;}
         std::string lefVersion() const {return m_lefVersion;}
@@ -316,8 +329,11 @@ class PlaceDB : public DefParser::DefDataBase
         virtual void resize_def_net(int s);
         virtual void add_def_net(DefParser::Net const& n);
         virtual void resize_def_blockage(int);
-        virtual void add_def_placement_blockage(int, int, int, int);
-        virtual void add_def_routing_blockage(int, int, int, int);
+        virtual void add_def_placement_blockage(std::vector<std::vector<int> > const&);
+        virtual void resize_def_region(int);
+        virtual void add_def_region(DefParser::Region const& r);
+        virtual void resize_def_group(int);
+        virtual void add_def_group(DefParser::Group const& g);
         virtual void end_def_design(); 
         ///==== Verilog Callbacks ==== 
         virtual void verilog_net_declare_cbk(std::string const&, VerilogParser::Range const&);
@@ -383,14 +399,13 @@ class PlaceDB : public DefParser::DefDataBase
         Pin& createPin(Net& net, Node& node, SignalDirect const& direct, Point<coordinate_type> const& offset, index_type macroPinId);
 
         /// kernel data for placement 
-        std::vector<Node> m_vNode; ///< instances, including movable and fixed instances, and virtual io pins (appended) 
+        std::vector<Node> m_vNode; ///< instances, including movable and fixed instances, virtual placement blockages, and virtual io pins (appended) 
         std::vector<NodeProperty> m_vNodeProperty; ///< some unimportant properties for instances, together with m_vNode
         std::vector<Net> m_vNet; ///< nets 
         std::vector<NetProperty> m_vNetProperty; ///< some unimportant properties for nets, together with m_vNet
         std::vector<Pin> m_vPin; ///< pins for instances and nets, the offset of a pin must be adjusted when a node is moved 
         std::vector<Macro> m_vMacro; ///< macros for standard cells, for io pins, virtual macros are appended  
         std::vector<Row> m_vRow; ///< placement rows 
-        std::vector<Box<coordinate_type> > m_vPlaceBlockage; ///< placement blockages 
         Site m_site; ///< placement site 
         diearea_type m_dieArea; ///< die area, it can be larger than actual placement area 
         std::vector<bool> m_vNetIgnoreFlag; ///< whether the net should be ignored due to pins belonging to the same cell 
@@ -408,9 +423,17 @@ class PlaceDB : public DefParser::DefDataBase
         std::size_t m_numMacro; ///< number of standard cells in the library (0~m_numMacro-1 in m_vMacro) 
         std::size_t m_numIOPin; ///< number of io pins (m_numMacro~m_numMacro+m_numIOPin-1 in m_vMacro)
         std::size_t m_numIgnoredNet; ///< number of nets ignored 
+        std::size_t m_numPlaceBlockages; ///< number of placement blockages 
     
         std::vector<index_type> m_vMovableNodeIndex; ///< movable node index 
         std::vector<index_type> m_vFixedNodeIndex; ///< fixed node index 
+        std::vector<index_type> m_vPlaceBlockageIndex; ///< placement blockages are stored in m_vNode, we record the index 
+
+        std::vector<Region> m_vRegion; ///< placement regions like FENCE or GUIDE 
+        std::vector<Group> m_vGroup; ///< cell groups for placement regions 
+
+        string2index_map_type m_mRegionName2Index; ///< map region name to index 
+        string2index_map_type m_mGroupName2Index; ///< map group name to index 
 
         /// data only used in parsers
         int m_lefUnit;

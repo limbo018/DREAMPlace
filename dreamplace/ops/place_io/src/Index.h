@@ -8,7 +8,7 @@
 #ifndef DREAMPLACE_INDEX_H
 #define DREAMPLACE_INDEX_H
 
-#include "utility/src/Namespace.h"
+#include "utility/src/Msg.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
 

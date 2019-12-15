@@ -234,35 +234,42 @@ void apply(PlaceDB& db,
 /// database for python 
 struct PyPlaceDB
 {
-    unsigned int num_nodes; // number of nodes, including terminals  
-    unsigned int num_terminals; // number of terminals 
-    pybind11::dict node_name2id_map; // node name to id map, cell name 
-    pybind11::list node_names; // 1D array, cell name 
-    pybind11::list node_x; // 1D array, cell position x 
-    pybind11::list node_y; // 1D array, cell position y 
-    pybind11::list node_orient; // 1D array, cell orientation 
-    pybind11::list node_size_x; // 1D array, cell width  
-    pybind11::list node_size_y; // 1D array, cell height
+    unsigned int num_nodes; ///< number of nodes, including terminals and terminal_NIs 
+    unsigned int num_terminals; ///< number of terminals, essentially fixed macros  
+    unsigned int num_terminal_NIs; ///< number of terminal_NIs, essentially IO pins 
+    pybind11::dict node_name2id_map; ///< node name to id map, cell name 
+    pybind11::list node_names; ///< 1D array, cell name 
+    pybind11::list node_x; ///< 1D array, cell position x 
+    pybind11::list node_y; ///< 1D array, cell position y 
+    pybind11::list node_orient; ///< 1D array, cell orientation 
+    pybind11::list node_size_x; ///< 1D array, cell width  
+    pybind11::list node_size_y; ///< 1D array, cell height
 
-    pybind11::list pin_direct; // 1D array, pin direction IO 
-    pybind11::list pin_offset_x; // 1D array, pin offset x to its node 
-    pybind11::list pin_offset_y; // 1D array, pin offset y to its node 
+    pybind11::list pin_direct; ///< 1D array, pin direction IO 
+    pybind11::list pin_offset_x; ///< 1D array, pin offset x to its node 
+    pybind11::list pin_offset_y; ///< 1D array, pin offset y to its node 
 
-    pybind11::dict net_name2id_map; // net name to id map
-    pybind11::list net_names; // net name 
-    pybind11::list net2pin_map; // array of 1D array, each row stores pin id
-    pybind11::list flat_net2pin_map; // flatten version of net2pin_map 
-    pybind11::list flat_net2pin_start_map; // starting index of each net in flat_net2pin_map
-    pybind11::list net_weights; // net weight 
+    pybind11::dict net_name2id_map; ///< net name to id map
+    pybind11::list net_names; ///< net name 
+    pybind11::list net2pin_map; ///< array of 1D array, each row stores pin id
+    pybind11::list flat_net2pin_map; ///< flatten version of net2pin_map 
+    pybind11::list flat_net2pin_start_map; ///< starting index of each net in flat_net2pin_map
+    pybind11::list net_weights; ///< net weight 
 
-    pybind11::list node2pin_map; // array of 1D array, contains pin id of each node 
-    pybind11::list flat_node2pin_map; // flatten version of node2pin_map 
-    pybind11::list flat_node2pin_start_map; // starting index of each node in flat_node2pin_map
+    pybind11::list node2pin_map; ///< array of 1D array, contains pin id of each node 
+    pybind11::list flat_node2pin_map; ///< flatten version of node2pin_map 
+    pybind11::list flat_node2pin_start_map; ///< starting index of each node in flat_node2pin_map
 
-    pybind11::list pin2node_map; // 1D array, contain parent node id of each pin 
-    pybind11::list pin2net_map; // 1D array, contain parent net id of each pin 
+    pybind11::list pin2node_map; ///< 1D array, contain parent node id of each pin 
+    pybind11::list pin2net_map; ///< 1D array, contain parent net id of each pin 
 
-    pybind11::list rows; // NumRows x 4 array, stores xl, yl, xh, yh of each row 
+    pybind11::list rows; ///< NumRows x 4 array, stores xl, yl, xh, yh of each row 
+
+    pybind11::list regions; ///< array of 1D array, each region contains rectangles 
+    pybind11::list flat_region_boxes; ///< flatten version of regions 
+    pybind11::list flat_region_boxes_start; ///< starting index of each region in flat_region_boxes
+
+    pybind11::list node2fence_region_map; ///< only record fence regions for each cell 
 
     int xl; 
     int yl; 
@@ -286,7 +293,8 @@ struct PyPlaceDB
     void set(PlaceDB const& db)
     {
         num_nodes = db.nodes().size(); 
-        num_terminals = db.numFixed()+db.numIOPin(); // Bookshelf does not differentiate fixed macros and IO pins 
+        num_terminals = db.numFixed() + db.numPlaceBlockages(); // regard both fixed macros and placement blockages as macros 
+        num_terminal_NIs = db.numIOPin(); // IO pins 
 
         for (PlaceDB::string2index_map_type::const_iterator it = db.nodeName2Index().begin(), ite = db.nodeName2Index().end(); it != ite; ++it)
         {
@@ -330,7 +338,7 @@ struct PyPlaceDB
             pin2node_map.append(node.id()); 
             pin2net_map.append(db.getNet(pin).id()); 
 
-            if (node.status() != PlaceStatusEnum::FIXED && node.status() != PlaceStatusEnum::DUMMY_FIXED)
+            if (node.status() != PlaceStatusEnum::FIXED /*&& node.status() != PlaceStatusEnum::DUMMY_FIXED*/)
             {
                 num_movable_pins += 1; 
             }
@@ -362,6 +370,44 @@ struct PyPlaceDB
         {
             pybind11::tuple row = pybind11::make_tuple(it->xl(), it->yl(), it->xh(), it->yh()); 
             rows.append(row); 
+        }
+
+        // initialize regions 
+        count = 0; 
+        for (std::vector<Region>::const_iterator it = db.regions().begin(), ite = db.regions().end(); it != ite; ++it)
+        {
+            Region const& region = *it; 
+            pybind11::list boxes; 
+            for (std::vector<Region::box_type>::const_iterator itb = region.boxes().begin(), itbe = region.boxes().end(); itb != itbe; ++itb)
+            {
+                pybind11::tuple box = pybind11::make_tuple(itb->xl(), itb->yl(), itb->xh(), itb->yh());
+                boxes.append(box);
+                flat_region_boxes.append(box);
+            }
+            regions.append(boxes);
+            flat_region_boxes_start.append(count); 
+            count += region.boxes().size();
+        }
+        flat_region_boxes_start.append(count); 
+
+        // I assume one cell only belongs to one FENCE region 
+        std::vector<int> vNode2FenceRegion (db.numMovable() + db.numFixed(), std::numeric_limits<int>::max()); 
+        for (std::vector<Group>::const_iterator it = db.groups().begin(), ite = db.groups().end(); it != ite; ++it)
+        {
+            Group const& group = *it; 
+            Region const& region = db.region(group.region());
+            if (region.type() == RegionTypeEnum::FENCE)
+            {
+                for (std::vector<Group::index_type>::const_iterator itn = group.nodes().begin(), itne = group.nodes().end(); itn != itne; ++itn)
+                {
+                    Group::index_type node_id = *itn; 
+                    vNode2FenceRegion.at(node_id) = region.id();
+                }
+            }
+        }
+        for (std::vector<int>::const_iterator it = vNode2FenceRegion.begin(), ite = vNode2FenceRegion.end(); it != ite; ++it)
+        {
+            node2fence_region_map.append(*it); 
         }
 
         xl = db.rowXL(); 
@@ -447,6 +493,8 @@ using SignalDirectEnum = DREAMPLACE_NAMESPACE::SignalDirectEnum;
 using SignalDirect = DREAMPLACE_NAMESPACE::SignalDirect;
 using PlanarDirectEnum = DREAMPLACE_NAMESPACE::PlanarDirectEnum;
 using PlanarDirect = DREAMPLACE_NAMESPACE::PlanarDirect;
+using RegionTypeEnum = DREAMPLACE_NAMESPACE::RegionTypeEnum;
+using RegionType = DREAMPLACE_NAMESPACE::RegionType;
 using Object = DREAMPLACE_NAMESPACE::Object;
 using BoxCoordinate = DREAMPLACE_NAMESPACE::Box<Object::coordinate_type>;
 using BoxIndex = DREAMPLACE_NAMESPACE::Box<Object::index_type>;
@@ -463,6 +511,8 @@ using Macro = DREAMPLACE_NAMESPACE::Macro;
 using Row = DREAMPLACE_NAMESPACE::Row;
 using SubRow = DREAMPLACE_NAMESPACE::SubRow;
 using BinRow = DREAMPLACE_NAMESPACE::BinRow;
+using Region = DREAMPLACE_NAMESPACE::Region; 
+using Group = DREAMPLACE_NAMESPACE::Group; 
 using PlaceDB = DREAMPLACE_NAMESPACE::PlaceDB;
 
 PYBIND11_MAKE_OPAQUE(std::vector<bool>);
@@ -492,6 +542,8 @@ PYBIND11_MAKE_OPAQUE(std::vector<Macro>);
 PYBIND11_MAKE_OPAQUE(std::vector<Row>);
 PYBIND11_MAKE_OPAQUE(std::vector<SubRow>);
 PYBIND11_MAKE_OPAQUE(std::vector<BinRow>);
+PYBIND11_MAKE_OPAQUE(std::vector<Region>);
+PYBIND11_MAKE_OPAQUE(std::vector<Group>);
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
@@ -613,6 +665,19 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     pybind11::class_<PlanarDirect> (m, "PlanarDirect")
         .def(pybind11::init<>())
         .def("value", &PlanarDirect::value)
+        ;
+
+    pybind11::class_<RegionTypeEnum> regiontypeenum (m, "RegionTypeEnum")
+        ;
+    pybind11::enum_<RegionTypeEnum::RegionEnumType>(regiontypeenum, "RegionEnumType")
+        .value("FENCE", RegionTypeEnum::FENCE)
+        .value("GUIDE", RegionTypeEnum::GUIDE)
+        .value("UNKNOWN", RegionTypeEnum::UNKNOWN)
+        .export_values()
+        ;
+    pybind11::class_<RegionType> (m, "RegionType")
+        .def(pybind11::init<>())
+        .def("value", &RegionType::value)
         ;
 
     // Object.h
@@ -787,6 +852,25 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         ;
     pybind11::bind_vector<std::vector<BinRow> >(m, "VectorBinRow");
 
+    // Region.h
+    pybind11::class_<Region, Object> (m, "Region")
+        .def(pybind11::init<>())
+        .def("name", &Region::name)
+        .def("boxes", (std::vector<Region::box_type> const& (Region::*)() const) &Region::boxes)
+        .def("type", &Region::type)
+        ;
+    pybind11::bind_vector<std::vector<Region> >(m, "VectorRegion");
+
+    // Group.h
+    pybind11::class_<Group, Object> (m, "Group")
+        .def(pybind11::init<>())
+        .def("name", &Group::name)
+        .def("nodeNames", (std::vector<std::string> const& (Group::*)() const) &Group::nodeNames)
+        .def("nodes", (std::vector<Group::index_type> const& (Group::*)() const) &Group::nodes)
+        .def("region", &Group::region)
+        ;
+    pybind11::bind_vector<std::vector<Group> >(m, "VectorGroup");
+
     // PlaceDB.h
     pybind11::class_<PlaceDB> (m, "PlaceDB")
         .def(pybind11::init<>())
@@ -804,7 +888,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         .def("macro", (Macro const& (PlaceDB::*)(PlaceDB::index_type) const) &PlaceDB::macro)
         .def("rows", (std::vector<Row> const& (PlaceDB::*)() const) &PlaceDB::rows)
         .def("row", (Row const& (PlaceDB::*)(PlaceDB::index_type) const) &PlaceDB::row)
-        .def("placeBlockages", (std::vector<DREAMPLACE_NAMESPACE::Box<PlaceDB::coordinate_type> > const& (PlaceDB::*)() const) &PlaceDB::placeBlockages)
         .def("site", &PlaceDB::site)
         .def("siteArea", &PlaceDB::siteArea)
         .def("dieArea", &PlaceDB::dieArea)
@@ -814,9 +897,15 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         .def("numFixed", &PlaceDB::numFixed)
         .def("numMacro", &PlaceDB::numMacro)
         .def("numIOPin", &PlaceDB::numIOPin)
+        .def("numPlaceBlockages", &PlaceDB::numPlaceBlockages)
         .def("numIgnoredNet", &PlaceDB::numIgnoredNet)
         .def("movableNodeIndices", (std::vector<PlaceDB::index_type> const& (PlaceDB::*)() const) &PlaceDB::movableNodeIndices)
         .def("fixedNodeIndices", (std::vector<PlaceDB::index_type> const& (PlaceDB::*)() const) &PlaceDB::fixedNodeIndices)
+        .def("placeBlockageIndices", (std::vector<PlaceDB::index_type> const& (PlaceDB::*)() const) &PlaceDB::placeBlockageIndices)
+        .def("regions", (std::vector<Region> const& (PlaceDB::*)() const) &PlaceDB::regions)
+        .def("region", (Region const& (PlaceDB::*)(PlaceDB::index_type) const) &PlaceDB::region)
+        .def("groups", (std::vector<Group> const& (PlaceDB::*)() const) &PlaceDB::groups)
+        .def("group", (Group const& (PlaceDB::*)(PlaceDB::index_type) const) &PlaceDB::group)
         .def("lefUnit", &PlaceDB::lefUnit)
         .def("lefVersion", &PlaceDB::lefVersion)
         .def("defUnit", &PlaceDB::defUnit)
@@ -877,6 +966,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         .def(pybind11::init<>())
         .def_readwrite("num_nodes", &DREAMPLACE_NAMESPACE::PyPlaceDB::num_nodes)
         .def_readwrite("num_terminals", &DREAMPLACE_NAMESPACE::PyPlaceDB::num_terminals)
+        .def_readwrite("num_terminal_NIs", &DREAMPLACE_NAMESPACE::PyPlaceDB::num_terminal_NIs)
         .def_readwrite("node_name2id_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::node_name2id_map)
         .def_readwrite("node_names", &DREAMPLACE_NAMESPACE::PyPlaceDB::node_names)
         .def_readwrite("node_x", &DREAMPLACE_NAMESPACE::PyPlaceDB::node_x)
@@ -896,6 +986,10 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         .def_readwrite("node2pin_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::node2pin_map)
         .def_readwrite("flat_node2pin_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::flat_node2pin_map)
         .def_readwrite("flat_node2pin_start_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::flat_node2pin_start_map)
+        .def_readwrite("regions", &DREAMPLACE_NAMESPACE::PyPlaceDB::regions)
+        .def_readwrite("flat_region_boxes", &DREAMPLACE_NAMESPACE::PyPlaceDB::flat_region_boxes)
+        .def_readwrite("flat_region_boxes_start", &DREAMPLACE_NAMESPACE::PyPlaceDB::flat_region_boxes_start)
+        .def_readwrite("node2fence_region_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::node2fence_region_map)
         .def_readwrite("pin2node_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::pin2node_map)
         .def_readwrite("pin2net_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::pin2net_map)
         .def_readwrite("rows", &DREAMPLACE_NAMESPACE::PyPlaceDB::rows)

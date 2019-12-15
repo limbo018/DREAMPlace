@@ -4,12 +4,19 @@ Deep learning toolkit-enabled VLSI placement.
 With the analogy between nonlinear VLSI placement and deep learning training problem, this tool is developed with deep learning toolkit for flexibility and efficiency. 
 The tool runs on both CPU and GPU. 
 Over ```30X``` speedup over the CPU implementation ([RePlAce](https://doi.org/10.1109/TCAD.2018.2859220)) is achieved in global placement and legalization on ISPD 2005 contest benchmarks with a Nvidia Tesla V100 GPU. 
+DREAMPlace also integrates a GPU-accelerated detailed placer, *ABCDPlace*, which can achieve around ```16X``` speedup on million-size benchmarks over the widely-adopted sequential placer [NTUPlace3](https://doi.org/10.1109/TCAD.2008.923063) on CPU.
 
 DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU, only CPU support will be enabled with multi-threading. 
+
+* Animation
 
 | Bigblue4 | Density Map | Electric Potential | Electric Field |
 | -------- | ----------- | ------------------ | -------------- |
 | <img src=/images/bigblue4-nofiller_SLD.gif width=250> | ![Density Map](images/density_map_SLD.gif) | ![Electric Potential Map](images/potential_map_SLD.gif) | ![Electric Field Map](images/field_map_SLD.gif) |
+
+* Reference Flow
+
+<img src=/images/DREAMPlace2_flow.png width=600>
 
 # Publications
 
@@ -20,6 +27,10 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
 
 * [Yibo Lin](http://yibolin.com), Zixuan Jiang, Jiaqi Gu, [Wuxi Li](http://wuxili.net), Shounak Dhar, Haoxing Ren, Brucek Khailany and [David Z. Pan](http://users.ece.utexas.edu/~dpan), 
   "**DREAMPlace: Deep Learning Toolkit-Enabled GPU Acceleration for Modern VLSI Placement**", 
+  IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems (TCAD), 2020 (in submission)
+
+* [Yibo Lin](http://yibolin.com), [Wuxi Li](http://wuxili.net), Jiaqi Gu, Haoxing Ren, Brucek Khailany and [David Z. Pan](http://users.ece.utexas.edu/~dpan), 
+  "**ABCDPlace: Accelerated Batch-based Concurrent Detailed Placement on Multi-threaded CPUs and GPUs**", 
   IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems (TCAD), 2020 (in submission)
 
 # Dependency 
@@ -41,6 +52,12 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
 
 - [Flute](https://doi.org/10.1109/TCAD.2007.907068)
     - Integrated as a submodule
+
+- [CUB](https://github.com/NVlabs/cub)
+    - Integrated as a git submodule
+
+- [munkres-cpp](https://github.com/saebyn/munkres-cpp)
+    - Integrated as a git submodule
 
 - [CUDA 9.1 or later](https://developer.nvidia.com/cuda-toolkit) (Optional)
     - If installed and found, GPU acceleration will be enabled. 
@@ -165,10 +182,49 @@ Descriptions of options in JSON configuration file can be found by running the f
 python dreamplace/Placer.py --help
 ```
 
+The list of options as follows will be shown. 
+
+| JSON Parameter                   | Default                 | Description                                                                                                                                                       |
+| -------------------------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| aux_input                        | required for Bookshelf  | input .aux file                                                                                                                                                   |
+| lef_input                        | required for LEF/DEF    | input LEF file                                                                                                                                                    |
+| def_input                        | required for LEF/DEF    | input DEF file                                                                                                                                                    |
+| verilog_input                    | optional for LEF/DEF    | input VERILOG file, provide circuit netlist information if it is not included in DEF file                                                                         |
+| gpu                              | 1                       | enable gpu or not                                                                                                                                                 |
+| num_bins_x                       | 512                     | number of bins in horizontal direction                                                                                                                            |
+| num_bins_y                       | 512                     | number of bins in vertical direction                                                                                                                              |
+| global_place_stages              | required                | global placement configurations of each stage, a dictionary of {"num_bins_x", "num_bins_y", "iteration", "learning_rate"}, learning_rate is relative to bin size  |
+| target_density                   | 0.8                     | target density                                                                                                                                                    |
+| density_weight                   | 1.0                     | initial weight of density cost                                                                                                                                    |
+| gamma                            | 0.5                     | initial coefficient for log-sum-exp and weighted-average wirelength                                                                                               |
+| random_seed                      | 1000                    | random seed                                                                                                                                                       |
+| result_dir                       | results                 | result directory for output                                                                                                                                       |
+| scale_factor                     | 1.0                     | scale factor to avoid numerical overflow                                                                                                                          |
+| ignore_net_degree                | 100                     | ignore net degree larger than some value                                                                                                                          |
+| gp_noise_ratio                   | 0.025                   | noise to initial positions for global placement                                                                                                                   |
+| enable_fillers                   | 1                       | enable filler cells                                                                                                                                               |
+| global_place_flag                | 1                       | whether use global placement                                                                                                                                      |
+| legalize_flag                    | 1                       | whether use internal legalization                                                                                                                                 |
+| detailed_place_flag              | 1                       | whether use internal detailed placement                                                                                                                           |
+| stop_overflow                    | 0.1                     | stopping criteria, consider stop when the overflow reaches to a ratio                                                                                             |
+| dtype                            | float32                 | data type, float32 | float64                                                                                                                                      |
+| detailed_place_engine            |                         | external detailed placement engine to be called after placement                                                                                                   |
+| detailed_place_command           | -nolegal -nodetail      | commands for external detailed placement engine                                                                                                                   |
+| plot_flag                        | 0                       | whether plot solution or not                                                                                                                                      |
+| RePlAce_ref_hpwl                 | 350000                  | reference HPWL used in RePlAce for updating density weight                                                                                                        |
+| RePlAce_LOWER_PCOF               | 0.95                    | lower bound ratio used in RePlAce for updating density weight                                                                                                     |
+| RePlAce_UPPER_PCOF               | 1.05                    | upper bound ratio used in RePlAce for updating density weight                                                                                                     |
+| random_center_init_flag          | 1                       | whether perform random initialization around the center for global placement                                                                                      |
+| sort_nets_by_degree              | 0                       | whether sort nets by degree or not                                                                                                                                |
+| num_threads                      | 8                       | number of CPU threads                                                                                                                                             |
+| dump_global_place_solution_flag  | 0                       | whether dump intermediate global placement solution as a compressed pickle object                                                                                 |
+| dump_legalize_solution_flag      | 0                       | whether dump intermediate legalization solution as a compressed pickle object                                                                                     |
+
 # Authors
 
 * [Yibo Lin](http://yibolin.com), supervised by [David Z. Pan](http://users.ece.utexas.edu/~dpan), composed the initial release. 
 * [Zixuan Jiang](https://github.com/ZixuanJiang) and [Jiaqi Gu](https://github.com/JeremieMelo) improved the efficiency of the wirelength and density operators on GPU. 
+* [Yibo Lin](http://yibolin.com) and [Jiaqi Gu](https://github.com/JeremieMelo) developed and integrated ABCDPlace for detailed placement. 
 * **Pull requests to improve the tool are more than welcome.** We appreciate all kinds of contributions from the community. 
 
 # Features
@@ -189,3 +245,8 @@ python dreamplace/Placer.py --help
 
 * [1.1.0](https://github.com/limbo018/DREAMPlace/releases/tag/1.1.0)
     - Docker container for building environment
+
+* [2.0.0](https://github.com/limbo018/DREAMPlace/releases/tag/2.0.0)
+    - Integrate ABCDPlace: multi-threaded CPU and GPU acceleration for detailed placement
+    - Support independent set matching, local reordering, and global swap with run-to-run determinism on one machine
+    - Support movable macros with Tetris-like macro legalization and min-cost flow refinement

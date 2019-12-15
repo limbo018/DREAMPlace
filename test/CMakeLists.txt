@@ -5,3 +5,7 @@ project(test)
 install(
     DIRECTORY ispd2005 DESTINATION ${PROJECT_NAME}
     )
+
+install(
+    DIRECTORY ispd2015 DESTINATION ${PROJECT_NAME}
+    )

@@ -1,0 +1,134 @@
+{
+"aux_input" : {
+    "descripton" : "input .aux file", 
+    "default" : "required for Bookshelf"
+    }, 
+"lef_input" : {
+    "descripton" : "input LEF file", 
+    "default" : "required for LEF/DEF"
+    },
+"def_input" : {
+    "descripton" : "input DEF file", 
+    "default" : "required for LEF/DEF"
+    },
+"verilog_input" : {
+    "descripton" : "input VERILOG file, provide circuit netlist information if it is not included in DEF file", 
+    "default" : "optional for LEF/DEF"
+    },
+"gpu" : {
+    "descripton" : "enable gpu or not", 
+    "default" : 1
+    },
+"num_bins_x" : {
+    "descripton" : "number of bins in horizontal direction", 
+    "default" : 512
+    },
+"num_bins_y" : {
+    "descripton" : "number of bins in vertical direction", 
+    "default" : 512
+    },
+"global_place_stages" : {
+    "descripton" : "global placement configurations of each stage, a dictionary of {\"num_bins_x\", \"num_bins_y\", \"iteration\", \"learning_rate\"}, learning_rate is relative to bin size", 
+    "default" : "required"
+    },
+"target_density" : {
+    "descripton" : "target density", 
+    "default" : 0.8
+    },
+"density_weight" : {
+    "descripton" : "initial weight of density cost", 
+    "default" : 1.0
+    },
+"gamma" : {
+    "descripton" : "initial coefficient for log-sum-exp and weighted-average wirelength", 
+    "default" : 0.5
+    },
+"random_seed" : {
+    "descripton" : "random seed", 
+    "default" : 1000
+    },
+"result_dir" : {
+    "descripton" : "result directory for output", 
+    "default" : "results"
+    },
+"scale_factor" : {
+    "descripton" : "scale factor to avoid numerical overflow", 
+    "default" : 1.0
+    },
+"ignore_net_degree" : {
+    "descripton" : "ignore net degree larger than some value", 
+    "default" : 100
+    },
+"gp_noise_ratio" : {
+    "descripton" : "noise to initial positions for global placement", 
+    "default" : 0.025
+    },
+"enable_fillers" : {
+    "descripton" : "enable filler cells", 
+    "default" : 1
+    },
+"global_place_flag" : {
+    "descripton" : "whether use global placement", 
+    "default" : 1
+    },
+"legalize_flag" : {
+    "descripton" : "whether use internal legalization", 
+    "default" : 1
+    },
+"detailed_place_flag" : {
+    "descripton" : "whether use internal detailed placement", 
+    "default" : 1
+    },
+"stop_overflow" : {
+    "descripton" : "stopping criteria, consider stop when the overflow reaches to a ratio", 
+    "default" : 0.1
+    },
+"dtype" : {
+    "descripton" : "data type, float32 | float64", 
+    "default" : "float32"
+    },
+"detailed_place_engine" : {
+    "descripton" : "external detailed placement engine to be called after placement", 
+    "default" : ""
+    },
+"detailed_place_command" : {
+    "descripton" : "commands for external detailed placement engine", 
+    "default" : "-nolegal -nodetail"
+    },
+"plot_flag" : {
+    "descripton" : "whether plot solution or not", 
+    "default" : 0
+    },
+"RePlAce_ref_hpwl" : {
+    "descripton" : "reference HPWL used in RePlAce for updating density weight", 
+    "default" : 350000
+    },
+"RePlAce_LOWER_PCOF" : {
+    "descripton" : "lower bound ratio used in RePlAce for updating density weight", 
+    "default" : 0.95
+    },
+"RePlAce_UPPER_PCOF" : {
+    "descripton" : "upper bound ratio used in RePlAce for updating density weight", 
+    "default" : 1.05
+    },
+"random_center_init_flag" : {
+    "descripton" : "whether perform random initialization around the center for global placement", 
+    "default" : 1
+    },
+"sort_nets_by_degree" : {
+    "descripton" : "whether sort nets by degree or not", 
+    "default" : 0
+    },
+"num_threads" : {
+    "descripton" : "number of CPU threads", 
+    "default" : 8
+    },
+"dump_global_place_solution_flag" : {
+    "descripton" : "whether dump intermediate global placement solution as a compressed pickle object", 
+    "default" : 0
+    },
+"dump_legalize_solution_flag" : {
+    "descripton" : "whether dump intermediate legalization solution as a compressed pickle object", 
+    "default" : 0
+    }
+}

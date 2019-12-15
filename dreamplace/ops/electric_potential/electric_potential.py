@@ -210,28 +210,28 @@ class ElectricPotentialFunction(Function):
             energy = potential_map.mul(density_map).sum()
 
         # torch.set_printoptions(precision=10)
-        # print("initial_density_map")
-        # print(initial_density_map/(ctx.bin_size_x*ctx.bin_size_y))
-        # print("density_map")
-        # print(density_map/(ctx.bin_size_x*ctx.bin_size_y))
-        # print("auv_by_wu2_plus_wv2")
-        # print(auv_by_wu2_plus_wv2)
-        # print("potential_map")
-        # print(potential_map)
-        # print("field_map_x")
-        # print(ctx.field_map_x)
-        # print("field_map_y")
-        # print(ctx.field_map_y)
+        # logger.debug("initial_density_map")
+        # logger.debug(initial_density_map/(ctx.bin_size_x*ctx.bin_size_y))
+        # logger.debug("density_map")
+        # logger.debug(density_map/(ctx.bin_size_x*ctx.bin_size_y))
+        # logger.debug("auv_by_wu2_plus_wv2")
+        # logger.debug(auv_by_wu2_plus_wv2)
+        # logger.debug("potential_map")
+        # logger.debug(potential_map)
+        # logger.debug("field_map_x")
+        # logger.debug(ctx.field_map_x)
+        # logger.debug("field_map_y")
+        # logger.debug(ctx.field_map_y)
 
         #global plot_count
         # if plot_count >= 600 and plot_count % 1 == 0:
-        #    print("density_map")
+        #    logger.debug("density_map")
         #    plot(plot_count, density_map.clone().div(bin_size_x*bin_size_y).cpu().numpy(), padding, "summary/%d.density_map" % (plot_count))
-        #    print("potential_map")
+        #    logger.debug("potential_map")
         #    plot(plot_count, potential_map.clone().cpu().numpy(), padding, "summary/%d.potential_map" % (plot_count))
-        #    print("field_map_x")
+        #    logger.debug("field_map_x")
         #    plot(plot_count, ctx.field_map_x.clone().cpu().numpy(), padding, "summary/%d.field_map_x" % (plot_count))
-        #    print("field_map_y")
+        #    logger.debug("field_map_y")
         #    plot(plot_count, ctx.field_map_y.clone().cpu().numpy(), padding, "summary/%d.field_map_y" % (plot_count))
         #plot_count += 1
 
@@ -359,7 +359,19 @@ class ElectricPotential(nn.Module):
         self.node_size_y = node_size_y
         self.node_size_y_clamped = node_size_y.clamp(min=bin_size_y*sqrt2)
         self.offset_y = (node_size_y - self.node_size_y_clamped).mul(0.5)
-        self.ratio = node_size_x * node_size_y / (self.node_size_x_clamped * self.node_size_y_clamped)
+        node_area = node_size_x * node_size_y
+        self.ratio = node_area / (self.node_size_x_clamped * self.node_size_y_clamped)
+
+        # detect movable macros and scale down the density to avoid halos 
+        # the definition of movable macros should be different according to algorithms 
+        # so I prefer to code it inside an operator 
+        # I use a heuristic that cells whose areas are 10x of the mean area will be regarded movable macros in global placement 
+        if target_density < 1: 
+            mean_area = node_area[:num_movable_nodes].mean().mul_(10)
+            row_height = node_size_y[:num_movable_nodes].min().mul_(2)
+            movable_macro_mask = (node_area[:num_movable_nodes] > mean_area) & (self.node_size_y[:num_movable_nodes] > row_height)
+            self.ratio[:num_movable_nodes][movable_macro_mask] = target_density
+            logger.info("regard %d cells as movable macros in global placement" % (movable_macro_mask.sum().data.cpu().item()))
 
         self.bin_center_x = bin_center_x
         self.bin_center_y = bin_center_y

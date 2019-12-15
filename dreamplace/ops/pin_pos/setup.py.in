@@ -11,6 +11,7 @@ from torch.utils.cpp_extension import BuildExtension, CppExtension
 
 import os 
 import sys
+import copy
 
 utility_dir = '${UTILITY_LIBRARY_DIRS}'
 ops_dir = "${OPS_DIR}"
@@ -33,9 +34,9 @@ modules.extend([
         [
             add_prefix('pin_pos.cpp')
             ], 
-        include_dirs=include_dirs, 
-        library_dirs=lib_dirs,
-        libraries=libs,
+        include_dirs=copy.deepcopy(include_dirs), 
+        library_dirs=copy.deepcopy(lib_dirs),
+        libraries=copy.deepcopy(libs),
         extra_compile_args={
             'cxx' : [torch_major_version, torch_minor_version, '-fopenmp']
             })

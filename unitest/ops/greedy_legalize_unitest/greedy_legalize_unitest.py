@@ -142,8 +142,9 @@ class GreedyLegalizeOpTest(unittest.TestCase):
         xh = 5.0
         yh = 5.0
         num_terminals = 0 
+        num_terminal_NIs = 0 
         num_filler_nodes = 0
-        num_movable_nodes = len(xx)-num_terminals-num_filler_nodes
+        num_movable_nodes = len(xx)-num_terminals-num_terminal_NIs-num_filler_nodes
         site_width = 1 
         row_height = 2 
         num_bins_x = 2
@@ -154,7 +155,7 @@ class GreedyLegalizeOpTest(unittest.TestCase):
                 node_size_x, node_size_y, 
                 xl, yl, xh, yh, 
                 num_bins_x, num_bins_y, 
-                num_movable_nodes+num_terminals+num_filler_nodes, num_movable_nodes, num_movable_nodes+num_terminals, num_filler_nodes)
+                num_movable_nodes+num_terminals+num_terminal_NIs+num_filler_nodes, num_movable_nodes, num_movable_nodes+num_terminals+num_terminal_NIs, num_filler_nodes)
 
         # test cpu 
         custom = greedy_legalize.GreedyLegalize(
@@ -163,10 +164,11 @@ class GreedyLegalizeOpTest(unittest.TestCase):
                     site_width=site_width, row_height=row_height, 
                     num_bins_x=num_bins_x, num_bins_y=num_bins_y, 
                     num_movable_nodes=num_movable_nodes, 
+                    num_terminal_NIs=num_terminal_NIs, 
                     num_filler_nodes=num_filler_nodes)
 
         pos = Variable(torch.from_numpy(np.concatenate([xx, yy])))
-        result = custom.forward(pos)
+        result = custom(pos, pos)
         print("custom_result = ", result)
 
         print("average displacement = %g" % (np.sum(np.absolute(result.numpy() - np.concatenate([xx, yy])))/num_movable_nodes))
@@ -176,7 +178,7 @@ class GreedyLegalizeOpTest(unittest.TestCase):
                 node_size_x, node_size_y, 
                 xl, yl, xh, yh, 
                 num_bins_x, num_bins_y, 
-                num_movable_nodes+num_terminals+num_filler_nodes, num_movable_nodes, num_movable_nodes+num_terminals, num_filler_nodes)
+                num_movable_nodes+num_terminals+num_terminal_NIs+num_filler_nodes, num_movable_nodes, num_movable_nodes+num_terminals+num_terminal_NIs, num_filler_nodes)
 
         # test cuda 
         if torch.cuda.device_count(): 
@@ -186,10 +188,11 @@ class GreedyLegalizeOpTest(unittest.TestCase):
                         site_width=site_width, row_height=row_height, 
                         num_bins_x=num_bins_x, num_bins_y=num_bins_y, 
                         num_movable_nodes=num_movable_nodes, 
+                        num_terminal_NIs=num_terminal_NIs, 
                         num_filler_nodes=num_filler_nodes)
 
             pos = Variable(torch.from_numpy(np.concatenate([xx, yy]))).cuda()
-            result_cuda = custom_cuda.forward(pos)
+            result_cuda = custom_cuda(pos, pos)
             print("custom_result = ", result_cuda.data.cpu())
 
             #np.testing.assert_allclose(result, result_cuda.data.cpu())

@@ -7,9 +7,13 @@
 
 import os
 import sys 
+import copy
 from setuptools import setup
 import torch 
 from torch.utils.cpp_extension import BuildExtension, CppExtension
+
+os.environ["CC"] = "${CMAKE_C_COMPILER}"
+os.environ["CXX"] = "${CMAKE_CXX_COMPILER}"
 
 limbo_source_dir = "${LIMBO_SOURCE_DIR}"
 limbo_binary_dir = "${LIMBO_BINARY_DIR}"
@@ -39,20 +43,22 @@ setup(
         ext_modules=[
             CppExtension('place_io_cpp', 
                 [
-                    add_prefix('place_io.cpp'),  
                     add_prefix('BenchMetrics.cpp'),  
                     add_prefix('BinMap.cpp'),  
                     add_prefix('Enums.cpp'),  
                     add_prefix('Net.cpp'),  
                     add_prefix('Node.cpp'),  
+                    add_prefix('Region.cpp'),  
+                    add_prefix('Group.cpp'),  
                     add_prefix('Params.cpp'),  
                     add_prefix('PlaceDB.cpp'),  
                     add_prefix('DefWriter.cpp'),
-                    add_prefix('BookshelfWriter.cpp')
+                    add_prefix('BookshelfWriter.cpp'),
+                    add_prefix('place_io.cpp'),  
                     ],
-                include_dirs=include_dirs, 
-                library_dirs=lib_dirs,
-                libraries=libs,
+                include_dirs=copy.deepcopy(include_dirs), 
+                library_dirs=copy.deepcopy(lib_dirs),
+                libraries=copy.deepcopy(libs),
                 extra_compile_args={
                     'cxx': ['-fvisibility=hidden', torch_major_version, torch_minor_version], 
                     }

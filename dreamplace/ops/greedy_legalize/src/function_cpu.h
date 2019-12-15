@@ -3,46 +3,18 @@
  * @author Yibo Lin
  * @date   Oct 2018
  */
-#ifndef GPUPLACE_LEGALIZE_FUNCTION_CPU_H
-#define GPUPLACE_LEGALIZE_FUNCTION_CPU_H
+#ifndef DREAMPLACE_LEGALIZE_FUNCTION_CPU_H
+#define DREAMPLACE_LEGALIZE_FUNCTION_CPU_H
 
 #include "utility/src/Msg.h"
-#include "bin_assignment_cpu.h"
-#include "merge_bin_cpu.h"
-#include "legality_check_cpu.h"
-#include "status_summary_cpu.h"
-#include "compare_cpu.h"
-#include "abacus_legalize_cpu.h"
-#include "align2site_cpu.h"
+#include "utility/src/LegalizationDB.h"
+#include "greedy_legalize/src/bin_assignment_cpu.h"
+#include "greedy_legalize/src/merge_bin_cpu.h"
+#include "greedy_legalize/src/legality_check_cpu.h"
+#include "greedy_legalize/src/status_summary_cpu.h"
+#include "greedy_legalize/src/compare_cpu.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
-
-template <typename T>
-void binAssignmentCPU(
-        const int* ordered_nodes, 
-        const T* init_x, const T* init_y, 
-        const T* node_size_x, const T* node_size_y, 
-        T* x, T* y, 
-        const T xl, const T yl, const T xh, const T yh, 
-        const T site_width, const T row_height, 
-        int num_bins_x, int num_bins_y, 
-        const int num_nodes, 
-        const int num_movable_nodes, 
-        const int num_filler_nodes
-        );
-
-template <typename T>
-void binAssignmentCPULauncher(
-        const T* init_x, const T* init_y, 
-        const T* node_size_x, const T* node_size_y, 
-        T* x, T* y, 
-        const T xl, const T yl, const T xh, const T yh, 
-        const T site_width, const T row_height, 
-        int num_bins_x, int num_bins_y, 
-        const int num_nodes, 
-        const int num_movable_nodes, 
-        const int num_filler_nodes
-        );
 
 template <typename T>
 void legalizeBinCPU(
@@ -63,6 +35,7 @@ void legalizeBinCPU(
 
 template <typename T>
 int greedyLegalizationCPU(
+        const LegalizationDB<T>& db, 
         const T* init_x, const T* init_y, 
         const T* node_size_x, const T* node_size_y, 
         T* x, T* y, 
@@ -70,21 +43,7 @@ int greedyLegalizationCPU(
         const T site_width, const T row_height, 
         int num_bins_x, int num_bins_y, 
         const int num_nodes, 
-        const int num_movable_nodes, 
-        const int num_filler_nodes
-        );
-
-template <typename T>
-int greedyLegalizationCPULauncher(
-        const T* init_x, const T* init_y, 
-        const T* node_size_x, const T* node_size_y, 
-        T* x, T* y, 
-        const T xl, const T yl, const T xh, const T yh, 
-        const T site_width, const T row_height, 
-        int num_bins_x, int num_bins_y, 
-        const int num_nodes, 
-        const int num_movable_nodes, 
-        const int num_filler_nodes
+        const int num_movable_nodes
         );
 
 DREAMPLACE_END_NAMESPACE
