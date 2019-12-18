@@ -19,6 +19,7 @@ add_subdirectory(abacus_legalize)
 add_subdirectory(global_swap)
 add_subdirectory(independent_set_matching)
 add_subdirectory(k_reorder)
+add_subdirectory(routability)
 
 file(GLOB INSTALL_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/*.py")
 install(
