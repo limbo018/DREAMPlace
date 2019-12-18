@@ -45,6 +45,7 @@ class PlaceDataCollection (object):
         @param placedb placement database 
         @param device cpu or cuda 
         """
+        self.device = device
         torch.set_num_threads(params.num_threads)
         # position should be parameter 
         self.pos = pos 
@@ -106,10 +107,9 @@ class PlaceDataCollection (object):
         if padding == 0: 
             return self.bin_center_x 
         else:
-            local_num_bins_x = num_bins_x + 2*padding 
-            xl = placedb.xl - padding*bin_size_x
-            xh = placedb.xh + padding*bin_size_x
-            self.bin_center_x_padded = torch.from_numpy(placedb.bin_centers(xl, xh, bin_size_x)).to(device)
+            xl = placedb.xl - padding * placedb.bin_size_x
+            xh = placedb.xh + padding * placedb.bin_size_x
+            self.bin_center_x_padded = torch.from_numpy(placedb.bin_centers(xl, xh, placedb.bin_size_x)).to(self.device)
             return self.bin_center_x_padded
 
     def bin_center_y_padded(self, placedb, padding): 
@@ -121,10 +121,9 @@ class PlaceDataCollection (object):
         if padding == 0: 
             return self.bin_center_y 
         else:
-            local_num_bins_y = num_bins_y + 2*padding 
-            yl = placedb.yl - padding*bin_size_y
-            yh = placedb.yh + padding*bin_size_y
-            self.bin_center_y_padded = torch.from_numpy(placedb.bin_centers(yl, yh, bin_size_y)).to(device)
+            yl = placedb.yl - padding * placedb.bin_size_y
+            yh = placedb.yh + padding * placedb.bin_size_y
+            self.bin_center_y_padded = torch.from_numpy(placedb.bin_centers(yl, yh, placedb.bin_size_y)).to(self.device)
             return self.bin_center_y_padded
 
 class PlaceOpCollection (object):
