@@ -9,9 +9,50 @@ DREAMPLACE_BEGIN_NAMESPACE
 #define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x "must be contiguous")
 
 #define route_area_adjust_stop_ratio (0.01)
+#define area_adjust_stop_ratio (0.01)
 template <typename T>
-int f()
+int updatePinOffset(
+    const int num_nodes,
+    const int num_movable_nodes,
+    const int num_filler_nodes,
+    const int* flat_node2pin_start_map,
+    const int* flat_node2pin_map,
+    const T* movable_nodes_ratio,
+    const T* filler_nodes_ratio,
+    T* pin_offset_x, T* pin_offset_y,
+    const int num_threads)
 {
+{
+    #pragma omp parallel for num_threads(num_threads)
+    for (int i = 0; i < num_movable_nodes; ++i)
+    {   
+        T ratio = movable_nodes_ratio[i];
+        
+        int start = flat_node2pin_start_map[i]; 
+        int end = flat_node2pin_start_map[i+1];
+        for (int j = start; j < end; ++j)
+        {
+            int pin_id = flat_node2pin_map[j]; 
+            pin_offset_x[pin_id] *= ratio;
+            pin_offset_y[pin_id] *= ratio;
+        }
+    }
+
+    #pragma omp parallel for num_threads(num_threads)
+    for (int i = num_nodes - num_filler_nodes; i < num_nodes; ++i)
+    {   
+        int start = flat_node2pin_start_map[i]; 
+        int end = flat_node2pin_start_map[i+1];
+        for (int j = start; j < end; ++j)
+        {
+            int pin_id = flat_node2pin_map[j]; 
+            pin_offset_x[pin_id] *= *filler_nodes_ratio;
+            pin_offset_y[pin_id] *= *filler_nodes_ratio;
+        }
+    }
+
+    return 0; 
+}
 }
 
 bool adjust_instance_area(
@@ -26,7 +67,13 @@ bool adjust_instance_area(
     int num_filler_nodes,
     at::Tensor instance_route_area,
     at::Tensor max_total_area,
-    int num_threads)
+    int num_threads,
+    bool* adjust_area_flag,
+    bool* adjust_route_area_flag,
+    at::Tensor pin_offset_x,
+    at::Tensor pin_offset_y,
+    at::Tensor flat_node2pin_start_map,
+    at::Tensor flat_node2pin_map)
 {
     CHECK_FLAT(instance_route_area);
     CHECK_CONTIGUOUS(instance_route_area);
@@ -54,55 +101,65 @@ bool adjust_instance_area(
     CHECK_FLAT(max_total_area);
     CHECK_CONTIGUOUS(max_total_area);
 
-    // compute final areas
-    at::Tensor movable_base_area = node_size_x[:num_movable_nodes].mul(node_size_y[:num_movable_nodes]);
-    at::Tensor prev_total_base_area = movable_base_area.sum();
+    at::Tensor node_size_x_movable = at::narrow(node_size_x, 0, 0, num_movable_nodes);
+    at::Tensor node_size_y_movable = at::narrow(node_size_y, 0, 0, num_movable_nodes);
+    at::Tensor node_size_x_filler = at::narrow(node_size_x, 0, num_nodes - num_filler_nodes, num_filler_nodes);
+    at::Tensor node_size_y_filler = at::narrow(node_size_y, 0, num_nodes - num_filler_nodes, num_filler_nodes);
+    
+    at::Tensor old_movable_area = node_size_x_movable.mul(node_size_y_movable);
+    at::Tensor old_sum_movable_area = old_movable_area.sum();
 
-    at::Tensor final_movable_area = at::relu(instance_route_area - movable_base_area);
-    at::Tensor total_extra_area = final_movable_area.sum();
+    // compute final areas
+    at::Tensor route_area_increment = at::relu(instance_route_area - old_movable_area);
+    at::Tensor route_area_increment_sum = route_area_increment.sum();
 
     // check whether the total area is larger than the max area requirement
     // If yes, scale the extra area to meet the requirement
     // We assume the total base area is no greater than the max area requirement
-    at::Tensor scale_factor = at::clamp((max_total_area - prev_total_base_area) / total_extra_area, 0, 1);
+    at::Tensor scale_factor = at::clamp((max_total_area - old_sum_movable_area) / route_area_increment_sum, 0, 1);
 
+    // compute the adjusted area increment following scaling factor
+    at::Tensor movable_area_increment = scale_factor * route_area_increment;
+    at::Tensor movable_area_increment_sum = scale_factor * route_area_increment_sum;
+    
     // set the areas of movable instance as base_area + scaled extra area
-    final_movable_area = movable_base_area + scale_factor.mul(final_movable_area);
+    at::Tensor new_movable_area = old_movable_area + movable_area_increment;
 
-    // scale the filler instance areas to make the total area meets the max area requirement
-    at::Tensor filler_area = at::relu((max_total_area - prev_total_base_area - scale_factor * total_extra_area) / num_filler_nodes);
-    at::Tensor final_filler_area = at::empty(num_filler_nodes, pos.options()).fill_(filler_area);
-
-    // compute the adjusted area increment
-    at::Tensor movable_area_increment = at::relu(final_movable_area - movable_base_area);
-    at::Tensor route_area_increment = at::relu(instance_route_area - movable_base_area);
-
-    adjust_route_area &= (route_area_increment.sum() / prev_total_base_area > route_area_adjust_stop_ratio);
-    adjust_area &= (monvable_area_increment.sum() / prev_total_base_area > area_adjust_stop_ratio);
-    adjust_area &= adjust_route_area;
-    if (!adjust_area)
+    *adjust_route_area_flag = *adjust_route_area_flag && 
+                              (route_area_increment_sum / old_sum_movable_area > route_area_adjust_stop_ratio).data<bool>();
+    *adjust_area_flag = *adjust_area_flag && 
+                        *adjust_route_area_flag &&
+                        (movable_area_increment_sum / old_sum_movable_area > area_adjust_stop_ratio).data<bool>();
+    if (!(*adjust_area_flag))
     {
         return false;
     }
 
-    at::Tensor movable_nodes_ratio = at::sqrt(final_movable_area / movable_base_area);
-    // adjust the size of nodes
-    node_size_x.mul_(movable_nodes_ratio);
-    node_size_y.mul_(movable_nodes_ratio);
+    // adjust the size of movable nodes
+    at::Tensor movable_nodes_ratio = at::sqrt(new_movable_area / old_movable_area);
+    node_size_x_movable.mul_(movable_nodes_ratio);
+    node_size_y_movable.mul_(movable_nodes_ratio);
+    
+    // scale the filler instance areas to make the total area meets the max area requirement
+    at::Tensor old_sum_filler_area = node_size_x_filler.mul(node_size_y_filler).sum();
+    at::Tensor new_sum_filler_area = at::relu(max_total_area - old_sum_movable_area - movable_area_increment_sum);
+    at::Tensor filler_nodes_ratio = at::sqrt(new_sum_filler_area / old_sum_filler_area);
+    node_size_x_filler.mul_(filler_nodes_ratio);
+    node_size_y_filler.mul_(filler_nodes_ratio);
 
     // Call the cpp kernel launcher
-    DREAMPLACE_DISPATCH_FLOATING_TYPES(pin_pos.type(), "fillDemandMapLauncher", [&] {
-        fillDemandMapLauncher<scalar_t>(
-            pin_pos.data<scalar_t>(), pin_pos.data<scalar_t>() + num_pins,
-            netpin_start.data<int>(),
-            flat_netpin.data<int>(),
-            bin_size_x, bin_size_y,
-            xl, yl, xh, yh,
-            num_bins_x, num_bins_y,
-            num_nets,
-            num_threads,
-            routing_utilization_map_x.data<scalar_t>(),
-            routing_utilization_map_y.data<scalar_t>());
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(pin_pos.type(), "updatePinOffset", [&] {
+        updatePinOffset<scalar_t>(
+            num_nodes,
+            num_movable_nodes,
+            num_filler_nodes,
+            flat_node2pin_start_map.data<int>(),
+            flat_node2pin_map.data<int>(),
+            movable_nodes_ratio.data<scalar_t>(),
+            filler_nodes_ratio.data<scalar_t>(),
+            pin_offset_x.data<scalar_t>(), 
+            pin_offset_y.data<scalar_t>(),
+            num_threads);
     });
 }
 
