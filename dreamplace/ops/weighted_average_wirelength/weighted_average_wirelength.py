@@ -15,7 +15,8 @@ import dreamplace.ops.weighted_average_wirelength.weighted_average_wirelength_cp
 try:
     import dreamplace.ops.weighted_average_wirelength.weighted_average_wirelength_cuda as weighted_average_wirelength_cuda
     import dreamplace.ops.weighted_average_wirelength.weighted_average_wirelength_cuda_atomic as weighted_average_wirelength_cuda_atomic
-    import dreamplace.ops.weighted_average_wirelength.weighted_average_wirelength_cuda_sparse as weighted_average_wirelength_cuda_sparse
+    # Error: undefined symbol cusparseDcsrmv in torch==1.3.1 when importing weighted_average_wirelength_cuda_sparse
+    # import dreamplace.ops.weighted_average_wirelength.weighted_average_wirelength_cuda_sparse as weighted_average_wirelength_cuda_sparse
     import dreamplace.ops.weighted_average_wirelength.weighted_average_wirelength_cuda_merged as weighted_average_wirelength_cuda_merged
 except:
     pass
