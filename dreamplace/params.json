@@ -1,19 +1,23 @@
 {
 "aux_input" : {
     "descripton" : "input .aux file", 
-    "default" : "required for Bookshelf"
+    "default" : "", 
+    "required" : "required for Bookshelf"
     }, 
 "lef_input" : {
     "descripton" : "input LEF file", 
-    "default" : "required for LEF/DEF"
+    "default" : "", 
+    "required" : "required for LEF/DEF"
     },
 "def_input" : {
     "descripton" : "input DEF file", 
-    "default" : "required for LEF/DEF"
+    "default" : "", 
+    "required" : "required for LEF/DEF"
     },
 "verilog_input" : {
     "descripton" : "input VERILOG file, provide circuit netlist information if it is not included in DEF file", 
-    "default" : "optional for LEF/DEF"
+    "default" : "", 
+    "required" : "optional for LEF/DEF"
     },
 "gpu" : {
     "descripton" : "enable gpu or not", 
@@ -29,7 +33,8 @@
     },
 "global_place_stages" : {
     "descripton" : "global placement configurations of each stage, a dictionary of {\"num_bins_x\", \"num_bins_y\", \"iteration\", \"learning_rate\"}, learning_rate is relative to bin size", 
-    "default" : "required"
+    "default" : "", 
+    "required" : "required"
     },
 "target_density" : {
     "descripton" : "target density", 
