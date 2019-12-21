@@ -426,4 +426,36 @@ GlobalMoveAlgo::enum_type GlobalMoveAlgo::str2Enum(std::string const& s) const
 
     return mStr2Enum.at(s);
 }
+
+std::string RegionType::enum2Str(RegionType::enum_type const& e) const
+{
+    static std::map<enum_type, std::string> mEnum2Str;
+    static bool init = true;
+
+    if (init)
+    {
+        ENUM2STR(mEnum2Str, FENCE);
+        ENUM2STR(mEnum2Str, GUIDE);
+        ENUM2STR(mEnum2Str, UNKNOWN);
+        init = false;
+    }
+
+    return mEnum2Str.at(e);
+}
+
+RegionType::enum_type RegionType::str2Enum(std::string const& s) const
+{
+    static std::map<std::string, enum_type> mStr2Enum;
+    static bool init = true;
+
+    if (init)
+    {
+        STR2ENUM(mStr2Enum, FENCE);
+        STR2ENUM(mStr2Enum, GUIDE);
+        STR2ENUM(mStr2Enum, UNKNOWN);
+        init = false;
+    }
+
+    return mStr2Enum.at(s);
+}
 DREAMPLACE_END_NAMESPACE

@@ -4,6 +4,8 @@
  * @date   Jun 2018
  */
 #include "utility/src/torch.h"
+#include "utility/src/LegalizationDB.h"
+#include "utility/src/LegalizationDBUtils.h"
 #include "greedy_legalize/src/function_cpu.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
@@ -27,29 +29,20 @@ DREAMPLACE_BEGIN_NAMESPACE
 /// @param num_movable_nodes number of movable nodes, movable nodes are in the range of [0, num_movable_nodes)
 /// @param number of filler nodes, filler nodes are in the range of [num_nodes-num_filler_nodes, num_nodes)
 template <typename T>
-int greedyLegalizationLauncher(
-        const T* init_x, const T* init_y, 
-        const T* node_size_x, const T* node_size_y, 
-        T* x, T* y, 
-        const T xl, const T yl, const T xh, const T yh, 
-        const T site_width, const T row_height, 
-        int num_bins_x, int num_bins_y, 
-        const int num_nodes, 
-        const int num_movable_nodes, 
-        const int num_filler_nodes 
-        )
+int greedyLegalizationLauncher(LegalizationDB<T> db)
 {
     greedyLegalizationCPU(
-            init_x, init_y, 
-            node_size_x, node_size_y, 
-            x, y, 
-            xl, yl, xh, yh, 
-            site_width, row_height, 
-            num_bins_x, num_bins_y, 
-            num_nodes, 
-            num_movable_nodes, 
-            num_filler_nodes
+            db, 
+            db.init_x, db.init_y, 
+            db.node_size_x, db.node_size_y, 
+            db.x, db.y, 
+            db.xl, db.yl, db.xh, db.yh, 
+            db.site_width, db.row_height, 
+            db.num_bins_x, db.num_bins_y, 
+            db.num_nodes, 
+            db.num_movable_nodes
             );
+
     return 0; 
 }
 
@@ -76,8 +69,12 @@ int greedyLegalizationLauncher(
 /// @param number of filler nodes, filler nodes are in the range of [num_nodes-num_filler_nodes, num_nodes)
 at::Tensor greedy_legalization_forward(
         at::Tensor init_pos,
+        at::Tensor pos, 
         at::Tensor node_size_x,
         at::Tensor node_size_y,
+        at::Tensor flat_region_boxes, 
+        at::Tensor flat_region_boxes_start, 
+        at::Tensor node2fence_region_map, 
         double xl, 
         double yl, 
         double xh, 
@@ -86,6 +83,7 @@ at::Tensor greedy_legalization_forward(
         int num_bins_x, 
         int num_bins_y,
         int num_movable_nodes, 
+        int num_terminal_NIs, 
         int num_filler_nodes
         )
 {
@@ -93,25 +91,33 @@ at::Tensor greedy_legalization_forward(
     CHECK_EVEN(init_pos);
     CHECK_CONTIGUOUS(init_pos);
 
-    auto pos = init_pos.clone();
-    int num_nodes = init_pos.numel()/2;
+    auto pos_copy = pos.clone();
 
+    hr_clock_rep timer_start, timer_stop; 
+    timer_start = get_globaltime(); 
     // Call the cuda kernel launcher
-    AT_DISPATCH_FLOATING_TYPES(pos.type(), "greedyLegalizationLauncher", [&] {
-            greedyLegalizationLauncher<scalar_t>(
-                    init_pos.data<scalar_t>(), init_pos.data<scalar_t>()+num_nodes, 
-                    node_size_x.data<scalar_t>(), node_size_y.data<scalar_t>(), 
-                    pos.data<scalar_t>(), pos.data<scalar_t>()+num_nodes, 
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "greedyLegalizationLauncher", [&] {
+            auto db = make_placedb<scalar_t>(
+                    init_pos, 
+                    pos_copy, 
+                    node_size_x, 
+                    node_size_y, 
+                    flat_region_boxes, flat_region_boxes_start, node2fence_region_map, 
                     xl, yl, xh, yh, 
                     site_width, row_height, 
-                    num_bins_x, num_bins_y, 
-                    num_nodes, 
+                    num_bins_x, 
+                    num_bins_y, 
                     num_movable_nodes, 
+                    num_terminal_NIs, 
                     num_filler_nodes
                     );
+            greedyLegalizationLauncher<scalar_t>(db);
+            db.check_legality();
             });
+    timer_stop = get_globaltime(); 
+    dreamplacePrint(kINFO, "Greedy legalization takes %g ms\n", (timer_stop-timer_start)*get_timer_period());
 
-    return pos; 
+    return pos_copy; 
 }
 
 DREAMPLACE_END_NAMESPACE

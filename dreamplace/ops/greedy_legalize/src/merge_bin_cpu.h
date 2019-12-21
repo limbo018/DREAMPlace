@@ -3,8 +3,8 @@
  * @author Yibo Lin
  * @date   Oct 2018
  */
-#ifndef GPUPLACE_MERGE_BIN_CPU_H
-#define GPUPLACE_MERGE_BIN_CPU_H
+#ifndef DREAMPLACE_MERGE_BIN_CPU_H
+#define DREAMPLACE_MERGE_BIN_CPU_H
 
 #include <cstdio>
 #include <vector>

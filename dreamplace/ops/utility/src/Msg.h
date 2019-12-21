@@ -11,7 +11,7 @@
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>
-#include "utility/src/Namespace.h"
+#include "utility/src/global.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
 

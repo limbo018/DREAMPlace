@@ -19,7 +19,7 @@ at::Tensor dst_forward(
     //std::cout << "x\n" << x << "\n";
     auto x_reorder = x.clone();
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "dst_forward", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "dst_forward", [&] {
             negateOddEntries<scalar_t>(
                     x_reorder.data<scalar_t>(), 
                     M, 
@@ -56,7 +56,7 @@ at::Tensor idst_forward(
     auto x_reorder = at::empty_like(x);
     auto y = at::empty_like(x);
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "idst_forward", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idst_forward", [&] {
             computeFlip<scalar_t>(
                     x.data<scalar_t>(), 
                     M, 

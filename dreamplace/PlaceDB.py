@@ -32,8 +32,9 @@ class PlaceDB (object):
         """
         self.rawdb = None # raw placement database, a C++ object 
 
-        self.num_physical_nodes = 0 # number of real nodes, including movable nodes, terminals
-        self.num_terminals = 0 # number of terminals 
+        self.num_physical_nodes = 0 # number of real nodes, including movable nodes, terminals, and terminal_NIs
+        self.num_terminals = 0 # number of terminals, essentially fixed macros 
+        self.num_terminal_NIs = 0 # number of terminal_NIs that can be overlapped, essentially IO pins
         self.node_name2id_map = {} # node name to id map, cell name 
         self.node_names = None # 1D array, cell name 
         self.node_x = None # 1D array, cell position x 
@@ -58,6 +59,11 @@ class PlaceDB (object):
         self.pin2net_map = None # 1D array, contain parent net id of each pin 
 
         self.rows = None # NumRows x 4 array, stores xl, yl, xh, yh of each row 
+
+        self.regions = None # array of 1D array, placement regions like FENCE and GUIDE 
+        self.flat_region_boxes = None # flat version of regions 
+        self.flat_region_boxes_start = None # start indices of regions, length of num regions + 1
+        self.node2fence_region_map = None # map cell to a region, maximum integer if no fence region  
 
         self.xl = None 
         self.yl = None 
@@ -163,12 +169,12 @@ class PlaceDB (object):
         """
         @return number of movable nodes 
         """
-        return self.num_physical_nodes - self.num_terminals
+        return self.num_physical_nodes - self.num_terminals - self.num_terminal_NIs
 
     @property 
     def num_nodes(self):
         """
-        @return number of movable nodes, terminals and fillers
+        @return number of movable nodes, terminals, terminal_NIs, and fillers
         """
         return self.num_physical_nodes + self.num_filler_nodes
 
@@ -417,6 +423,7 @@ class PlaceDB (object):
 
         self.num_physical_nodes = pydb.num_nodes
         self.num_terminals = pydb.num_terminals
+        self.num_terminal_NIs = pydb.num_terminal_NIs
         self.node_name2id_map = pydb.node_name2id_map
         self.node_names = np.array(pydb.node_names, dtype=np.string_)
         self.node_x = np.array(pydb.node_x, dtype=self.dtype)
@@ -439,6 +446,10 @@ class PlaceDB (object):
         self.pin2node_map = np.array(pydb.pin2node_map, dtype=np.int32)
         self.pin2net_map = np.array(pydb.pin2net_map, dtype=np.int32)
         self.rows = np.array(pydb.rows, dtype=self.dtype)
+        self.regions = pydb.regions 
+        self.flat_region_boxes = np.array(pydb.flat_region_boxes, dtype=self.dtype)
+        self.flat_region_boxes_start = np.array(pydb.flat_region_boxes_start, dtype=np.int32)
+        self.node2fence_region_map = np.array(pydb.node2fence_region_map, dtype=np.int32)
         self.xl = float(pydb.xl)
         self.yl = float(pydb.yl)
         self.xh = float(pydb.xh)
@@ -471,11 +482,11 @@ class PlaceDB (object):
 
         content = """
 =============== Benchmark Statistics ===============
-#nodes = %d, #terminals = %d, #movable = %d, #nets = %d
+#nodes = %d, #terminals = %d, # terminal_NIs = %d, #movable = %d, #nets = %d
 die area = (%g, %g, %g, %g) %g
 row height = %g, site width = %g
 """ % (
-                self.num_physical_nodes, self.num_terminals, self.num_movable_nodes, len(self.net_names), 
+                self.num_physical_nodes, self.num_terminals, self.num_terminal_NIs, self.num_movable_nodes, len(self.net_names), 
                 self.xl, self.yl, self.xh, self.yh, self.area, 
                 self.row_height, self.site_width
                 )
@@ -502,17 +513,16 @@ row height = %g, site width = %g
         content += "#pins = %d, #movable_pins = %d\n" % (self.num_pins, self.num_movable_pins)
         # set total cell area 
         self.total_movable_node_area = float(np.sum(self.node_size_x[:self.num_movable_nodes]*self.node_size_y[:self.num_movable_nodes]))
-        # total fixed node area should exclude the area outside the layout 
+        # total fixed node area should exclude the area outside the layout and the area of terminal_NIs  
         self.total_fixed_node_area = float(np.sum(
                 np.maximum(
-                    np.minimum(self.node_x[self.num_movable_nodes:self.num_physical_nodes]+self.node_size_x[self.num_movable_nodes:self.num_physical_nodes], self.xh)
-                    - np.maximum(self.node_x[self.num_movable_nodes:self.num_physical_nodes], self.xl), 
+                    np.minimum(self.node_x[self.num_movable_nodes:self.num_physical_nodes - self.num_terminal_NIs] + self.node_size_x[self.num_movable_nodes:self.num_physical_nodes - self.num_terminal_NIs], self.xh)
+                    - np.maximum(self.node_x[self.num_movable_nodes:self.num_physical_nodes - self.num_terminal_NIs], self.xl), 
                     0.0) * np.maximum(
-                        np.minimum(self.node_y[self.num_movable_nodes:self.num_physical_nodes]+self.node_size_y[self.num_movable_nodes:self.num_physical_nodes], self.yh)
-                        - np.maximum(self.node_y[self.num_movable_nodes:self.num_physical_nodes], self.yl), 
+                        np.minimum(self.node_y[self.num_movable_nodes:self.num_physical_nodes - self.num_terminal_NIs] + self.node_size_y[self.num_movable_nodes:self.num_physical_nodes - self.num_terminal_NIs], self.yh)
+                        - np.maximum(self.node_y[self.num_movable_nodes:self.num_physical_nodes - self.num_terminal_NIs], self.yl), 
                         0.0)
                 ))
-        #self.total_fixed_node_area = float(np.sum(self.node_size_x[self.num_movable_nodes:]*self.node_size_y[self.num_movable_nodes:]))
         content += "total_movable_node_area = %g, total_fixed_node_area = %g\n" % (self.total_movable_node_area, self.total_fixed_node_area)
 
         # insert filler nodes 
@@ -603,6 +613,8 @@ row height = %g, site width = %g
                     )
             if i >= self.num_movable_nodes:
                 content += " /FIXED"
+                if i >= self.num_movable_nodes + self.num_terminals:
+                    content += "_NI"
         with open(pl_file, "w") as f:
             f.write(content)
         logging.info("write_pl takes %.3f seconds" % (time.time()-tt))

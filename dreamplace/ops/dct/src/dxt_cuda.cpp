@@ -18,7 +18,7 @@ at::Tensor idxct_forward(
 
     //std::cout << "z\n" << z << "\n";
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "idxct_forward", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idxct_forward", [&] {
             addX0AndScaleCudaLauncher(
                     x.data<scalar_t>(), 
                     M, 
@@ -42,7 +42,7 @@ at::Tensor idxst_forward(
     auto x_reorder = at::empty({M, N}, x.options());
     auto y = at::empty_like(x); 
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "idxst_forward", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idxst_forward", [&] {
             computeFlipAndShiftCudaLauncher<scalar_t>(
                     x.data<scalar_t>(), 
                     M, 
@@ -87,7 +87,7 @@ at::Tensor idcct2_forward(
     // vk is hermitian symmetric, only fill in half 
     auto v = at::empty({M*N+std::max(M, N)}, x.options()).resize_({M, N/2+1, 2});
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "idcct2_forward", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idcct2_forward", [&] {
             computeVkCudaLauncher<scalar_t>(
                     x.data<scalar_t>(), 
                     expk1.data<scalar_t>(), 
@@ -187,7 +187,7 @@ at::Tensor idsct2_forward(
     auto v = at::empty({M*N+std::max(M, N)}, x.options()).resize_({M, N/2+1, 2});
     auto z = at::empty({M, N}, x.options());
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "idsct2_forward", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idsct2_forward", [&] {
             computeVkCudaLauncher<scalar_t>(
                     x.data<scalar_t>(), 
                     expk1.data<scalar_t>(), 
@@ -295,7 +295,7 @@ at::Tensor idcst2_forward(
     //auto z = at::empty_like(x);
     auto z = at::empty({M, N}, x.options());
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "idcst2_forward", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idcst2_forward", [&] {
             computeFlipAndShiftCudaLauncher<scalar_t>(
                     x.data<scalar_t>(), 
                     M, 
@@ -407,7 +407,7 @@ at::Tensor idxst_idct_forward(
     auto v = at::empty({M*N+std::max(M, N)}, x.type()).resize_({M, N/2+1, 2});
     auto z = at::empty({M, N}, x.options());
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "idsct2_forward", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idsct2_forward", [&] {
             computeVkCudaLauncher<scalar_t>(
                     x.data<scalar_t>(), 
                     expk1.data<scalar_t>(), 
@@ -506,7 +506,7 @@ at::Tensor idct_idxst_forward(
     //auto z = at::empty_like(x);
     auto z = at::empty({M, N}, x.options());
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "idcst2_forward", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idcst2_forward", [&] {
             computeFlipAndShiftCudaLauncher<scalar_t>(
                     x.data<scalar_t>(), 
                     M, 

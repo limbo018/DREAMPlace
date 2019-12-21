@@ -8,9 +8,10 @@
 #ifndef DREAMPLACE_UTIL_H
 #define DREAMPLACE_UTIL_H
 
+#include <cstring>
 #include <string>
+#include <vector>
 #include <limbo/string/String.h>
-#include "utility/src/Namespace.h"
 #include "utility/src/Msg.h"
 
 /// headers for hash tables 
@@ -102,6 +103,84 @@ template <typename T> struct ConstTypeHelper<T, 1>
     typedef T value_type;
     typedef T const& reference_type;
     typedef T const* pointer_type;
+};
+
+/// @brief Match a string with a wildcard pattern. 
+/// Copied from geeksforgeeks 
+/// https://www.geeksforgeeks.org/wildcard-pattern-matching/
+class WildcardMatch 
+{
+    public:
+        /// @param str target string 
+        /// @param pattern target pattern 
+        /// @param n length of string 
+        /// @param m length of pattern 
+        inline bool operator()(const char* str, const char* pattern, std::size_t n, std::size_t m) 
+        {
+            // empty pattern can only match with 
+            // empty string 
+            if (m == 0) 
+                return (n == 0); 
+
+            // lookup table for storing results of 
+            // subproblems 
+            m_n = n; 
+            m_m = m; 
+            m_lookup.resize((n + 1)*(m + 1));
+
+            // initailze lookup table to false 
+            memset(m_lookup.data(), false, sizeof(unsigned char)*m_lookup.size()); 
+
+            // empty pattern can match with empty string 
+            lookup(0, 0) = true; 
+
+            // Only '*' can match with empty string 
+            for (std::size_t j = 1; j <= m; j++) 
+                if (pattern[j - 1] == '*') 
+                    lookup(0, j) = lookup(0, j - 1);
+
+            // fill the table in bottom-up fashion 
+            for (std::size_t i = 1; i <= n; i++) 
+            { 
+                for (std::size_t j = 1; j <= m; j++) 
+                { 
+                    // Two cases if we see a '*' 
+                    // a) We ignore ‘*’ character and move 
+                    //    to next  character in the pattern, 
+                    //     i.e., ‘*’ indicates an empty sequence. 
+                    // b) '*' character matches with ith 
+                    //     character in input 
+                    if (pattern[j - 1] == '*') 
+                        lookup(i, j) = lookup(i, j - 1) || lookup(i - 1, j); 
+
+                    // Current characters are considered as 
+                    // matching in two cases 
+                    // (a) current character of pattern is '?' 
+                    // (b) characters actually match 
+                    else if (pattern[j - 1] == '?' || 
+                            str[i - 1] == pattern[j - 1]) 
+                        lookup(i, j) = lookup(i - 1, j - 1); 
+
+                    // If characters don't match 
+                    else lookup(i, j) = false; 
+                } 
+            } 
+
+            return lookup(n, m); 
+        }
+    protected:
+        inline unsigned char lookup(std::size_t i, std::size_t j) const 
+        {
+            return m_lookup.at(i*(m_m + 1) + j);
+        }
+        inline unsigned char& lookup(std::size_t i, std::size_t j) 
+        {
+            return m_lookup.at(i*(m_m + 1) + j);
+        }
+
+        std::vector<unsigned char> m_lookup; ///< lookup table 
+        std::size_t m_n; ///< length of string
+        std::size_t m_m; /// < length of pattern 
 };
 
 DREAMPLACE_END_NAMESPACE

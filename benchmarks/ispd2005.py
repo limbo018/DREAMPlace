@@ -16,18 +16,20 @@ else:
 
 baseURL = "http://www.cerc.utexas.edu/~zixuan/"
 target_dir = os.path.dirname(os.path.abspath(__file__))
-filename = "ispd2005.tar.xz"
-file_url = baseURL + filename
-path_to_file = os.path.join(target_dir, filename)
+filenames = ["ispd2005.tar.xz", "ispd2005dp.tar.xz"]
 
-print("Download from %s to %s" % (file_url, path_to_file))
-response = urllib.urlopen(file_url)
-content = response.read()
-with open(path_to_file, 'wb') as f:
-    f.write(content)
+for filename in filenames:
+    file_url = baseURL + filename
+    path_to_file = os.path.join(target_dir, filename)
 
-print("Uncompress %s to %s" % (path_to_file, target_dir))
-Archive(path_to_file).extractall(target_dir)
+    print("Download from %s to %s" % (file_url, path_to_file))
+    response = urllib.urlopen(file_url)
+    content = response.read()
+    with open(path_to_file, 'wb') as f:
+        f.write(content)
 
-print("remove downloaded file %s" % (path_to_file))
-os.remove(path_to_file)
+    print("Uncompress %s to %s" % (path_to_file, target_dir))
+    Archive(path_to_file).extractall(target_dir)
+
+    print("remove downloaded file %s" % (path_to_file))
+    os.remove(path_to_file)

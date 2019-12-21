@@ -119,6 +119,17 @@ struct Box
     }
 };
 
+/// @brief simplest box for shared memory 
+/// Non-empty constructor may result in data race 
+template <typename T>
+struct SharedBox 
+{
+    T xl;
+    T yl; 
+    T xh; 
+    T yh; 
+};
+
 DREAMPLACE_END_NAMESPACE
 
 #endif

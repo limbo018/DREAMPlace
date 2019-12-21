@@ -4,8 +4,8 @@
  * @date   Oct 2018
  */
 
-#ifndef GPUPLACE_BIN_ASSIGNMENT_H
-#define GPUPLACE_BIN_ASSIGNMENT_H
+#ifndef DREAMPLACE_BIN_ASSIGNMENT_H
+#define DREAMPLACE_BIN_ASSIGNMENT_H
 
 #include <cmath>
 #include <vector>
@@ -16,12 +16,13 @@ DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T>
 void distributeCells2BinsCPU(
+        const LegalizationDB<T>& db, 
         const T* x, const T* y, 
         const T* node_size_x, const T* node_size_y, 
         T bin_size_x, T bin_size_y, 
         T xl, T yl, T xh, T yh, 
         int num_bins_x, int num_bins_y, 
-        int num_nodes, int num_movable_nodes, int num_filler_nodes, 
+        int num_nodes, int num_movable_nodes, 
         std::vector<std::vector<int> >& bin_cells
         )
 {
@@ -29,64 +30,7 @@ void distributeCells2BinsCPU(
     // one cell cannot be distributed to one bin 
     for (int i = 0; i < num_movable_nodes; i += 1) 
     {
-        int bin_id_x = (x[i]+node_size_x[i]/2-xl)/bin_size_x; 
-        int bin_id_y = (y[i]+node_size_y[i]/2-yl)/bin_size_y;
-
-        bin_id_x = std::min(std::max(bin_id_x, 0), num_bins_x-1);
-        bin_id_y = std::min(std::max(bin_id_y, 0), num_bins_y-1);
-
-        int bin_id = bin_id_x*num_bins_y + bin_id_y; 
-
-        bin_cells[bin_id].push_back(i); 
-    }
-}
-
-template <typename T>
-void distributeFixedCells2BinsCPU(
-        const T* x, const T* y, 
-        const T* node_size_x, const T* node_size_y, 
-        T bin_size_x, T bin_size_y, 
-        T xl, T yl, T xh, T yh, 
-        int num_bins_x, int num_bins_y, 
-        int num_nodes, int num_movable_nodes, int num_filler_nodes, 
-        std::vector<std::vector<int> >& bin_cells
-        )
-{
-    // one cell can be assigned to multiple bins 
-    for (int i = 0; i < num_nodes-num_movable_nodes-num_filler_nodes; i += 1) 
-    {
-        int node_id = i+num_movable_nodes; 
-        int bin_id_xl = std::max((x[node_id]-xl)/bin_size_x, (T)0);
-        int bin_id_xh = std::min((int)ceil((x[node_id]+node_size_x[node_id]-xl)/bin_size_x), num_bins_x);
-        int bin_id_yl = std::max((y[node_id]-yl)/bin_size_y, (T)0);
-        int bin_id_yh = std::min((int)ceil((y[node_id]+node_size_y[node_id]-yl)/bin_size_y), num_bins_y);
-
-        for (int bin_id_x = bin_id_xl; bin_id_x < bin_id_xh; ++bin_id_x)
-        {
-            for (int bin_id_y = bin_id_yl; bin_id_y < bin_id_yh; ++bin_id_y)
-            {
-                int bin_id = bin_id_x*num_bins_y + bin_id_y; 
-
-                bin_cells[bin_id].push_back(node_id); 
-            }
-        }
-    }
-}
-
-template <typename T>
-void distributeMovableAndFixedCells2BinsCPU(
-        const T* x, const T* y, 
-        const T* node_size_x, const T* node_size_y, 
-        T bin_size_x, T bin_size_y, 
-        T xl, T yl, T xh, T yh, 
-        int num_bins_x, int num_bins_y, 
-        int num_nodes, int num_movable_nodes, int num_filler_nodes, 
-        std::vector<std::vector<int> >& bin_cells
-        )
-{
-    for (int i = 0; i < num_nodes-num_filler_nodes; i += 1) 
-    {
-        if (i < num_movable_nodes && node_size_y[i] <= bin_size_y) // single-row movable nodes only distribute to one bin 
+        if (!db.is_dummy_fixed(i))
         {
             int bin_id_x = (x[i]+node_size_x[i]/2-xl)/bin_size_x; 
             int bin_id_y = (y[i]+node_size_y[i]/2-yl)/bin_size_y;
@@ -98,7 +42,25 @@ void distributeMovableAndFixedCells2BinsCPU(
 
             bin_cells[bin_id].push_back(i); 
         }
-        else // fixed nodes may distribute to multiple bins  
+    }
+}
+
+template <typename T>
+void distributeFixedCells2BinsCPU(
+        const LegalizationDB<T>& db, 
+        const T* x, const T* y, 
+        const T* node_size_x, const T* node_size_y, 
+        T bin_size_x, T bin_size_y, 
+        T xl, T yl, T xh, T yh, 
+        int num_bins_x, int num_bins_y, 
+        int num_nodes, int num_movable_nodes, 
+        std::vector<std::vector<int> >& bin_cells
+        )
+{
+    // one cell can be assigned to multiple bins 
+    for (int i = 0; i < num_nodes; i += 1) 
+    {
+        if (db.is_dummy_fixed(i) || i >= num_movable_nodes)
         {
             int node_id = i; 
             int bin_id_xl = std::max((x[node_id]-xl)/bin_size_x, (T)0);
@@ -243,21 +205,6 @@ void computeBinCapacityCPU(
         bin_capacities[i] = ceil(capacity / (site_width*row_height)); 
     }
 }
-
-template <typename T>
-void assignCells2BinsCPU(
-        const int* ordered_nodes, 
-        const T* init_x, const T* init_y, 
-        const T* node_size_x, const T* node_size_y, 
-        T bin_size_x, T bin_size_y, 
-        T xl, T yl, T xh, T yh, 
-        T site_width, T row_height, 
-        int num_bins_x, int num_bins_y, 
-        int num_nodes, int num_movable_nodes, int num_filler_nodes, 
-        int* bin_capacities, // bin capacity in number of sites
-        //CVector::CVector2D<int> bin_cells
-        T* x, T* y
-        );
 
 DREAMPLACE_END_NAMESPACE
 

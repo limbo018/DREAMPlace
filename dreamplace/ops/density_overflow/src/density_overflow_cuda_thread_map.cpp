@@ -133,7 +133,7 @@ std::vector<at::Tensor> density_overflow_forward(
     int num_nodes = pos.numel()/2; 
 
     // Call the cuda kernel launcher
-    AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeDensityOverflowMapCudaThreadMapLauncher", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeDensityOverflowMapCudaThreadMapLauncher", [&] {
             computeDensityOverflowMapCudaThreadMapLauncher<scalar_t>(
                     pos.data<scalar_t>(), pos.data<scalar_t>()+pos.numel()/2, 
                     node_size_x.data<scalar_t>(), node_size_y.data<scalar_t>(), 
@@ -201,7 +201,7 @@ at::Tensor fixed_density_overflow_map(
     if (num_terminals && num_impacted_bins_x && num_impacted_bins_y)
     {
         // Call the cuda kernel launcher
-        AT_DISPATCH_FLOATING_TYPES(pos.type(), "computeDensityOverflowMapCudaLauncher", [&] {
+        DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeDensityOverflowMapCudaLauncher", [&] {
                 computeDensityOverflowMapCudaLauncher<scalar_t>(
                         pos.data<scalar_t>()+num_movable_nodes, pos.data<scalar_t>()+pos.numel()/2+num_movable_nodes, 
                         node_size_x.data<scalar_t>()+num_movable_nodes, node_size_y.data<scalar_t>()+num_movable_nodes, 
@@ -257,7 +257,7 @@ void thread_map(
     int num_nodes = node_size_x.numel(); 
     int thread_count = 0; 
 
-    AT_DISPATCH_FLOATING_TYPES(node_size_x.type(), "thread_count", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(node_size_x.type(), "thread_count", [&] {
             auto node_size_x_accessor = node_size_x.accessor<scalar_t, 1>(); 
             auto node_size_y_accessor = node_size_x.accessor<scalar_t, 1>(); 
 
@@ -282,7 +282,7 @@ void thread_map(
     thread2bin_x_map.resize_(thread_count);
     thread2bin_y_map.resize_(thread_count);
 
-    AT_DISPATCH_FLOATING_TYPES(node_size_x.type(), "thread_map", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(node_size_x.type(), "thread_map", [&] {
             auto node_size_x_accessor = node_size_x.accessor<scalar_t, 1>(); 
             auto node_size_y_accessor = node_size_x.accessor<scalar_t, 1>(); 
 

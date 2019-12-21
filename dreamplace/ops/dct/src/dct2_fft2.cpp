@@ -33,7 +33,7 @@ void dct2_fft2_forward(
     auto N = x.size(-1);
     auto M = x.numel() / N;
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "dct2_fft2_forward", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "dct2_fft2_forward", [&] {
         dct2dPreprocessCpuLauncher<scalar_t>(
             x.data<scalar_t>(),
             out.data<scalar_t>(),
@@ -77,7 +77,7 @@ void idct2_fft2_forward(
     auto N = x.size(-1);
     auto M = x.numel() / N;
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "idct2_fft2_forward", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idct2_fft2_forward", [&] {
         idct2_fft2PreprocessCpuLauncher<scalar_t>(
             x.data<scalar_t>(),
             buf.data<scalar_t>(),
@@ -121,7 +121,7 @@ void idct_idxst_forward(
     auto N = x.size(-1);
     auto M = x.numel() / N;
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "idct_idxst_forward", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idct_idxst_forward", [&] {
         idct_idxstPreprocessCpuLauncher<scalar_t>(
             x.data<scalar_t>(),
             buf.data<scalar_t>(),
@@ -165,7 +165,7 @@ void idxst_idct_forward(
     auto N = x.size(-1);
     auto M = x.numel() / N;
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "idxst_idct_forward", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idxst_idct_forward", [&] {
         idxst_idctPreprocessCpuLauncher<scalar_t>(
             x.data<scalar_t>(),
             buf.data<scalar_t>(),
