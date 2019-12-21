@@ -71,6 +71,7 @@ set(LEMON_LINK_DIRS ${LEMON_BINARY_DIR}/lemon)
 message("-- LEMON_INCLUDE_DIRS ${LEMON_INCLUDE_DIRS}")
 message("-- LEMON_LINK_DIRS ${LEMON_LINK_DIRS}")
 
+if (CUDA_FOUND)
 if (NOT CMAKE_CUDA_FLAGS)
     set(CMAKE_CUDA_FLAGS "-arch=sm_60"
         "-gencode=arch=compute_60,code=sm_60"
@@ -84,6 +85,7 @@ if (NOT CMAKE_CUDA_FLAGS)
             )
     endif(${CUDA_VERSION_MAJOR} VERSION_GREATER "9")
 endif(NOT CMAKE_CUDA_FLAGS)
+endif(CUDA_FOUND)
 message("-- CMAKE_CUDA_FLAGS: ${CMAKE_CUDA_FLAGS}")
 
 add_subdirectory(thirdparty)
