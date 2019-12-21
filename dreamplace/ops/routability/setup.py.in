@@ -41,9 +41,9 @@ modules.extend([
                      'cxx': [torch_major_version, torch_minor_version, '-fopenmp']
                  }),
     
-    CppExtension('adjust_instance_area_cpp',
+    CppExtension('update_pin_offset_cpp',
                  [
-                     add_prefix('adjust_instance_area.cpp')
+                     add_prefix('update_pin_offset.cpp')
                  ],
                  include_dirs=copy.deepcopy(include_dirs),
                  library_dirs=copy.deepcopy(lib_dirs),
@@ -68,10 +68,9 @@ if "${CUDA_FOUND}".upper() == 'TRUE':
                           'nvcc': copy.deepcopy(cuda_flags)  # + ['-use_fast_math', '-prec-div=false', '-ftz=true']
                       }
                       ),
-                CUDAExtension('adjust_instance_area_cuda',
+                CUDAExtension('update_pin_offset_cuda',
                       [
-                          add_prefix('adjust_instance_area_cuda.cpp'),
-                          add_prefix('adjust_instance_area_cuda_kernel.cu')
+                          add_prefix('update_pin_offset_cuda.cpp'),
                       ],
                       include_dirs=copy.deepcopy(include_dirs),
                       library_dirs=copy.deepcopy(lib_dirs),

@@ -161,6 +161,13 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                     optimizer.step()
                     logging.info("optimizer step %.3f ms" % ((time.time()-t3)*1000))
 
+                    self.op_collections.adjust_instance_area(
+                                                        self.pos.data, 
+                                                        self.op_collections.pin_pos_op(self.pos.data), 
+                                                        self.data_collections.pin_offset_x, 
+                                                        self.data_collections.pin_offset_y,
+                                                        cur_metric.overflow)
+
                     iteration += 1
 
                     logging.info("full step %.3f ms" % ((time.time()-t0)*1000))

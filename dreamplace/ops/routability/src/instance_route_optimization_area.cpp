@@ -17,11 +17,16 @@ int fillDemandMapLauncher(const T *pin_pos_x,
                           const int *flat_netpin,
                           T bin_size_x, T bin_size_y,
                           T xl, T yl, T xh, T yh,
+                          
+                          const bool exist_net_weights, 
+                          const T* net_weights,
+
                           int num_bins_x, int num_bins_y,
                           int num_nets,
                           int num_threads,
                           T *routing_utilization_map_x,
-                          T *routing_utilization_map_y)
+                          T *routing_utilization_map_y
+                          )
 {
     const T inv_bin_size_x = 1.0 / bin_size_x;
     const T inv_bin_size_y = 1.0 / bin_size_y;
@@ -37,10 +42,10 @@ int fillDemandMapLauncher(const T *pin_pos_x,
 
         for (int j = netpin_start[i]; j < netpin_start[i + 1]; ++j)
         {
-            T xx = pin_pos_x[flat_netpin[j]];
+            const T xx = pin_pos_x[flat_netpin[j]];
             x_max = DREAMPLACE_STD_NAMESPACE::max(xx, x_max);
             x_min = DREAMPLACE_STD_NAMESPACE::min(xx, x_min);
-            T yy = pin_pos_y[flat_netpin[j]];
+            const T yy = pin_pos_y[flat_netpin[j]];
             y_max = DREAMPLACE_STD_NAMESPACE::max(yy, y_max);
             y_min = DREAMPLACE_STD_NAMESPACE::min(yy, y_min);
         }
@@ -56,14 +61,23 @@ int fillDemandMapLauncher(const T *pin_pos_x,
         bin_index_yl = DREAMPLACE_STD_NAMESPACE::max(bin_index_yl, 0);
         bin_index_yh = DREAMPLACE_STD_NAMESPACE::min(bin_index_yh, num_bins_y);
 
-        // TODO net[i].weight = 1?
-        const T wt = netWiringDistributionMapWeight<T>(netpin_start[i + 1] - netpin_start[i]);
+        T wt;
+        if (exist_net_weights)
+        {
+            wt = net_weights[i] * netWiringDistributionMapWeight<T>(netpin_start[i + 1] - netpin_start[i]);
+        }
+        else
+        {
+            wt = netWiringDistributionMapWeight<T>(netpin_start[i + 1] - netpin_start[i]);
+        }
+        
         for (int x = bin_index_xl; x < bin_index_xh; ++x)
         {
             for (int y = bin_index_yl; y < bin_index_yh; ++y)
             {
                 int index = x * num_bins_y + y;
-                T overlap = wt * (DREAMPLACE_STD_NAMESPACE::min(x_max, (x + 1) * bin_size_x) - DREAMPLACE_STD_NAMESPACE::max(x_min, x * bin_size_x)) * (DREAMPLACE_STD_NAMESPACE::min(y_max, (y + 1) * bin_size_y) - DREAMPLACE_STD_NAMESPACE::max(y_min, y * bin_size_y));
+                T overlap = wt * (DREAMPLACE_STD_NAMESPACE::min(x_max, (x + 1) * bin_size_x) - DREAMPLACE_STD_NAMESPACE::max(x_min, x * bin_size_x)) * 
+                                 (DREAMPLACE_STD_NAMESPACE::min(y_max, (y + 1) * bin_size_y) - DREAMPLACE_STD_NAMESPACE::max(y_min, y * bin_size_y));
                 routing_utilization_map_x[index] += overlap / (y_max - y_min);
                 routing_utilization_map_y[index] += overlap / (x_max - x_min);
             }
@@ -94,22 +108,17 @@ int computeInstanceRoutabilityOptimizationMapLauncher(
     #pragma omp parallel for num_threads(num_threads) schedule(dynamic, chunk_size)
     for (int i = 0; i < num_movable_nodes; ++i) // for each movable node
     {
-        T x_max = pos_x[i] + node_size_x[i];
-        T x_min = pos_x[i];
-        T y_max = pos_y[i] + node_size_y[i];
-        T y_min = pos_y[i];
+        const T x_max = pos_x[i] + node_size_x[i];
+        const T x_min = pos_x[i];
+        const T y_max = pos_y[i] + node_size_y[i];
+        const T y_min = pos_y[i];
 
         // compute the bin box that this net will affect
-        int bin_index_xl = int((x_min - xl) * inv_bin_size_x);
-        int bin_index_xh = int((x_max - xl) * inv_bin_size_x) + 1;
-        // TODO: do we need to clamp here?
-        // bin_index_xl = DREAMPLACE_STD_NAMESPACE::max(bin_index_xl, 0);
-        // bin_index_xh = DREAMPLACE_STD_NAMESPACE::min(bin_index_xh, num_bins_x);
-
-        int bin_index_yl = int((y_min - yl) * inv_bin_size_y);
-        int bin_index_yh = int((y_max - yl) * inv_bin_size_y) + 1;
-        // bin_index_yl = DREAMPLACE_STD_NAMESPACE::max(bin_index_yl, 0);
-        // bin_index_yh = DREAMPLACE_STD_NAMESPACE::min(bin_index_yh, num_bins_y);
+        // Following Wuxi's implementation, we do not clamp bounding box
+        const int bin_index_xl = int((x_min - xl) * inv_bin_size_x);
+        const int bin_index_xh = int((x_max - xl) * inv_bin_size_x) + 1;
+        const int bin_index_yl = int((y_min - yl) * inv_bin_size_y);
+        const int bin_index_yh = int((y_max - yl) * inv_bin_size_y) + 1;
 
         for (int x = bin_index_xl; x < bin_index_xh; ++x)
         {
@@ -137,6 +146,7 @@ void instance_route_optimization_area(
     double bin_size_y,
     at::Tensor node_size_x,
     at::Tensor node_size_y,
+    at::Tensor net_weights,
     double xl,
     double yl,
     double xh,
@@ -173,10 +183,14 @@ void instance_route_optimization_area(
     CHECK_FLAT(node_size_y);
     CHECK_CONTIGUOUS(node_size_y);
 
+    CHECK_FLAT(net_weights);
+    CHECK_CONTIGUOUS(net_weights);
+
     int num_pins = pin_pos.numel() / 2;
     at::Tensor routing_utilization_map_x = at::zeros(num_bins_x * num_bins_y, pin_pos.options());
     at::Tensor routing_utilization_map_y = at::zeros(num_bins_x * num_bins_y, pin_pos.options());
 
+    const bool exist_net_weights = net_weights.numel();
     // Call the cpp kernel launcher
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pin_pos.type(), "fillDemandMapLauncher", [&] {
         fillDemandMapLauncher<scalar_t>(
@@ -185,6 +199,10 @@ void instance_route_optimization_area(
             flat_netpin.data<int>(),
             bin_size_x, bin_size_y,
             xl, yl, xh, yh,
+            
+            exist_net_weights,
+            net_weights.data<scalar_t>(),
+            
             num_bins_x, num_bins_y,
             num_nets,
             num_threads,

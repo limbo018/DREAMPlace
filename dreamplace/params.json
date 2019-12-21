@@ -130,5 +130,61 @@
 "dump_legalize_solution_flag" : {
     "descripton" : "whether dump intermediate legalization solution as a compressed pickle object", 
     "default" : 0
+    },
+"instance_area_adjust_overflow" : {
+    "descripton" : "instance area adjust overflow", 
+    "default" : 0.15
+    },
+"area_adjust_stop_ratio" : {
+    "descripton" : "area_adjust_stop_ratio", 
+    "default" : 0.01
+    },
+"route_area_adjust_stop_ratio" : {
+    "descripton" : "route_area_adjust_stop_ratio", 
+    "default" : 0.01
+    },
+"pin_area_adjust_stop_ratio" : {
+    "descripton" : "pin_area_adjust_stop_ratio", 
+    "default" : 0.05
+    },
+"route_num_bins_x" : {
+    "descripton" : "route_num_bins_x", 
+    "default" : 512
+    },
+"route_num_bins_y" : {
+    "descripton" : "route_num_bins_y", 
+    "default" : 512
+    },
+"unit_horizontal_routing_capacity" : {
+    "descripton" : "unit_horizontal_routing_capacity", 
+    "default" : 0.0
+    },
+"unit_vertical_routing_capacity" : {
+    "descripton" : "unit_vertical_routing_capacity", 
+    "default" : 0.0
+    },
+"max_route_opt_adjust_rate" : {
+    "descripton" : "max_route_opt_adjust_rate", 
+    "default" : 2.0
+    },
+"pin_num_bins_x" : {
+    "descripton" : "pin_num_bins_x", 
+    "default" : 512
+    },
+"pin_num_bins_y" : {
+    "descripton" : "pin_num_bins_y", 
+    "default" : 512
+    },
+"unit_pin_capacity" : {
+    "descripton" : "unit_pin_capacity", 
+    "default" : 0.0
+    },
+"pin_stretch_ratio" : {
+    "descripton" : "pin_stretch_ratio", 
+    "default" : 1.414213562
+    },
+"max_pin_opt_adjust_rate" : {
+    "descripton" : "max_pin_opt_adjust_rate", 
+    "default" : 1.5
     }
 }

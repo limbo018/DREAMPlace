@@ -31,6 +31,7 @@ import dreamplace.ops.pin_pos.pin_pos as pin_pos
 import dreamplace.ops.global_swap.global_swap as global_swap 
 import dreamplace.ops.k_reorder.k_reorder as k_reorder
 import dreamplace.ops.independent_set_matching.independent_set_matching as independent_set_matching
+import dreamplace.ops.routability.adjust_inst_area as adjust_inst_area
 import pdb 
 
 class PlaceDataCollection (object):
@@ -148,6 +149,7 @@ class PlaceOpCollection (object):
         self.precondition_op = None 
         self.noise_op = None 
         self.draw_place_op = None
+        self.adjust_inst_area_op = None
 
 class BasicPlace (nn.Module):
     """
@@ -218,6 +220,9 @@ class BasicPlace (nn.Module):
         self.op_collections.detailed_place_op = self.build_detailed_placement(params, placedb, self.data_collections, self.device)
         # draw placement 
         self.op_collections.draw_place_op = self.build_draw_placement(params, placedb)
+
+        # adjust instance area with RISA/RUDY congestion map
+        self.op_collections.adjust_inst_area_op = self.build_adjust_inst_area(params, placedb, self.data_collection)
 
         # flag for rmst_wl_op
         # can only read once 
@@ -513,6 +518,44 @@ class BasicPlace (nn.Module):
         @param placedb placement database 
         """
         return draw_place.DrawPlace(placedb)
+
+    def build_adjust_inst_area(self, params, placedb, data_collection):
+        """
+        @adjust instance area based on RISA/RUDY 
+        @param params parameters 
+        @param placedb placement database 
+        @param data_collections a collection of all data and variables required for constructing the ops 
+        @param device cpu or cuda 
+        """
+        return adjust_inst_area.AdjustInstanceArea(
+                node_size_x=data_collections.node_size_x,
+                node_size_y=data_collections.node_size_y,
+                netpin_start=data_collections.flat_net2pin_start_map,
+                flat_netpin=data_collections.flat_net2pin_map,
+                xl=placedb.xl,
+                xh=placedb.xh,
+                yl=placedb.yl,
+                yh=placedb.yh,
+                num_nets=placedb.num_nets,
+                num_nodes=placedb.num_nodes,
+                num_movable_nodes=placedb.num_movable_nodes,
+                num_filler_nodes=placedb.num_filler_nodes,
+                instance_area_adjust_overflow = params.instance_area_adjust_overflow,
+                area_adjust_stop_ratio = params.area_adjust_stop_ratio,
+                route_area_adjust_stop_ratio = params.route_area_adjust_stop_ratio,
+                pin_area_adjust_stop_ratio = params.pin_area_adjust_stop_ratio,
+                route_num_bins_x = params.route_num_bins_x,
+                route_num_bins_y = params.route_num_bins_y,
+                unit_horizontal_routing_capacity = params.unit_horizontal_routing_capacity,
+                unit_vertical_routing_capacity = params.unit_vertical_routing_capacity,
+                max_route_opt_adjust_rate = params.max_route_opt_adjust_rate,
+                pin_num_bins_x = params.pin_num_bins_x,
+                pin_num_bins_y = params.pin_num_bins_y,
+                unit_pin_capacity = params.unit_pin_capacity,
+                pin_stretch_ratio = params.pin_stretch_ratio,
+                max_pin_opt_adjust_rate = params.max_pin_opt_adjust_rate,
+                num_threads=params.num_threads
+                )
 
     def validate(self, placedb, pos, iteration):
         """

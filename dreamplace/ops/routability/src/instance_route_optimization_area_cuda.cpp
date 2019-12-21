@@ -9,7 +9,7 @@ DREAMPLACE_BEGIN_NAMESPACE
 #define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x "must be contiguous")
 
 at::Tensor instance_route_optimization_area_cuda(
-    at::Tensor instance_route_area_array,
+    at::Tensor instance_route_area,
     at::Tensor pos,
     at::Tensor pin_pos,
     at::Tensor netpin_start,

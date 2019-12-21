@@ -103,8 +103,8 @@ class InstanceRouteOptimizationAreaFunction(Function):
 
 class InstanceRouteOptimizationArea(nn.Module):
     def __init__(self,
-                 bin_size_x,
-                 bin_size_y,
+                 num_bins_x,
+                 num_bins_y,
                  node_size_x,
                  node_size_y,
                  netpin_start,
@@ -118,8 +118,10 @@ class InstanceRouteOptimizationArea(nn.Module):
                  num_movable_nodes,
                  num_threads=8):
         super(InstanceRouteOptimizationArea, self).__init__()
-        self.bin_size_x = bin_size_x
-        self.bin_size_y = bin_size_y
+        self.num_bins_x = num_bins_x
+        self.num_bins_y = num_bins_y
+        self.bin_size_x = (xh - xl) / num_bins_x
+        self.bin_size_y = (yh - yl) / num_bins_y
         self.node_size_x = node_size_x
         self.node_size_y = node_size_y
         self.netpin_start = netpin_start,
@@ -128,8 +130,7 @@ class InstanceRouteOptimizationArea(nn.Module):
         self.xh = xh
         self.yl = yl
         self.yh = yh
-        self.num_bins_x = int(math.ceil((xh - xl) / bin_size_x))
-        self.num_bins_y = int(math.ceil((yh - yl) / bin_size_y))
+        
         # initialize parameters
         self.unit_horizontal_routing_capacity = None
         self.unit_vertical_routing_capacity = None
