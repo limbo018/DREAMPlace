@@ -6,6 +6,7 @@
 #
 
 import os
+import sys
 import json 
 import math 
 from collections import OrderedDict
@@ -62,7 +63,11 @@ class Params:
         description_length_map = []
 
         def getDefaultColumn(key, value):
-            if isinstance(value['default'], unicode) and not value['default'] and 'required' in value: 
+            if sys.version_info.major < 3: # python 2
+                flag = isinstance(value['default'], unicode)
+            else: #python 3
+                flag = isinstance(value['default'], str)
+            if flag and not value['default'] and 'required' in value: 
                 return value['required']
             else:
                 return value['default']
