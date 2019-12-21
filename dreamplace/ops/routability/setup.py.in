@@ -40,7 +40,18 @@ modules.extend([
                  extra_compile_args={
                      'cxx': [torch_major_version, torch_minor_version, '-fopenmp']
                  }),
-    
+
+    CppExtension('instance_pin_optimization_area_cpp',
+                 [
+                     add_prefix('instance_pin_optimization_area.cpp')
+                 ],
+                 include_dirs=copy.deepcopy(include_dirs),
+                 library_dirs=copy.deepcopy(lib_dirs),
+                 libraries=copy.deepcopy(libs),
+                 extra_compile_args={
+                     'cxx': [torch_major_version, torch_minor_version, '-fopenmp']
+                 }),
+
     CppExtension('update_pin_offset_cpp',
                  [
                      add_prefix('update_pin_offset.cpp')
@@ -68,9 +79,23 @@ if "${CUDA_FOUND}".upper() == 'TRUE':
                           'nvcc': copy.deepcopy(cuda_flags)  # + ['-use_fast_math', '-prec-div=false', '-ftz=true']
                       }
                       ),
-                CUDAExtension('update_pin_offset_cuda',
+        CUDAExtension('instance_pin_optimization_area_cuda',
+                      [
+                          add_prefix('instance_pin_optimization_area_cuda.cpp'),
+                          add_prefix('instance_pin_optimization_area_cuda_kernel.cu')
+                      ],
+                      include_dirs=copy.deepcopy(include_dirs),
+                      library_dirs=copy.deepcopy(lib_dirs),
+                      libraries=['cusparse', 'culibos'] + libs,
+                      extra_compile_args={
+                          'cxx': ['-O2', torch_major_version, torch_minor_version],
+                          'nvcc': copy.deepcopy(cuda_flags)  # + ['-use_fast_math', '-prec-div=false', '-ftz=true']
+                      }
+                      ),
+        CUDAExtension('update_pin_offset_cuda',
                       [
                           add_prefix('update_pin_offset_cuda.cpp'),
+                          add_prefix('update_pin_offset_cuda_kernel.cu')
                       ],
                       include_dirs=copy.deepcopy(include_dirs),
                       library_dirs=copy.deepcopy(lib_dirs),

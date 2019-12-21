@@ -3,7 +3,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
-from dreamplace.ops.routability.rudy import InstanceRouteOptimizationArea
+from dreamplace.ops.routability.rudy import InstanceRouteOptimizationArea, InstancePinOptimizationArea
 
 import dreamplace.ops.routability.update_pin_offset_cpp as update_pin_offset_cpp
 try:
@@ -50,10 +50,6 @@ class AdjustInstanceArea(nn.Module):
         self.xh = xh
         self.yl = yl
         self.yh = yh
-        self.route_num_bins_x = route_num_bins_x
-        self.route_num_bins_y = route_num_bins_y
-        self.pin_num_bins_x = pin_num_bins_x
-        self.pin_num_bins_y = pin_num_bins_y
 
         self.num_nets = num_nets
         self.num_nodes = num_nodes
@@ -72,20 +68,18 @@ class AdjustInstanceArea(nn.Module):
         self.pin_area_adjust_stop_ratio = pin_area_adjust_stop_ratio
 
         # route_opt_area param
-        self.route_bin_size_x = route_bin_size_x
-        self.route_bin_size_y = route_bin_size_y
+        self.route_num_bins_x = route_num_bins_x
+        self.route_num_bins_y = route_num_bins_y
         self.unit_horizontal_routing_capacity = unit_horizontal_routing_capacity
         self.unit_vertical_routing_capacity = unit_vertical_routing_capacity
         self.max_route_opt_adjust_rate = max_route_opt_adjust_rate
-        self.min_route_opt_adjust_rate = 1.0 / max_route_opt_adjust_rate
 
         # pin_opt_area param
-        self.pin_bin_size_x = pin_bin_size_x
-        self.pin_bin_size_y = pin_bin_size_y
+        self.pin_num_bins_x = pin_num_bins_x
+        self.pin_num_bins_y = pin_num_bins_y
         self.unit_pin_capacity = unit_pin_capacity
         self.pin_stretch_ratio = pin_stretch_ratio
         self.max_pin_opt_adjust_rate = max_pin_opt_adjust_rate
-        self.min_pin_opt_adjust_rate = 1.0 / max_pin_opt_adjust_rate
 
         self.max_total_area = (node_size_x[:num_movable_nodes] * node_size_y[:num_movable_nodes]
                                ).sum() + (node_size_x[-num_filler_nodes:] * node_size_y[-num_filler_nodes:]).sum()
@@ -105,6 +99,27 @@ class AdjustInstanceArea(nn.Module):
             num_nodes=self.num_nodes,
             num_movable_nodes=self.num_movable_nodes,
             num_filler_nodes=self.num_filler_nodes,
+            unit_horizontal_routing_capacity=self.unit_horizontal_routing_capacity,
+            unit_vertical_routing_capacity=self.unit_vertical_routing_capacity,
+            max_route_opt_adjust_rate=self.max_route_opt_adjust_rate,
+            num_threads=self.num_threads
+        )
+
+        self.instance_pin_optimization_area_estimator = InstancePinOptimizationArea(
+            num_bins_x=self.pin_num_bins_x,
+            num_bins_y=self.pin_num_bins_y,
+            node_size_x=self.node_size_x,
+            node_size_y=self.node_size_y,
+            xl=self.xl,
+            xh=self.xh,
+            yl=self.yl,
+            yh=self.yh,
+            num_nodes=self.num_nodes,
+            num_movable_nodes=self.num_movable_nodes,
+            num_filler_nodes=self.num_filler_nodes,
+            unit_pin_capacity=self.unit_pin_capacity,
+            pin_stretch_ratio=self.pin_stretch_ratio,
+            max_pin_opt_adjust_rate=self.max_pin_opt_adjust_rate,
             num_threads=self.num_threads
         )
 
@@ -119,7 +134,7 @@ class AdjustInstanceArea(nn.Module):
 
         # compute pin density optimized area
         if self.adjust_pin_area_flag:
-            pin_opt_area = self.instance_pin_optimization_area_estimator()
+            pin_opt_area = self.instance_pin_optimization_area_estimator(pos)
 
         # compute old areas of movable nodes
         node_size_x_movable = self.node_size_x[:num_movable_nodes]
@@ -178,28 +193,28 @@ class AdjustInstanceArea(nn.Module):
 
         if pos.is_cuda:
             update_pin_offset_cuda(
-                    self.num_nodes,
-                    self.num_movable_nodes,
-                    self.num_filler_nodes,
-                    self.flat_node2pin_start_map,
-                    self.flat_node2pin_map,
-                    self.movable_nodes_ratio,
-                    self.filler_nodes_ratio,
-                    self.pin_offset_x,
-                    self.pin_offset_y
-                )
+                self.num_nodes,
+                self.num_movable_nodes,
+                self.num_filler_nodes,
+                self.flat_node2pin_start_map,
+                self.flat_node2pin_map,
+                self.movable_nodes_ratio,
+                self.filler_nodes_ratio,
+                self.pin_offset_x,
+                self.pin_offset_y
+            )
         else:
             update_pin_offset_cpp(
-                    self.num_nodes,
-                    self.num_movable_nodes,
-                    self.num_filler_nodes,
-                    self.flat_node2pin_start_map,
-                    self.flat_node2pin_map,
-                    self.movable_nodes_ratio,
-                    self.filler_nodes_ratio,
-                    self.pin_offset_x,
-                    self.pin_offset_y,
-                    self.num_threads
-                    )
+                self.num_nodes,
+                self.num_movable_nodes,
+                self.num_filler_nodes,
+                self.flat_node2pin_start_map,
+                self.flat_node2pin_map,
+                self.movable_nodes_ratio,
+                self.filler_nodes_ratio,
+                self.pin_offset_x,
+                self.pin_offset_y,
+                self.num_threads
+            )
 
         return True

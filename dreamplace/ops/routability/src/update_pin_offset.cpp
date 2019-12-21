@@ -17,7 +17,7 @@ int updatePinOffset(
     const int* flat_node2pin_map,
     const T* movable_nodes_ratio,
     const T* filler_nodes_ratio,
-    T* pin_offset_x, T* pin_offset_y
+    T* pin_offset_x, T* pin_offset_y,
     const int num_threads)
 {
     #pragma omp parallel for num_threads(num_threads)

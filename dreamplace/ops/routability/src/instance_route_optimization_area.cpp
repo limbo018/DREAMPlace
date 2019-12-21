@@ -93,7 +93,7 @@ int computeInstanceRoutabilityOptimizationMapLauncher(
     T *node_size_x, T *node_size_y,
     T xl, T yl,
     T bin_size_x, T bin_size_y,
-    int num_bins_y,
+    int num_bins_x, int num_bins_y,
     int num_nets,
     int num_nodes,
     int num_movable_nodes,
@@ -114,11 +114,16 @@ int computeInstanceRoutabilityOptimizationMapLauncher(
         const T y_min = pos_y[i];
 
         // compute the bin box that this net will affect
-        // Following Wuxi's implementation, we do not clamp bounding box
-        const int bin_index_xl = int((x_min - xl) * inv_bin_size_x);
-        const int bin_index_xh = int((x_max - xl) * inv_bin_size_x) + 1;
-        const int bin_index_yl = int((y_min - yl) * inv_bin_size_y);
-        const int bin_index_yh = int((y_max - yl) * inv_bin_size_y) + 1;
+        // We do NOT follow Wuxi's implementation. Instead, we clamp the bounding box.
+        int bin_index_xl = int((x_min - xl) * inv_bin_size_x);
+        int bin_index_xh = int((x_max - xl) * inv_bin_size_x) + 1;
+        bin_index_xl = DREAMPLACE_STD_NAMESPACE::max(bin_index_xl, 0);
+        bin_index_xh = DREAMPLACE_STD_NAMESPACE::min(bin_index_xh, num_bins_x);
+
+        int bin_index_yl = int((y_min - yl) * inv_bin_size_y);
+        int bin_index_yh = int((y_max - yl) * inv_bin_size_y) + 1;
+        bin_index_yl = DREAMPLACE_STD_NAMESPACE::max(bin_index_yl, 0);
+        bin_index_yh = DREAMPLACE_STD_NAMESPACE::min(bin_index_yh, num_bins_y);
 
         for (int x = bin_index_xl; x < bin_index_xh; ++x)
         {
@@ -211,15 +216,14 @@ void instance_route_optimization_area(
     });
 
     // convert demand to utilization in each bin
-    routing_utilization_map_x.mul_(1 / (num_bins_x * num_bins_y * unit_horizontal_routing_capacity));
-    routing_utilization_map_y.mul_(1 / (num_bins_x * num_bins_y * unit_vertical_routing_capacity));
+    routing_utilization_map_x.mul_(1 / (bin_size_x * bin_size_y * unit_horizontal_routing_capacity));
+    routing_utilization_map_y.mul_(1 / (bin_size_x * bin_size_y * unit_vertical_routing_capacity));
     // infinity norm
     at::Tensor routing_utilization_map = at::empty_like(routing_utilization_map_x);
     routing_utilization_map = at::max(routing_utilization_map_x.abs(), routing_utilization_map_y.abs());
     // clamp the routing square of routing utilization map
     routing_utilization_map = at::clamp(routing_utilization_map * routing_utilization_map, min_route_opt_adjust_rate, max_route_opt_adjust_rate);
 
-    // Call the cpp kernel launcher
     // compute routability and density optimziation instance area
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pin_pos.type(), "computeInstanceRoutabilityOptimizationMapLauncher", [&] {
         computeInstanceRoutabilityOptimizationMapLauncher<scalar_t>(
@@ -228,7 +232,7 @@ void instance_route_optimization_area(
             node_size_x.data<scalar_t>(), node_size_y.data<scalar_t>(),
             xl, yl,
             bin_size_x, bin_size_y,
-            num_bins_y,
+            num_bins_x, num_bins_y,
             num_nets,
             num_nodes,
             num_movable_nodes,
@@ -242,5 +246,5 @@ DREAMPLACE_END_NAMESPACE
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)
 {
-    m.def("instance_route_optimization_area", &DREAMPLACE_NAMESPACE::instance_route_optimization_area, "Fill Demand Map");
+    m.def("instance_route_optimization_area", &DREAMPLACE_NAMESPACE::instance_route_optimization_area, "compute routability optimized area");
 }
