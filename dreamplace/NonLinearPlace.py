@@ -166,6 +166,11 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                     logging.info("full step %.3f ms" % ((time.time()-t0)*1000))
 
                 logging.info("optimizer %s takes %.3f seconds" % (optimizer_name, time.time()-tt))
+        else: 
+            cur_metric = EvalMetrics.EvalMetrics(iteration)
+            metrics.append(cur_metric)
+            cur_metric.evaluate(placedb, {"hpwl" : self.op_collections.hpwl_op}, self.pos[0])
+            logging.info(cur_metric)
 
         # dump global placement solution for legalization 
         if params.dump_global_place_solution_flag: 

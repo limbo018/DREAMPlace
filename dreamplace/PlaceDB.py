@@ -426,9 +426,33 @@ class PlaceDB (object):
         self.num_terminal_NIs = pydb.num_terminal_NIs
         self.node_name2id_map = pydb.node_name2id_map
         self.node_names = np.array(pydb.node_names, dtype=np.string_)
-        self.node_x = np.array(pydb.node_x, dtype=self.dtype)
-        self.node_y = np.array(pydb.node_y, dtype=self.dtype)
-        self.node_orient = np.array(pydb.node_orient, dtype=np.string_)
+        # If the placer directly takes a global placement solution, 
+        # the cell positions may still be floating point numbers. 
+        # It is not good to use the place_io OP to round the positions. 
+        # Currently we only support BOOKSHELF format. 
+        use_read_pl_flag = False 
+        if not params.global_place_flag and params.aux_input is not None: 
+            filename = None 
+            with open(params.aux_input, "r") as f:
+                for line in f:
+                    line = line.strip()
+                    if ".pl" in line: 
+                        tokens = line.split()
+                        for token in tokens:
+                            if token.endswith(".pl"):
+                                filename = token
+                                break
+            filename = os.path.join(os.path.dirname(params.aux_input), filename)
+            if filename is not None and os.path.exists(filename):
+                self.node_x = np.zeros(self.num_physical_nodes, dtype=self.dtype)
+                self.node_y = np.zeros(self.num_physical_nodes, dtype=self.dtype)
+                self.node_orient = np.zeros(self.num_physical_nodes, dtype=np.string_)
+                self.read_pl(params, filename)
+                use_read_pl_flag = True
+        if not use_read_pl_flag:
+            self.node_x = np.array(pydb.node_x, dtype=self.dtype)
+            self.node_y = np.array(pydb.node_y, dtype=self.dtype)
+            self.node_orient = np.array(pydb.node_orient, dtype=np.string_)
         self.node_size_x = np.array(pydb.node_size_x, dtype=self.dtype)
         self.node_size_y = np.array(pydb.node_size_y, dtype=self.dtype)
         self.pin_direct = np.array(pydb.pin_direct, dtype=np.string_)
@@ -566,7 +590,13 @@ row height = %g, site width = %g
             node_x = self.node_x * unscale_factor
             node_y = self.node_y * unscale_factor
 
-        place_io.PlaceIOFunction.write(self.rawdb, filename, sol_file_format, node_x, node_y)
+        # Global placement may have floating point positions. 
+        # Currently only support BOOKSHELF format. 
+        # This is mainly for debug.  
+        if not params.legalize_flag and not params.detailed_place_flag and sol_file_format == place_io.SolutionFileFormat.BOOKSHELF:
+            self.write_pl(params, filename, node_x, node_y)
+        else:
+            place_io.PlaceIOFunction.write(self.rawdb, filename, sol_file_format, node_x, node_y)
         logging.info("write %s takes %.3f seconds" % (str(sol_file_format), time.time()-tt))
 
     def read_pl(self, params, pl_file):
@@ -594,7 +624,7 @@ row height = %g, site width = %g
             self.scale_pl(params.scale_factor)
         logging.info("read_pl takes %.3f seconds" % (time.time()-tt))
 
-    def write_pl(self, params, pl_file):
+    def write_pl(self, params, pl_file, node_x, node_y):
         """
         @brief write .pl file
         @param pl_file .pl file 
@@ -607,8 +637,8 @@ row height = %g, site width = %g
         for i in range(self.num_physical_nodes):
             content += "\n%s %g %g : %s" % (
                     str_node_names[i],
-                    self.node_x[i]/params.scale_factor, 
-                    self.node_y[i]/params.scale_factor, 
+                    node_x[i], 
+                    node_y[i], 
                     str_node_orient[i]
                     )
             if i >= self.num_movable_nodes:
