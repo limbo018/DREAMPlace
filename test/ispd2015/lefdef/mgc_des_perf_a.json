@@ -12,7 +12,6 @@
 "density_weight" : 8e-5,
 "gamma" : 0.1318231577,
 "random_seed" : 1000,
-"scale_factor" : 1.0,
 "ignore_net_degree" : 100,
 "enable_fillers" : 1,
 "gp_noise_ratio" : 0.025,
