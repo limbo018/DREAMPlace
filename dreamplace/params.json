@@ -57,8 +57,8 @@
     "default" : "results"
     },
 "scale_factor" : {
-    "descripton" : "scale factor to avoid numerical overflow", 
-    "default" : 1.0
+    "descripton" : "scale factor to avoid numerical overflow; 0.0 means not set", 
+    "default" : 0.0
     },
 "ignore_net_degree" : {
     "descripton" : "ignore net degree larger than some value", 
