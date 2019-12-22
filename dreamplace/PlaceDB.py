@@ -431,7 +431,7 @@ class PlaceDB (object):
         # It is not good to use the place_io OP to round the positions. 
         # Currently we only support BOOKSHELF format. 
         use_read_pl_flag = False 
-        if not params.global_place_flag and params.aux_input is not None: 
+        if (not params.global_place_flag) and os.path.exists(params.aux_input): 
             filename = None 
             with open(params.aux_input, "r") as f:
                 for line in f:
