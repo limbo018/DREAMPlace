@@ -222,7 +222,7 @@ class BasicPlace (nn.Module):
         self.op_collections.draw_place_op = self.build_draw_placement(params, placedb)
 
         # adjust instance area with RISA/RUDY congestion map
-        self.op_collections.adjust_inst_area_op = self.build_adjust_inst_area(params, placedb, self.data_collection)
+        self.op_collections.adjust_inst_area_op = self.build_adjust_inst_area(params, placedb, self.data_collections)
 
         # flag for rmst_wl_op
         # can only read once 
@@ -519,7 +519,7 @@ class BasicPlace (nn.Module):
         """
         return draw_place.DrawPlace(placedb)
 
-    def build_adjust_inst_area(self, params, placedb, data_collection):
+    def build_adjust_inst_area(self, params, placedb, data_collections):
         """
         @adjust instance area based on RISA/RUDY 
         @param params parameters 
@@ -532,6 +532,9 @@ class BasicPlace (nn.Module):
                 node_size_y=data_collections.node_size_y,
                 netpin_start=data_collections.flat_net2pin_start_map,
                 flat_netpin=data_collections.flat_net2pin_map,
+                flat_node2pin_start_map=data_collections.flat_node2pin_start_map,
+                flat_node2pin_map=data_collections.flat_node2pin_map,
+                net_weights=data_collections.net_weights,
                 xl=placedb.xl,
                 xh=placedb.xh,
                 yl=placedb.yl,

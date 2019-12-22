@@ -8,7 +8,7 @@ DREAMPLACE_BEGIN_NAMESPACE
 #define CHECK_EVEN(x) AT_ASSERTM((x.numel() & 1) == 0, #x "must have even number of elements")
 #define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x "must be contiguous")
 
-at::Tensor instance_route_optimization_area_cuda(
+at::Tensor instance_route_optimization_area(
     at::Tensor instance_route_area,
     at::Tensor pos,
     at::Tensor pin_pos,
@@ -40,5 +40,5 @@ DREAMPLACE_END_NAMESPACE
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)
 {
-  m.def("instance_route_optimization_area_cuda", &DREAMPLACE_NAMESPACE::instance_route_optimization_area_cuda, "Fill Demand Map");
+  m.def("instance_route_optimization_area", &DREAMPLACE_NAMESPACE::instance_route_optimization_area, "Fill Demand Map");
 }

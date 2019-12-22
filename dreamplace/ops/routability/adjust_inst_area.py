@@ -18,6 +18,9 @@ class AdjustInstanceArea(nn.Module):
                  node_size_y,
                  netpin_start,
                  flat_netpin,
+                 flat_node2pin_start_map,
+                 flat_node2pin_map,
+                 net_weights,
                  xl,
                  xh,
                  yl,
@@ -44,8 +47,11 @@ class AdjustInstanceArea(nn.Module):
         super(AdjustInstanceArea, self).__init__()
         self.node_size_x = node_size_x
         self.node_size_y = node_size_y
-        self.netpin_start = netpin_start,
-        self.flat_netpin = flat_netpin,
+        self.netpin_start = netpin_start
+        self.flat_netpin = flat_netpin
+        self.flat_node2pin_start_map = flat_node2pin_start_map
+        self.flat_node2pin_map = flat_node2pin_map
+        self.net_weights = net_weights
         self.xl = xl
         self.xh = xh
         self.yl = yl
@@ -91,6 +97,7 @@ class AdjustInstanceArea(nn.Module):
             node_size_y=self.node_size_y,
             netpin_start=self.netpin_start,
             flat_netpin=self.flat_netpin,
+            net_weights=self.net_weights,
             xl=self.xl,
             xh=self.xh,
             yl=self.yl,
@@ -98,7 +105,6 @@ class AdjustInstanceArea(nn.Module):
             num_nets=self.num_nets,
             num_nodes=self.num_nodes,
             num_movable_nodes=self.num_movable_nodes,
-            num_filler_nodes=self.num_filler_nodes,
             unit_horizontal_routing_capacity=self.unit_horizontal_routing_capacity,
             unit_vertical_routing_capacity=self.unit_vertical_routing_capacity,
             max_route_opt_adjust_rate=self.max_route_opt_adjust_rate,
@@ -106,6 +112,7 @@ class AdjustInstanceArea(nn.Module):
         )
 
         self.instance_pin_optimization_area_estimator = InstancePinOptimizationArea(
+            flat_node2pin_start_map=self.flat_node2pin_start_map,
             num_bins_x=self.pin_num_bins_x,
             num_bins_y=self.pin_num_bins_y,
             node_size_x=self.node_size_x,
@@ -137,8 +144,8 @@ class AdjustInstanceArea(nn.Module):
             pin_opt_area = self.instance_pin_optimization_area_estimator(pos)
 
         # compute old areas of movable nodes
-        node_size_x_movable = self.node_size_x[:num_movable_nodes]
-        node_size_y_movable = self.node_size_y[:num_movable_nodes]
+        node_size_x_movable = self.node_size_x[:self.num_movable_nodes]
+        node_size_y_movable = self.node_size_y[:self.num_movable_nodes]
         old_movable_area = node_size_x_movable * node_size_y_movable
         old_movable_area_sum = old_movable_area.sum()
 
@@ -168,10 +175,9 @@ class AdjustInstanceArea(nn.Module):
         area_increment_ratio = area_increment_sum / old_movable_area_sum
 
         # disable some of the area adjustment if the condition holds
-        self.adjust_route_area_flag &= (route_area_increment_ratio > self.route_area_adjust_stop_ratio)
-        self.adjust_pin_area_flag &= (pin_area_increment_ratio > self.pin_area_adjust_stop_ratio)
-        self.adjust_area_flag &= (area_increment_ratio > self.area_adjust_stop_ratio) and (
-            self.adjust_route_area_flag or self.adjust_pin_area_flag)
+        self.adjust_route_area_flag &= route_area_increment_ratio.data.item() > self.route_area_adjust_stop_ratio
+        self.adjust_pin_area_flag &= pin_area_increment_ratio.data.item() > self.pin_area_adjust_stop_ratio
+        self.adjust_area_flag &= (area_increment_ratio.data.item() > self.area_adjust_stop_ratio) and (self.adjust_route_area_flag or self.adjust_pin_area_flag)
         if not self.adjust_area_flag:
             return False
 
@@ -187,33 +193,33 @@ class AdjustInstanceArea(nn.Module):
         node_size_y_filler = self.node_size_y[-self.num_filler_nodes:]
         old_filler_area_sum = (node_size_x_filler * node_size_y_filler).sum()
         new_filler_area_sum = F.relu(self.max_total_area - new_movable_area_sum)
-        filler_nodes_ratio = torch.sqrt(new_filler_area_sum / old_filler_area_sum)
+        filler_nodes_ratio = torch.sqrt(new_filler_area_sum / old_filler_area_sum).data.item()
         node_size_x_filler *= filler_nodes_ratio
         node_size_y_filler *= filler_nodes_ratio
 
         if pos.is_cuda:
-            update_pin_offset_cuda(
+            update_pin_offset_cuda.update_pin_offset(
                 self.num_nodes,
                 self.num_movable_nodes,
                 self.num_filler_nodes,
                 self.flat_node2pin_start_map,
                 self.flat_node2pin_map,
-                self.movable_nodes_ratio,
-                self.filler_nodes_ratio,
-                self.pin_offset_x,
-                self.pin_offset_y
+                movable_nodes_ratio,
+                filler_nodes_ratio,
+                pin_offset_x,
+                pin_offset_y
             )
         else:
-            update_pin_offset_cpp(
+            update_pin_offset_cpp.update_pin_offset(
                 self.num_nodes,
                 self.num_movable_nodes,
                 self.num_filler_nodes,
                 self.flat_node2pin_start_map,
                 self.flat_node2pin_map,
-                self.movable_nodes_ratio,
-                self.filler_nodes_ratio,
-                self.pin_offset_x,
-                self.pin_offset_y,
+                movable_nodes_ratio,
+                filler_nodes_ratio,
+                pin_offset_x,
+                pin_offset_y,
                 self.num_threads
             )
 

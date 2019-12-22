@@ -1,3 +1,9 @@
+/*
+ * @Author: Jake Gu
+ * @Date: 2019-12-21 19:24:14
+ * @LastEditors  : Jake Gu
+ * @LastEditTime : 2019-12-21 19:41:56
+ */
 #include "utility/src/torch.h"
 #include "utility/src/Msg.h"
 #include "utility/src/utils.h"
@@ -16,7 +22,7 @@ int updatePinOffset(
     const int* flat_node2pin_start_map,
     const int* flat_node2pin_map,
     const T* movable_nodes_ratio,
-    const T* filler_nodes_ratio,
+    const T filler_nodes_ratio,
     T* pin_offset_x, T* pin_offset_y,
     const int num_threads)
 {
@@ -34,20 +40,6 @@ int updatePinOffset(
             pin_offset_y[pin_id] *= ratio;
         }
     }
-
-    #pragma omp parallel for num_threads(num_threads)
-    for (int i = num_nodes - num_filler_nodes; i < num_nodes; ++i)
-    {   
-        int start = flat_node2pin_start_map[i]; 
-        int end = flat_node2pin_start_map[i+1];
-        for (int j = start; j < end; ++j)
-        {
-            int pin_id = flat_node2pin_map[j]; 
-            pin_offset_x[pin_id] *= *filler_nodes_ratio;
-            pin_offset_y[pin_id] *= *filler_nodes_ratio;
-        }
-    }
-
     return 0; 
 }
 
@@ -58,7 +50,7 @@ void update_pin_offset(
     at::Tensor flat_node2pin_start_map,
     at::Tensor flat_node2pin_map,
     at::Tensor movable_nodes_ratio,
-    at::Tensor filler_nodes_ratio,
+    double filler_nodes_ratio,
     at::Tensor pin_offset_x,
     at::Tensor pin_offset_y,
     int num_threads)
@@ -71,9 +63,6 @@ void update_pin_offset(
 
     CHECK_FLAT(movable_nodes_ratio);
     CHECK_CONTIGUOUS(movable_nodes_ratio);
-
-    CHECK_FLAT(filler_nodes_ratio);
-    CHECK_CONTIGUOUS(filler_nodes_ratio);
     
     CHECK_FLAT(pin_offset_x);
     CHECK_CONTIGUOUS(pin_offset_x);
@@ -89,7 +78,7 @@ void update_pin_offset(
             flat_node2pin_start_map.data<int>(),
             flat_node2pin_map.data<int>(),
             movable_nodes_ratio.data<scalar_t>(),
-            filler_nodes_ratio.data<scalar_t>(),
+            filler_nodes_ratio,
             pin_offset_x.data<scalar_t>(), pin_offset_y.data<scalar_t>(),
             num_threads);
     });

@@ -157,11 +157,11 @@
     },
 "unit_horizontal_routing_capacity" : {
     "descripton" : "unit_horizontal_routing_capacity", 
-    "default" : 0.0
+    "default" : 209.0
     },
 "unit_vertical_routing_capacity" : {
     "descripton" : "unit_vertical_routing_capacity", 
-    "default" : 0.0
+    "default" : 239.0
     },
 "max_route_opt_adjust_rate" : {
     "descripton" : "max_route_opt_adjust_rate", 
@@ -177,7 +177,7 @@
     },
 "unit_pin_capacity" : {
     "descripton" : "unit_pin_capacity", 
-    "default" : 0.0
+    "default" : 50.0
     },
 "pin_stretch_ratio" : {
     "descripton" : "pin_stretch_ratio", 
