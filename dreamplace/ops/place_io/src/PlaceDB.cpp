@@ -248,7 +248,10 @@ void PlaceDB::add_def_component(DefParser::Component const& c)
     Macro const& macro = m_vMacro.at(property.macroId());
     node.set(c.origin[0], c.origin[1], c.origin[0]+macro.width(), c.origin[1]+macro.height()); // must update width and height
     node.setStatus(c.status); // update status
-    node.setOrient(c.orient); // update orient
+    if (node.status() != PlaceStatusEnum::UNPLACED)
+    {
+        node.setOrient(c.orient); // update orient
+    }
     deriveMultiRowAttr(node); // update MultiRowAttr
     if (node.status() == PlaceStatusEnum::FIXED || node.status() == PlaceStatusEnum::DUMMY_FIXED || node.status() == PlaceStatusEnum::PLACED)
         node.setInitPos(ll(node));
