@@ -165,7 +165,7 @@ class Params:
         """
         @brief speculate placement solution file suffix 
         """
-        if self.def_input is not None: # LEF/DEF 
+        if self.def_input is not None and os.path.exists(self.def_input): # LEF/DEF 
             return "def"
         else: # Bookshelf
             return "pl"

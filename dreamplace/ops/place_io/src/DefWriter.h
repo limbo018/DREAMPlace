@@ -39,6 +39,12 @@ class DefWriter : public PlaceSolWriter
                 PlaceDB::coordinate_type const* x, PlaceDB::coordinate_type const* y) const;
         void writeComp(FILE* os, Node const& n, 
                 PlaceDB::coordinate_type const* x, PlaceDB::coordinate_type const* y) const;
+        /// trim leading whitespaces 
+        std::string ltrim(std::string const& s) const; 
+        /// trim tailing whitespaces 
+        std::string rtrim(std::string const& s) const;
+        /// trim leading and tailing whitespaces
+        std::string trim(std::string const& s) const; 
 };
 
 DREAMPLACE_END_NAMESPACE
