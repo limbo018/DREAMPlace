@@ -777,10 +777,10 @@ void PlaceDB::add_bookshelf_row(BookshelfParser::Row const& r)
         switch (r.site_orient)
         {
             case 0:
-                row.setOrient(OrientEnum::N);
+                row.setOrient(OrientEnum::FS);
                 break;
             case 1:
-                row.setOrient(OrientEnum::FS);
+                row.setOrient(OrientEnum::N);
                 break;
             default:
                 dreamplaceAssertMsg(0, "unknown row orientation %d", r.site_orient);
