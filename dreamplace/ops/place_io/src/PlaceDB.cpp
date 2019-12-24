@@ -464,23 +464,9 @@ void PlaceDB::resize_def_region(int n)
 }
 void PlaceDB::add_def_region(DefParser::Region const& r)
 {
-    index_type regionId; 
-    string2index_map_type::iterator foundRegion = m_mRegionName2Index.find(r.region_name);
-    if (foundRegion != m_mRegionName2Index.end())
-    {
-        dreamplacePrint(kWARN, "duplicate region %s found\n", r.region_name.c_str());
-        regionId = foundRegion->second;
-    }
-    else
-    {
-        regionId = m_vRegion.size();
-        std::pair<string2index_map_type::iterator, bool> insertRet = m_mRegionName2Index.insert(std::make_pair(r.region_name, regionId));
-        dreamplaceAssertMsg(insertRet.second, "failed to insert region %s to m_mRegionName2Index", r.region_name.c_str());
-        m_vRegion.push_back(Region()); 
-    }
+    std::pair<index_type, bool> insertRet = addRegion(r.region_name);
+    index_type regionId = insertRet.first; 
     Region& region = m_vRegion.at(regionId); 
-    region.setId(regionId);
-    region.setName(r.region_name);
     region.setType(r.region_type);
     std::vector<Region::box_type>& boxes = region.boxes();
     boxes.reserve(r.vRectangle.size());
@@ -514,6 +500,28 @@ void PlaceDB::add_def_region(DefParser::Region const& r)
         }
     }
 }
+std::pair<PlaceDB::index_type, bool> PlaceDB::addRegion(std::string const& r)
+{
+    index_type regionId; 
+    string2index_map_type::iterator foundRegion = m_mRegionName2Index.find(r);
+    if (foundRegion != m_mRegionName2Index.end()) // already exists
+    {
+        dreamplacePrint(kWARN, "duplicate region %s found\n", r.c_str());
+        regionId = foundRegion->second;
+        return std::make_pair(regionId, false);
+    }
+    else // create
+    {
+        regionId = m_vRegion.size();
+        m_vRegion.push_back(Region()); 
+        Region& region = m_vRegion.back();
+        region.setName(r);
+        region.setId(regionId);
+        std::pair<string2index_map_type::iterator, bool> insertRet = m_mRegionName2Index.insert(std::make_pair(r, regionId));
+        dreamplaceAssertMsg(insertRet.second, "failed to insert region %s to m_mRegionName2Index", r.c_str());
+        return std::make_pair(regionId, true);
+    }
+}
 void PlaceDB::resize_def_group(int n)
 {
     m_vGroup.reserve(n);
@@ -539,9 +547,11 @@ void PlaceDB::add_def_group(DefParser::Group const& g)
     group.setName(g.group_name);
     group.nodeNames() = g.vGroupMember; 
 
-    string2index_map_type::const_iterator foundRegion = m_mRegionName2Index.find(g.region_name); 
-    dreamplaceAssertMsg(foundRegion != m_mRegionName2Index.end(), "failed to find region name %s", g.region_name.c_str());
-    group.setRegion(foundRegion->second);
+    // a region may not exist or already exist 
+    // retrieve the index if already exist 
+    // create if not exist 
+    std::pair<index_type, bool> insertRegionRet = addRegion(g.region_name);
+    group.setRegion(insertRegionRet.first);
 
     // node indices in group are not set yet 
     // they need to be set in the adjustParams() function 
@@ -1328,6 +1338,19 @@ void PlaceDB::adjustParams()
             }
         }
     }
+#ifdef DEBUG
+    for (index_type i = 0; i < m_vRegion.size(); ++i)
+    {
+        Region const& region = m_vRegion[i];
+        dreamplacePrint(kDEBUG, "region[%u] %s: ", region.id(), region.name().c_str());
+        for (index_type j = 0; j < region.boxes().size(); ++j)
+        {
+            Region::box_type const& box = region.boxes().at(j);
+            dreamplacePrint(kNONE, "(%d, %d, %d, %d) ", box.xl(), box.yl(), box.xh(), box.yh());
+        }
+        dreamplacePrint(kNONE, "\n");
+    }
+#endif
 }
 
 PlaceDB::manhattan_distance_type PlaceDB::minMovableNodeWidth() const
