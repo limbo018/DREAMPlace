@@ -56,6 +56,7 @@ class ElectricPotentialFunction(Function):
         ratio,
         bin_center_x, bin_center_y,
         initial_density_map,
+        buf, 
         target_density,
         xl, yl, xh, yh,
         bin_size_x, bin_size_y,
@@ -116,6 +117,7 @@ class ElectricPotentialFunction(Function):
                 ratio,
                 bin_center_x, bin_center_y,
                 initial_density_map,
+                buf, 
                 target_density,
                 xl, yl, xh, yh,
                 bin_size_x, bin_size_y,
@@ -308,7 +310,7 @@ class ElectricPotentialFunction(Function):
             None, None, None, None, \
             None, None, None, None, \
             None, None, None, None, \
-            None
+            None, None
 
 class ElectricPotential(nn.Module):
     """
@@ -433,6 +435,8 @@ class ElectricPotential(nn.Module):
         # whether really evaluate potential_map and energy or use dummy
         self.fast_mode = fast_mode
         self.num_threads = num_threads
+        # buffer for deterministic density map computation on CPU 
+        self.buf = torch.Tensor() 
 
     def forward(self, pos):
         if self.initial_density_map is None:
@@ -460,10 +464,12 @@ class ElectricPotential(nn.Module):
                     num_fixed_impacted_bins_y
                 )
             else:
+                self.buf = torch.empty(self.num_threads * self.num_bins_x * self.num_bins_y, dtype=pos.dtype, device=pos.device)
                 self.initial_density_map = electric_potential_cpp.fixed_density_map(
                     pos.view(pos.numel()),
                     self.node_size_x, self.node_size_y,
                     self.bin_center_x, self.bin_center_y,
+                    self.buf, 
                     self.xl, self.yl, self.xh, self.yh,
                     self.bin_size_x, self.bin_size_y,
                     self.num_movable_nodes,
@@ -511,6 +517,7 @@ class ElectricPotential(nn.Module):
             self.ratio,
             self.bin_center_x, self.bin_center_y,
             self.initial_density_map,
+            self.buf, 
             self.target_density,
             self.xl, self.yl, self.xh, self.yh,
             self.bin_size_x, self.bin_size_y,
