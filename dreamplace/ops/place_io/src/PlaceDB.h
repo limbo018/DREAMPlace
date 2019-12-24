@@ -397,6 +397,10 @@ class PlaceDB : public DefParser::DefDataBase
         void addPin(index_type macroPinId, Net& net, Node& node);
         /// lower level helper to addPin()
         Pin& createPin(Net& net, Node& node, SignalDirect const& direct, Point<coordinate_type> const& offset, index_type macroPinId);
+        /// add region to m_vRegion 
+        /// \param r region name 
+        /// \return index in m_vRegion and successful flag 
+        std::pair<index_type, bool> addRegion(std::string const& r);
 
         /// kernel data for placement 
         std::vector<Node> m_vNode; ///< instances, including movable and fixed instances, virtual placement blockages, and virtual io pins (appended) 
