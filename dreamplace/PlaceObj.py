@@ -64,9 +64,15 @@ class PlaceObj(nn.Module):
         self.op_collections.precondition_op = self.build_precondition(params, placedb, self.data_collections)
         self.op_collections.noise_op = self.build_noise(params, placedb, self.data_collections)
 
-        self.iteration = global_place_params["iteration"]
-        #self.learning_rate = global_place_params["learning_rate"]*max((placedb.xh-placedb.xl)/global_place_params["num_bins_x"], (placedb.yh-placedb.yl)/global_place_params["num_bins_y"])
-        self.learning_rate = global_place_params["learning_rate"]
+        self.L1_gamma_iteration = global_place_params["iteration"]
+        if 'L2_density_weight_iteration' in global_place_params: 
+            self.L2_density_weight_iteration = global_place_params['L2_density_weight_iteration']
+        else:
+            self.L2_density_weight_iteration = 1
+        if 'L3_iteration' in global_place_params:
+            self.L3_iteration = global_place_params['L3_iteration']
+        else:
+            self.L3_iteration = 1
 
     def obj_fn(self, pos):
         """
@@ -124,6 +130,19 @@ class PlaceObj(nn.Module):
         logging.debug("wirelength_grad\n%s" % (wirelength_grad.view([2, -1]).t()))
         logging.debug("density_grad\n%s" % (density_grad.view([2, -1]).t()))
         pos.grad.zero_()
+
+    def estimate_initial_learning_rate(self, x_k, lr):
+        """
+        @brief Estimate initial learning rate by moving a small step. 
+        Computed as | x_k - x_k_1 |_2 / | g_k - g_k_1 |_2. 
+        @param x_k current solution 
+        @param lr small step 
+        """
+        obj_k, g_k = self.obj_and_grad_fn(x_k)
+        x_k_1 = torch.autograd.Variable(x_k - lr * g_k, requires_grad=True)
+        obj_k_1, g_k_1 = self.obj_and_grad_fn(x_k_1)
+
+        return (x_k - x_k_1).norm(p=2) / (g_k - g_k_1).norm(p=2)
 
     def build_weighted_average_wl(self, params, placedb, data_collections, pin_pos_op):
         """
@@ -309,7 +328,7 @@ class PlaceObj(nn.Module):
                 num_filler_nodes=placedb.num_filler_nodes,
                 padding=padding,
                 sorted_node_map=data_collections.sorted_node_map,
-                fast_mode=True, 
+                fast_mode=params.RePlAce_skip_energy_flag, 
                 num_threads=params.num_threads
                 )
 
@@ -344,13 +363,13 @@ class PlaceObj(nn.Module):
         ref_hpwl = params.RePlAce_ref_hpwl
         LOWER_PCOF = params.RePlAce_LOWER_PCOF
         UPPER_PCOF = params.RePlAce_UPPER_PCOF
-        def update_density_weight_op(metrics):
+        def update_density_weight_op(cur_metric, prev_metric, iteration):
             with torch.no_grad():
-                delta_hpwl = metrics[-1].hpwl-metrics[-2].hpwl
+                delta_hpwl = cur_metric.hpwl - prev_metric.hpwl
                 if delta_hpwl < 0:
-                    #UPPER_PCOF = np.maximum(UPPER_PCOF*np.power(0.9999, float(len(metrics))), 1.03)
+                    #UPPER_PCOF = np.maximum(UPPER_PCOF*np.power(0.9999, float(iteration)), 1.03)
                     #mu = UPPER_PCOF
-                    mu = UPPER_PCOF*np.maximum(np.power(0.9999, float(len(metrics))), 0.98)
+                    mu = UPPER_PCOF*np.maximum(np.power(0.9999, float(iteration)), 0.98)
                 else:
                     mu = UPPER_PCOF*torch.pow(UPPER_PCOF, -delta_hpwl/ref_hpwl).clamp(min=LOWER_PCOF, max=UPPER_PCOF)
                 self.density_weight *= mu

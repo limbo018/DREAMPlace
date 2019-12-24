@@ -32,7 +32,7 @@
     "default" : 512
     },
 "global_place_stages" : {
-    "descripton" : "global placement configurations of each stage, a dictionary of {\"num_bins_x\", \"num_bins_y\", \"iteration\", \"learning_rate\"}, learning_rate is relative to bin size", 
+    "descripton" : "global placement configurations of each stage, a dictionary of {\"num_bins_x\", \"num_bins_y\", \"iteration\", \"learning_rate\", \"learning_rate_decay\"}", 
     "default" : "", 
     "required" : "required"
     },
@@ -115,6 +115,10 @@
 "RePlAce_UPPER_PCOF" : {
     "descripton" : "upper bound ratio used in RePlAce for updating density weight", 
     "default" : 1.05
+    },
+"RePlAce_skip_energy_flag" : {
+    "descripton" : "whether skip density energy computation for fast mode, may not work with some solvers", 
+    "default" : 0
     },
 "random_center_init_flag" : {
     "descripton" : "whether perform random initialization around the center for global placement", 
