@@ -34,6 +34,7 @@ class ElectricOverflowFunction(Function):
     @param offset_y (stretched size - node_size) / 2
     @param ratio original area / stretched area 
     @param initial_density_map density_map for fixed cells 
+    @param buf buffer for deterministic density map computation on CPU 
     @param target_density target density 
     @param xl left boundary 
     @param yl lower boundary 
@@ -64,6 +65,7 @@ class ElectricOverflowFunction(Function):
           ratio,
           bin_center_x, bin_center_y,
           initial_density_map,
+          buf, 
           target_density,
           xl, yl, xh, yh,
           bin_size_x, bin_size_y,
@@ -112,6 +114,7 @@ class ElectricOverflowFunction(Function):
                     ratio,
                     bin_center_x, bin_center_y,
                     initial_density_map,
+                    buf, 
                     target_density,
                     xl, yl, xh, yh,
                     bin_size_x, bin_size_y,
@@ -214,6 +217,8 @@ class ElectricOverflow(nn.Module):
 
         # initial density_map due to fixed cells
         self.initial_density_map = None
+        # buffer for deterministic density map computation on CPU 
+        self.buf = torch.Tensor() 
 
     def forward(self, pos):
         if self.initial_density_map is None:
@@ -238,10 +243,12 @@ class ElectricOverflow(nn.Module):
                         num_fixed_impacted_bins_y
                         )
             else:
+                self.buf = torch.empty(self.num_threads * self.num_bins_x * self.num_bins_y, dtype=pos.dtype, device=pos.device)
                 self.initial_density_map = electric_potential_cpp.fixed_density_map(
                         pos.view(pos.numel()),
                         self.node_size_x, self.node_size_y,
                         self.bin_center_x, self.bin_center_y,
+                        self.buf, 
                         self.xl, self.yl, self.xh, self.yh,
                         self.bin_size_x, self.bin_size_y,
                         self.num_movable_nodes,
@@ -263,6 +270,7 @@ class ElectricOverflow(nn.Module):
                 self.ratio,
                 self.bin_center_x, self.bin_center_y,
                 self.initial_density_map,
+                self.buf, 
                 self.target_density,
                 self.xl, self.yl, self.xh, self.yh,
                 self.bin_size_x, self.bin_size_y,

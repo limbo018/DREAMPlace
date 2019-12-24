@@ -37,6 +37,7 @@ bool DefWriter::write(std::string const& outFile, std::string const& inFile,
 
     while (getline(in, line))
     {
+        line = trim(line);
         pos1 = line.find("END");
         pos2 = line.find("COMPONENTS");
         if (pos1 != std::string::npos && 
@@ -61,17 +62,21 @@ bool DefWriter::write(std::string const& outFile, std::string const& inFile,
             if (line.substr(0, 3) == "ROW") // match "ROW" entry, it does not hurt even if not matched; mainly for modification of benchmarks   
             {
                 Row const& row = m_db.row(rowCount);
-                fprintf(out, "ROW %s %s %d %d %s DO %u BY %u STEP %d %d ;\n", 
+                fprintf(out, "ROW %s %s %d %d %s DO %u BY %u STEP %d %d ", 
                         row.name().c_str(), row.macroName().c_str(), 
                         row.xl(), row.yl(), std::string(row.orient()).c_str(), 
                         row.numSites(kX), (row.step(kY) == 0)? 1 : row.numSites(kY), row.step(kX), row.step(kY));
+                if (line.back() == ';')
+                {
+                    fprintf(out, ";");
+                }
+                fprintf(out, "\n");
                 ++rowCount;
             }
-            else if (line == ";")
+            else 
             {
-                /* skip lines only containing ; */
+                fprintf(out, "%s\n", line.c_str()); 
             }
-            else fprintf(out, "%s\n", line.c_str()); 
         }
     }
 
@@ -130,6 +135,20 @@ void DefWriter::writeComp(FILE* os, Node const& n,
             std::string(PlaceStatus(n.status())).c_str(), 
             xx, yy, 
             std::string(Orient(n.orient())).c_str());
+}
+std::string DefWriter::ltrim(std::string const& s) const 
+{
+    size_t start = s.find_first_not_of(" \n\r\t\f\v");
+    return (start == std::string::npos) ? "" : s.substr(start);
+}
+std::string DefWriter::rtrim(std::string const& s) const 
+{
+    std::size_t end = s.find_last_not_of(" \n\r\t\f\v");
+    return (end == std::string::npos) ? "" : s.substr(0, end + 1);
+}
+std::string DefWriter::trim(std::string const& s) const 
+{
+    return rtrim(ltrim(s));
 }
 
 DREAMPLACE_END_NAMESPACE

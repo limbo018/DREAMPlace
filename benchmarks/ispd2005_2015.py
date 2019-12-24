@@ -1,6 +1,6 @@
 ##
-# @file   ispd2005.py
-# @author Yibo Lin
+# @file   ispd2005_2015.py
+# @author Yibo Lin, Zixuan Jiang, Jiaqi Gu
 # @date   Mar 2019
 #
 
@@ -16,7 +16,7 @@ else:
 
 baseURL = "http://www.cerc.utexas.edu/~zixuan/"
 target_dir = os.path.dirname(os.path.abspath(__file__))
-filenames = ["ispd2005.tar.xz", "ispd2005dp.tar.xz"]
+filenames = ["ispd2005.tar.xz", "ispd2005dp.tar.xz", "ispd2015dp.tar.xz"]
 
 for filename in filenames:
     file_url = baseURL + filename
