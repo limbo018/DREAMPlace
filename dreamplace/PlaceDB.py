@@ -117,6 +117,12 @@ class PlaceDB (object):
         self.yh *= scale_factor
         self.row_height *= scale_factor
         self.site_width *= scale_factor
+        self.rows *= scale_factor 
+        self.flat_region_boxes *= scale_factor
+        # may have performance issue 
+        # I assume there are not many boxes 
+        for i in range(len(self.regions)): 
+            self.regions[i] *= scale_factor 
 
     def sort(self):
         """
@@ -471,6 +477,8 @@ class PlaceDB (object):
         self.pin2net_map = np.array(pydb.pin2net_map, dtype=np.int32)
         self.rows = np.array(pydb.rows, dtype=self.dtype)
         self.regions = pydb.regions 
+        for i in range(len(self.regions)):
+            self.regions[i] = np.array(self.regions[i], dtype=self.dtype)
         self.flat_region_boxes = np.array(pydb.flat_region_boxes, dtype=self.dtype)
         self.flat_region_boxes_start = np.array(pydb.flat_region_boxes_start, dtype=np.int32)
         self.node2fence_region_map = np.array(pydb.node2fence_region_map, dtype=np.int32)
