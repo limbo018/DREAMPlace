@@ -19,9 +19,7 @@ else:
     import _pickle as pickle
 import BasicPlace
 import PlaceObj
-import ConjugateGradientOptimizer
 import NesterovAcceleratedGradientOptimizer
-import LineSearch
 import EvalMetrics
 import pdb 
 
@@ -76,14 +74,6 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                     optimizer = torch.optim.SGD(self.parameters(), lr=0, momentum=0.9, nesterov=False)
                 elif optimizer_name.lower() == "sgd_nesterov": 
                     optimizer = torch.optim.SGD(self.parameters(), lr=0, momentum=0.9, nesterov=True)
-                elif optimizer_name.lower() == "cg": 
-                    optimizer = ConjugateGradientOptimizer.ConjugateGradientOptimizer(self.parameters(), lr=0)
-                elif optimizer_name.lower() == "cgls": 
-                    optimizer = ConjugateGradientOptimizer.ConjugateGradientOptimizer(self.parameters(), 
-                            lr=0, 
-                            #line_search_fn=LineSearch.build_line_search_fn_armijo(model.obj_fn)
-                            line_search_fn=LineSearch.build_line_search_fn_golden_section(model.obj_fn)
-                            )
                 elif optimizer_name.lower() == "nesterov": 
                     optimizer = NesterovAcceleratedGradientOptimizer.NesterovAcceleratedGradientOptimizer(self.parameters(), 
                             lr=0, 
@@ -118,7 +108,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                 logging.info("%s initialization takes %g seconds" % (optimizer_name, (time.time()-tt)))
 
                 # as nesterov requires line search, we cannot follow the convention of other solvers
-                if optimizer_name.lower() in {"sgd", "adam", "sgd_momentum", "sgd_nesterov", "cg", "cgls"}: 
+                if optimizer_name.lower() in {"sgd", "adam", "sgd_momentum", "sgd_nesterov"}: 
                     model.obj_and_grad_fn(model.data_collections.pos[0])
                 elif optimizer_name.lower() != "nesterov":
                     assert 0, "unsupported optimizer %s" % (optimizer_name)
@@ -176,7 +166,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                     #t2 = time.time()
 
                     # as nesterov requires line search, we cannot follow the convention of other solvers
-                    if optimizer_name.lower() in ["sgd", "adam", "sgd_momentum", "sgd_nesterov", "cg", "cgls"]: 
+                    if optimizer_name.lower() in ["sgd", "adam", "sgd_momentum", "sgd_nesterov"]: 
                         obj, grad = model.obj_and_grad_fn(pos)
                         cur_metric.objective = obj.data.clone()
                     elif optimizer_name.lower() != "nesterov":
