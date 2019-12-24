@@ -5,7 +5,9 @@
 # @brief  Linear search functions. 
 #
 
+import math
 import torch  
+import logging
 import pdb 
 
 def build_line_search_fn_armijo(obj_fn):
@@ -137,3 +139,73 @@ def scalar_search_armijo(phi, phi0, derphi0, c1=1e-4, alpha0=1, amin=0, max_back
 
     # Failed to find a suitable step length
     return alpha1, phi_a1, count
+
+"""
+Use the code from wikipedia 
+https://en.wikipedia.org/wiki/Golden-section_search
+"""
+def build_line_search_fn_golden_section(obj_fn):
+    """
+    @brief initialization
+    @param obj_fn a callable function to evaluate the objective given input parameters 
+    """
+    invphi = (math.sqrt(5) - 1) / 2  # 1 / phi
+    invphi2 = (3 - math.sqrt(5)) / 2  # 1 / phi^2
+    def line_search_fn(xk, pk, gfk, fk, alpha_min, alpha_max, tol=1e-1):
+        """
+        Given a function f with a single local minimum in
+        the interval [a,b], gss returns a subset interval
+        [c,d] that contains the minimum with d-c <= tol.
+
+        @brief line search 
+        @param xk current point  
+        @param pk search direction 
+        @param gfk gradient of f at xk, can be None  
+        @param fk value of f at xk, can be None
+        @param alpha_min minimum alpha 
+        @param alpha_max maximum alpha 
+        @param tol tolerance 
+        @return step size 
+        """
+        def f(lr):
+            return obj_fn(xk + pk * lr)
+
+        a = alpha_min 
+        b = alpha_max
+
+        (a, b) = (min(a, b), max(a, b))
+        h = b - a
+        if h <= tol:
+            alpha = (a + b) / 2
+            return alpha, n-1, f(alpha)
+
+        # Required steps to achieve tolerance
+        n = int(math.ceil(math.log(tol / h) / math.log(invphi)))
+
+        c = a + invphi2 * h
+        d = a + invphi * h
+        yc = f(c)
+        yd = f(d)
+
+        for k in range(n-1):
+            if yc < yd:
+                b = d
+                d = c
+                yd = yc
+                h = invphi * h
+                c = a + invphi2 * h
+                yc = f(c)
+            else:
+                a = c
+                c = d
+                yc = yd
+                h = invphi * h
+                d = a + invphi * h
+                yd = f(d)
+
+        if yc < yd:
+            alpha = (a + d) / 2
+        else:
+            alpha = (c + b) / 2
+        return alpha, n-1, f(alpha)
+    return line_search_fn
