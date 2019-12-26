@@ -1,9 +1,3 @@
-/*
- * @Author: Jake Gu
- * @Date: 2019-12-21 19:24:14
- * @LastEditors  : Jake Gu
- * @LastEditTime : 2019-12-26 12:47:31
- */
 #include "utility/src/torch.h"
 #include "utility/src/Msg.h"
 #include "utility/src/utils.h"
@@ -15,7 +9,7 @@ DREAMPLACE_BEGIN_NAMESPACE
 #define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x "must be contiguous")
 
 template <typename T>
-int updatePinOffset(
+void updatePinOffset(
     const int num_nodes,
     const int num_movable_nodes,
     const int num_filler_nodes,
@@ -40,7 +34,6 @@ int updatePinOffset(
             pin_offset_y[pin_id] *= ratio;
         }
     }
-    return 0;
 }
 
 void update_pin_offset(

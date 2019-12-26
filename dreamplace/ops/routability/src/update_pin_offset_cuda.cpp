@@ -1,12 +1,5 @@
-/*
- * @Author: Jake Gu
- * @Date: 2019-12-21 19:24:14
- * @LastEditors  : Jake Gu
- * @LastEditTime : 2019-12-26 12:48:15
- */
 #include "utility/src/torch.h"
 #include "utility/src/Msg.h"
-#include "utility/src/utils.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
 
@@ -15,7 +8,7 @@ DREAMPLACE_BEGIN_NAMESPACE
 #define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x "must be contiguous")
 
 template <typename T>
-int updatePinOffsetCudaLauncher(
+void updatePinOffsetCudaLauncher(
     const int num_nodes,
     const int num_movable_nodes,
     const int num_filler_nodes,

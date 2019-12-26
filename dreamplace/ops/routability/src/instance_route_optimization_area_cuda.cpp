@@ -1,6 +1,5 @@
 #include "utility/src/torch.h"
 #include "utility/src/Msg.h"
-#include "utility/src/utils.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
 
@@ -39,7 +38,7 @@ int computeInstanceRoutabilityOptimizationMapCudaLauncher(
     T *routing_utilization_map,
     T *instance_route_area);
 
-at::Tensor instance_route_optimization_area(
+void instance_route_optimization_area(
     at::Tensor instance_route_area,
     at::Tensor pos,
     at::Tensor pin_pos,

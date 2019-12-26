@@ -4,10 +4,13 @@
 #include "routability/src/parameters.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
- 
+
 #define CHECK_FLAT(x) AT_ASSERTM(!x.is_cuda() && x.ndimension() == 1, #x "must be a flat tensor on CPU")
 #define CHECK_EVEN(x) AT_ASSERTM((x.numel() & 1) == 0, #x "must have even number of elements")
 #define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x "must be contiguous")
+
+template <typename T>
+inline DEFINE_NET_WIRING_DISTRIBUTION_MAP_WEIGHT;
 
 // fill the demand map net by net
 template <typename T>
@@ -42,12 +45,17 @@ int fillDemandMapLauncher(const T *pin_pos_x,
         for (int j = netpin_start[i]; j < netpin_start[i + 1]; ++j)
         {
             const T xx = pin_pos_x[flat_netpin[j]];
+
             x_max = DREAMPLACE_STD_NAMESPACE::max(xx, x_max);
             x_min = DREAMPLACE_STD_NAMESPACE::min(xx, x_min);
             const T yy = pin_pos_y[flat_netpin[j]];
             y_max = DREAMPLACE_STD_NAMESPACE::max(yy, y_max);
             y_min = DREAMPLACE_STD_NAMESPACE::min(yy, y_min);
         }
+
+        // Following Wuxi's implementation, a tolerance is added to avoid 0-size bounding box
+        x_max += TOLERANCE;
+        y_max += TOLERANCE;
 
         // compute the bin box that this net will affect
         int bin_index_xl = int((x_min - xl) * inv_bin_size_x);
@@ -77,7 +85,9 @@ int fillDemandMapLauncher(const T *pin_pos_x,
                 T overlap = wt * (DREAMPLACE_STD_NAMESPACE::min(x_max, (x + 1) * bin_size_x) - DREAMPLACE_STD_NAMESPACE::max(x_min, x * bin_size_x)) *
                             (DREAMPLACE_STD_NAMESPACE::min(y_max, (y + 1) * bin_size_y) - DREAMPLACE_STD_NAMESPACE::max(y_min, y * bin_size_y));
                 int index = x * num_bins_y + y;
+                #pragma omp atomic update
                 routing_utilization_map_x[index] += overlap / (y_max - y_min);
+                #pragma omp atomic update
                 routing_utilization_map_y[index] += overlap / (x_max - x_min);
             }
         }
@@ -104,7 +114,7 @@ int computeInstanceRoutabilityOptimizationMapLauncher(
     const T inv_bin_size_y = 1.0 / bin_size_y;
 
     int chunk_size = DREAMPLACE_STD_NAMESPACE::max(int(num_movable_nodes / num_threads / 16), 1);
-    #pragma omp parallel for num_threads(num_threads) schedule(dynamic, chunk_size)
+#pragma omp parallel for num_threads(num_threads) schedule(dynamic, chunk_size)
     for (int i = 0; i < num_movable_nodes; ++i)
     {
         const T x_max = pos_x[i] + node_size_x[i];
@@ -195,7 +205,6 @@ void instance_route_optimization_area(
     at::Tensor routing_utilization_map_y = at::zeros(num_bins_x * num_bins_y, pin_pos.options());
 
     const bool exist_net_weights = net_weights.numel();
-    // Call the cpp kernel launcher
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pin_pos.type(), "fillDemandMapLauncher", [&] {
         fillDemandMapLauncher<scalar_t>(
             pin_pos.data<scalar_t>(), pin_pos.data<scalar_t>() + num_pins,

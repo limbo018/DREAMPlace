@@ -101,10 +101,8 @@ int fillDemandMapCudaLauncher(T bin_size_x, T bin_size_y,
                               int num_physical_nodes,
                               T *pin_utilization_map)
 {
-    int block_count;
     int thread_count = 512;
-
-    block_count = (num_physical_nodes - 1 + thread_count) / thread_count;
+    int block_count = (num_physical_nodes - 1 + thread_count) / thread_count;
     fillDemandMap<<<block_count, thread_count>>>(
         bin_size_x, bin_size_y,
         node_center_x, node_center_y,
@@ -130,10 +128,8 @@ int computeInstancePinOptimizationMapCudaLauncher(
     T *pin_weights,
     T *instance_pin_area)
 {
-    int block_count;
     int thread_count = 512;
-
-    block_count = (num_movable_nodes - 1 + thread_count) / thread_count;
+    int block_count = (num_movable_nodes - 1 + thread_count) / thread_count;
     computeInstancePinOptimizationMap<<<block_count, thread_count>>>(
         pos_x, pos_y,
         node_size_x, node_size_y,
@@ -147,5 +143,30 @@ int computeInstancePinOptimizationMapCudaLauncher(
         instance_pin_area);
     return 0;
 }
+
+#define REGISTER_KERNEL_LAUNCHER(T)                                                                       \
+    template int fillDemandMapCudaLauncher<T>(T bin_size_x, T bin_size_y,                                 \
+                                              T * node_center_x, T * node_center_y,                       \
+                                              T * half_node_size_stretch_x, T * half_node_size_stretch_y, \
+                                              T xl, T yl, T xh, T yh,                                     \
+                                              const T *pin_weights,                                       \
+                                              int num_bins_x, int num_bins_y,                             \
+                                              int num_physical_nodes,                                     \
+                                              T *pin_utilization_map);                                    \
+                                                                                                          \
+    template int computeInstancePinOptimizationMapCudaLauncher<T>(                                        \
+        T * pos_x, T * pos_y,                                                                             \
+        T * node_size_x, T * node_size_y,                                                                 \
+        T xl, T yl,                                                                                       \
+        T bin_size_x, T bin_size_y,                                                                       \
+        int num_bins_x, int num_bins_y,                                                                   \
+        int num_movable_nodes,                                                                            \
+        T unit_pin_capacity,                                                                              \
+        T *pin_utilization_map,                                                                           \
+        T *pin_weights,                                                                                   \
+        T *instance_pin_area)
+
+REGISTER_KERNEL_LAUNCHER(float);
+REGISTER_KERNEL_LAUNCHER(double);
 
 DREAMPLACE_END_NAMESPACE

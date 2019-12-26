@@ -40,10 +40,8 @@ void updatePinOffsetCudaLauncher(
     const T filler_nodes_ratio,
     T *pin_offset_x, T *pin_offset_y)
 {
-    int block_count;
     int thread_count = 512;
-
-    block_count = (num_movable_nodes - 1 + thread_count) / thread_count;
+    int block_count = (num_movable_nodes - 1 + thread_count) / thread_count;
     updatePinOffset<<<block_count, thread_count>>>(
         num_nodes,
         num_movable_nodes,
@@ -54,5 +52,19 @@ void updatePinOffsetCudaLauncher(
         filler_nodes_ratio,
         pin_offset_x, pin_offset_y);
 }
+
+#define REGISTER_KERNEL_LAUNCHER(T)               \
+    template void updatePinOffsetCudaLauncher<T>( \
+        const int num_nodes,                      \
+        const int num_movable_nodes,              \
+        const int num_filler_nodes,               \
+        const int *flat_node2pin_start_map,       \
+        const int *flat_node2pin_map,             \
+        const T *movable_nodes_ratio,             \
+        const T filler_nodes_ratio,               \
+        T *pin_offset_x, T *pin_offset_y)
+
+REGISTER_KERNEL_LAUNCHER(float);
+REGISTER_KERNEL_LAUNCHER(double);
 
 DREAMPLACE_END_NAMESPACE

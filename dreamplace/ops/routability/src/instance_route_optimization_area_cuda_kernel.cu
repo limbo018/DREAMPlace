@@ -4,6 +4,9 @@
 DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T>
+inline __device__ DEFINE_NET_WIRING_DISTRIBUTION_MAP_WEIGHT;
+
+template <typename T>
 __global__ void fillDemandMap(const T *pin_pos_x,
                               const T *pin_pos_y,
                               const int *netpin_start,
@@ -40,6 +43,10 @@ __global__ void fillDemandMap(const T *pin_pos_x,
             y_min = DREAMPLACE_STD_NAMESPACE::min(yy, y_min);
         }
 
+        // Following Wuxi's implementation, a tolerance is added to avoid 0-size bounding box
+        x_max += TOLERANCE;
+        y_max += TOLERANCE;
+
         // compute the bin box that this net will affect
         int bin_index_xl = int((x_min - xl) / bin_size_x);
         int bin_index_xh = int((x_max - xl) / bin_size_x) + 1;
@@ -54,22 +61,22 @@ __global__ void fillDemandMap(const T *pin_pos_x,
         T wt;
         if (exist_net_weights)
         {
-            wt = net_weights[i] * netWiringDistributionMapWeight<T>(netpin_start[i + 1] - netpin_start[i]);
+            wt = net_weights[i] * netWiringDistributionMapWeight<T>(end - start);
         }
         else
         {
-            wt = netWiringDistributionMapWeight<T>(netpin_start[i + 1] - netpin_start[i]);
+            wt = netWiringDistributionMapWeight<T>(end - start);
         }
 
         for (int x = bin_index_xl; x < bin_index_xh; ++x)
         {
             for (int y = bin_index_yl; y < bin_index_yh; ++y)
             {
-                int index = x * num_bins_y + y;
                 T overlap = wt * (DREAMPLACE_STD_NAMESPACE::min(x_max, (x + 1) * bin_size_x) - DREAMPLACE_STD_NAMESPACE::max(x_min, x * bin_size_x)) *
                             (DREAMPLACE_STD_NAMESPACE::min(y_max, (y + 1) * bin_size_y) - DREAMPLACE_STD_NAMESPACE::max(y_min, y * bin_size_y));
-                routing_utilization_map_x[index] += overlap / (y_max - y_min);
-                routing_utilization_map_y[index] += overlap / (x_max - x_min);
+                int index = x * num_bins_y + y;
+                atomicAdd(&routing_utilization_map_x[index], overlap / (y_max - y_min));
+                atomicAdd(&routing_utilization_map_y[index], overlap / (x_max - x_min));
             }
         }
     }
@@ -92,10 +99,8 @@ int fillDemandMapCudaLauncher(const T *pin_pos_x,
                               T *routing_utilization_map_x,
                               T *routing_utilization_map_y)
 {
-    int block_count;
     int thread_count = 512;
-
-    block_count = (num_nets - 1 + thread_count) / thread_count;
+    int block_count = (num_nets - 1 + thread_count) / thread_count;
     fillDemandMap<<<block_count, thread_count>>>(pin_pos_x,
                                                  pin_pos_y,
                                                  netpin_start,
@@ -155,8 +160,6 @@ __global__ void computeInstanceRoutabilityOptimizationMap(
             }
         }
     }
-
-    return 0;
 }
 
 template <typename T>
@@ -173,10 +176,8 @@ int computeInstanceRoutabilityOptimizationMapCudaLauncher(
     T *routing_utilization_map,
     T *instance_route_area)
 {
-    int block_count;
     int thread_count = 512;
-
-    block_count = (num_movable_nodes - 1 + thread_count) / thread_count;
+    int block_count = (num_movable_nodes - 1 + thread_count) / thread_count;
     computeInstanceRoutabilityOptimizationMap<<<block_count, thread_count>>>(
         pos_x, pos_y,
         pin_pos_x, pin_pos_y,
@@ -191,5 +192,36 @@ int computeInstanceRoutabilityOptimizationMapCudaLauncher(
         instance_route_area);
     return 0;
 }
+
+#define REGISTER_KERNEL_LAUNCHER(T)                                           \
+    template int fillDemandMapCudaLauncher<T>(const T *pin_pos_x,             \
+                                              const T *pin_pos_y,             \
+                                              const int *netpin_start,        \
+                                              const int *flat_netpin,         \
+                                              T bin_size_x, T bin_size_y,     \
+                                              T xl, T yl, T xh, T yh,         \
+                                                                              \
+                                              const bool exist_net_weights,   \
+                                              const T *net_weights,           \
+                                                                              \
+                                              int num_bins_x, int num_bins_y, \
+                                              int num_nets,                   \
+                                              T *routing_utilization_map_x,   \
+                                              T *routing_utilization_map_y);  \
+    template int computeInstanceRoutabilityOptimizationMapCudaLauncher<T>(    \
+        T * pos_x, T * pos_y,                                                 \
+        T * pin_pos_x, T * pin_pos_y,                                         \
+        T * node_size_x, T * node_size_y,                                     \
+        T xl, T yl,                                                           \
+        T bin_size_x, T bin_size_y,                                           \
+        int num_bins_x, int num_bins_y,                                       \
+        int num_nets,                                                         \
+        int num_nodes,                                                        \
+        int num_movable_nodes,                                                \
+        T *routing_utilization_map,                                           \
+        T *instance_route_area)
+
+REGISTER_KERNEL_LAUNCHER(float);
+REGISTER_KERNEL_LAUNCHER(double);
 
 DREAMPLACE_END_NAMESPACE
