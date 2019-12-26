@@ -2,7 +2,7 @@
  * @Author: Jake Gu
  * @Date: 2019-12-21 19:24:14
  * @LastEditors  : Jake Gu
- * @LastEditTime : 2019-12-21 19:41:56
+ * @LastEditTime : 2019-12-26 12:47:31
  */
 #include "utility/src/torch.h"
 #include "utility/src/Msg.h"
@@ -19,28 +19,28 @@ int updatePinOffset(
     const int num_nodes,
     const int num_movable_nodes,
     const int num_filler_nodes,
-    const int* flat_node2pin_start_map,
-    const int* flat_node2pin_map,
-    const T* movable_nodes_ratio,
+    const int *flat_node2pin_start_map,
+    const int *flat_node2pin_map,
+    const T *movable_nodes_ratio,
     const T filler_nodes_ratio,
-    T* pin_offset_x, T* pin_offset_y,
+    T *pin_offset_x, T *pin_offset_y,
     const int num_threads)
 {
     #pragma omp parallel for num_threads(num_threads)
     for (int i = 0; i < num_movable_nodes; ++i)
-    {   
+    {
         T ratio = movable_nodes_ratio[i];
-        
-        int start = flat_node2pin_start_map[i]; 
-        int end = flat_node2pin_start_map[i+1];
+
+        int start = flat_node2pin_start_map[i];
+        int end = flat_node2pin_start_map[i + 1];
         for (int j = start; j < end; ++j)
         {
-            int pin_id = flat_node2pin_map[j]; 
+            int pin_id = flat_node2pin_map[j];
             pin_offset_x[pin_id] *= ratio;
             pin_offset_y[pin_id] *= ratio;
         }
     }
-    return 0; 
+    return 0;
 }
 
 void update_pin_offset(
@@ -54,22 +54,22 @@ void update_pin_offset(
     at::Tensor pin_offset_x,
     at::Tensor pin_offset_y,
     int num_threads)
-{    
+{
     CHECK_FLAT(flat_node2pin_start_map);
     CHECK_CONTIGUOUS(flat_node2pin_start_map);
-    
+
     CHECK_FLAT(flat_node2pin_map);
     CHECK_CONTIGUOUS(flat_node2pin_map);
 
     CHECK_FLAT(movable_nodes_ratio);
     CHECK_CONTIGUOUS(movable_nodes_ratio);
-    
+
     CHECK_FLAT(pin_offset_x);
     CHECK_CONTIGUOUS(pin_offset_x);
 
     CHECK_FLAT(pin_offset_y);
     CHECK_CONTIGUOUS(pin_offset_y);
-    
+
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pin_offset_x.type(), "updatePinOffset", [&] {
         updatePinOffset<scalar_t>(
             num_nodes,

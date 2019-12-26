@@ -167,8 +167,8 @@ class InstancePinOptimizationArea(nn.Module):
     def forward(self, pos):
         # compute the pin bounding box
         # to make the pin density map smooth, we stretch each pin to a ratio of the pin utilization bin
-        half_bin_size_stretch_x = 0.5 * torch.max(self.bin_size_stretch_x, self.node_size_x[:self.num_physical_nodes])
-        half_bin_size_stretch_y = 0.5 * torch.max(self.bin_size_stretch_y, self.node_size_y[:self.num_physical_nodes])
+        half_node_size_stretch_x = 0.5 * torch.max(self.bin_size_stretch_x, self.node_size_x[:self.num_physical_nodes])
+        half_node_size_stretch_y = 0.5 * torch.max(self.bin_size_stretch_y, self.node_size_y[:self.num_physical_nodes])
         node_center_x = pos[:self.num_physical_nodes] + 0.5 * self.node_size_x[:self.num_physical_nodes]
         node_center_y = pos[self.num_nodes:self.num_nodes + self.num_physical_nodes] + 0.5 * self.node_size_y[:self.num_physical_nodes]
 
@@ -179,8 +179,8 @@ class InstancePinOptimizationArea(nn.Module):
                 pos,
                 node_center_x,
                 node_center_y,
-                half_bin_size_stretch_x,
-                half_bin_size_stretch_y,
+                half_node_size_stretch_x,
+                half_node_size_stretch_y,
                 self.pin_weights,
                 self.num_bins_x,
                 self.num_bins_y,
@@ -205,8 +205,8 @@ class InstancePinOptimizationArea(nn.Module):
                 pos,
                 node_center_x,
                 node_center_y,
-                half_bin_size_stretch_x,
-                half_bin_size_stretch_y,
+                half_node_size_stretch_x,
+                half_node_size_stretch_y,
                 self.pin_weights,
                 self.num_bins_x,
                 self.num_bins_y,

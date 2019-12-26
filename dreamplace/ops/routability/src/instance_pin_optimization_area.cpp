@@ -8,18 +8,17 @@ DREAMPLACE_BEGIN_NAMESPACE
 #define CHECK_EVEN(x) AT_ASSERTM((x.numel() & 1) == 0, #x "must have even number of elements")
 #define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x "must be contiguous")
 
-// fill the demand map net by net
+// fill the demand map pin by pin
 template <typename T>
 int fillDemandMapLauncher(T bin_size_x, T bin_size_y,
                           T *node_center_x, T *node_center_y,
-                          T *half_bin_size_stretch_x, T *half_bin_size_stretch_y,
+                          T *half_node_size_stretch_x, T *half_node_size_stretch_y,
                           T xl, T yl, T xh, T yh,
                           const T *pin_weights,
                           int num_bins_x, int num_bins_y,
                           int num_physical_nodes,
                           int num_threads,
-                          T *pin_utilization_map
-                          )
+                          T *pin_utilization_map)
 {
     const T inv_bin_size_x = 1.0 / bin_size_x;
     const T inv_bin_size_y = 1.0 / bin_size_y;
@@ -28,21 +27,21 @@ int fillDemandMapLauncher(T bin_size_x, T bin_size_y,
     #pragma omp parallel for num_threads(num_threads) schedule(dynamic, chunk_size)
     for (int i = 0; i < num_physical_nodes; ++i)
     {
-        const T x_min = node_center_x[i] - half_bin_size_stretch_x[i];
-        const T x_max = node_center_x[i] + half_bin_size_stretch_x[i];
+        const T x_min = node_center_x[i] - half_node_size_stretch_x[i];
+        const T x_max = node_center_x[i] + half_node_size_stretch_x[i];
         int bin_index_xl = int((x_min - xl) * inv_bin_size_x);
         int bin_index_xh = int((x_max - xl) * inv_bin_size_x) + 1;
         bin_index_xl = DREAMPLACE_STD_NAMESPACE::max(bin_index_xl, 0);
         bin_index_xh = DREAMPLACE_STD_NAMESPACE::min(bin_index_xh, num_bins_x);
 
-        const T y_min = node_center_y[i] - half_bin_size_stretch_y[i];
-        const T y_max = node_center_y[i] + half_bin_size_stretch_y[i];
+        const T y_min = node_center_y[i] - half_node_size_stretch_y[i];
+        const T y_max = node_center_y[i] + half_node_size_stretch_y[i];
         int bin_index_yl = int((y_min - yl) * inv_bin_size_y);
         int bin_index_yh = int((y_max - yl) * inv_bin_size_y) + 1;
         bin_index_yl = DREAMPLACE_STD_NAMESPACE::max(bin_index_yl, 0);
         bin_index_yh = DREAMPLACE_STD_NAMESPACE::min(bin_index_yh, num_bins_y);
 
-        T density = pin_weights[i] / (half_bin_size_stretch_x[i] * half_bin_size_stretch_y[i] * 4);
+        T density = pin_weights[i] / (half_node_size_stretch_x[i] * half_node_size_stretch_y[i] * 4);
         for (int x = bin_index_xl; x < bin_index_xh; ++x)
         {
             for (int y = bin_index_yl; y < bin_index_yh; ++y)
@@ -113,8 +112,8 @@ void instance_pin_optimization_area(
     at::Tensor pos,
     at::Tensor node_center_x,
     at::Tensor node_center_y,
-    at::Tensor half_bin_size_stretch_x,
-    at::Tensor half_bin_size_stretch_y,
+    at::Tensor half_node_size_stretch_x,
+    at::Tensor half_node_size_stretch_y,
     at::Tensor pin_weights,
     int num_bins_x,
     int num_bins_y,
@@ -145,11 +144,11 @@ void instance_pin_optimization_area(
     CHECK_FLAT(node_center_y);
     CHECK_CONTIGUOUS(node_center_y);
 
-    CHECK_FLAT(half_bin_size_stretch_x);
-    CHECK_CONTIGUOUS(half_bin_size_stretch_x);
+    CHECK_FLAT(half_node_size_stretch_x);
+    CHECK_CONTIGUOUS(half_node_size_stretch_x);
 
-    CHECK_FLAT(half_bin_size_stretch_y);
-    CHECK_CONTIGUOUS(half_bin_size_stretch_y);
+    CHECK_FLAT(half_node_size_stretch_y);
+    CHECK_CONTIGUOUS(half_node_size_stretch_y);
 
     CHECK_FLAT(pin_weights);
     CHECK_CONTIGUOUS(pin_weights);
@@ -167,37 +166,35 @@ void instance_pin_optimization_area(
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "fillDemandMapLauncher", [&] {
         fillDemandMapLauncher<scalar_t>(
-                bin_size_x, bin_size_y,
-                node_center_x.data<scalar_t>(), node_center_y.data<scalar_t>(),
-                half_bin_size_stretch_x.data<scalar_t>(), half_bin_size_stretch_y.data<scalar_t>(),
-                xl, yl, xh, yh,
-                pin_weights.data<scalar_t>(),
-                num_bins_x, num_bins_y,
-                num_physical_nodes,
-                num_threads,
-                pin_utilization_map.data<scalar_t>()
-                );
+            bin_size_x, bin_size_y,
+            node_center_x.data<scalar_t>(), node_center_y.data<scalar_t>(),
+            half_node_size_stretch_x.data<scalar_t>(), half_node_size_stretch_y.data<scalar_t>(),
+            xl, yl, xh, yh,
+            pin_weights.data<scalar_t>(),
+            num_bins_x, num_bins_y,
+            num_physical_nodes,
+            num_threads,
+            pin_utilization_map.data<scalar_t>());
     });
 
     // convert demand to utilization in each bin
     pin_utilization_map.mul_(1 / (bin_size_x * bin_size_y * unit_pin_capacity));
     pin_utilization_map.clamp_(min_pin_opt_adjust_rate, max_pin_opt_adjust_rate);
-    
+
     // compute pin density optimization instance area
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeInstancePinOptimizationMapLauncher", [&] {
         computeInstancePinOptimizationMapLauncher<scalar_t>(
-                pos.data<scalar_t>(), pos.data<scalar_t>()+num_nodes,
-                node_size_x.data<scalar_t>(), node_size_y.data<scalar_t>(),
-                xl, yl,
-                bin_size_x, bin_size_y,
-                num_bins_x, num_bins_y,
-                num_movable_nodes,
-                num_threads,
-                unit_pin_capacity,
-                pin_utilization_map.data<scalar_t>(),
-                pin_weights.data<scalar_t>(),
-                instance_pin_area.data<scalar_t>()
-                );
+            pos.data<scalar_t>(), pos.data<scalar_t>() + num_nodes,
+            node_size_x.data<scalar_t>(), node_size_y.data<scalar_t>(),
+            xl, yl,
+            bin_size_x, bin_size_y,
+            num_bins_x, num_bins_y,
+            num_movable_nodes,
+            num_threads,
+            unit_pin_capacity,
+            pin_utilization_map.data<scalar_t>(),
+            pin_weights.data<scalar_t>(),
+            instance_pin_area.data<scalar_t>());
     });
 }
 

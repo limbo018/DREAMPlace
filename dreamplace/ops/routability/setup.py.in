@@ -73,7 +73,7 @@ if "${CUDA_FOUND}".upper() == 'TRUE':
                       ],
                       include_dirs=copy.deepcopy(include_dirs),
                       library_dirs=copy.deepcopy(lib_dirs),
-                      libraries=['cusparse', 'culibos'] + libs,
+                      libraries=['culibos'] + libs,
                       extra_compile_args={
                           'cxx': ['-O2', torch_major_version, torch_minor_version],
                           'nvcc': copy.deepcopy(cuda_flags)  # + ['-use_fast_math', '-prec-div=false', '-ftz=true']
@@ -86,7 +86,7 @@ if "${CUDA_FOUND}".upper() == 'TRUE':
                       ],
                       include_dirs=copy.deepcopy(include_dirs),
                       library_dirs=copy.deepcopy(lib_dirs),
-                      libraries=['cusparse', 'culibos'] + libs,
+                      libraries=['culibos'] + libs,
                       extra_compile_args={
                           'cxx': ['-O2', torch_major_version, torch_minor_version],
                           'nvcc': copy.deepcopy(cuda_flags)  # + ['-use_fast_math', '-prec-div=false', '-ftz=true']
@@ -99,7 +99,7 @@ if "${CUDA_FOUND}".upper() == 'TRUE':
                       ],
                       include_dirs=copy.deepcopy(include_dirs),
                       library_dirs=copy.deepcopy(lib_dirs),
-                      libraries=['cusparse', 'culibos'] + libs,
+                      libraries=['culibos'] + libs,
                       extra_compile_args={
                           'cxx': ['-O2', torch_major_version, torch_minor_version],
                           'nvcc': copy.deepcopy(cuda_flags)  # + ['-use_fast_math', '-prec-div=false', '-ftz=true']

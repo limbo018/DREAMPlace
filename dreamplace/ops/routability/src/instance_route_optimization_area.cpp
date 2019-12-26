@@ -4,7 +4,7 @@
 #include "routability/src/parameters.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
-
+ 
 #define CHECK_FLAT(x) AT_ASSERTM(!x.is_cuda() && x.ndimension() == 1, #x "must be a flat tensor on CPU")
 #define CHECK_EVEN(x) AT_ASSERTM((x.numel() & 1) == 0, #x "must have even number of elements")
 #define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x "must be contiguous")
@@ -15,18 +15,17 @@ int fillDemandMapLauncher(const T *pin_pos_x,
                           const T *pin_pos_y,
                           const int *netpin_start,
                           const int *flat_netpin,
-                          T bin_size_x, T bin_size_y,
+                          const T bin_size_x, const T bin_size_y,
                           T xl, T yl, T xh, T yh,
-                          
-                          const bool exist_net_weights, 
-                          const T* net_weights,
+
+                          const bool exist_net_weights,
+                          const T *net_weights,
 
                           int num_bins_x, int num_bins_y,
                           int num_nets,
                           int num_threads,
                           T *routing_utilization_map_x,
-                          T *routing_utilization_map_y
-                          )
+                          T *routing_utilization_map_y)
 {
     const T inv_bin_size_x = 1.0 / bin_size_x;
     const T inv_bin_size_y = 1.0 / bin_size_y;
@@ -70,14 +69,14 @@ int fillDemandMapLauncher(const T *pin_pos_x,
         {
             wt = netWiringDistributionMapWeight<T>(netpin_start[i + 1] - netpin_start[i]);
         }
-        
+
         for (int x = bin_index_xl; x < bin_index_xh; ++x)
         {
             for (int y = bin_index_yl; y < bin_index_yh; ++y)
             {
+                T overlap = wt * (DREAMPLACE_STD_NAMESPACE::min(x_max, (x + 1) * bin_size_x) - DREAMPLACE_STD_NAMESPACE::max(x_min, x * bin_size_x)) *
+                            (DREAMPLACE_STD_NAMESPACE::min(y_max, (y + 1) * bin_size_y) - DREAMPLACE_STD_NAMESPACE::max(y_min, y * bin_size_y));
                 int index = x * num_bins_y + y;
-                T overlap = wt * (DREAMPLACE_STD_NAMESPACE::min(x_max, (x + 1) * bin_size_x) - DREAMPLACE_STD_NAMESPACE::max(x_min, x * bin_size_x)) * 
-                                 (DREAMPLACE_STD_NAMESPACE::min(y_max, (y + 1) * bin_size_y) - DREAMPLACE_STD_NAMESPACE::max(y_min, y * bin_size_y));
                 routing_utilization_map_x[index] += overlap / (y_max - y_min);
                 routing_utilization_map_y[index] += overlap / (x_max - x_min);
             }
@@ -106,7 +105,7 @@ int computeInstanceRoutabilityOptimizationMapLauncher(
 
     int chunk_size = DREAMPLACE_STD_NAMESPACE::max(int(num_movable_nodes / num_threads / 16), 1);
     #pragma omp parallel for num_threads(num_threads) schedule(dynamic, chunk_size)
-    for (int i = 0; i < num_movable_nodes; ++i) // for each movable node
+    for (int i = 0; i < num_movable_nodes; ++i)
     {
         const T x_max = pos_x[i] + node_size_x[i];
         const T x_min = pos_x[i];
@@ -204,10 +203,10 @@ void instance_route_optimization_area(
             flat_netpin.data<int>(),
             bin_size_x, bin_size_y,
             xl, yl, xh, yh,
-            
+
             exist_net_weights,
             net_weights.data<scalar_t>(),
-            
+
             num_bins_x, num_bins_y,
             num_nets,
             num_threads,
