@@ -225,6 +225,11 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                                 param_group['lr'] *= global_place_params['learning_rate_decay']
 
                 logging.info("optimizer %s takes %.3f seconds" % (optimizer_name, time.time()-tt))
+            # recover node size and pin offset for legalization, since node size is adjusted in global placement
+            self.data_collections.node_size_x.copy_(self.data_collections.original_node_size_x)
+            self.data_collections.node_size_y.copy_(self.data_collections.original_node_size_y)
+            self.data_collections.pin_offset_x.copy_(self.data_collections.original_pin_offset_x)
+            self.data_collections.pin_offset_y.copy_(self.data_collections.original_pin_offset_y)
 
         else: 
             cur_metric = EvalMetrics.EvalMetrics(iteration)

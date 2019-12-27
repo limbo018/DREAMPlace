@@ -167,7 +167,7 @@ at::Tensor density_map(
     // set padding density
     if (padding > 0)
     {
-        density_map.masked_fill_(padding_mask, at::Scalar(target_density*bin_size_x*bin_size_y));
+        density_map.masked_fill_(padding_mask.to(at::ScalarType::Bool), at::Scalar(target_density*bin_size_x*bin_size_y));
     }
 
     return density_map;

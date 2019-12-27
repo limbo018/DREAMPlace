@@ -25,6 +25,9 @@ import dreamplace.ops.weighted_average_wirelength.weighted_average_wirelength as
 import dreamplace.ops.logsumexp_wirelength.logsumexp_wirelength as logsumexp_wirelength
 import dreamplace.ops.electric_potential.electric_potential as electric_potential
 import dreamplace.ops.density_potential.density_potential as density_potential
+import dreamplace.ops.rudy.rudy as rudy 
+import dreamplace.ops.pin_utilization.pin_utilization as pin_utilization 
+import dreamplace.ops.adjust_node_area.adjust_node_area as adjust_node_area
 
 class PlaceObj(nn.Module):
     """
@@ -63,6 +66,12 @@ class PlaceObj(nn.Module):
         self.op_collections.update_density_weight_op = self.build_update_density_weight(params, placedb)
         self.op_collections.precondition_op = self.build_precondition(params, placedb, self.data_collections)
         self.op_collections.noise_op = self.build_noise(params, placedb, self.data_collections)
+        # compute congestion map 
+        self.op_collections.route_utilization_map_op = self.build_route_utilization_map(params, placedb, self.data_collections)
+        self.op_collections.pin_utilization_map_op = self.build_pin_utilization_map(params, placedb, self.data_collections)
+        # adjust instance area with RISA/RUDY congestion map
+        self.op_collections.adjust_node_area_op = self.build_adjust_node_area(params, placedb, self.data_collections)
+
 
         self.L1_gamma_iteration = global_place_params["iteration"]
         if 'L2_density_weight_iteration' in global_place_params: 
@@ -444,3 +453,81 @@ class PlaceObj(nn.Module):
 
         return precondition_op
 
+    def build_route_utilization_map(self, params, placedb, data_collections):
+        """
+        @brief routing congestion map based on current cell locations 
+        @param params parameters 
+        @param placedb placement database 
+        @param data_collections a collection of all data and variables required for constructing the ops 
+        """
+        congestion_op = rudy_map.RudyMap(
+                node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y,
+                netpin_start=data_collections.flat_net2pin_start_map, flat_netpin=data_collections.flat_net2pin_map, net_weights=data_collections.net_weights,
+                xl=placedb.xl, xh=placedb.xh, yl=placedb.yl, yh=placedb.yh,
+                num_movable_nodes=placedb.num_movable_nodes, num_filler_nodes=placedb.num_filler_nodes, 
+                num_bins_x=placedb.num_bins_x, num_bins_y=placedb.num_bins_y,
+                unit_horizontal_routing_capacity=params.unit_horizontal_routing_capacity,
+                unit_vertical_routing_capacity=params.unit_vertical_routing_capacity,
+                max_route_opt_adjust_rate=params.max_route_opt_adjust_rate,
+                num_threads=params.num_threads
+                )
+        def route_utilization_map_op(pos): 
+            return congestion_op(self.op_collections.pin_pos_op(pos))
+        return route_utilization_map_op
+
+    def build_pin_utilization_map(self, params, placedb, data_collections):
+        """
+        @brief pin density map based on current cell locations 
+        @param params parameters 
+        @param placedb placement database 
+        @param data_collections a collection of all data and variables required for constructing the ops 
+        """
+        return pin_utilization.PinUtilization(
+                pin_weights=data.pin_weights, 
+                flat_node2pin_start_map=data_collections.flat_node2pin_start_map,
+                node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y,
+                xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh,
+                num_movable_nodes=placedb.num_movable_nodes, num_filler_nodes=placedb.num_filler_nodes, 
+                num_bins_x=placedb.num_bins_x, num_bins_y=placedb.num_bins_y,
+                unit_pin_capacity=params.unit_pin_capacity,
+                pin_stretch_ratio=params.pin_stretch_ratio,
+                max_pin_opt_adjust_rate=params.max_pin_opt_adjust_rate,
+                num_threads=params.num_threads
+                )
+
+    def build_adjust_node_area(self, params, placedb, data_collections):
+        """
+        @brief adjust cell area according to routing congestion and pin utilization map 
+        """
+        adjust_node_area_op = AdjustNodeArea(
+                flat_node2pin_start_map, flat_node2pin_map,
+                pin_weights=data_collections.pin_weights, 
+                flat_node2pin_start_map=data_collections.flat_node2pin_start_map, 
+                xl=placedb.xl,
+                yl=placedb.yl,
+                xh=placedb.xh,
+                yh=placedb.yh,
+                num_movable_nodes=placedb.num_movable_nodes, 
+                num_filler_nodes=placedb.num_filler_nodes, 
+                route_num_bins_x=params.route_num_bins_x,
+                route_num_bins_y=params.route_num_bins_y,
+                pin_num_bins_x=params.pin_num_bins_x,
+                pin_num_bins_y=params.pin_num_bins_y,
+                instance_area_adjust_overflow=params.instance_area_adjust_overflow,
+                area_adjust_stop_ratio=params.params.area_adjust_stop_ratio,
+                route_area_adjust_stop_ratio=params.route_area_adjust_stop_ratio,
+                pin_area_adjust_stop_ratio=params.pin_area_adjust_stop_ratio,
+                unit_pin_capacity=params.unit_pin_capacity,
+                num_threads=params.num_threads
+            )
+        def build_adjust_node_area_op(pos):
+            route_utilization_map = self.op_collections.route_utilization_map_op(pos)
+            pin_utilization_map = self.op_collections.pin_utilization_map_op(pos)
+            return adjust_node_area_op(
+                    pos, 
+                    data_collections.node_size_x, data_collectionsnode_size_y, 
+                    data_collections.pin_offset_x, data_collections.pin_offset_y, 
+                    route_utilization_map, 
+                    pin_utilization_map
+                    )
+        return build_adjust_node_area_op

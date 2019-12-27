@@ -172,7 +172,7 @@ std::vector<at::Tensor> density_potential_forward(
     // set padding density 
     if (padding > 0)
     {
-        density_map.masked_fill_(padding_mask, at::Scalar(target_area));
+        density_map.masked_fill_(padding_mask.to(at::ScalarType::Bool), at::Scalar(target_area));
     }
 
     // (max(0, density-target_area))^2

@@ -19,6 +19,10 @@ add_subdirectory(abacus_legalize)
 add_subdirectory(global_swap)
 add_subdirectory(independent_set_matching)
 add_subdirectory(k_reorder)
+# routing congestion operator 
+add_subdirectory(pin_utilization)
+add_subdirectory(rudy)
+add_subdirectory(adjust_node_area)
 
 file(GLOB INSTALL_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/*.py")
 install(

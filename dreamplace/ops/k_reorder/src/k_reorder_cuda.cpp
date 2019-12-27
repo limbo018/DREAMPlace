@@ -27,13 +27,12 @@ int kreorderCUDALauncher(DetailedPlaceDB<T> db, int K, int max_iters, int num_th
 /// char does not compile for ATen either 
 #define DISPATCH_CUSTOM_TYPES(TYPE, NAME, ...)                           \
       [&] {                                                                       \
-          const at::Type& the_type = TYPE;                                          \
-          switch (the_type.scalarType()) {                                          \
+          switch (TYPE) {                                          \
                 AT_PRIVATE_CASE_TYPE(at::ScalarType::Float, float, __VA_ARGS__)        \
                 AT_PRIVATE_CASE_TYPE(at::ScalarType::Double, double, __VA_ARGS__)         \
                 AT_PRIVATE_CASE_TYPE(at::ScalarType::Int, int, __VA_ARGS__)        \
                 default:                                                                \
-                  AT_ERROR(#NAME, " not implemented for '", the_type.toString(), "'");  \
+                  AT_ERROR(#NAME, " not implemented for '", at::toString(TYPE), "'");  \
                   }                                                                         \
             }()
 
@@ -76,7 +75,7 @@ at::Tensor k_reorder_cuda_forward(
     auto pos = init_pos.clone();
 
     // Call the cuda kernel launcher
-    DISPATCH_CUSTOM_TYPES(pos.type(), "kreorderCUDALauncher", [&] {
+    DISPATCH_CUSTOM_TYPES(pos.scalar_type(), "kreorderCUDALauncher", [&] {
             auto db = make_placedb<scalar_t>(
                     init_pos,
                     pos, 
