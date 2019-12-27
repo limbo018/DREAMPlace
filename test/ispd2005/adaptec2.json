@@ -4,7 +4,7 @@
 "num_bins_x" : 1024,
 "num_bins_y" : 1024,
 "global_place_stages" : [
-    {"num_bins_x" : 1024, "num_bins_y" : 1024, "iteration" : 1000, "learning_rate" : 0.01, "wirelength" : "weighted_average", "optimizer" : "nesterov"}
+    {"num_bins_x" : 1024, "num_bins_y" : 1024, "iteration" : 1000, "learning_rate" : 0.01, "wirelength" : "weighted_average", "optimizer" : "nesterov", "L2_density_weight_iteration" : 1, "L3_iteration" : 1}
 ],
 "target_density" : 1.0,
 "density_weight" : 8e-5,
