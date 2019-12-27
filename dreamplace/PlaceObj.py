@@ -460,11 +460,9 @@ class PlaceObj(nn.Module):
         @param placedb placement database 
         @param data_collections a collection of all data and variables required for constructing the ops 
         """
-        congestion_op = rudy_map.RudyMap(
-                node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y,
+        congestion_op = rudy.Rudy(
                 netpin_start=data_collections.flat_net2pin_start_map, flat_netpin=data_collections.flat_net2pin_map, net_weights=data_collections.net_weights,
                 xl=placedb.xl, xh=placedb.xh, yl=placedb.yl, yh=placedb.yh,
-                num_movable_nodes=placedb.num_movable_nodes, num_filler_nodes=placedb.num_filler_nodes, 
                 num_bins_x=placedb.num_bins_x, num_bins_y=placedb.num_bins_y,
                 unit_horizontal_routing_capacity=params.unit_horizontal_routing_capacity,
                 unit_vertical_routing_capacity=params.unit_vertical_routing_capacity,
@@ -483,7 +481,7 @@ class PlaceObj(nn.Module):
         @param data_collections a collection of all data and variables required for constructing the ops 
         """
         return pin_utilization.PinUtilization(
-                pin_weights=data.pin_weights, 
+                pin_weights=data_collections.pin_weights, 
                 flat_node2pin_start_map=data_collections.flat_node2pin_start_map,
                 node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y,
                 xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh,
