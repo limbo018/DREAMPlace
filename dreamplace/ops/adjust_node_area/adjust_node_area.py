@@ -193,8 +193,7 @@ class AdjustNodeArea(nn.Module):
         # if (cur_metric_overflow > self.instance_area_adjust_overflow) or (not self.adjust_area_flag):
         #     return False
 
-        self.max_total_area = (node_size_x[:self.num_movable_nodes] * node_size_y[:self.num_movable_nodes]
-                               ).sum() + (node_size_x[-self.num_filler_nodes:] * node_size_y[-self.num_filler_nodes:]).sum()
+        self.max_total_area = (node_size_x[:self.num_movable_nodes] * node_size_y[:self.num_movable_nodes]).sum() + (node_size_x[-self.num_filler_nodes:] * node_size_y[-self.num_filler_nodes:]).sum()
 
         # compute routability optimized area
         if adjust_route_area_flag:

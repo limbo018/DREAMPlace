@@ -2,7 +2,7 @@
  * @file   adjust_node_area.cpp
  * @author Zixuan Jiang, Jiaqi Gu, Yibo Lin
  * @date   Dec 2019
- * @brief  Adjust cell area according to congestion map. 
+ * @brief  Adjust cell area according to congestion map.
  */
 
 #include "utility/src/torch.h"
@@ -25,8 +25,7 @@ int computeInstanceRoutabilityOptimizationMapLauncher(
     int num_bins_x, int num_bins_y,
     int num_movable_nodes,
     int num_threads,
-    T *instance_route_area
-    )
+    T *instance_route_area)
 {
     const T inv_bin_size_x = 1.0 / bin_size_x;
     const T inv_bin_size_y = 1.0 / bin_size_y;
@@ -52,8 +51,8 @@ int computeInstanceRoutabilityOptimizationMapLauncher(
         bin_index_yl = DREAMPLACE_STD_NAMESPACE::max(bin_index_yl, 0);
         bin_index_yh = DREAMPLACE_STD_NAMESPACE::min(bin_index_yh, num_bins_y);
 
-        T& area = instance_route_area[i];
-        area = 0; 
+        T &area = instance_route_area[i];
+        area = 0;
         for (int x = bin_index_xl; x < bin_index_xh; ++x)
         {
             for (int y = bin_index_yl; y < bin_index_yh; ++y)
@@ -82,8 +81,7 @@ at::Tensor adjust_node_area_forward(
     int num_movable_nodes,
     int num_bins_x,
     int num_bins_y,
-    int num_threads
-    )
+    int num_threads)
 {
     CHECK_FLAT(pos);
     CHECK_EVEN(pos);
@@ -95,8 +93,8 @@ at::Tensor adjust_node_area_forward(
     CHECK_FLAT(node_size_y);
     CHECK_CONTIGUOUS(node_size_y);
 
-    int num_nodes = pos.numel() / 2; 
-    at::Tensor instance_route_area = at::zeros({num_movable_nodes}, pos.options());
+    int num_nodes = pos.numel() / 2;
+    at::Tensor instance_route_area = at::empty({num_movable_nodes}, pos.options());
 
     // compute routability and density optimziation instance area
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeInstanceRoutabilityOptimizationMapLauncher", [&] {
@@ -112,7 +110,7 @@ at::Tensor adjust_node_area_forward(
             instance_route_area.data<scalar_t>());
     });
 
-    return instance_route_area; 
+    return instance_route_area;
 }
 
 DREAMPLACE_END_NAMESPACE

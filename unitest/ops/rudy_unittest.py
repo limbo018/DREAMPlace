@@ -4,6 +4,7 @@ import numpy as np
 
 from dreamplace.ops.rudy import rudy
 
+
 class RudyUnittest(unittest.TestCase):
     def test_rudy(self):
         # the data of net and pin are from unitest/ops/weighted_average_wirelength_unitest.py
@@ -40,20 +41,20 @@ class RudyUnittest(unittest.TestCase):
 
         # test cpu
         rudy_op = rudy.Rudy(
-                 netpin_start=flat_net2pin_start_map,
-                 flat_netpin=flat_net2pin_map,
-                 net_weights=net_weights,
-                 xl=xl,
-                 xh=xh,
-                 yl=yl,
-                 yh=yh,
-                 num_bins_x=num_bins_x,
-                 num_bins_y=num_bins_y,
-                 unit_horizontal_routing_capacity=unit_horizontal_routing_capacity,
-                 unit_vertical_routing_capacity=unit_vertical_routing_capacity,
-                 max_route_opt_adjust_rate=max_route_opt_adjust_rate,
-                 num_threads=8
-                 )
+            netpin_start=flat_net2pin_start_map,
+            flat_netpin=flat_net2pin_map,
+            net_weights=net_weights,
+            xl=xl,
+            xh=xh,
+            yl=yl,
+            yh=yh,
+            num_bins_x=num_bins_x,
+            num_bins_y=num_bins_y,
+            unit_horizontal_routing_capacity=unit_horizontal_routing_capacity,
+            unit_vertical_routing_capacity=unit_vertical_routing_capacity,
+            max_route_opt_adjust_rate=max_route_opt_adjust_rate,
+            num_threads=8
+        )
 
         result_cpu = rudy_op.forward(pin_pos.t().contiguous().view(-1))
         print("Test on CPU. rudy map = ", result_cpu)
@@ -61,23 +62,25 @@ class RudyUnittest(unittest.TestCase):
         if torch.cuda.device_count():
             # test gpu
             rudy_op_cuda = rudy.Rudy(
-                    netpin_start=flat_net2pin_start_map.cuda(),
-                    flat_netpin=flat_net2pin_map.cuda(),
-                    net_weights=net_weights.cuda(),
-                    xl=xl,
-                    xh=xh,
-                    yl=yl,
-                    yh=yh,
-                    num_bins_x=num_bins_x,
-                    num_bins_y=num_bins_y,
-                    unit_horizontal_routing_capacity=unit_horizontal_routing_capacity,
-                    unit_vertical_routing_capacity=unit_vertical_routing_capacity,
-                    max_route_opt_adjust_rate=max_route_opt_adjust_rate
-                    )
+                netpin_start=flat_net2pin_start_map.cuda(),
+                flat_netpin=flat_net2pin_map.cuda(),
+                net_weights=net_weights.cuda(),
+                xl=xl,
+                xh=xh,
+                yl=yl,
+                yh=yh,
+                num_bins_x=num_bins_x,
+                num_bins_y=num_bins_y,
+                unit_horizontal_routing_capacity=unit_horizontal_routing_capacity,
+                unit_vertical_routing_capacity=unit_vertical_routing_capacity,
+                max_route_opt_adjust_rate=max_route_opt_adjust_rate
+            )
 
             result_cuda = rudy_op_cuda.forward(pin_pos.t().contiguous().view(-1).cuda())
             print("Test on GPU. rudy map = ", result_cuda)
-        assert torch.equal(result_cpu, result_cuda.data.cpu()), "CPU != GPU"
+
+            assert torch.equal(result_cpu, result_cuda.cpu()), "the results via CPU and GPU are different"
+
 
 if __name__ == '__main__':
     unittest.main()
