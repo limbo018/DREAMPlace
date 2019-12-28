@@ -22,8 +22,8 @@ int computeInstanceRoutabilityOptimizationMapLauncher(
     const T *routing_utilization_map,
     T xl, T yl,
     T bin_size_x, T bin_size_y,
-    int num_nodes,
     int num_bins_x, int num_bins_y,
+    int num_movable_nodes,
     int num_threads,
     T *instance_route_area
     )
@@ -31,9 +31,9 @@ int computeInstanceRoutabilityOptimizationMapLauncher(
     const T inv_bin_size_x = 1.0 / bin_size_x;
     const T inv_bin_size_y = 1.0 / bin_size_y;
 
-    int chunk_size = DREAMPLACE_STD_NAMESPACE::max(int(num_nodes / num_threads / 16), 1);
+    int chunk_size = DREAMPLACE_STD_NAMESPACE::max(int(num_movable_nodes / num_threads / 16), 1);
 #pragma omp parallel for num_threads(num_threads) schedule(dynamic, chunk_size)
-    for (int i = 0; i < num_nodes; ++i)
+    for (int i = 0; i < num_movable_nodes; ++i)
     {
         const T x_max = pos_x[i] + node_size_x[i];
         const T x_min = pos_x[i];
@@ -96,7 +96,7 @@ at::Tensor adjust_node_area_forward(
     CHECK_CONTIGUOUS(node_size_y);
 
     int num_nodes = pos.numel() / 2; 
-    at::Tensor instance_route_area = at::empty({num_nodes}, pos.options());
+    at::Tensor instance_route_area = at::zeros({num_movable_nodes}, pos.options());
 
     // compute routability and density optimziation instance area
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeInstanceRoutabilityOptimizationMapLauncher", [&] {

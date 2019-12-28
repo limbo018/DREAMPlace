@@ -21,8 +21,8 @@ int computeInstanceRoutabilityOptimizationMapCudaLauncher(
     const T *routing_utilization_map,
     T xl, T yl,
     T bin_size_x, T bin_size_y,
-    int num_nodes,
     int num_bins_x, int num_bins_y,
+    int num_movable_nodes,
     T *instance_route_area
     );
 
@@ -53,7 +53,7 @@ at::Tensor adjust_node_area_forward(
     CHECK_CONTIGUOUS(node_size_y);
 
     int num_nodes = pos.numel() / 2; 
-    at::Tensor instance_route_area = at::empty({num_nodes}, pos.options());
+    at::Tensor instance_route_area = at::zeros({num_movable_nodes}, pos.options());
 
     // compute routability and density optimziation instance area
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeInstanceRoutabilityOptimizationMapCudaLauncher", [&] {

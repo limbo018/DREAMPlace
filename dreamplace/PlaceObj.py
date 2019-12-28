@@ -497,10 +497,10 @@ class PlaceObj(nn.Module):
         """
         @brief adjust cell area according to routing congestion and pin utilization map 
         """
-        adjust_node_area_op = AdjustNodeArea(
-                flat_node2pin_start_map, flat_node2pin_map,
-                pin_weights=data_collections.pin_weights, 
+        adjust_node_area_op = adjust_node_area.AdjustNodeArea(
+                flat_node2pin_map=data_collections.flat_node2pin_map,
                 flat_node2pin_start_map=data_collections.flat_node2pin_start_map, 
+                pin_weights=data_collections.pin_weights, 
                 xl=placedb.xl,
                 yl=placedb.yl,
                 xh=placedb.xh,

@@ -16,13 +16,13 @@ __global__ void computeInstanceRoutabilityOptimizationMap(
     const T *routing_utilization_map,
     T xl, T yl,
     T bin_size_x, T bin_size_y,
-    int num_nodes,
     int num_bins_x, int num_bins_y,
+    int num_movable_nodes,
     T *instance_route_area
     )
 {
     const int i = threadIdx.x + blockDim.x * blockIdx.x;
-    if (i < num_nodes)
+    if (i < num_movable_nodes)
     {
         const T x_max = pos_x[i] + node_size_x[i];
         const T x_min = pos_x[i];
@@ -60,20 +60,20 @@ int computeInstanceRoutabilityOptimizationMapCudaLauncher(
     const T *routing_utilization_map,
     T xl, T yl,
     T bin_size_x, T bin_size_y,
-    int num_nodes,
     int num_bins_x, int num_bins_y,
+    int num_movable_nodes,
     T *instance_route_area
     )
 {
     int thread_count = 512;
-    int block_count = CPUCeilDiv(num_nodes, thread_count);
+    int block_count = CPUCeilDiv(num_movable_nodes, thread_count);
     computeInstanceRoutabilityOptimizationMap<<<block_count, thread_count>>>(
             pos_x, pos_y,
             node_size_x, node_size_y,
             routing_utilization_map,
             xl, yl,
             bin_size_x, bin_size_y,
-            num_nodes,
+            num_movable_nodes,
             num_bins_x, num_bins_y,
             instance_route_area
         );
@@ -87,8 +87,8 @@ int computeInstanceRoutabilityOptimizationMapCudaLauncher(
             const T *routing_utilization_map,           \
             T xl, T yl,           \
             T bin_size_x, T bin_size_y,           \
-            int num_nodes,           \
             int num_bins_x, int num_bins_y,           \
+            int num_movable_nodes,           \
             T *instance_route_area           \
             )
 
