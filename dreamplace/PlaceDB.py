@@ -43,6 +43,9 @@ class PlaceDB (object):
         self.node_size_x = None # 1D array, cell width  
         self.node_size_y = None # 1D array, cell height
 
+        self.flat_node_shape_map = None # some fixed cells may have non-rectangular shapes 
+        self.flat_node_shape_start_map = None  
+
         self.pin_direct = None # 1D array, pin direction IO 
         self.pin_offset_x = None # 1D array, pin offset x to its node 
         self.pin_offset_y = None # 1D array, pin offset y to its node 
@@ -89,6 +92,11 @@ class PlaceDB (object):
         # the Idea from e-place and RePlace 
         self.total_filler_node_area = None 
         self.num_filler_nodes = None
+
+        self.num_routing_grids_x = None
+        self.num_routing_grids_y = None
+        self.num_routing_tracks_x = None
+        self.num_routing_tracks_y = None
 
         self.dtype = None 
 
@@ -461,6 +469,8 @@ class PlaceDB (object):
             self.node_orient = np.array(pydb.node_orient, dtype=np.string_)
         self.node_size_x = np.array(pydb.node_size_x, dtype=self.dtype)
         self.node_size_y = np.array(pydb.node_size_y, dtype=self.dtype)
+        self.flat_node_shape_map = np.array(pydb.flat_node_shape_map, dtype=self.dtype)
+        self.flat_node_shape_start_map = np.array(pydb.flat_node_shape_start_map, dtype=np.int32)
         self.pin_direct = np.array(pydb.pin_direct, dtype=np.string_)
         self.pin_offset_x = np.array(pydb.pin_offset_x, dtype=self.dtype)
         self.pin_offset_y = np.array(pydb.pin_offset_y, dtype=self.dtype)
@@ -489,6 +499,11 @@ class PlaceDB (object):
         self.row_height = float(pydb.row_height)
         self.site_width = float(pydb.site_width)
         self.num_movable_pins = pydb.num_movable_pins
+
+        self.num_routing_grids_x = pydb.num_routing_grids_x 
+        self.num_routing_grids_y = pydb.num_routing_grids_y 
+        self.num_routing_tracks_x = np.array(pydb.num_routing_tracks_x, dtype=np.int32)
+        self.num_routing_tracks_y = np.array(pydb.num_routing_tracks_y, dtype=np.int32)
 
         # convert node2pin_map to array of array 
         for i in range(len(self.node2pin_map)):

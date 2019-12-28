@@ -31,6 +31,8 @@ PlaceDB::PlaceDB()
 
     m_numNetsWithDuplicatePins = 0;
     m_numPinsDuplicatedInNets = 0;
+
+    m_numRoutingGrids[0] = m_numRoutingGrids[1] = m_numRoutingGrids[2] = 0; 
 }
 
 ///==== LEF Callbacks ====
@@ -651,6 +653,15 @@ void PlaceDB::resize_bookshelf_row(int n)
 {
     m_vRow.reserve(n);
 }
+void PlaceDB::resize_bookshelf_shapes(int /*n*/)
+{
+}
+void PlaceDB::resize_bookshelf_niterminal_layers(int)
+{
+}
+void PlaceDB::resize_bookshelf_blockage_layers(int)
+{
+}
 void PlaceDB::add_bookshelf_terminal(std::string& name, int w, int h)
 {
     // it seems no difference
@@ -673,9 +684,15 @@ void PlaceDB::add_bookshelf_node(std::string& name, int w, int h)
     }
 
     Node& node = m_vNode.at(insertRet.first);
-    NodeProperty& property = m_vNodeProperty.at(node.id());
-    property.setMacroId(std::numeric_limits<index_type>::max()); // set macroId to invalid
     node.set(0, 0, w, h); // must update width and height
+
+    // create dummy macro 
+    std::pair<index_type, bool> insertMacroRet = addMacro("DREAMPlace." + name); 
+    // check duplicate 
+    dreamplaceAssert(insertMacroRet.second);
+
+    NodeProperty& property = m_vNodeProperty.at(node.id());
+    property.setMacroId(insertMacroRet.first); 
 }
 // sort NetPin by node name to avoid a net containing multiple pins from the same node
 struct SortNetPinByNode
@@ -783,17 +800,24 @@ void PlaceDB::add_bookshelf_row(BookshelfParser::Row const& r)
     // only support HORIZONTAL row, because I don't know how to deal with vertical rows
     if (r.orient == "HORIZONTAL")
     {
-        // currently only support 0 and 1
-        switch (r.site_orient)
+        if (r.site_orient_str.empty())
         {
-            case 0:
-                row.setOrient(OrientEnum::FS);
-                break;
-            case 1:
-                row.setOrient(OrientEnum::N);
-                break;
-            default:
-                dreamplaceAssertMsg(0, "unknown row orientation %d", r.site_orient);
+            // currently only support 0 and 1
+            switch (r.site_orient)
+            {
+                case 0:
+                    row.setOrient(OrientEnum::FS);
+                    break;
+                case 1:
+                    row.setOrient(OrientEnum::N);
+                    break;
+                default:
+                    dreamplaceAssertMsg(0, "unknown row orientation %d", r.site_orient);
+            }
+        }
+        else 
+        {
+            row.setOrient(r.site_orient_str);
         }
     }
     else
@@ -860,6 +884,51 @@ void PlaceDB::set_bookshelf_net_weight(std::string const& name, double w)
     dreamplaceAssertMsg(found != m_mNetName2Index.end(), "failed to find net %s", name.c_str());
     Net& net = this->net(found->second);
     net.setWeight(w);
+}
+void PlaceDB::set_bookshelf_shape(BookshelfParser::NodeShape const& shape) 
+{
+    string2index_map_type::iterator found = m_mNodeName2Index.find(shape.node_name);
+    if (found == m_mNodeName2Index.end())
+    {
+        dreamplacePrint(kWARN, "component not found from .shapes file: %s\n", shape.node_name.c_str());
+        return;
+    }
+    Node const& node = m_vNode.at(found->second);
+    Macro& macro = m_vMacro.at(this->macroId(node));
+    // regard shape boxes as obstruction as M1
+    for (index_type i = 0, ie = shape.vShapeBox.size(); i != ie; ++i)
+    {
+        coordinate_type xl = shape.vShapeBox[i].origin[0] - node.xl() - macro.initOrigin().x(); 
+        coordinate_type yl = shape.vShapeBox[i].origin[1] - node.yl() - macro.initOrigin().y(); 
+        macro.obs().add("M1", Box<coordinate_type>(
+                    xl, 
+                    yl, 
+                    xl + shape.vShapeBox[i].size[0], 
+                    yl + shape.vShapeBox[i].size[1]
+                    ));
+    }
+}
+void PlaceDB::set_bookshelf_route_info(BookshelfParser::RouteInfo const& info)
+{
+    m_numRoutingGrids[kX] = info.numGrids[0]; 
+    m_numRoutingGrids[kY] = info.numGrids[1]; 
+    m_numRoutingGrids[2] = info.numLayers; 
+    m_vRoutingCapacity[kY].assign(info.vVerticalCapacity.begin(), info.vVerticalCapacity.end()); 
+    m_vRoutingCapacity[kX].assign(info.vHorizontalCapacity.begin(), info.vHorizontalCapacity.end()); 
+    m_vMinWireWidth.assign(info.vMinWireWidth.begin(), info.vMinWireWidth.end()); 
+    m_vMinWireSpacing.assign(info.vMinWireSpacing.begin(), info.vMinWireSpacing.end());
+    m_vViaSpacing.assign(info.vViaSpacing.begin(), info.vViaSpacing.end()); 
+    m_routingGridOrigin[kX] = info.gridOrigin[0]; 
+    m_routingGridOrigin[kY] = info.gridOrigin[1]; 
+    m_routingTileSize[kX] = info.tileSize[0]; 
+    m_routingTileSize[kY] = info.tileSize[1]; 
+    m_routingBlockagePorosity = info.blockagePorosity;
+}
+void PlaceDB::add_bookshelf_niterminal_layer(std::string const&, int)
+{
+}
+void PlaceDB::add_bookshelf_blockage_layers(std::string const&, std::vector<int> const&)
+{
 }
 void PlaceDB::set_bookshelf_design(std::string& name)
 {

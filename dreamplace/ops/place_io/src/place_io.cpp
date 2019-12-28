@@ -268,6 +268,9 @@ struct PyPlaceDB
     pybind11::list node_size_x; ///< 1D array, cell width  
     pybind11::list node_size_y; ///< 1D array, cell height
 
+    pybind11::list flat_node_shape_map; ///< flatten node shape boxes
+    pybind11::list flat_node_shape_start_map; ///< starting index of shape in flat_node_shape_map
+
     pybind11::list pin_direct; ///< 1D array, pin direction IO 
     pybind11::list pin_offset_x; ///< 1D array, pin offset x to its node 
     pybind11::list pin_offset_y; ///< 1D array, pin offset y to its node 
@@ -293,6 +296,11 @@ struct PyPlaceDB
     pybind11::list flat_region_boxes_start; ///< starting index of each region in flat_region_boxes
 
     pybind11::list node2fence_region_map; ///< only record fence regions for each cell 
+
+    unsigned int num_routing_grids_x; ///< number of routing grids in x 
+    unsigned int num_routing_grids_y; ///< number of routing grids in y 
+    pybind11::list num_routing_tracks_x; ///< horizontal routing tracks for all layers 
+    pybind11::list num_routing_tracks_y; ///< vertical routing tracks for all layers 
 
     int xl; 
     int yl; 
@@ -349,6 +357,30 @@ struct PyPlaceDB
             count += node.pins().size(); 
         }
         flat_node2pin_start_map.append(count); 
+
+        // initialize node shapes from obstruction 
+        // I do not differentiate obstruction boxes at different layers
+        // At least, this is true for DAC/ICCAD 2012 benchmarks 
+        count = 0; 
+        for (unsigned int i = 0; i < num_nodes; ++i)
+        {
+            Node const& node = db.node(i); 
+            Macro const& macro = db.macro(db.macroId(node));
+
+            flat_node_shape_start_map.append(count);
+            if (!macro.obs().empty())
+            {
+                for (auto it = macro.obs().begin(), ite = macro.obs().end(); it != ite; ++it)
+                {
+                    for (auto itb = it->second.begin(), itbe = it->second.end(); itb != itbe; ++itb)
+                    {
+                        flat_node_shape_map.append(pybind11::make_tuple(itb->xl(), itb->yl(), itb->xh(), itb->yh()));
+                        ++count; 
+                    }
+                }
+            }
+        }
+        flat_node_shape_start_map.append(count);
 
         num_movable_pins = 0; 
         for (unsigned int i = 0, ie = db.pins().size(); i < ie; ++i)
@@ -440,6 +472,20 @@ struct PyPlaceDB
 
         row_height = db.rowHeight(); 
         site_width = db.siteWidth(); 
+
+        // routing information initialized 
+        num_routing_grids_x = 0; 
+        num_routing_grids_y = 0; 
+        if (!db.routingCapacity(kX).empty())
+        {
+            num_routing_grids_x = db.numRoutingGrids(kX); 
+            num_routing_grids_y = db.numRoutingGrids(kY);
+            for (PlaceDB::index_type layer = 0; layer < db.numRoutingLayers(); ++layer)
+            {
+                num_routing_tracks_x.append(db.numRoutingTracks(kX, layer));
+                num_routing_tracks_y.append(db.numRoutingTracks(kY, layer));
+            }
+        }
     }
 };
 
@@ -983,6 +1029,12 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         .def("isIgnoredNet", (bool (PlaceDB::*)(PlaceDB::index_type) const) &PlaceDB::isIgnoredNet)
         .def("isIgnoredNet", (bool (PlaceDB::*)(Net const&) const) &PlaceDB::isIgnoredNet)
         .def("netIgnoreFlag", &PlaceDB::netIgnoreFlag)
+        .def("numRoutingGrids", (PlaceDB::index_type (PlaceDB::*)(Direction1DType) const) &PlaceDB::numRoutingGrids)
+        .def("numRoutingLayers", &PlaceDB::numRoutingLayers)
+        .def("routingGridOrigin", (PlaceDB::coordinate_type (PlaceDB::*)(Direction1DType) const) &PlaceDB::routingGridOrigin)
+        .def("routingTileSize", (PlaceDB::coordinate_type (PlaceDB::*)(Direction1DType) const) &PlaceDB::routingTileSize)
+        .def("routingBlockagePorosity", &PlaceDB::routingBlockagePorosity)
+        .def("numRoutingTracks", (PlaceDB::index_type (PlaceDB::*)(Direction1DType, PlaceDB::index_type) const) &PlaceDB::numRoutingTracks)
         ;
 
     pybind11::class_<DREAMPLACE_NAMESPACE::PyPlaceDB>(m, "PyPlaceDB")
@@ -997,6 +1049,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         .def_readwrite("node_orient", &DREAMPLACE_NAMESPACE::PyPlaceDB::node_orient)
         .def_readwrite("node_size_x", &DREAMPLACE_NAMESPACE::PyPlaceDB::node_size_x)
         .def_readwrite("node_size_y", &DREAMPLACE_NAMESPACE::PyPlaceDB::node_size_y)
+        .def_readwrite("flat_node_shape_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::flat_node_shape_map)
+        .def_readwrite("flat_node_shape_start_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::flat_node_shape_start_map)
         .def_readwrite("pin_direct", &DREAMPLACE_NAMESPACE::PyPlaceDB::pin_direct)
         .def_readwrite("pin_offset_x", &DREAMPLACE_NAMESPACE::PyPlaceDB::pin_offset_x)
         .def_readwrite("pin_offset_y", &DREAMPLACE_NAMESPACE::PyPlaceDB::pin_offset_y)
@@ -1023,6 +1077,10 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         .def_readwrite("row_height", &DREAMPLACE_NAMESPACE::PyPlaceDB::row_height)
         .def_readwrite("site_width", &DREAMPLACE_NAMESPACE::PyPlaceDB::site_width)
         .def_readwrite("num_movable_pins", &DREAMPLACE_NAMESPACE::PyPlaceDB::num_movable_pins)
+        .def_readwrite("num_routing_grids_x", &DREAMPLACE_NAMESPACE::PyPlaceDB::num_routing_grids_x)
+        .def_readwrite("num_routing_grids_y", &DREAMPLACE_NAMESPACE::PyPlaceDB::num_routing_grids_y)
+        .def_readwrite("num_routing_tracks_x", &DREAMPLACE_NAMESPACE::PyPlaceDB::num_routing_tracks_x)
+        .def_readwrite("num_routing_tracks_y", &DREAMPLACE_NAMESPACE::PyPlaceDB::num_routing_tracks_y)
         ;
 
     m.def("forward", &place_io_forward, "PlaceDB IO Read");

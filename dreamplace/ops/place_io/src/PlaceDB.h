@@ -184,6 +184,19 @@ class PlaceDB : public DefParser::DefDataBase
         MacroPin const& macroPin(index_type pinId) const;
         MacroPin const& macroPin(Pin const& pin) const;
 
+        /// functions for routing information 
+        index_type numRoutingGrids(Direction1DType d) const {return m_numRoutingGrids[d];}
+        index_type numRoutingLayers() const {return m_numRoutingGrids[2];}
+        std::vector<index_type> const& routingCapacity(Direction1DType d) const {return m_vRoutingCapacity[d];}
+        std::vector<index_type> const& minWireWidth() const {return m_vMinWireWidth;}
+        std::vector<index_type> const& minWireSpacing() const {return m_vMinWireSpacing;}
+        std::vector<index_type> const& viaSpacing() const {return m_vViaSpacing;}
+        coordinate_type routingGridOrigin(Direction1DType d) const {return m_routingGridOrigin[d];}
+        coordinate_type routingTileSize(Direction1DType d) const {return m_routingTileSize[d];}
+        index_type routingBlockagePorosity() const {return m_routingBlockagePorosity;}
+        /// @brief compute number of routing tracks per tile 
+        index_type numRoutingTracks(Direction1DType d, index_type layer) const {return routingCapacity(d).at(layer) / (minWireWidth().at(layer) + minWireSpacing().at(layer));}
+
         /// traverse movable node 
         MovableNodeIterator movableNodeBegin();
         MovableNodeIterator movableNodeEnd();
@@ -344,12 +357,19 @@ class PlaceDB : public DefParser::DefDataBase
         virtual void resize_bookshelf_net(int n);
         virtual void resize_bookshelf_pin(int n);
         virtual void resize_bookshelf_row(int n);
+        virtual void resize_bookshelf_shapes(int n);
+        virtual void resize_bookshelf_niterminal_layers(int);
+        virtual void resize_bookshelf_blockage_layers(int);
         virtual void add_bookshelf_terminal(std::string& name, int w, int h);
         virtual void add_bookshelf_node(std::string& name, int w, int h);
         virtual void add_bookshelf_net(BookshelfParser::Net const& n);
         virtual void add_bookshelf_row(BookshelfParser::Row const& r);
         virtual void set_bookshelf_node_position(std::string const& name, double x, double y, std::string const& orient, std::string const& status, bool plFlag);
         virtual void set_bookshelf_net_weight(std::string const& name, double w); 
+        virtual void set_bookshelf_shape(BookshelfParser::NodeShape const& shape); 
+        virtual void set_bookshelf_route_info(BookshelfParser::RouteInfo const&);
+        virtual void add_bookshelf_niterminal_layer(std::string const&, int);
+        virtual void add_bookshelf_blockage_layers(std::string const&, std::vector<int> const&);
         virtual void set_bookshelf_design(std::string& name);
         virtual void bookshelf_end(); 
 
@@ -438,6 +458,16 @@ class PlaceDB : public DefParser::DefDataBase
 
         string2index_map_type m_mRegionName2Index; ///< map region name to index 
         string2index_map_type m_mGroupName2Index; ///< map group name to index 
+
+        /// data for routing configuration 
+        index_type m_numRoutingGrids[3]; ///< global routing grids in X, Y and number of layers 
+        std::vector<index_type> m_vRoutingCapacity[2]; ///< horizontal and vertical capacity at each layer 
+        std::vector<index_type> m_vMinWireWidth; ///< min wire width for each layer 
+        std::vector<index_type> m_vMinWireSpacing; ///< min wire spacing for each layer 
+        std::vector<index_type> m_vViaSpacing; ///< via spacing per layer 
+        coordinate_type m_routingGridOrigin[2]; ///< Absolute coordinates of the origin of the grid (grid_lowerleft_X grid_lowerleft_Y)
+        coordinate_type m_routingTileSize[2]; ///< tile_width, tile_height
+        index_type m_routingBlockagePorosity; ///< Porosity for routing blockages (Zero implies the blockage completely blocks overlapping routing tracks. Default = 0)
 
         /// data only used in parsers
         int m_lefUnit;
