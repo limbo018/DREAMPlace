@@ -1,9 +1,19 @@
+##
+# @file   pin_utilization_unitest.py
+# @author Zixuan Jiang, Jiaqi Gu
+# @date   Dec 2019
+#
+
+import os 
+import sys
 import unittest
 import torch
 import numpy as np
 import math
 
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from dreamplace.ops.pin_utilization import pin_utilization
+sys.path.pop()
 
 class PinUtilizationUnittest(unittest.TestCase):
     def test_pin_utilization(self):
@@ -96,7 +106,7 @@ class PinUtilizationUnittest(unittest.TestCase):
 
             result_cuda = pin_utilization_op_cuda.forward(pos.t().contiguous().view(-1).cuda())
             print("Test on GPU. pin_utilization map = ", result_cuda)
-        assert torch.equal(result_cpu, result_cuda.data.cpu()), "CPU != GPU"
+            np.testing.assert_allclose(result_cpu, result_cuda.cpu())
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,9 +1,18 @@
+##
+# @file   rudy_unitest.py
+# @author Zixuan Jiang, Jiaqi Gu
+# @date   Dec 2019
+#
+
+import os 
+import sys
 import unittest
 import torch
 import numpy as np
 
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from dreamplace.ops.rudy import rudy
-
+sys.path.pop()
 
 class RudyUnittest(unittest.TestCase):
     def test_rudy(self):
@@ -79,7 +88,7 @@ class RudyUnittest(unittest.TestCase):
             result_cuda = rudy_op_cuda.forward(pin_pos.t().contiguous().view(-1).cuda())
             print("Test on GPU. rudy map = ", result_cuda)
 
-            assert torch.equal(result_cpu, result_cuda.cpu()), "the results via CPU and GPU are different"
+            np.testing.assert_allclose(result_cpu, result_cuda.cpu())
 
 
 if __name__ == '__main__':

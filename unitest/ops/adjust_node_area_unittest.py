@@ -1,9 +1,18 @@
+##
+# @file   adjust_node_area_unitest.py
+# @author Zixuan Jiang, Jiaqi Gu
+# @date   Dec 2019
+#
+
+import os 
+import sys
 import unittest
 import torch
 import numpy as np
 
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from dreamplace.ops.adjust_node_area import adjust_node_area
-
+sys.path.pop()
 
 class AdjustNodeAreaUnittest(unittest.TestCase):
     def test_adjust_node_area(self):

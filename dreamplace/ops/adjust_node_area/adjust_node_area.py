@@ -193,7 +193,7 @@ class AdjustNodeArea(nn.Module):
         # if (cur_metric_overflow > self.instance_area_adjust_overflow) or (not self.adjust_area_flag):
         #     return False
 
-        self.max_total_area = (node_size_x[:self.num_movable_nodes] * node_size_y[:self.num_movable_nodes]).sum() + (node_size_x[-self.num_filler_nodes:] * node_size_y[-self.num_filler_nodes:]).sum()
+        max_total_area = (node_size_x[:self.num_movable_nodes] * node_size_y[:self.num_movable_nodes]).sum() + (node_size_x[-self.num_filler_nodes:] * node_size_y[-self.num_filler_nodes:]).sum()
 
         # compute routability optimized area
         if adjust_route_area_flag:
@@ -220,7 +220,7 @@ class AdjustNodeArea(nn.Module):
         # check whether the total area is larger than the max area requirement
         # If yes, scale the extra area to meet the requirement
         # We assume the total base area is no greater than the max area requirement
-        scale_factor = (self.max_total_area - old_movable_area_sum) / area_increment_sum
+        scale_factor = (max_total_area - old_movable_area_sum) / area_increment_sum
 
         # set the new_movable_area as base_area + scaled area increment
         if scale_factor <= 0:
@@ -248,27 +248,35 @@ class AdjustNodeArea(nn.Module):
             return adjust_area_flag, adjust_route_area_flag, adjust_pin_area_flag
 
         num_nodes = int(pos.numel() / 2)
-        # adjust the size of movable nodes
+        # adjust the size and positions of movable nodes
         # each movable node have its own inflation ratio, the shape of movable_nodes_ratio is (num_movable_nodes)
+        # we keep the centers the same 
         movable_nodes_ratio = torch.sqrt(new_movable_area / old_movable_area)
+        # convert positions to centers 
         pos[:self.num_movable_nodes] += node_size_x_movable * 0.5
         pos[num_nodes: num_nodes + self.num_movable_nodes] += node_size_y_movable * 0.5
+        # scale size 
         node_size_x_movable *= movable_nodes_ratio
         node_size_y_movable *= movable_nodes_ratio
+        # convert back to lower left corners
         pos[:self.num_movable_nodes] -= node_size_x_movable * 0.5
         pos[num_nodes:num_nodes + self.num_movable_nodes] -= node_size_y_movable * 0.5
 
         # finally scale the filler instance areas to let the total area be max_total_area
         # all the filler nodes share the same deflation ratio, filler_nodes_ratio is a scalar
+        # we keep the centers the same 
         node_size_x_filler = node_size_x[-self.num_filler_nodes:]
         node_size_y_filler = node_size_y[-self.num_filler_nodes:]
         old_filler_area_sum = (node_size_x_filler * node_size_y_filler).sum()
-        new_filler_area_sum = F.relu(self.max_total_area - new_movable_area_sum)
+        new_filler_area_sum = F.relu(max_total_area - new_movable_area_sum)
         filler_nodes_ratio = torch.sqrt(new_filler_area_sum / old_filler_area_sum).data.item()
+        # convert positions to centers 
         pos[num_nodes - self.num_filler_nodes:num_nodes] += node_size_x_filler * 0.5
         pos[-self.num_filler_nodes:] += node_size_y_filler * 0.5
+        # scale size 
         node_size_x_filler *= filler_nodes_ratio
         node_size_y_filler *= filler_nodes_ratio
+        # convert back to lower left corners
         pos[num_nodes - self.num_filler_nodes:num_nodes] -= node_size_x_filler * 0.5
         pos[-self.num_filler_nodes:] -= node_size_y_filler * 0.5
 
