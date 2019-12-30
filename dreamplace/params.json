@@ -140,8 +140,20 @@
     "descripton" : "whether dump intermediate legalization solution as a compressed pickle object", 
     "default" : 0
     },
-"instance_area_adjust_overflow" : {
-    "descripton" : "instance area adjust overflow", 
+"routability_opt_flag" : {
+    "descripton" : "whether enable routability optimization", 
+    "default" : 0
+    },
+"route_num_bins_x" : {
+    "descripton" : "number of routing grids/tiles", 
+    "default" : 512
+    },
+"route_num_bins_y" : {
+    "descripton" : "number of routing grids/tiles", 
+    "default" : 512
+    },
+"node_area_adjust_overflow" : {
+    "descripton" : "the overflow where to adjust node area", 
     "default" : 0.15
     },
 "area_adjust_stop_ratio" : {
@@ -156,37 +168,21 @@
     "descripton" : "pin_area_adjust_stop_ratio", 
     "default" : 0.05
     },
-"route_num_bins_x" : {
-    "descripton" : "route_num_bins_x", 
-    "default" : 512
+"num_horizontal_tracks" : {
+    "descripton" : "number of horizontal routing tracks per routing tile", 
+    "default" : 50
     },
-"route_num_bins_y" : {
-    "descripton" : "route_num_bins_y", 
-    "default" : 512
+"num_vertical_tracks" : {
+    "descripton" : "number of vertical routing tracks per routing tile", 
+    "default" : 50
     },
-"unit_horizontal_routing_capacity" : {
-    "descripton" : "unit_horizontal_routing_capacity", 
-    "default" : 209.0
-    },
-"unit_vertical_routing_capacity" : {
-    "descripton" : "unit_vertical_routing_capacity", 
-    "default" : 239.0
+"tile_pin_capacity" : {
+    "descripton" : "pin capacity per routing tile", 
+    "default" : 50.0
     },
 "max_route_opt_adjust_rate" : {
     "descripton" : "max_route_opt_adjust_rate", 
     "default" : 2.0
-    },
-"pin_num_bins_x" : {
-    "descripton" : "pin_num_bins_x", 
-    "default" : 512
-    },
-"pin_num_bins_y" : {
-    "descripton" : "pin_num_bins_y", 
-    "default" : 512
-    },
-"unit_pin_capacity" : {
-    "descripton" : "unit_pin_capacity", 
-    "default" : 50.0
     },
 "pin_stretch_ratio" : {
     "descripton" : "pin_stretch_ratio", 

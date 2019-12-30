@@ -46,6 +46,4 @@
         }                                          \
     }
 
-#define TOLERANCE (1e-6)
-
 #endif

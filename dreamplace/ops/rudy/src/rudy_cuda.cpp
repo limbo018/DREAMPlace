@@ -29,10 +29,10 @@ int rudyCudaLauncher(const T *pin_pos_x,
 
                               int num_bins_x, int num_bins_y,
                               int num_nets,
-                              T *routing_utilization_map_x,
-                              T *routing_utilization_map_y);
+                              T *horizontal_utilization_map,
+                              T *vertical_utilization_map);
 
-at::Tensor rudy_forward(
+void rudy_forward(
     at::Tensor pin_pos,
     at::Tensor netpin_start,
     at::Tensor flat_netpin,
@@ -43,12 +43,10 @@ at::Tensor rudy_forward(
     double yl,
     double xh,
     double yh,
-    double unit_horizontal_routing_capacity,
-    double unit_vertical_routing_capacity,
-    double max_route_opt_adjust_rate,
-    double min_route_opt_adjust_rate, 
     int num_bins_x,
-    int num_bins_y
+    int num_bins_y,
+    at::Tensor horizontal_utilization_map, 
+    at::Tensor vertical_utilization_map 
     )
 {
     CHECK_FLAT(pin_pos);
@@ -66,8 +64,6 @@ at::Tensor rudy_forward(
 
     int num_nets = netpin_start.numel() - 1; 
     int num_pins = pin_pos.numel() / 2;
-    at::Tensor routing_utilization_map_x = at::zeros({num_bins_x, num_bins_y}, pin_pos.options());
-    at::Tensor routing_utilization_map_y = at::zeros({num_bins_x, num_bins_y}, pin_pos.options());
 
     // Call the cuda kernel launcher
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pin_pos.type(), "rudyCudaLauncher", [&] {
@@ -81,19 +77,9 @@ at::Tensor rudy_forward(
 
             num_bins_x, num_bins_y,
             num_nets,
-            routing_utilization_map_x.data<scalar_t>(),
-            routing_utilization_map_y.data<scalar_t>());
+            horizontal_utilization_map.data<scalar_t>(),
+            vertical_utilization_map.data<scalar_t>());
     });
-
-    // convert demand to utilization in each bin
-    routing_utilization_map_x.mul_(1 / (bin_size_x * bin_size_y * unit_horizontal_routing_capacity));
-    routing_utilization_map_y.mul_(1 / (bin_size_x * bin_size_y * unit_vertical_routing_capacity));
-    // infinity norm
-    at::Tensor routing_utilization_map = at::max(routing_utilization_map_x.abs(), routing_utilization_map_y.abs());
-    // clamp the routing square of routing utilization map
-    routing_utilization_map.pow_(2).clamp_(min_route_opt_adjust_rate, max_route_opt_adjust_rate);
-
-    return routing_utilization_map;
 }
 
 DREAMPLACE_END_NAMESPACE

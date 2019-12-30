@@ -268,8 +268,9 @@ struct PyPlaceDB
     pybind11::list node_size_x; ///< 1D array, cell width  
     pybind11::list node_size_y; ///< 1D array, cell height
 
-    pybind11::list flat_node_shape_map; ///< flatten node shape boxes
-    pybind11::list flat_node_shape_start_map; ///< starting index of shape in flat_node_shape_map
+    pybind11::list node2shape_map; ///< array of 1D array 
+    pybind11::list flat_fixed_node_boxes; ///< flat array of boxes for fixed cells, for computing density map of both rectangular and non-rectangular cells 
+                                        ///< these are absolute box locations 
 
     pybind11::list pin_direct; ///< 1D array, pin direction IO 
     pybind11::list pin_offset_x; ///< 1D array, pin offset x to its node 
@@ -299,8 +300,8 @@ struct PyPlaceDB
 
     unsigned int num_routing_grids_x; ///< number of routing grids in x 
     unsigned int num_routing_grids_y; ///< number of routing grids in y 
-    pybind11::list num_routing_tracks_x; ///< horizontal routing tracks for all layers 
-    pybind11::list num_routing_tracks_y; ///< vertical routing tracks for all layers 
+    pybind11::list num_horizontal_tracks; ///< horizontal routing tracks for all layers 
+    pybind11::list num_vertical_tracks; ///< vertical routing tracks for all layers 
 
     int xl; 
     int yl; 
@@ -361,26 +362,45 @@ struct PyPlaceDB
         // initialize node shapes from obstruction 
         // I do not differentiate obstruction boxes at different layers
         // At least, this is true for DAC/ICCAD 2012 benchmarks 
+        int num_nodes_with_shapes = 0; 
         count = 0; 
-        for (unsigned int i = 0; i < num_nodes; ++i)
+        for (unsigned int i = 0; i < num_nodes - num_terminal_NIs; ++i)
         {
             Node const& node = db.node(i); 
             Macro const& macro = db.macro(db.macroId(node));
 
-            flat_node_shape_start_map.append(count);
+            pybind11::list shapes; 
             if (!macro.obs().empty())
             {
                 for (auto it = macro.obs().begin(), ite = macro.obs().end(); it != ite; ++it)
                 {
                     for (auto itb = it->second.begin(), itbe = it->second.end(); itb != itbe; ++itb)
                     {
-                        flat_node_shape_map.append(pybind11::make_tuple(itb->xl(), itb->yl(), itb->xh(), itb->yh()));
+                        // relative box 
+                        shapes.append(pybind11::make_tuple(itb->xl(), itb->yl(), itb->xh(), itb->yh()));
                         ++count; 
+                        if (node.status() == PlaceStatusEnum::FIXED || node.status() == PlaceStatusEnum::DUMMY_FIXED)
+                        {
+                            // absolute box locations 
+                            flat_fixed_node_boxes.append(pybind11::make_tuple(itb->xl() + node.xl(), itb->yl() + node.yl(), itb->xh() + node.xl(), itb->yh() + node.yl())); 
+                        }
                     }
                 }
+                ++num_nodes_with_shapes; 
             }
+            else 
+            {
+                // relative box 
+                shapes.append(pybind11::make_tuple(0, 0, node.width(), node.height()));
+                if (node.status() == PlaceStatusEnum::FIXED || node.status() == PlaceStatusEnum::DUMMY_FIXED)
+                {
+                    // absolute box locations 
+                    flat_fixed_node_boxes.append(pybind11::make_tuple(node.xl(), node.yl(), node.xh(), node.yh()));
+                }
+            }
+            node2shape_map.append(shapes);
         }
-        flat_node_shape_start_map.append(count);
+        dreamplacePrint(kINFO, "%d nodes with shapes, %d boxes in total, %d boxes for %u fixed cells\n", num_nodes_with_shapes, count, flat_fixed_node_boxes.size(), db.numFixed()); 
 
         num_movable_pins = 0; 
         for (unsigned int i = 0, ie = db.pins().size(); i < ie; ++i)
@@ -476,14 +496,14 @@ struct PyPlaceDB
         // routing information initialized 
         num_routing_grids_x = 0; 
         num_routing_grids_y = 0; 
-        if (!db.routingCapacity(kX).empty())
+        if (!db.routingCapacity(PlanarDirectEnum::HORIZONTAL).empty())
         {
             num_routing_grids_x = db.numRoutingGrids(kX); 
             num_routing_grids_y = db.numRoutingGrids(kY);
             for (PlaceDB::index_type layer = 0; layer < db.numRoutingLayers(); ++layer)
             {
-                num_routing_tracks_x.append(db.numRoutingTracks(kX, layer));
-                num_routing_tracks_y.append(db.numRoutingTracks(kY, layer));
+                num_horizontal_tracks.append(db.numRoutingTracks(PlanarDirectEnum::HORIZONTAL, layer));
+                num_vertical_tracks.append(db.numRoutingTracks(PlanarDirectEnum::VERTICAL, layer));
             }
         }
     }
@@ -1049,8 +1069,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         .def_readwrite("node_orient", &DREAMPLACE_NAMESPACE::PyPlaceDB::node_orient)
         .def_readwrite("node_size_x", &DREAMPLACE_NAMESPACE::PyPlaceDB::node_size_x)
         .def_readwrite("node_size_y", &DREAMPLACE_NAMESPACE::PyPlaceDB::node_size_y)
-        .def_readwrite("flat_node_shape_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::flat_node_shape_map)
-        .def_readwrite("flat_node_shape_start_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::flat_node_shape_start_map)
+        .def_readwrite("node2shape_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::node2shape_map)
+        .def_readwrite("flat_fixed_node_boxes", &DREAMPLACE_NAMESPACE::PyPlaceDB::flat_fixed_node_boxes)
         .def_readwrite("pin_direct", &DREAMPLACE_NAMESPACE::PyPlaceDB::pin_direct)
         .def_readwrite("pin_offset_x", &DREAMPLACE_NAMESPACE::PyPlaceDB::pin_offset_x)
         .def_readwrite("pin_offset_y", &DREAMPLACE_NAMESPACE::PyPlaceDB::pin_offset_y)
@@ -1079,8 +1099,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         .def_readwrite("num_movable_pins", &DREAMPLACE_NAMESPACE::PyPlaceDB::num_movable_pins)
         .def_readwrite("num_routing_grids_x", &DREAMPLACE_NAMESPACE::PyPlaceDB::num_routing_grids_x)
         .def_readwrite("num_routing_grids_y", &DREAMPLACE_NAMESPACE::PyPlaceDB::num_routing_grids_y)
-        .def_readwrite("num_routing_tracks_x", &DREAMPLACE_NAMESPACE::PyPlaceDB::num_routing_tracks_x)
-        .def_readwrite("num_routing_tracks_y", &DREAMPLACE_NAMESPACE::PyPlaceDB::num_routing_tracks_y)
+        .def_readwrite("num_horizontal_tracks", &DREAMPLACE_NAMESPACE::PyPlaceDB::num_horizontal_tracks)
+        .def_readwrite("num_vertical_tracks", &DREAMPLACE_NAMESPACE::PyPlaceDB::num_vertical_tracks)
         ;
 
     m.def("forward", &place_io_forward, "PlaceDB IO Read");

@@ -38,6 +38,10 @@ namespace cuda
          *  where y < x.  */
         __host__ __device__ static constexpr type
             lowest() noexcept { return CHAR_MIN; }
+
+        /** A the machine epsilon.  */
+        __host__ __device__ static constexpr type
+            epsilon() noexcept { return 0; }
     };
 
     template <>
@@ -56,6 +60,10 @@ namespace cuda
          *  where y < x.  */
         __host__ __device__ static constexpr type
             lowest() noexcept { return 0; }
+
+        /** A the machine epsilon.  */
+        __host__ __device__ static constexpr type
+            epsilon() noexcept { return 0; }
     };
 
     template <>
@@ -74,6 +82,10 @@ namespace cuda
          *  where y < x.  */
         __host__ __device__ static constexpr type
             lowest() noexcept { return SHRT_MIN; }
+
+        /** A the machine epsilon.  */
+        __host__ __device__ static constexpr type
+            epsilon() noexcept { return 0; }
     };
 
     template <>
@@ -92,6 +104,10 @@ namespace cuda
          *  where y < x.  */
         __host__ __device__ static constexpr type
             lowest() noexcept { return 0; }
+
+        /** A the machine epsilon.  */
+        __host__ __device__ static constexpr type
+            epsilon() noexcept { return 0; }
     };
 
     template <>
@@ -110,6 +126,10 @@ namespace cuda
          *  where y < x.  */
         __host__ __device__ static constexpr type
             lowest() noexcept { return INT_MIN; }
+
+        /** A the machine epsilon.  */
+        __host__ __device__ static constexpr type
+            epsilon() noexcept { return 0; }
     };
 
     template <>
@@ -128,6 +148,10 @@ namespace cuda
          *  where y < x.  */
         __host__ __device__ static constexpr type
             lowest() noexcept { return 0; }
+
+        /** A the machine epsilon.  */
+        __host__ __device__ static constexpr type
+            epsilon() noexcept { return 0; }
     };
 
     template <>
@@ -146,6 +170,10 @@ namespace cuda
          *  where y < x.  */
         __host__ __device__ static constexpr type
             lowest() noexcept { return LONG_MIN; }
+
+        /** A the machine epsilon.  */
+        __host__ __device__ static constexpr type
+            epsilon() noexcept { return 0; }
     };
 
     template <>
@@ -164,6 +192,10 @@ namespace cuda
          *  where y < x.  */
         __host__ __device__ static constexpr type
             lowest() noexcept { return 0; }
+
+        /** A the machine epsilon.  */
+        __host__ __device__ static constexpr type
+            epsilon() noexcept { return 0; }
     };
 
     template <>
@@ -182,6 +214,10 @@ namespace cuda
          *  where y < x.  */
         __host__ __device__ static constexpr type
             lowest() noexcept { return LLONG_MIN; }
+
+        /** A the machine epsilon.  */
+        __host__ __device__ static constexpr type
+            epsilon() noexcept { return 0; }
     };
 
     template <>
@@ -200,6 +236,10 @@ namespace cuda
          *  where y < x.  */
         __host__ __device__ static constexpr type
             lowest() noexcept { return 0; }
+
+        /** A the machine epsilon.  */
+        __host__ __device__ static constexpr type
+            epsilon() noexcept { return 0; }
     };
 
     template <>
@@ -218,6 +258,10 @@ namespace cuda
          *  where y < x.  */
         __host__ __device__ static constexpr type
             lowest() noexcept { return -FLT_MAX; }
+
+        /** A the machine epsilon.  */
+        __host__ __device__ static constexpr type
+            epsilon() noexcept { return FLT_EPSILON; }
     };
 
     template <>
@@ -236,6 +280,10 @@ namespace cuda
          *  where y < x.  */
         __host__ __device__ static constexpr type
             lowest() noexcept { return -DBL_MAX; }
+
+        /** A the machine epsilon.  */
+        __host__ __device__ static constexpr type
+            epsilon() noexcept { return DBL_EPSILON; }
     };
 
     template <>
@@ -254,6 +302,10 @@ namespace cuda
          *  where y < x.  */
         __host__ __device__ static constexpr type
             lowest() noexcept { return -LDBL_MAX; }
+
+        /** A the machine epsilon.  */
+        __host__ __device__ static constexpr type
+            epsilon() noexcept { return LDBL_EPSILON; }
     };
 }
 

@@ -41,10 +41,9 @@ int computeTriangleDensityMapLauncher(
 /// Compute the exact overlap area for density
 template <typename T>
 int computeExactDensityMapLauncher(
-        const T* x_tensor, const T* y_tensor,
-        const T* node_size_x_tensor, const T* node_size_y_tensor,
+        const T* flat_fixed_node_boxes, 
         const T* bin_center_x_tensor, const T* bin_center_y_tensor,
-        const int num_nodes,
+        const int num_boxes,
         const int num_bins_x, const int num_bins_y,
         const T xl, const T yl, const T xh, const T yh,
         const T bin_size_x, const T bin_size_y,
@@ -175,8 +174,7 @@ at::Tensor density_map(
 
 /// @brief Compute density map for fixed cells
 at::Tensor fixed_density_map(
-        at::Tensor pos,
-        at::Tensor node_size_x, at::Tensor node_size_y,
+        at::Tensor flat_fixed_node_boxes, ///< array of boxes for fixed cells 
         at::Tensor bin_center_x,
         at::Tensor bin_center_y,
         at::Tensor buf, 
@@ -186,35 +184,33 @@ at::Tensor fixed_density_map(
         double yh,
         double bin_size_x,
         double bin_size_y,
-        int num_movable_nodes,
-        int num_terminals,
         int num_bins_x, int num_bins_y,
         int num_fixed_impacted_bins_x, int num_fixed_impacted_bins_y,
         int num_threads
         )
 {
-    CHECK_FLAT(pos);
-    CHECK_EVEN(pos);
-    CHECK_CONTIGUOUS(pos);
+    CHECK_FLAT(flat_fixed_node_boxes);
+    CHECK_EVEN(flat_fixed_node_boxes);
+    CHECK_CONTIGUOUS(flat_fixed_node_boxes);
 
-    at::Tensor density_map = at::zeros({num_bins_x, num_bins_y}, pos.type());
+    at::Tensor density_map = at::zeros({num_bins_x, num_bins_y}, flat_fixed_node_boxes.options());
 
-    int num_nodes = pos.numel()/2;
     if (buf.numel() < num_threads * density_map.numel())
     {
         buf = at::empty(num_threads * density_map.numel(), density_map.options());
     }
 
+    int num_boxes = flat_fixed_node_boxes.numel() / 4; 
+
     // Call the cuda kernel launcher
-    if (num_terminals && num_fixed_impacted_bins_x && num_fixed_impacted_bins_y)
+    if (num_boxes)
     {
         buf.zero_(); 
-        DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeExactDensityMapLauncher", [&] {
+        DREAMPLACE_DISPATCH_FLOATING_TYPES(flat_fixed_node_boxes.type(), "computeExactDensityMapLauncher", [&] {
                 computeExactDensityMapLauncher<scalar_t>(
-                        pos.data<scalar_t>()+num_movable_nodes, pos.data<scalar_t>()+num_nodes+num_movable_nodes,
-                        node_size_x.data<scalar_t>()+num_movable_nodes, node_size_y.data<scalar_t>()+num_movable_nodes,
+                        flat_fixed_node_boxes.data<scalar_t>(), 
                         bin_center_x.data<scalar_t>(), bin_center_y.data<scalar_t>(),
-                        num_terminals,
+                        num_boxes,
                         num_bins_x, num_bins_y,
                         xl, yl, xh, yh,
                         bin_size_x, bin_size_y,
@@ -350,10 +346,9 @@ int computeTriangleDensityMapLauncher(
 
 template <typename T>
 int computeExactDensityMapLauncher(
-        const T* x_tensor, const T* y_tensor,
-        const T* node_size_x_tensor, const T* node_size_y_tensor,
+        const T* flat_fixed_node_boxes, 
         const T* bin_center_x_tensor, const T* bin_center_y_tensor,
-        const int num_nodes,
+        const int num_boxes,
         const int num_bins_x, const int num_bins_y,
         const T xl, const T yl, const T xh, const T yh,
         const T bin_size_x, const T bin_size_y,
@@ -366,34 +361,40 @@ int computeExactDensityMapLauncher(
     // density_map_tensor should be initialized outside
 
     int num_bins = num_bins_x * num_bins_y; 
-#pragma omp parallel for num_threads(num_threads)
-    for (int i = 0; i < num_nodes; ++i)
-    {
-        int tid = omp_get_thread_num();
-        T* buf_map = buf + tid * num_bins;
+
+    auto box2bin = [&](T bxl, T byl, T bxh, T byh, T* buf_map){
         // x direction
-        int bin_index_xl = int((x_tensor[i]-xl)/bin_size_x);
-        int bin_index_xh = int(ceil((x_tensor[i]-xl+node_size_x_tensor[i])/bin_size_x))+1; // exclusive
+        int bin_index_xl = int((bxl-xl)/bin_size_x);
+        int bin_index_xh = int(ceil((bxh-xl)/bin_size_x))+1; // exclusive
         bin_index_xl = DREAMPLACE_STD_NAMESPACE::max(bin_index_xl, 0);
         bin_index_xh = DREAMPLACE_STD_NAMESPACE::min(bin_index_xh, num_bins_x);
 
         // y direction
-        int bin_index_yl = int((y_tensor[i]-yl)/bin_size_y);
-        int bin_index_yh = int(ceil((y_tensor[i]-yl+node_size_y_tensor[i])/bin_size_y))+1; // exclusive
+        int bin_index_yl = int((byl-yl)/bin_size_y);
+        int bin_index_yh = int(ceil((byh-yl)/bin_size_y))+1; // exclusive
         bin_index_yl = DREAMPLACE_STD_NAMESPACE::max(bin_index_yl, 0);
         bin_index_yh = DREAMPLACE_STD_NAMESPACE::min(bin_index_yh, num_bins_y);
 
         for (int k = bin_index_xl; k < bin_index_xh; ++k)
         {
-            T px = exact_density_function(x_tensor[i], node_size_x_tensor[i], bin_center_x_tensor[k], bin_size_x, xl, xh, fixed_node_flag);
+            T px = exact_density_function(bxl, bxh-bxl, bin_center_x_tensor[k], bin_size_x, xl, xh, fixed_node_flag);
             for (int h = bin_index_yl; h < bin_index_yh; ++h)
             {
-                T py = exact_density_function(y_tensor[i], node_size_y_tensor[i], bin_center_y_tensor[h], bin_size_y, yl, yh, fixed_node_flag);
+                T py = exact_density_function(byl, byh-byl, bin_center_y_tensor[h], bin_size_y, yl, yh, fixed_node_flag);
 
                 // still area
                 buf_map[k*num_bins_y+h] += px * py;
             }
         }
+    };
+
+#pragma omp parallel for num_threads(num_threads)
+    for (int i = 0; i < num_boxes; ++i)
+    {
+        int tid = omp_get_thread_num();
+        T* buf_map = buf + tid * num_bins;
+        auto box = flat_fixed_node_boxes + i * 4; 
+        box2bin(box[0], box[1], box[2], box[3], buf_map);
     }
 
 #pragma omp parallel for num_threads(num_threads) 

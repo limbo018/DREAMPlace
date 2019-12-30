@@ -666,11 +666,14 @@ void PlaceDB::add_bookshelf_terminal(std::string& name, int w, int h)
 {
     // it seems no difference
     add_bookshelf_node(name, w, h);
-    // bookshelf does not differentiate fixed cells and io pins
-    // I have to create my own criteria
-    // regard this as io pins
-    if (w == 0 || h == 0)
-        m_numIOPin += 1;
+}
+void PlaceDB::add_bookshelf_terminal_NI(std::string& name, int w, int h)
+{
+    // it seems no difference
+    add_bookshelf_node(name, w, h);
+    // bookshelf use terminal_NI and FIXED_NI to denotes IO pins 
+    // I assume IO pins are appended to the list 
+    m_numIOPin += 1;
 }
 void PlaceDB::add_bookshelf_node(std::string& name, int w, int h)
 {
@@ -843,10 +846,16 @@ void PlaceDB::set_bookshelf_node_position(std::string const& name, double x, dou
     Node& node = m_vNode.at(found->second);
     moveTo(node, round(x), round(y)); // update position
     node.setOrient(orient); // update orient
+    bool iopinFlag = false; 
     if (!plFlag) // only update when plFlag is false
     {
         if (status.empty())
             node.setStatus(PlaceStatusEnum::PLACED); // update status
+        else if (limbo::iequals(status, "FIXED_NI")) // IO pin 
+        {
+            iopinFlag = true; 
+            node.setStatus(PlaceStatusEnum::FIXED); 
+        }
         else
             node.setStatus(status); // update status
         // a heuristic fix for some special cases, first move it to a legal position and then fix it
@@ -861,7 +870,7 @@ void PlaceDB::set_bookshelf_node_position(std::string const& name, double x, dou
 
         // update statistics
         // may need to change the criteria of fixed cells according to benchmarks
-        if (node.width() > 0 && node.height() > 0) // exclude io pins
+        if (!iopinFlag) // exclude io pins
         {
             if (node.status() == PlaceStatusEnum::FIXED)
             {
@@ -913,8 +922,8 @@ void PlaceDB::set_bookshelf_route_info(BookshelfParser::RouteInfo const& info)
     m_numRoutingGrids[kX] = info.numGrids[0]; 
     m_numRoutingGrids[kY] = info.numGrids[1]; 
     m_numRoutingGrids[2] = info.numLayers; 
-    m_vRoutingCapacity[kY].assign(info.vVerticalCapacity.begin(), info.vVerticalCapacity.end()); 
-    m_vRoutingCapacity[kX].assign(info.vHorizontalCapacity.begin(), info.vHorizontalCapacity.end()); 
+    m_vRoutingCapacity[PlanarDirectEnum::VERTICAL].assign(info.vVerticalCapacity.begin(), info.vVerticalCapacity.end()); 
+    m_vRoutingCapacity[PlanarDirectEnum::HORIZONTAL].assign(info.vHorizontalCapacity.begin(), info.vHorizontalCapacity.end()); 
     m_vMinWireWidth.assign(info.vMinWireWidth.begin(), info.vMinWireWidth.end()); 
     m_vMinWireSpacing.assign(info.vMinWireSpacing.begin(), info.vMinWireSpacing.end());
     m_vViaSpacing.assign(info.vViaSpacing.begin(), info.vViaSpacing.end()); 

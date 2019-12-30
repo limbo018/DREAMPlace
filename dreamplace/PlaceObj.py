@@ -66,22 +66,22 @@ class PlaceObj(nn.Module):
         self.op_collections.update_density_weight_op = self.build_update_density_weight(params, placedb)
         self.op_collections.precondition_op = self.build_precondition(params, placedb, self.data_collections)
         self.op_collections.noise_op = self.build_noise(params, placedb, self.data_collections)
-        # compute congestion map 
+        # compute congestion map, RISA/RUDY congestion map  
         self.op_collections.route_utilization_map_op = self.build_route_utilization_map(params, placedb, self.data_collections)
         self.op_collections.pin_utilization_map_op = self.build_pin_utilization_map(params, placedb, self.data_collections)
-        # adjust instance area with RISA/RUDY congestion map
+        # adjust instance area with congestion map
         self.op_collections.adjust_node_area_op = self.build_adjust_node_area(params, placedb, self.data_collections)
 
 
-        self.L1_gamma_iteration = global_place_params["iteration"]
-        if 'L2_density_weight_iteration' in global_place_params: 
-            self.L2_density_weight_iteration = global_place_params['L2_density_weight_iteration']
+        self.Lgamma_iteration = global_place_params["iteration"]
+        if 'Llambda_density_weight_iteration' in global_place_params: 
+            self.Llambda_density_weight_iteration = global_place_params['Llambda_density_weight_iteration']
         else:
-            self.L2_density_weight_iteration = 1
-        if 'L3_iteration' in global_place_params:
-            self.L3_iteration = global_place_params['L3_iteration']
+            self.Llambda_density_weight_iteration = 1
+        if 'Lsub_iteration' in global_place_params:
+            self.Lsub_iteration = global_place_params['Lsub_iteration']
         else:
-            self.L3_iteration = 1
+            self.Lsub_iteration = 1
 
     def obj_fn(self, pos):
         """
@@ -328,6 +328,7 @@ class PlaceObj(nn.Module):
 
         return electric_potential.ElectricPotential(
                 node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y,
+                flat_fixed_node_boxes=data_collections.flat_fixed_node_boxes, 
                 bin_center_x=data_collections.bin_center_x_padded(placedb, padding), bin_center_y=data_collections.bin_center_y_padded(placedb, padding),
                 target_density=params.target_density,
                 xl=xl, yl=yl, xh=xh, yh=yh,
@@ -337,6 +338,7 @@ class PlaceObj(nn.Module):
                 num_filler_nodes=placedb.num_filler_nodes,
                 padding=padding,
                 sorted_node_map=data_collections.sorted_node_map,
+                movable_macro_mask=data_collections.movable_macro_mask, 
                 fast_mode=params.RePlAce_skip_energy_flag, 
                 num_threads=params.num_threads
                 )
@@ -463,14 +465,15 @@ class PlaceObj(nn.Module):
         congestion_op = rudy.Rudy(
                 netpin_start=data_collections.flat_net2pin_start_map, flat_netpin=data_collections.flat_net2pin_map, net_weights=data_collections.net_weights,
                 xl=placedb.xl, xh=placedb.xh, yl=placedb.yl, yh=placedb.yh,
-                num_bins_x=placedb.num_bins_x, num_bins_y=placedb.num_bins_y,
-                unit_horizontal_routing_capacity=params.unit_horizontal_routing_capacity,
-                unit_vertical_routing_capacity=params.unit_vertical_routing_capacity,
+                num_bins_x=placedb.num_routing_grids_x, num_bins_y=placedb.num_routing_grids_y,
+                num_horizontal_tracks=placedb.num_horizontal_tracks,
+                num_vertical_tracks=placedb.num_vertical_tracks,
                 max_route_opt_adjust_rate=params.max_route_opt_adjust_rate,
                 num_threads=params.num_threads
                 )
         def route_utilization_map_op(pos): 
-            return congestion_op(self.op_collections.pin_pos_op(pos))
+            pin_pos = self.op_collections.pin_pos_op(pos)
+            return congestion_op(pin_pos)
         return route_utilization_map_op
 
     def build_pin_utilization_map(self, params, placedb, data_collections):
@@ -486,8 +489,8 @@ class PlaceObj(nn.Module):
                 node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y,
                 xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh,
                 num_movable_nodes=placedb.num_movable_nodes, num_filler_nodes=placedb.num_filler_nodes, 
-                num_bins_x=placedb.num_bins_x, num_bins_y=placedb.num_bins_y,
-                unit_pin_capacity=params.unit_pin_capacity,
+                num_bins_x=placedb.num_routing_grids_x, num_bins_y=placedb.num_routing_grids_y,
+                tile_pin_capacity=placedb.tile_pin_capacity,
                 pin_stretch_ratio=params.pin_stretch_ratio,
                 max_pin_opt_adjust_rate=params.max_pin_opt_adjust_rate,
                 num_threads=params.num_threads
@@ -507,22 +510,20 @@ class PlaceObj(nn.Module):
                 yh=placedb.yh,
                 num_movable_nodes=placedb.num_movable_nodes, 
                 num_filler_nodes=placedb.num_filler_nodes, 
-                route_num_bins_x=params.route_num_bins_x,
-                route_num_bins_y=params.route_num_bins_y,
-                pin_num_bins_x=params.pin_num_bins_x,
-                pin_num_bins_y=params.pin_num_bins_y,
+                route_num_bins_x=placedb.num_routing_grids_x,
+                route_num_bins_y=placedb.num_routing_grids_y,
+                pin_num_bins_x=placedb.num_routing_grids_x,
+                pin_num_bins_y=placedb.num_routing_grids_y,
                 area_adjust_stop_ratio=params.area_adjust_stop_ratio,
                 route_area_adjust_stop_ratio=params.route_area_adjust_stop_ratio,
                 pin_area_adjust_stop_ratio=params.pin_area_adjust_stop_ratio,
-                unit_pin_capacity=params.unit_pin_capacity,
+                tile_pin_capacity=placedb.tile_pin_capacity,
                 num_threads=params.num_threads
             )
-        def build_adjust_node_area_op(pos):
-            route_utilization_map = self.op_collections.route_utilization_map_op(pos)
-            pin_utilization_map = self.op_collections.pin_utilization_map_op(pos)
+        def build_adjust_node_area_op(pos, route_utilization_map, pin_utilization_map):
             return adjust_node_area_op(
                     pos, 
-                    data_collections.node_size_x, data_collectionsnode_size_y, 
+                    data_collections.node_size_x, data_collections.node_size_y, 
                     data_collections.pin_offset_x, data_collections.pin_offset_y, 
                     route_utilization_map, 
                     pin_utilization_map

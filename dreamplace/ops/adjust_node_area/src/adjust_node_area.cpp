@@ -34,10 +34,10 @@ int computeInstanceRoutabilityOptimizationMapLauncher(
 #pragma omp parallel for num_threads(num_threads) schedule(dynamic, chunk_size)
     for (int i = 0; i < num_movable_nodes; ++i)
     {
-        const T x_max = pos_x[i] + node_size_x[i];
         const T x_min = pos_x[i];
-        const T y_max = pos_y[i] + node_size_y[i];
+        const T x_max = x_min + node_size_x[i];
         const T y_min = pos_y[i];
+        const T y_max = y_min + node_size_y[i];
 
         // compute the bin box that this net will affect
         // We do NOT follow Wuxi's implementation. Instead, we clamp the bounding box.
@@ -57,8 +57,12 @@ int computeInstanceRoutabilityOptimizationMapLauncher(
         {
             for (int y = bin_index_yl; y < bin_index_yh; ++y)
             {
-                T overlap = (DREAMPLACE_STD_NAMESPACE::min(x_max, (x + 1) * bin_size_x) - DREAMPLACE_STD_NAMESPACE::max(x_min, x * bin_size_x)) *
-                            (DREAMPLACE_STD_NAMESPACE::min(y_max, (y + 1) * bin_size_y) - DREAMPLACE_STD_NAMESPACE::max(y_min, y * bin_size_y));
+                T bin_xl = xl + x * bin_size_x; 
+                T bin_yl = yl + y * bin_size_y; 
+                T bin_xh = bin_xl + bin_size_x; 
+                T bin_yh = bin_yl + bin_size_y; 
+                T overlap = DREAMPLACE_STD_NAMESPACE::max(DREAMPLACE_STD_NAMESPACE::min(x_max, bin_xh) - DREAMPLACE_STD_NAMESPACE::max(x_min, bin_xl), (T)0) *
+                            DREAMPLACE_STD_NAMESPACE::max(DREAMPLACE_STD_NAMESPACE::min(y_max, bin_yh) - DREAMPLACE_STD_NAMESPACE::max(y_min, bin_yl), (T)0);
                 area += overlap * routing_utilization_map[x * num_bins_y + y];
             }
         }

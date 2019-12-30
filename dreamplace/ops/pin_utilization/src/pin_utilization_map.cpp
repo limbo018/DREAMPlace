@@ -61,8 +61,12 @@ int pinDemandMapLauncher(const T *node_x, const T *node_y,
         {
             for (int y = bin_index_yl; y < bin_index_yh; ++y)
             {
-                T overlap = (DREAMPLACE_STD_NAMESPACE::min(x_max, (x + 1) * bin_size_x) - DREAMPLACE_STD_NAMESPACE::max(x_min, x * bin_size_x)) *
-                            (DREAMPLACE_STD_NAMESPACE::min(y_max, (y + 1) * bin_size_y) - DREAMPLACE_STD_NAMESPACE::max(y_min, y * bin_size_y));
+                T bin_xl = xl + x * bin_size_x; 
+                T bin_yl = yl + y * bin_size_y; 
+                T bin_xh = bin_xl + bin_size_x; 
+                T bin_yh = bin_yl + bin_size_y; 
+                T overlap = DREAMPLACE_STD_NAMESPACE::max(DREAMPLACE_STD_NAMESPACE::min(x_max, bin_xh) - DREAMPLACE_STD_NAMESPACE::max(x_min, bin_xl), (T)0) *
+                            DREAMPLACE_STD_NAMESPACE::max(DREAMPLACE_STD_NAMESPACE::min(y_max, bin_yh) - DREAMPLACE_STD_NAMESPACE::max(y_min, bin_yl), (T)0);
                 int index = x * num_bins_y + y;
                 #pragma omp atomic update 
                 pin_utilization_map[index] += overlap * density;
@@ -85,9 +89,6 @@ at::Tensor pin_utilization_map_forward(
     double yh,
     double bin_size_x,
     double bin_size_y,
-    double unit_pin_capacity,
-    double max_pin_opt_adjust_rate,
-    double min_pin_opt_adjust_rate,
     int num_physical_nodes,
     int num_bins_x,
     int num_bins_y,
@@ -135,10 +136,6 @@ at::Tensor pin_utilization_map_forward(
                 pin_utilization_map.data<scalar_t>()
                 );
     });
-
-    // convert demand to utilization in each bin
-    pin_utilization_map.mul_(1 / (bin_size_x * bin_size_y * unit_pin_capacity));
-    pin_utilization_map.clamp_(min_pin_opt_adjust_rate, max_pin_opt_adjust_rate);
 
     return pin_utilization_map; 
 }

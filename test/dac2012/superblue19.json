@@ -4,7 +4,7 @@
 "num_bins_x" : 1024,
 "num_bins_y" : 1024,
 "global_place_stages" : [
-    {"num_bins_x" : 512, "num_bins_y" : 512, "iteration" : 1000, "learning_rate" : 0.01, "wirelength" : "weighted_average", "optimizer" : "nesterov", "L2_density_weight_iteration" : 1, "L3_iteration" : 1}
+    {"num_bins_x" : 1024, "num_bins_y" : 1024, "iteration" : 2000, "learning_rate" : 0.01, "wirelength" : "weighted_average", "optimizer" : "nesterov", "Llambda_density_weight_iteration" : 1, "Lsub_iteration" : 1}
 ],
 "target_density" : 0.9,
 "density_weight" : 8e-5,
@@ -24,5 +24,18 @@
 "plot_flag" : 0, 
 "random_center_init_flag" : 1, 
 "sort_nets_by_degree" : 0, 
+"routability_opt_flag" : 1,
+"route_num_bins_x" : 321, 
+"route_num_bins_y" : 518, 
+"node_area_adjust_overflow" : 0.15, 
+"area_adjust_stop_ratio" : 0.01, 
+"route_area_adjust_stop_ratio" : 0.01, 
+"pin_area_adjust_stop_ratio" : 0.05, 
+"num_horizontal_tracks" : 50, 
+"num_vertical_tracks" : 58, 
+"tile_pin_capacity" : 50, 
+"max_route_opt_adjust_rate" : 2.0, 
+"pin_stretch_ratio" : 1.414213562, 
+"max_pin_opt_adjust_rate" : 1.5, 
 "num_threads" : 8
 }

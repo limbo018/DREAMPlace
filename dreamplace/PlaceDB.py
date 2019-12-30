@@ -43,8 +43,9 @@ class PlaceDB (object):
         self.node_size_x = None # 1D array, cell width  
         self.node_size_y = None # 1D array, cell height
 
-        self.flat_node_shape_map = None # some fixed cells may have non-rectangular shapes 
-        self.flat_node_shape_start_map = None  
+        self.node2shape_map = None # some fixed cells may have non-rectangular shapes, these are relative locations to lower left corners 
+        self.flat_fixed_node_boxes = None  # a flat array of boxes for fixed cells regardless of its parent fixed cell
+                                           # these are absolute box locations 
 
         self.pin_direct = None # 1D array, pin direction IO 
         self.pin_offset_x = None # 1D array, pin offset x to its node 
@@ -95,8 +96,9 @@ class PlaceDB (object):
 
         self.num_routing_grids_x = None
         self.num_routing_grids_y = None
-        self.num_routing_tracks_x = None
-        self.num_routing_tracks_y = None
+        self.num_horizontal_tracks = None # per tile 
+        self.num_vertical_tracks = None # per tile 
+        self.tile_pin_capacity = None # per tile 
 
         self.dtype = None 
 
@@ -469,8 +471,8 @@ class PlaceDB (object):
             self.node_orient = np.array(pydb.node_orient, dtype=np.string_)
         self.node_size_x = np.array(pydb.node_size_x, dtype=self.dtype)
         self.node_size_y = np.array(pydb.node_size_y, dtype=self.dtype)
-        self.flat_node_shape_map = np.array(pydb.flat_node_shape_map, dtype=self.dtype)
-        self.flat_node_shape_start_map = np.array(pydb.flat_node_shape_start_map, dtype=np.int32)
+        self.node2shape_map = pydb.node2shape_map
+        self.flat_fixed_node_boxes = np.array(pydb.flat_fixed_node_boxes, dtype=self.dtype).reshape([-1, 4])
         self.pin_direct = np.array(pydb.pin_direct, dtype=np.string_)
         self.pin_offset_x = np.array(pydb.pin_offset_x, dtype=self.dtype)
         self.pin_offset_y = np.array(pydb.pin_offset_y, dtype=self.dtype)
@@ -500,10 +502,18 @@ class PlaceDB (object):
         self.site_width = float(pydb.site_width)
         self.num_movable_pins = pydb.num_movable_pins
 
-        self.num_routing_grids_x = pydb.num_routing_grids_x 
-        self.num_routing_grids_y = pydb.num_routing_grids_y 
-        self.num_routing_tracks_x = np.array(pydb.num_routing_tracks_x, dtype=np.int32)
-        self.num_routing_tracks_y = np.array(pydb.num_routing_tracks_y, dtype=np.int32)
+        if pydb.num_routing_grids_x: 
+            self.num_routing_grids_x = pydb.num_routing_grids_x 
+            self.num_routing_grids_y = pydb.num_routing_grids_y 
+            self.num_horizontal_tracks = np.array(pydb.num_horizontal_tracks, dtype=np.int32).sum()
+            self.num_vertical_tracks = np.array(pydb.num_vertical_tracks, dtype=np.int32).sum()
+            self.tile_pin_capacity = max(self.num_horizontal_tracks, self.num_vertical_tracks)
+        else:
+            self.num_routing_grids_x = params.route_num_bins_x
+            self.num_routing_grids_y = params.route_num_bins_y
+            self.num_horizontal_tracks = params.num_horizontal_tracks 
+            self.num_vertical_tracks = params.num_vertical_tracks
+            self.tile_pin_capacity = placedb.tile_pin_capacity
 
         # convert node2pin_map to array of array 
         for i in range(len(self.node2pin_map)):
@@ -532,12 +542,14 @@ class PlaceDB (object):
         self.scale(params.scale_factor)
 
         content = """
-=============== Benchmark Statistics ===============
+================================= Benchmark Statistics =================================
 #nodes = %d, #terminals = %d, # terminal_NIs = %d, #movable = %d, #nets = %d
+#fixed boxes = %d 
 die area = (%g, %g, %g, %g) %g
 row height = %g, site width = %g
 """ % (
                 self.num_physical_nodes, self.num_terminals, self.num_terminal_NIs, self.num_movable_nodes, len(self.net_names), 
+                len(self.flat_fixed_node_boxes), 
                 self.xl, self.yl, self.xh, self.yh, self.area, 
                 self.row_height, self.site_width
                 )
@@ -589,7 +601,12 @@ row height = %g, site width = %g
             self.total_filler_node_area = 0 
             self.num_filler_nodes = 0
         content += "total_filler_node_area = %g, #fillers = %g, filler sizes = %gx%g\n" % (self.total_filler_node_area, self.num_filler_nodes, filler_size_x, filler_size_y)
-        content += "===================================================="
+        if params.routability_opt_flag: 
+            content += "================================== routing information =================================\n"
+            content += "routing grids (%d, %d)\n" % (self.num_routing_grids_x, self.num_routing_grids_y)
+            content += "routing capacity H/V (%d, %d)\n" % (self.num_horizontal_tracks, self.num_vertical_tracks)
+            content += "pin capacity per tile %d\n" % (self.tile_pin_capacity)
+        content += "========================================================================================"
 
         logging.info(content)
         logging.info("reading benchmark takes %g seconds" % (time.time()-tt))

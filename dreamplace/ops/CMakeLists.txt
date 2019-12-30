@@ -1,6 +1,7 @@
 add_subdirectory(utility)
 add_subdirectory(dct)
 add_subdirectory(pin_pos)
+add_subdirectory(density_map)
 add_subdirectory(density_overflow)
 add_subdirectory(density_potential)
 add_subdirectory(logsumexp_wirelength)

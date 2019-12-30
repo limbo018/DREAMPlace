@@ -55,15 +55,29 @@ class PlaceDataCollection (object):
         self.node_size_x = torch.from_numpy(placedb.node_size_x).to(device)
         self.node_size_y = torch.from_numpy(placedb.node_size_y).to(device)
         # original node size for legalization, since they will be adjusted in global placement
-        self.original_node_size_x = self.node_size_x.clone()
-        self.original_node_size_y = self.node_size_y.clone()
+        if params.routability_opt_flag: 
+            self.original_node_size_x = self.node_size_x.clone()
+            self.original_node_size_y = self.node_size_y.clone()
 
         self.pin_offset_x = torch.tensor(placedb.pin_offset_x, dtype=self.pos[0].dtype, device=device)
         self.pin_offset_y = torch.tensor(placedb.pin_offset_y, dtype=self.pos[0].dtype, device=device)
         # original pin offset for legalization, since they will be adjusted in global placement
-        self.original_pin_offset_x = self.pin_offset_x.clone()
-        self.original_pin_offset_y = self.pin_offset_y.clone()
+        if params.routability_opt_flag: 
+            self.original_pin_offset_x = self.pin_offset_x.clone()
+            self.original_pin_offset_y = self.pin_offset_y.clone()
 
+        # to handle non-rectangular shapes, assume absolute box locations
+        self.flat_fixed_node_boxes = torch.from_numpy(placedb.flat_fixed_node_boxes).to(device)
+
+        # detect movable macros and scale down the density to avoid halos 
+        # I use a heuristic that cells whose areas are 10x of the mean area will be regarded movable macros in global placement 
+        if params.target_density < 1: 
+            node_area = self.node_size_x * self.node_size_y
+            mean_area = node_area[:placedb.num_movable_nodes].mean().mul_(10)
+            row_height = self.node_size_y[:placedb.num_movable_nodes].min().mul_(2)
+            self.movable_macro_mask = (node_area[:placedb.num_movable_nodes] > mean_area) & (self.node_size_y[:placedb.num_movable_nodes] > row_height)
+        else: # no movable macros 
+            self.movable_macro_mask = None
 
         self.pin2node_map = torch.from_numpy(placedb.pin2node_map).to(device)
         self.flat_node2pin_map = torch.from_numpy(placedb.flat_node2pin_map).to(device)
@@ -309,7 +323,7 @@ class BasicPlace (nn.Module):
                 pin2net_map=data_collections.pin2net_map, 
                 net_weights=data_collections.net_weights, 
                 net_mask=data_collections.net_mask_all, 
-                algorithm='atomic', 
+                algorithm='net-by-net', 
                 num_threads=params.num_threads
                 )
 
@@ -360,6 +374,7 @@ class BasicPlace (nn.Module):
         """
         return density_overflow.DensityOverflow(
                 data_collections.node_size_x, data_collections.node_size_x, 
+                data_collections.flat_fixed_node_boxes, 
                 data_collections.bin_center_x, data_collections.bin_center_y, 
                 target_density=params.target_density, 
                 xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
@@ -367,7 +382,6 @@ class BasicPlace (nn.Module):
                 num_movable_nodes=placedb.num_movable_nodes, 
                 num_terminals=placedb.num_terminals, 
                 num_filler_nodes=0,
-                algorithm='by-node', 
                 num_threads=params.num_threads
                 )
 
@@ -380,8 +394,9 @@ class BasicPlace (nn.Module):
         @param device cpu or cuda 
         """
         return electric_overflow.ElectricOverflow(
-                data_collections.node_size_x, data_collections.node_size_y, 
-                data_collections.bin_center_x, data_collections.bin_center_y, 
+                node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
+                flat_fixed_node_boxes=data_collections.flat_fixed_node_boxes, 
+                bin_center_x=data_collections.bin_center_x, bin_center_y=data_collections.bin_center_y, 
                 target_density=params.target_density, 
                 xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
                 bin_size_x=placedb.bin_size_x, bin_size_y=placedb.bin_size_y, 
@@ -390,6 +405,7 @@ class BasicPlace (nn.Module):
                 num_filler_nodes=0,
                 padding=0, 
                 sorted_node_map=data_collections.sorted_node_map,
+                movable_macro_mask=data_collections.movable_macro_mask, 
                 num_threads=params.num_threads
                 )
 

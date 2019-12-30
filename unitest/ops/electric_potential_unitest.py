@@ -48,6 +48,10 @@ class ElectricPotentialOpTest(unittest.TestCase):
         #node_size_y = np.array([1.0]).astype(dtype)
         num_nodes = len(xx)
         num_terminals = len(xx)-1
+        flat_fixed_node_boxes = []
+        for i in range(num_nodes-num_terminals, num_nodes):
+            flat_fixed_node_boxes.append([xx[i], yy[i], xx[i] + node_size_x[i], yy[i] + node_size_y[i]])
+        flat_fixed_node_boxes = np.array(flat_fixed_node_boxes)
 
         scale_factor = 1.0
 
@@ -106,6 +110,7 @@ class ElectricPotentialOpTest(unittest.TestCase):
         custom = electric_potential.ElectricPotential(
             torch.tensor(node_size_x, requires_grad=False, dtype=dtype), torch.tensor(
                 node_size_y, requires_grad=False, dtype=dtype),
+            torch.from_numpy(flat_fixed_node_boxes), 
             torch.tensor(bin_center_x, requires_grad=False, dtype=dtype), torch.tensor(
                 bin_center_y, requires_grad=False, dtype=dtype),
             target_density=torch.tensor(target_density, requires_grad=False, dtype=dtype),
@@ -115,7 +120,8 @@ class ElectricPotentialOpTest(unittest.TestCase):
             num_terminals=num_terminals,
             num_filler_nodes=0,
             padding=0,
-            sorted_node_map=sorted_node_map
+            sorted_node_map=sorted_node_map,
+            movable_macro_mask=None
         )
 
         pos = Variable(torch.from_numpy(np.concatenate([xx, yy])), requires_grad=True)
@@ -130,6 +136,7 @@ class ElectricPotentialOpTest(unittest.TestCase):
         if torch.cuda.device_count():
             custom_cuda = electric_potential.ElectricPotential(
                         torch.tensor(node_size_x, requires_grad=False, dtype=dtype).cuda(), torch.tensor(node_size_y, requires_grad=False, dtype=dtype).cuda(),
+                        torch.from_numpy(flat_fixed_node_boxes).cuda(), 
                         torch.tensor(bin_center_x, requires_grad=False, dtype=dtype).cuda(), torch.tensor(bin_center_y, requires_grad=False, dtype=dtype).cuda(),
                         target_density=torch.tensor(target_density, requires_grad=False, dtype=dtype).cuda(),
                         xl=xl, yl=yl, xh=xh, yh=yh,
@@ -138,7 +145,8 @@ class ElectricPotentialOpTest(unittest.TestCase):
                         num_terminals=num_terminals,
                         num_filler_nodes=0,
                         padding=0,
-                        sorted_node_map=sorted_node_map.cuda()
+                        sorted_node_map=sorted_node_map.cuda(), 
+                        movable_macro_mask=None
                         )
 
             pos = Variable(torch.from_numpy(np.concatenate([xx, yy])).cuda(), requires_grad=True)

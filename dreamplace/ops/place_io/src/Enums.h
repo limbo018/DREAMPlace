@@ -289,7 +289,12 @@ class SignalDirect : public EnumExt<SignalDirectEnum::SignalDirectType>
 /// class PlanarDirect denotes geometric directions 
 struct PlanarDirectEnum
 {
-    enum PlanarDirectType {HORIZONTAL, VERTICAL, UNKNOWN};
+    enum PlanarDirectType 
+    {
+        HORIZONTAL = 0, 
+        VERTICAL = 1, 
+        UNKNOWN = 2
+    };
 };
 class PlanarDirect : public EnumExt<PlanarDirectEnum::PlanarDirectType>
 {

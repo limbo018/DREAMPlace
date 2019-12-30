@@ -187,7 +187,7 @@ class PlaceDB : public DefParser::DefDataBase
         /// functions for routing information 
         index_type numRoutingGrids(Direction1DType d) const {return m_numRoutingGrids[d];}
         index_type numRoutingLayers() const {return m_numRoutingGrids[2];}
-        std::vector<index_type> const& routingCapacity(Direction1DType d) const {return m_vRoutingCapacity[d];}
+        std::vector<index_type> const& routingCapacity(PlanarDirectEnum::PlanarDirectType d) const {return m_vRoutingCapacity[d];}
         std::vector<index_type> const& minWireWidth() const {return m_vMinWireWidth;}
         std::vector<index_type> const& minWireSpacing() const {return m_vMinWireSpacing;}
         std::vector<index_type> const& viaSpacing() const {return m_vViaSpacing;}
@@ -195,7 +195,7 @@ class PlaceDB : public DefParser::DefDataBase
         coordinate_type routingTileSize(Direction1DType d) const {return m_routingTileSize[d];}
         index_type routingBlockagePorosity() const {return m_routingBlockagePorosity;}
         /// @brief compute number of routing tracks per tile 
-        index_type numRoutingTracks(Direction1DType d, index_type layer) const {return routingCapacity(d).at(layer) / (minWireWidth().at(layer) + minWireSpacing().at(layer));}
+        index_type numRoutingTracks(PlanarDirectEnum::PlanarDirectType d, index_type layer) const {return routingCapacity(d).at(layer) / (minWireWidth().at(layer) + minWireSpacing().at(layer));}
 
         /// traverse movable node 
         MovableNodeIterator movableNodeBegin();
@@ -361,6 +361,7 @@ class PlaceDB : public DefParser::DefDataBase
         virtual void resize_bookshelf_niterminal_layers(int);
         virtual void resize_bookshelf_blockage_layers(int);
         virtual void add_bookshelf_terminal(std::string& name, int w, int h);
+        virtual void add_bookshelf_terminal_NI(std::string& name, int w, int h);
         virtual void add_bookshelf_node(std::string& name, int w, int h);
         virtual void add_bookshelf_net(BookshelfParser::Net const& n);
         virtual void add_bookshelf_row(BookshelfParser::Row const& r);

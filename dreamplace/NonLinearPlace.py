@@ -52,7 +52,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
 
                 # we formulate each stage as a 3-nested optimization problem 
                 # f_gamma(g_density(h(x) ; density weight) ; gamma)
-                # L1      L2        L3
+                # Lgamma      Llambda        Lsub
                 # When optimizing an inner problem, the outer parameters are fixed.
                 # This is a generalization to the eplace/RePlAce approach 
 
@@ -93,15 +93,24 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                         "hpwl" : self.op_collections.hpwl_op, 
                         "overflow" : self.op_collections.density_overflow_op
                         }
+                if params.routability_opt_flag:
+                    eval_ops.update({
+                        'route_utilization' : self.op_collections.route_utilization_map_op, 
+                        'pin_utilization' : self.op_collections.pin_utilization_map_op
+                        })
+
+                # a function to initialize learning rate 
+                def initialize_learning_rate(pos):
+                    learning_rate = model.estimate_initial_learning_rate(pos, global_place_params["learning_rate"])
+                    # update learning rate 
+                    for param_group in optimizer.param_groups:
+                        param_group['lr'] = learning_rate.data
 
                 if iteration == 0: 
                     if params.gp_noise_ratio > 0.0: 
                         logging.info("add %g%% noise" % (params.gp_noise_ratio*100))
                         model.op_collections.noise_op(model.data_collections.pos[0], params.gp_noise_ratio)
-                        learning_rate = model.estimate_initial_learning_rate(model.data_collections.pos[0], global_place_params["learning_rate"])
-                        # update learning rate 
-                        for param_group in optimizer.param_groups:
-                            param_group['lr'] = learning_rate.data
+                        initialize_learning_rate(model.data_collections.pos[0])
 
                 if params.gpu: 
                     torch.cuda.synchronize()
@@ -114,38 +123,38 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                     assert 0, "unsupported optimizer %s" % (optimizer_name)
 
                 # stopping criteria 
-                def L1_stop_criterion(L1_gamma_step, metrics): 
+                def Lgamma_stop_criterion(Lgamma_step, metrics): 
                     if len(metrics) > 1: 
                         cur_metric = metrics[-1][-1][-1]
                         prev_metric = metrics[-2][-1][-1]
-                        if L1_gamma_step > 100 and ((cur_metric.overflow < params.stop_overflow and cur_metric.hpwl > prev_metric.hpwl) or cur_metric.max_density < 1.0):
-                            logging.debug("L1 stopping criteria: %d > 100 and (( %g < 0.1 and %g > %g ) or %g < 1.0)" % (L1_gamma_step, cur_metric.overflow, cur_metric.hpwl, prev_metric.hpwl, cur_metric.max_density))
+                        if Lgamma_step > 100 and ((cur_metric.overflow < params.stop_overflow and cur_metric.hpwl > prev_metric.hpwl) or cur_metric.max_density < 1.0):
+                            logging.debug("Lgamma stopping criteria: %d > 100 and (( %g < 0.1 and %g > %g ) or %g < 1.0)" % (Lgamma_step, cur_metric.overflow, cur_metric.hpwl, prev_metric.hpwl, cur_metric.max_density))
                             return True
                     return False 
 
-                def L2_stop_criterion(L1_gamma_step, L2_density_weight_step, metrics): 
+                def Llambda_stop_criterion(Lgamma_step, Llambda_density_weight_step, metrics): 
                     if len(metrics) > 1: 
                         cur_metric = metrics[-1][-1]
                         prev_metric = metrics[-2][-1]
                         if (cur_metric.overflow < params.stop_overflow and cur_metric.hpwl > prev_metric.hpwl) or cur_metric.max_density < 1.0:
-                            logging.debug("L2 stopping criteria: %d and (( %g < 0.1 and %g > %g ) or %g < 1.0)" % (L2_density_weight_step, cur_metric.overflow, cur_metric.hpwl, prev_metric.hpwl, cur_metric.max_density))
+                            logging.debug("Llambda stopping criteria: %d and (( %g < 0.1 and %g > %g ) or %g < 1.0)" % (Llambda_density_weight_step, cur_metric.overflow, cur_metric.hpwl, prev_metric.hpwl, cur_metric.max_density))
                             return True
                     return False 
 
-                def L3_stop_criterion(L1_gamma_step, L2_density_weight_step, L3_step, metrics):
+                def Lsub_stop_criterion(Lgamma_step, Llambda_density_weight_step, Lsub_step, metrics):
                     if len(metrics) > 1: 
                         cur_metric = metrics[-1]
                         prev_metric = metrics[-2]
                         if cur_metric.objective >= prev_metric.objective * 0.999:
-                            logging.debug("L3 stopping criteria: %d and %g > %g * 0.999" % (L3_step, cur_metric.objective, prev_metric.objective))
+                            logging.debug("Lsub stopping criteria: %d and %g > %g * 0.999" % (Lsub_step, cur_metric.objective, prev_metric.objective))
                             return True 
                     return False 
 
-                def one_descent_step(L1_gamma_step, L2_density_weight_step, L3_step, iteration, metrics):
+                def one_descent_step(Lgamma_step, Llambda_density_weight_step, Lsub_step, iteration, metrics):
                     t0 = time.time()
 
                     # metric for this iteration 
-                    cur_metric = EvalMetrics.EvalMetrics(iteration, (L1_gamma_step, L2_density_weight_step, L3_step))
+                    cur_metric = EvalMetrics.EvalMetrics(iteration, (Lgamma_step, Llambda_density_weight_step, Lsub_step))
                     cur_metric.gamma = model.gamma.data
                     cur_metric.density_weight = model.density_weight.data
                     metrics.append(cur_metric)
@@ -191,31 +200,94 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                     logging.info("full step %.3f ms" % ((time.time()-t0)*1000))
 
 
-                L1_metrics = all_metrics
-                L2_flat_iteration = 0
-                for L1_gamma_step in range(model.L1_gamma_iteration):
-                    L1_metrics.append([])
-                    L2_metrics = L1_metrics[-1]
-                    for L2_density_weight_step in range(model.L2_density_weight_iteration):
-                        L2_metrics.append([])
-                        L3_metrics = L2_metrics[-1]
-                        for L3_step in range(model.L3_iteration):
-                            one_descent_step(L1_gamma_step, L2_density_weight_step, L3_step, iteration, L3_metrics)
+                Lgamma_metrics = all_metrics
+
+                if params.routability_opt_flag: 
+                    adjust_area_flag = True
+                    adjust_route_area_flag = True
+                    adjust_pin_area_flag = True
+                    num_inflations = 0
+
+                Llambda_flat_iteration = 0
+                for Lgamma_step in range(model.Lgamma_iteration):
+                    Lgamma_metrics.append([])
+                    Llambda_metrics = Lgamma_metrics[-1]
+                    for Llambda_density_weight_step in range(model.Llambda_density_weight_iteration):
+                        Llambda_metrics.append([])
+                        Lsub_metrics = Llambda_metrics[-1]
+                        for Lsub_step in range(model.Lsub_iteration):
+                            one_descent_step(Lgamma_step, Llambda_density_weight_step, Lsub_step, iteration, Lsub_metrics)
                             iteration += 1
                             # stopping criteria 
-                            if L3_stop_criterion(L1_gamma_step, L2_density_weight_step, L3_step, L3_metrics):
+                            if Lsub_stop_criterion(Lgamma_step, Llambda_density_weight_step, Lsub_step, Lsub_metrics):
+                                if params.routability_opt_flag and num_inflations >= 2:
+                                    if len(Lsub_metrics) > 1 and Lsub_metrics[-1].objective > Lsub_metrics[-2].objective * 1.001: 
+                                            logging.info("restart learning rate due to failure to descent")
+                                            initialize_learning_rate(model.data_collections.pos[0])
                                 break 
-                        L2_flat_iteration += 1
+                        Llambda_flat_iteration += 1
                         # update density weight 
-                        if L2_flat_iteration > 1: 
-                            model.op_collections.update_density_weight_op(L2_metrics[-1][-1], L2_metrics[-2][-1] if len(L2_metrics) > 1 else L1_metrics[-2][-1][-1], L2_flat_iteration)
+                        if Llambda_flat_iteration > 1: 
+                            model.op_collections.update_density_weight_op(Llambda_metrics[-1][-1], Llambda_metrics[-2][-1] if len(Llambda_metrics) > 1 else Lgamma_metrics[-2][-1][-1], Llambda_flat_iteration)
                         #logging.debug("update density weight %.3f ms" % ((time.time()-t2)*1000))
-                        if L2_stop_criterion(L1_gamma_step, L2_density_weight_step, L2_metrics):
+                        if Llambda_stop_criterion(Lgamma_step, Llambda_density_weight_step, Llambda_metrics):
                             break 
 
+                        # for routability optimization 
+                        if params.routability_opt_flag and Llambda_metrics[-1][-1].overflow < params.node_area_adjust_overflow: 
+                            content = "routability optimization: adjust area flags = (%d, %d, %d)" % (adjust_area_flag, adjust_route_area_flag, adjust_pin_area_flag)
+                            pos = model.data_collections.pos[0]
+
+                            cur_metric = EvalMetrics.EvalMetrics(iteration)
+                            cur_metric.evaluate(placedb, {
+                                "hpwl" : self.op_collections.hpwl_op, 
+                                "overflow" : self.op_collections.density_overflow_op, 
+                                "route_utilization" : self.op_collections.route_utilization_map_op, 
+                                "pin_utilization" : self.op_collections.pin_utilization_map_op, 
+                                }, 
+                                pos)
+                            logging.info(cur_metric)
+
+                            route_utilization_map = None 
+                            pin_utilization_map = None
+                            if adjust_route_area_flag: 
+                                route_utilization_map = model.op_collections.route_utilization_map_op(pos)
+                            if adjust_pin_area_flag:
+                                pin_utilization_map = model.op_collections.pin_utilization_map_op(pos)
+                            adjust_area_flag, adjust_route_area_flag, adjust_pin_area_flag = model.op_collections.adjust_node_area_op(
+                                    pos,
+                                    route_utilization_map,
+                                    pin_utilization_map
+                                    )
+                            if adjust_area_flag: 
+                                num_inflations += 1
+                            content += " -> (%d, %d, %d)" % (adjust_area_flag, adjust_route_area_flag, adjust_pin_area_flag)
+                            logging.info(content)
+                            # restart Llambda 
+                            if adjust_area_flag:
+                                model.op_collections.density_op.reset() 
+                                model.op_collections.density_overflow_op.reset()
+                                model.op_collections.pin_utilization_map_op.reset()
+                                model.initialize_density_weight(params, placedb)
+                                model.density_weight.mul_(0.1 / params.density_weight)
+                                logging.info("density_weight = %.6E" % (model.density_weight.data))
+                                initialize_learning_rate(pos)
+
+                                cur_metric = EvalMetrics.EvalMetrics(iteration)
+                                cur_metric.evaluate(placedb, {
+                                    "hpwl" : self.op_collections.hpwl_op, 
+                                    "overflow" : self.op_collections.density_overflow_op, 
+                                    "route_utilization" : self.op_collections.route_utilization_map_op, 
+                                    "pin_utilization" : self.op_collections.pin_utilization_map_op, 
+                                    }, 
+                                    pos)
+                                logging.info(cur_metric)
+                                pdb.set_trace()
+                                break 
+
                     # gradually reduce gamma to tradeoff smoothness and accuracy 
-                    model.op_collections.update_gamma_op(L1_gamma_step, L2_metrics[-1][-1].overflow)
-                    if L1_stop_criterion(L1_gamma_step, L1_metrics):
+                    model.op_collections.update_gamma_op(Lgamma_step, Llambda_metrics[-1][-1].overflow)
+                    if Lgamma_stop_criterion(Lgamma_step, Lgamma_metrics):
                         break 
 
                     # update learning rate 
@@ -226,10 +298,11 @@ class NonLinearPlace (BasicPlace.BasicPlace):
 
                 logging.info("optimizer %s takes %.3f seconds" % (optimizer_name, time.time()-tt))
             # recover node size and pin offset for legalization, since node size is adjusted in global placement
-            self.data_collections.node_size_x.copy_(self.data_collections.original_node_size_x)
-            self.data_collections.node_size_y.copy_(self.data_collections.original_node_size_y)
-            self.data_collections.pin_offset_x.copy_(self.data_collections.original_pin_offset_x)
-            self.data_collections.pin_offset_y.copy_(self.data_collections.original_pin_offset_y)
+            if params.routability_opt_flag: 
+                self.data_collections.node_size_x.copy_(self.data_collections.original_node_size_x)
+                self.data_collections.node_size_y.copy_(self.data_collections.original_node_size_y)
+                self.data_collections.pin_offset_x.copy_(self.data_collections.original_pin_offset_x)
+                self.data_collections.pin_offset_y.copy_(self.data_collections.original_pin_offset_y)
 
         else: 
             cur_metric = EvalMetrics.EvalMetrics(iteration)
