@@ -27,17 +27,6 @@ int computeWeightedAverageWirelengthLauncher(
     int num_threads,
     T *grad_x_tensor, T *grad_y_tensor);
 
-/// @brief add net weights to gradient
-template <typename T>
-void integrateNetWeightsLauncher(
-    const int *flat_netpin,
-    const int *netpin_start,
-    const unsigned char *net_mask,
-    const T *net_weights,
-    T *grad_x_tensor, T *grad_y_tensor,
-    int num_nets,
-    int num_threads);
-
 #define CHECK_FLAT(x) AT_ASSERTM(!x.is_cuda() && x.ndimension() == 1, #x " must be a flat tensor on CPU")
 #define CHECK_EVEN(x) AT_ASSERTM((x.numel() & 1) == 0, #x " must have even number of elements")
 #define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x " must be contiguous")
@@ -274,31 +263,6 @@ int computeWeightedAverageWirelengthLauncher(
     return 0;
 }
 
-template <typename T>
-void integrateNetWeightsLauncher(
-    const int *flat_netpin,
-    const int *netpin_start,
-    const unsigned char *net_mask,
-    const T *net_weights,
-    T *grad_x_tensor, T *grad_y_tensor,
-    int num_nets,
-    int num_threads)
-{
-#pragma omp parallel for num_threads(num_threads)
-    for (int net_id = 0; net_id < num_nets; ++net_id)
-    {
-        if (net_mask[net_id])
-        {
-            T weight = net_weights[net_id];
-            for (int j = netpin_start[net_id]; j < netpin_start[net_id + 1]; ++j)
-            {
-                int pin_id = flat_netpin[j];
-                grad_x_tensor[pin_id] *= weight;
-                grad_y_tensor[pin_id] *= weight;
-            }
-        }
-    }
-}
 
 DREAMPLACE_END_NAMESPACE
 
