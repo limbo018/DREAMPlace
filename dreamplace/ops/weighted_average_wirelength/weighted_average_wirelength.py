@@ -184,7 +184,7 @@ class WeightedAverageWirelengthAtomicFunction(Function):
         if grad_pos.is_cuda:
             torch.cuda.synchronize()
         logger.debug("wirelength backward %.3f ms" % ((time.time()-tt)*1000))
-        return output, None, None, None, None, None, None, None
+        return output, None, None, None, None, None, None, None, None
 
 class WeightedAverageWirelengthSparseFunction(Function):
     """
@@ -317,7 +317,7 @@ class WeightedAverageWirelengthMergedFunction(Function):
         if grad_pos.is_cuda:
             torch.cuda.synchronize()
         logger.debug("wirelength backward %.3f ms" % ((time.time()-tt)*1000))
-        return output, None, None, None, None, None, None, None
+        return output, None, None, None, None, None, None, None, None
 
 class WeightedAverageWirelength(nn.Module):
     """

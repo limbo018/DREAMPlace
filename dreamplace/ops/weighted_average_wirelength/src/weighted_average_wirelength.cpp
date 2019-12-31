@@ -6,6 +6,7 @@
  */
 #include "utility/src/torch.h"
 #include "utility/src/Msg.h"
+#include "weighted_average_wirelength/src/functional.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
 
@@ -89,7 +90,7 @@ std::vector<at::Tensor> weighted_average_wirelength_forward(
             num_threads,
             nullptr, nullptr);
     });
-    
+
     if (net_weights.numel())
     {
         wl.mul_(net_weights);
@@ -195,15 +196,13 @@ int computeWeightedAverageWirelengthLauncher(
             int net_id = pin2net_map[i];
             if (net_mask[net_id])
             {
-                grad_x_tensor[i] = (*grad_tensor) * 
-                                   (((1 + (*inv_gamma) * x[i]) * exp_xy_sum[net_id] - (*inv_gamma) * xyexp_xy_sum[net_id]) / (exp_xy_sum[net_id] * exp_xy_sum[net_id]) * exp_xy[i] 
-                                  - ((1 - (*inv_gamma) * x[i]) * exp_nxy_sum[net_id] + (*inv_gamma) * xyexp_nxy_sum[net_id]) / (exp_nxy_sum[net_id] * exp_nxy_sum[net_id]) * exp_nxy[i]);
+                grad_x_tensor[i] = (*grad_tensor) *
+                                   (((1 + (*inv_gamma) * x[i]) * exp_xy_sum[net_id] - (*inv_gamma) * xyexp_xy_sum[net_id]) / (exp_xy_sum[net_id] * exp_xy_sum[net_id]) * exp_xy[i] - ((1 - (*inv_gamma) * x[i]) * exp_nxy_sum[net_id] + (*inv_gamma) * xyexp_nxy_sum[net_id]) / (exp_nxy_sum[net_id] * exp_nxy_sum[net_id]) * exp_nxy[i]);
 
                 net_id += num_nets;
                 int pin_id = i + num_pins;
-                grad_y_tensor[i] = (*grad_tensor) * 
-                                   (((1 + (*inv_gamma) * y[i]) * exp_xy_sum[net_id] - (*inv_gamma) * xyexp_xy_sum[net_id]) / (exp_xy_sum[net_id] * exp_xy_sum[net_id]) * exp_xy[pin_id] 
-                                  - ((1 - (*inv_gamma) * y[i]) * exp_nxy_sum[net_id] + (*inv_gamma) * xyexp_nxy_sum[net_id]) / (exp_nxy_sum[net_id] * exp_nxy_sum[net_id]) * exp_nxy[pin_id]);
+                grad_y_tensor[i] = (*grad_tensor) *
+                                   (((1 + (*inv_gamma) * y[i]) * exp_xy_sum[net_id] - (*inv_gamma) * xyexp_xy_sum[net_id]) / (exp_xy_sum[net_id] * exp_xy_sum[net_id]) * exp_xy[pin_id] - ((1 - (*inv_gamma) * y[i]) * exp_nxy_sum[net_id] + (*inv_gamma) * xyexp_nxy_sum[net_id]) / (exp_nxy_sum[net_id] * exp_nxy_sum[net_id]) * exp_nxy[pin_id]);
             }
         }
     }
@@ -262,7 +261,6 @@ int computeWeightedAverageWirelengthLauncher(
 
     return 0;
 }
-
 
 DREAMPLACE_END_NAMESPACE
 

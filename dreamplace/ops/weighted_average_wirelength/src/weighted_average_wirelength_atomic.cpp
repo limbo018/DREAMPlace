@@ -27,12 +27,12 @@ int computeWeightedAverageWirelengthAtomicLauncher(
     }
     else
     {
-        // compute max and min in one kernel (pin by pin)
-        computeMaxMinPinByPin(
+        // PinByPin implementation needs atomic min/max operations, which are not supported by OpenMP.
+        computeMaxMinNetByNet(
             x, y,
-            pin2net_map,
+            flat_netpin,
+            netpin_start,
             net_mask,
-            num_pins,
             num_nets,
             xy_max,
             xy_min,
@@ -45,7 +45,7 @@ int computeWeightedAverageWirelengthAtomicLauncher(
             x, y, pin2net_map, net_mask, num_nets, num_pins, inv_gamma, xy_max,
             xy_min, exp_xy, exp_nxy, exp_xy_sum, exp_nxy_sum, xyexp_xy_sum,
             xyexp_nxy_sum, num_threads);
-
+        
         // compute partial wirelength
         computeXExpSumByExpSumXY(
             xyexp_xy_sum, xyexp_nxy_sum, exp_xy_sum, exp_nxy_sum, pin2net_map,
@@ -55,7 +55,7 @@ int computeWeightedAverageWirelengthAtomicLauncher(
     return 0;
 }
 
-#define CHECK_FLAT(x) AT_ASSERTM(!x.is_cuda() && x.ndimension() == 1, #x "must be a flat tensor on GPU")
+#define CHECK_FLAT(x) AT_ASSERTM(!x.is_cuda() && x.ndimension() == 1, #x "must be a flat tensor on CPU")
 #define CHECK_EVEN(x) AT_ASSERTM((x.numel() & 1) == 0, #x "must have even number of elements")
 #define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x "must be contiguous")
 

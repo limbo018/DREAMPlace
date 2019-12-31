@@ -1,6 +1,9 @@
 #ifndef GPUPLACE_WEIGHTED_AVERAGE_WIRELENGTH_FUNCTIONAL_H
 #define GPUPLACE_WEIGHTED_AVERAGE_WIRELENGTH_FUNCTIONAL_H
 
+#include "utility/src/torch.h"
+#include "utility/src/utils.h"
+
 DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T>
@@ -32,33 +35,45 @@ void integrateNetWeightsLauncher(
 
 // V has to be int, or long long int
 template <typename T, typename V>
-void computeMaxMinPinByPin(
+void computeMaxMinNetByNet(
     const T *x, const T *y,
-    const int *pin2net_map,
+    const int *flat_netpin,
+    const int *netpin_start,
     const unsigned char *net_mask,
-    int num_pins,
     int num_nets,
-    V *x_max,
-    V *x_min,
+    V *x_max_ptr,
+    V *x_min_ptr,
     int num_threads)
 {
-    int chunk_size = DREAMPLACE_STD_NAMESPACE::max(int(num_pins / num_threads / 16), 1);
+    int chunk_size = DREAMPLACE_STD_NAMESPACE::max(int(num_nets / num_threads / 16), 1);
 #pragma omp parallel for num_threads(num_threads) schedule(dynamic, chunk_size)
-    for (int i = 0; i < num_pins; ++i)
+    for (int i = 0; i < num_nets; ++i)
     {
-        int net_id = pin2net_map[i];
-        if (net_mask[net_id])
+        if (net_mask[i])
         {
-#pragma omp atmoic
-            x_max[net_id] = DREAMPLACE_STD_NAMESPACE::max(x_max[net_id], (V)(x[i]));
-#pragma omp atmoic
-            x_min[net_id] = DREAMPLACE_STD_NAMESPACE::max(x_min[net_id], (V)(x[i]));
+            const int x_index = i;
+            const int y_index = i + num_nets;
 
-            net_id += num_nets;
-#pragma omp atmoic
-            x_max[net_id] = DREAMPLACE_STD_NAMESPACE::max(x_max[net_id], (V)(y[i]));
-#pragma omp atmoic
-            x_min[net_id] = DREAMPLACE_STD_NAMESPACE::max(x_min[net_id], (V)(y[i]));
+            V x_max = x_max_ptr[x_index];
+            V x_min = x_min_ptr[x_index];
+            V y_max = x_max_ptr[y_index];
+            V y_min = x_min_ptr[y_index];
+
+            for (int j = netpin_start[i]; j < netpin_start[i + 1]; ++j)
+            {
+                T xx = x[flat_netpin[j]];
+                x_max = DREAMPLACE_STD_NAMESPACE::max((V)xx, x_max);
+                x_min = DREAMPLACE_STD_NAMESPACE::min((V)xx, x_min);
+
+                T yy = y[flat_netpin[j]];
+                y_max = DREAMPLACE_STD_NAMESPACE::max((V)yy, y_max);
+                y_min = DREAMPLACE_STD_NAMESPACE::min((V)yy, y_min);
+            }
+
+            x_max_ptr[x_index] = x_max;
+            x_min_ptr[x_index] = x_min;
+            x_max_ptr[y_index] = y_max;
+            x_min_ptr[y_index] = y_min;
         }
     }
 }

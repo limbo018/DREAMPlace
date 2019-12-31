@@ -1,5 +1,6 @@
 #include "utility/src/torch.h"
 #include "utility/src/Msg.h"
+#include "utility/src/utils.h"
 #include "weighted_average_wirelength/src/functional.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
@@ -54,8 +55,8 @@ int computeWeightedAverageWirelengthMergedLauncher(
             }
 
             // int degree = netpin_start[ii+1]-netpin_start[ii];
-            T x_max = -FLT_MAX;
-            T x_min = FLT_MAX;
+            T x_max = -std::numeric_limits<T>::max();
+            T x_min = std::numeric_limits<T>::max();
             for (int j = netpin_start[ii]; j < netpin_start[ii + 1]; ++j)
             {
                 T xx = values[flat_netpin[j]];
@@ -96,8 +97,9 @@ int computeWeightedAverageWirelengthMergedLauncher(
             }
         }
     }
+}
 
-#define CHECK_FLAT(x) AT_ASSERTM(!x.is_cuda() && x.ndimension() == 1, #x "must be a flat tensor on GPU")
+#define CHECK_FLAT(x) AT_ASSERTM(!x.is_cuda() && x.ndimension() == 1, #x "must be a flat tensor on CPU")
 #define CHECK_EVEN(x) AT_ASSERTM((x.numel() & 1) == 0, #x "must have even number of elements")
 #define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x "must be contiguous")
 
@@ -204,7 +206,6 @@ int computeWeightedAverageWirelengthMergedLauncher(
 
         at::Tensor grad_out = grad_intermediate.mul_(grad_pos);
         //int num_nets = netpin_start.numel() - 1;
-        int num_pins = pos.numel() / 2;
 
         DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeWeightedAverageWirelengthMergedLauncher", [&] {
             if (net_weights.numel())
