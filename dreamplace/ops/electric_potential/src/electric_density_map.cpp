@@ -41,9 +41,10 @@ int computeTriangleDensityMapLauncher(
 /// Compute the exact overlap area for density
 template <typename T>
 int computeExactDensityMapLauncher(
-        const T* flat_fixed_node_boxes, 
+        const T* x_tensor, const T* y_tensor,
+        const T* node_size_x_tensor, const T* node_size_y_tensor,
         const T* bin_center_x_tensor, const T* bin_center_y_tensor,
-        const int num_boxes,
+        const int num_nodes,
         const int num_bins_x, const int num_bins_y,
         const T xl, const T yl, const T xh, const T yh,
         const T bin_size_x, const T bin_size_y,
@@ -174,7 +175,8 @@ at::Tensor density_map(
 
 /// @brief Compute density map for fixed cells
 at::Tensor fixed_density_map(
-        at::Tensor flat_fixed_node_boxes, ///< array of boxes for fixed cells 
+        at::Tensor pos,
+        at::Tensor node_size_x, at::Tensor node_size_y,
         at::Tensor bin_center_x,
         at::Tensor bin_center_y,
         at::Tensor buf, 
@@ -184,33 +186,36 @@ at::Tensor fixed_density_map(
         double yh,
         double bin_size_x,
         double bin_size_y,
+        int num_movable_nodes,
+        int num_terminals, 
         int num_bins_x, int num_bins_y,
         int num_fixed_impacted_bins_x, int num_fixed_impacted_bins_y,
         int num_threads
         )
 {
-    CHECK_FLAT(flat_fixed_node_boxes);
-    CHECK_EVEN(flat_fixed_node_boxes);
-    CHECK_CONTIGUOUS(flat_fixed_node_boxes);
+    CHECK_FLAT(pos);
+    CHECK_EVEN(pos);
+    CHECK_CONTIGUOUS(pos);
 
-    at::Tensor density_map = at::zeros({num_bins_x, num_bins_y}, flat_fixed_node_boxes.options());
+    at::Tensor density_map = at::zeros({num_bins_x, num_bins_y}, pos.options());
 
     if (buf.numel() < num_threads * density_map.numel())
     {
         buf = at::empty(num_threads * density_map.numel(), density_map.options());
     }
 
-    int num_boxes = flat_fixed_node_boxes.numel() / 4; 
+    int num_nodes = pos.numel() / 2; 
 
     // Call the cuda kernel launcher
-    if (num_boxes)
+    if (num_terminals)
     {
         buf.zero_(); 
-        DREAMPLACE_DISPATCH_FLOATING_TYPES(flat_fixed_node_boxes.type(), "computeExactDensityMapLauncher", [&] {
+        DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeExactDensityMapLauncher", [&] {
                 computeExactDensityMapLauncher<scalar_t>(
-                        flat_fixed_node_boxes.data<scalar_t>(), 
+                        pos.data<scalar_t>() + num_movable_nodes, pos.data<scalar_t>() + num_nodes + num_movable_nodes, 
+                        node_size_x.data<scalar_t>() + num_movable_nodes, node_size_y.data<scalar_t>() + num_movable_nodes, 
                         bin_center_x.data<scalar_t>(), bin_center_y.data<scalar_t>(),
-                        num_boxes,
+                        num_terminals,
                         num_bins_x, num_bins_y,
                         xl, yl, xh, yh,
                         bin_size_x, bin_size_y,
@@ -346,15 +351,16 @@ int computeTriangleDensityMapLauncher(
 
 template <typename T>
 int computeExactDensityMapLauncher(
-        const T* flat_fixed_node_boxes, 
+        const T* x_tensor, const T* y_tensor,
+        const T* node_size_x_tensor, const T* node_size_y_tensor,
         const T* bin_center_x_tensor, const T* bin_center_y_tensor,
-        const int num_boxes,
+        const int num_nodes,
         const int num_bins_x, const int num_bins_y,
         const T xl, const T yl, const T xh, const T yh,
         const T bin_size_x, const T bin_size_y,
         bool fixed_node_flag,
         const int num_threads,
-        T* buf,  
+        T* buf, ///< a buffer for deterministic density map computation 
         T* density_map_tensor
         )
 {
@@ -389,12 +395,15 @@ int computeExactDensityMapLauncher(
     };
 
 #pragma omp parallel for num_threads(num_threads)
-    for (int i = 0; i < num_boxes; ++i)
+    for (int i = 0; i < num_nodes; ++i)
     {
         int tid = omp_get_thread_num();
         T* buf_map = buf + tid * num_bins;
-        auto box = flat_fixed_node_boxes + i * 4; 
-        box2bin(box[0], box[1], box[2], box[3], buf_map);
+        T bxl = x_tensor[i];
+        T byl = y_tensor[i];
+        T bxh = bxl + node_size_x_tensor[i]; 
+        T byh = byl + node_size_y_tensor[i];
+        box2bin(bxl, byl, bxh, byh, buf_map);
     }
 
 #pragma omp parallel for num_threads(num_threads) 

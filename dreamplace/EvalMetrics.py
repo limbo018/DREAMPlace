@@ -6,6 +6,7 @@
 #
 
 import time
+import torch 
 import pdb 
 
 class EvalMetrics (object):
@@ -58,9 +59,9 @@ class EvalMetrics (object):
         if self.max_density is not None:
             content += ", MaxDensity %.3E" % (self.max_density)
         if self.route_utilization is not None:
-            content += ", Roverflow %.6E" % (self.route_utilization)
+            content += ", RouteOverflow %.6E" % (self.route_utilization)
         if self.pin_utilization is not None:
-            content += ", PinUtil %.6E" % (self.pin_utilization)
+            content += ", PinOverflow %.6E" % (self.pin_utilization)
         if self.gamma is not None: 
             content += ", gamma %.6E" % (self.gamma)
         if self.eval_time is not None: 
@@ -82,26 +83,28 @@ class EvalMetrics (object):
         @param var variables 
         """
         tt = time.time()
-        if "objective" in ops: 
-            self.objective = ops["objective"](var).data
-        if "wirelength" in ops:
-            self.wirelength = ops["wirelength"](var).data
-        if "density" in ops:
-            self.density = ops["density"](var).data
-        if "hpwl" in ops:
-            self.hpwl = ops["hpwl"](var).data
-        if "rmst_wls" in ops:
-            rmst_wls = ops["rmst_wls"](var)
-            self.rmst_wl = rmst_wls.sum().data
-        if "overflow" in ops:
-            overflow, max_density = ops["overflow"](var)
-            self.overflow = overflow.data / placedb.total_movable_node_area
-            self.max_density = max_density.data 
-        if "route_utilization" in ops:
-            route_utilization_map = ops["route_utilization"](var)
-            self.route_utilization = route_utilization_map.sub_(1).clamp_(min=0).sum()
-        if "pin_utilization" in ops:
-            pin_utilization = ops["pin_utilization"](var)
-            top10, indices = pin_utilization.view(-1).topk(int(pin_utilization.numel() * 0.1))
-            self.pin_utilization = top10.sum()
+        with torch.no_grad(): 
+            if "objective" in ops: 
+                self.objective = ops["objective"](var).data
+            if "wirelength" in ops:
+                self.wirelength = ops["wirelength"](var).data
+            if "density" in ops:
+                self.density = ops["density"](var).data
+            if "hpwl" in ops:
+                self.hpwl = ops["hpwl"](var).data
+            if "rmst_wls" in ops:
+                rmst_wls = ops["rmst_wls"](var)
+                self.rmst_wl = rmst_wls.sum().data
+            if "overflow" in ops:
+                overflow, max_density = ops["overflow"](var)
+                self.overflow = overflow.data / placedb.total_movable_node_area
+                self.max_density = max_density.data 
+            if "route_utilization" in ops:
+                route_utilization_map = ops["route_utilization"](var)
+                route_utilization_map_sum = route_utilization_map.sum()
+                self.route_utilization = route_utilization_map.sub_(1).clamp_(min=0).sum() / route_utilization_map_sum
+            if "pin_utilization" in ops:
+                pin_utilization_map = ops["pin_utilization"](var)
+                pin_utilization_map_sum = pin_utilization_map.sum()
+                self.pin_utilization = pin_utilization_map.sub_(1).clamp_(min=0).sum() / pin_utilization_map_sum
         self.eval_time = time.time()-tt

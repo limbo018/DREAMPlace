@@ -13,6 +13,8 @@ import numpy as np
 import logging
 import torch 
 import gzip 
+import copy
+import matplotlib.pyplot as plt
 if sys.version_info[0] < 3: 
     import cPickle as pickle
 else:
@@ -111,6 +113,8 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                         logging.info("add %g%% noise" % (params.gp_noise_ratio*100))
                         model.op_collections.noise_op(model.data_collections.pos[0], params.gp_noise_ratio)
                         initialize_learning_rate(model.data_collections.pos[0])
+                # the state must be saved after setting learning rate 
+                initial_state = copy.deepcopy(optimizer.state_dict())
 
                 if params.gpu: 
                     torch.cuda.synchronize()
@@ -124,30 +128,44 @@ class NonLinearPlace (BasicPlace.BasicPlace):
 
                 # stopping criteria 
                 def Lgamma_stop_criterion(Lgamma_step, metrics): 
-                    if len(metrics) > 1: 
-                        cur_metric = metrics[-1][-1][-1]
-                        prev_metric = metrics[-2][-1][-1]
-                        if Lgamma_step > 100 and ((cur_metric.overflow < params.stop_overflow and cur_metric.hpwl > prev_metric.hpwl) or cur_metric.max_density < 1.0):
-                            logging.debug("Lgamma stopping criteria: %d > 100 and (( %g < 0.1 and %g > %g ) or %g < 1.0)" % (Lgamma_step, cur_metric.overflow, cur_metric.hpwl, prev_metric.hpwl, cur_metric.max_density))
-                            return True
-                    return False 
+                    with torch.no_grad():
+                        if len(metrics) > 1: 
+                            cur_metric = metrics[-1][-1][-1]
+                            prev_metric = metrics[-2][-1][-1]
+                            if Lgamma_step > 100 and ((cur_metric.overflow < params.stop_overflow and cur_metric.hpwl > prev_metric.hpwl) or cur_metric.max_density < 1.0):
+                                logging.debug("Lgamma stopping criteria: %d > 100 and (( %g < 0.1 and %g > %g ) or %g < 1.0)" % (Lgamma_step, cur_metric.overflow, cur_metric.hpwl, prev_metric.hpwl, cur_metric.max_density))
+                                return True
+                        return False 
 
                 def Llambda_stop_criterion(Lgamma_step, Llambda_density_weight_step, metrics): 
-                    if len(metrics) > 1: 
-                        cur_metric = metrics[-1][-1]
-                        prev_metric = metrics[-2][-1]
-                        if (cur_metric.overflow < params.stop_overflow and cur_metric.hpwl > prev_metric.hpwl) or cur_metric.max_density < 1.0:
-                            logging.debug("Llambda stopping criteria: %d and (( %g < 0.1 and %g > %g ) or %g < 1.0)" % (Llambda_density_weight_step, cur_metric.overflow, cur_metric.hpwl, prev_metric.hpwl, cur_metric.max_density))
-                            return True
+                    with torch.no_grad(): 
+                        if len(metrics) > 1: 
+                            cur_metric = metrics[-1][-1]
+                            prev_metric = metrics[-2][-1]
+                            if (cur_metric.overflow < params.stop_overflow and cur_metric.hpwl > prev_metric.hpwl) or cur_metric.max_density < 1.0:
+                                logging.debug("Llambda stopping criteria: %d and (( %g < 0.1 and %g > %g ) or %g < 1.0)" % (Llambda_density_weight_step, cur_metric.overflow, cur_metric.hpwl, prev_metric.hpwl, cur_metric.max_density))
+                                return True
                     return False 
 
+                # use a moving average window for stopping criteria, for an example window of 3
+                # 0, 1, 2, 3, 4, 5, 6
+                #    window2
+                #             window1
+                moving_avg_window = max(min(model.Lsub_iteration // 2, 3), 1)
                 def Lsub_stop_criterion(Lgamma_step, Llambda_density_weight_step, Lsub_step, metrics):
-                    if len(metrics) > 1: 
-                        cur_metric = metrics[-1]
-                        prev_metric = metrics[-2]
-                        if cur_metric.objective >= prev_metric.objective * 0.999:
-                            logging.debug("Lsub stopping criteria: %d and %g > %g * 0.999" % (Lsub_step, cur_metric.objective, prev_metric.objective))
-                            return True 
+                    with torch.no_grad(): 
+                        if len(metrics) >= moving_avg_window * 2: 
+                            cur_avg_obj = 0
+                            prev_avg_obj = 0
+                            for i in range(moving_avg_window):
+                                cur_avg_obj += metrics[-1 - i].objective
+                                prev_avg_obj += metrics[-1 - moving_avg_window - i].objective
+                            cur_avg_obj /= moving_avg_window 
+                            prev_avg_obj /= moving_avg_window
+                            threshold = 0.999
+                            if cur_avg_obj >= prev_avg_obj * threshold:
+                                logging.debug("Lsub stopping criteria: %d and %g > %g * %g" % (Lsub_step, cur_avg_obj, prev_avg_obj, threshold))
+                                return True 
                     return False 
 
                 def one_descent_step(Lgamma_step, Llambda_density_weight_step, Lsub_step, iteration, metrics):
@@ -171,6 +189,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                     
                     # t1 = time.time()
                     cur_metric.evaluate(placedb, eval_ops, pos)
+                    model.overflow = cur_metric.overflow.data.clone()
                     #logging.debug("evaluation %.3f ms" % ((time.time()-t1)*1000))
                     #t2 = time.time()
 
@@ -199,14 +218,13 @@ class NonLinearPlace (BasicPlace.BasicPlace):
 
                     logging.info("full step %.3f ms" % ((time.time()-t0)*1000))
 
-
                 Lgamma_metrics = all_metrics
 
                 if params.routability_opt_flag: 
                     adjust_area_flag = True
-                    adjust_route_area_flag = True
-                    adjust_pin_area_flag = True
-                    num_inflations = 0
+                    adjust_route_area_flag = params.adjust_route_area_flag
+                    adjust_pin_area_flag = params.adjust_pin_area_flag
+                    num_area_adjust = 0
 
                 Llambda_flat_iteration = 0
                 for Lgamma_step in range(model.Lgamma_iteration):
@@ -220,10 +238,6 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                             iteration += 1
                             # stopping criteria 
                             if Lsub_stop_criterion(Lgamma_step, Llambda_density_weight_step, Lsub_step, Lsub_metrics):
-                                if params.routability_opt_flag and num_inflations >= 2:
-                                    if len(Lsub_metrics) > 1 and Lsub_metrics[-1].objective > Lsub_metrics[-2].objective * 1.001: 
-                                            logging.info("restart learning rate due to failure to descent")
-                                            initialize_learning_rate(model.data_collections.pos[0])
                                 break 
                         Llambda_flat_iteration += 1
                         # update density weight 
@@ -234,55 +248,71 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                             break 
 
                         # for routability optimization 
-                        if params.routability_opt_flag and Llambda_metrics[-1][-1].overflow < params.node_area_adjust_overflow: 
-                            content = "routability optimization: adjust area flags = (%d, %d, %d)" % (adjust_area_flag, adjust_route_area_flag, adjust_pin_area_flag)
+                        if params.routability_opt_flag and num_area_adjust < params.max_num_area_adjust and Llambda_metrics[-1][-1].overflow < params.node_area_adjust_overflow: 
+                            content = "routability optimization round %d: adjust area flags = (%d, %d, %d)" % (num_area_adjust, adjust_area_flag, adjust_route_area_flag, adjust_pin_area_flag)
                             pos = model.data_collections.pos[0]
 
-                            cur_metric = EvalMetrics.EvalMetrics(iteration)
-                            cur_metric.evaluate(placedb, {
-                                "hpwl" : self.op_collections.hpwl_op, 
-                                "overflow" : self.op_collections.density_overflow_op, 
-                                "route_utilization" : self.op_collections.route_utilization_map_op, 
-                                "pin_utilization" : self.op_collections.pin_utilization_map_op, 
-                                }, 
-                                pos)
-                            logging.info(cur_metric)
+                            #cur_metric = EvalMetrics.EvalMetrics(iteration)
+                            #cur_metric.evaluate(placedb, {
+                            #    "hpwl" : self.op_collections.hpwl_op, 
+                            #    "overflow" : self.op_collections.density_overflow_op, 
+                            #    "route_utilization" : self.op_collections.route_utilization_map_op, 
+                            #    "pin_utilization" : self.op_collections.pin_utilization_map_op, 
+                            #    }, 
+                            #    pos)
+                            #logging.info(cur_metric)
 
                             route_utilization_map = None 
                             pin_utilization_map = None
                             if adjust_route_area_flag: 
-                                route_utilization_map = model.op_collections.route_utilization_map_op(pos)
+                                #route_utilization_map = model.op_collections.route_utilization_map_op(pos)
+                                route_utilization_map = model.op_collections.nctugr_congestion_map_op(pos)
+                                #if params.plot_flag:
+                                path = "%s/%s" % (params.result_dir, params.design_name())
+                                figname = "%s/plot/rudy%d.png" % (path, num_area_adjust)
+                                os.system("mkdir -p %s" % (os.path.dirname(figname)))
+                                plt.imsave(figname, route_utilization_map.data.cpu().numpy().T, origin='lower')
                             if adjust_pin_area_flag:
                                 pin_utilization_map = model.op_collections.pin_utilization_map_op(pos)
+                                #if params.plot_flag: 
+                                path = "%s/%s" % (params.result_dir, params.design_name())
+                                figname = "%s/plot/pin%d.png" % (path, num_area_adjust)
+                                os.system("mkdir -p %s" % (os.path.dirname(figname)))
+                                plt.imsave(figname, pin_utilization_map.data.cpu().numpy().T, origin='lower')
                             adjust_area_flag, adjust_route_area_flag, adjust_pin_area_flag = model.op_collections.adjust_node_area_op(
                                     pos,
                                     route_utilization_map,
-                                    pin_utilization_map
+                                    pin_utilization_map, 
+                                    num_area_adjust
                                     )
-                            if adjust_area_flag: 
-                                num_inflations += 1
                             content += " -> (%d, %d, %d)" % (adjust_area_flag, adjust_route_area_flag, adjust_pin_area_flag)
                             logging.info(content)
-                            # restart Llambda 
-                            if adjust_area_flag:
+                            if adjust_area_flag: 
+                                num_area_adjust += 1
+                                # restart Llambda 
                                 model.op_collections.density_op.reset() 
                                 model.op_collections.density_overflow_op.reset()
                                 model.op_collections.pin_utilization_map_op.reset()
                                 model.initialize_density_weight(params, placedb)
                                 model.density_weight.mul_(0.1 / params.density_weight)
                                 logging.info("density_weight = %.6E" % (model.density_weight.data))
+                                # load state to restart the optimizer 
+                                optimizer.load_state_dict(initial_state)
+                                # must after loading the state 
                                 initialize_learning_rate(pos)
+                                # increase iterations of the sub problem to slow down the search 
+                                model.Lsub_iteration = model.routability_Lsub_iteration
 
-                                cur_metric = EvalMetrics.EvalMetrics(iteration)
-                                cur_metric.evaluate(placedb, {
-                                    "hpwl" : self.op_collections.hpwl_op, 
-                                    "overflow" : self.op_collections.density_overflow_op, 
-                                    "route_utilization" : self.op_collections.route_utilization_map_op, 
-                                    "pin_utilization" : self.op_collections.pin_utilization_map_op, 
-                                    }, 
-                                    pos)
-                                logging.info(cur_metric)
-                                pdb.set_trace()
+                                #cur_metric = EvalMetrics.EvalMetrics(iteration)
+                                #cur_metric.evaluate(placedb, {
+                                #    "hpwl" : self.op_collections.hpwl_op, 
+                                #    "overflow" : self.op_collections.density_overflow_op, 
+                                #    "route_utilization" : self.op_collections.route_utilization_map_op, 
+                                #    "pin_utilization" : self.op_collections.pin_utilization_map_op, 
+                                #    }, 
+                                #    pos)
+                                #logging.info(cur_metric)
+
                                 break 
 
                     # gradually reduce gamma to tradeoff smoothness and accuracy 
@@ -299,10 +329,17 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                 logging.info("optimizer %s takes %.3f seconds" % (optimizer_name, time.time()-tt))
             # recover node size and pin offset for legalization, since node size is adjusted in global placement
             if params.routability_opt_flag: 
-                self.data_collections.node_size_x.copy_(self.data_collections.original_node_size_x)
-                self.data_collections.node_size_y.copy_(self.data_collections.original_node_size_y)
-                self.data_collections.pin_offset_x.copy_(self.data_collections.original_pin_offset_x)
-                self.data_collections.pin_offset_y.copy_(self.data_collections.original_pin_offset_y)
+                with torch.no_grad(): 
+                    # convert lower left to centers 
+                    self.pos[0][:placedb.num_movable_nodes].add_(self.data_collections.node_size_x[:placedb.num_movable_nodes] / 2)
+                    self.pos[0][placedb.num_nodes: placedb.num_nodes + placedb.num_movable_nodes].add_(self.data_collections.node_size_y[:placedb.num_movable_nodes] / 2)
+                    self.data_collections.node_size_x.copy_(self.data_collections.original_node_size_x)
+                    self.data_collections.node_size_y.copy_(self.data_collections.original_node_size_y)
+                    # use fixed centers as the anchor 
+                    self.pos[0][:placedb.num_movable_nodes].sub_(self.data_collections.node_size_x[:placedb.num_movable_nodes] / 2)
+                    self.pos[0][placedb.num_nodes: placedb.num_nodes + placedb.num_movable_nodes].sub_(self.data_collections.node_size_y[:placedb.num_movable_nodes] / 2)
+                    self.data_collections.pin_offset_x.copy_(self.data_collections.original_pin_offset_x)
+                    self.data_collections.pin_offset_y.copy_(self.data_collections.original_pin_offset_y)
 
         else: 
             cur_metric = EvalMetrics.EvalMetrics(iteration)

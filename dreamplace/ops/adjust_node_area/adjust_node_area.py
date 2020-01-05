@@ -86,7 +86,7 @@ class ComputeNodeAreaFromPinMap(ComputeNodeAreaFromRouteMap):
                  num_movable_nodes,
                  num_bins_x,
                  num_bins_y,
-                 tile_pin_capacity,
+                 unit_pin_capacity,
                  num_threads=8
                  ):
         super(ComputeNodeAreaFromPinMap, self).__init__(
@@ -96,7 +96,7 @@ class ComputeNodeAreaFromPinMap(ComputeNodeAreaFromRouteMap):
             num_threads
         )
         bin_area = (xh - xl) / num_bins_x * (yh - yl) / num_bins_y
-        self.unit_pin_capacity = tile_pin_capacity / bin_area 
+        self.unit_pin_capacity = unit_pin_capacity
         # for each physical node, we use the pin counts as the weights
         if pin_weights is not None:
             self.pin_weights = pin_weights
@@ -111,7 +111,7 @@ class ComputeNodeAreaFromPinMap(ComputeNodeAreaFromRouteMap):
             node_size_x,
             node_size_y,
             utilization_map)
-        output.mul_(self.pin_weights[:self.num_movable_nodes].to(node_size_x.dtype) / (node_size_x[:self.num_movable_nodes] * node_size_y[:self.num_movable_nodes] * self.unit_pin_capacity))
+        #output.mul_(self.pin_weights[:self.num_movable_nodes].to(node_size_x.dtype) / (node_size_x[:self.num_movable_nodes] * node_size_y[:self.num_movable_nodes] * self.unit_pin_capacity))
         return output
 
 
@@ -129,10 +129,15 @@ class AdjustNodeArea(nn.Module):
                  route_num_bins_y,
                  pin_num_bins_x,
                  pin_num_bins_y,
+                 total_place_area, 
+                 total_whitespace_area, 
+                 max_route_opt_adjust_rate,
+                 route_opt_adjust_exponent, 
+                 max_pin_opt_adjust_rate,
                  area_adjust_stop_ratio=0.01,
                  route_area_adjust_stop_ratio=0.01,
                  pin_area_adjust_stop_ratio=0.05,
-                 tile_pin_capacity=0.0,
+                 unit_pin_capacity=0.0,
                  num_threads=8
                  ):
         super(AdjustNodeArea, self).__init__()
@@ -147,6 +152,15 @@ class AdjustNodeArea(nn.Module):
         self.num_movable_nodes = num_movable_nodes
         self.num_filler_nodes = num_filler_nodes
         self.num_threads = num_threads
+
+        # maximum and minimum instance area adjustment rate for routability optimization
+        self.max_route_opt_adjust_rate = max_route_opt_adjust_rate
+        self.min_route_opt_adjust_rate = 1.0 / max_route_opt_adjust_rate
+        # exponent for adjusting the utilization map 
+        self.route_opt_adjust_exponent = route_opt_adjust_exponent
+        # maximum and minimum instance area adjustment rate for routability optimization
+        self.max_pin_opt_adjust_rate = max_pin_opt_adjust_rate
+        self.min_pin_opt_adjust_rate = 1.0 / max_pin_opt_adjust_rate
 
         # stop ratio
         self.area_adjust_stop_ratio = area_adjust_stop_ratio
@@ -173,16 +187,23 @@ class AdjustNodeArea(nn.Module):
             num_movable_nodes=self.num_movable_nodes,
             num_bins_x=pin_num_bins_x,
             num_bins_y=pin_num_bins_y,
-            tile_pin_capacity=tile_pin_capacity,
+            unit_pin_capacity=unit_pin_capacity,
             num_threads=self.num_threads
         )
+
+        # placement area excluding fixed cells 
+        self.total_place_area = total_place_area 
+        # placement area excluding movable and fixed cells 
+        self.total_whitespace_area = total_whitespace_area
 
     def forward(self,
                 pos,
                 node_size_x, node_size_y,
                 pin_offset_x, pin_offset_y,
+                target_density, 
                 route_utilization_map,
-                pin_utilization_map
+                pin_utilization_map, 
+                iteration
                 ):
 
         with torch.no_grad(): 
@@ -193,20 +214,30 @@ class AdjustNodeArea(nn.Module):
             if not (adjust_pin_area_flag or adjust_route_area_flag):
                 return False, False, False
 
-            max_total_area = (node_size_x[:self.num_movable_nodes] * node_size_y[:self.num_movable_nodes]).sum() + (node_size_x[-self.num_filler_nodes:] * node_size_y[-self.num_filler_nodes:]).sum()
-
-            # compute routability optimized area
-            if adjust_route_area_flag:
-                route_opt_area = self.compute_node_area_route(pos, node_size_x, node_size_y, route_utilization_map)
-            # compute pin density optimized area
-            if adjust_pin_area_flag:
-                pin_opt_area = self.compute_node_area_pin(pos, node_size_x, node_size_y, pin_utilization_map)
-
             # compute old areas of movable nodes
             node_size_x_movable = node_size_x[:self.num_movable_nodes]
             node_size_y_movable = node_size_y[:self.num_movable_nodes]
             old_movable_area = node_size_x_movable * node_size_y_movable
             old_movable_area_sum = old_movable_area.sum()
+            # compute old areas of filler nodes 
+            node_size_x_filler = node_size_x[-self.num_filler_nodes:]
+            node_size_y_filler = node_size_y[-self.num_filler_nodes:]
+            old_filler_area_sum = (node_size_x_filler * node_size_y_filler).sum()
+
+            # compute routability optimized area
+            if adjust_route_area_flag:
+                # clamp the routing square of routing utilization map
+                #topk, indices = route_utilization_map.view(-1).topk(int(0.1 * route_utilization_map.numel()))
+                #route_utilization_map_clamp = route_utilization_map.mul(1.0 / max(topk.min(), 1))
+                #route_utilization_map_clamp.pow_(2.5).clamp_(min=self.min_route_opt_adjust_rate, max=self.max_route_opt_adjust_rate)
+                route_utilization_map_clamp = route_utilization_map.pow(self.route_opt_adjust_exponent).clamp_(min=self.min_route_opt_adjust_rate, max=self.max_route_opt_adjust_rate)
+                route_opt_area = self.compute_node_area_route(pos, node_size_x, node_size_y, 
+                        route_utilization_map_clamp)
+            # compute pin density optimized area
+            if adjust_pin_area_flag:
+                pin_opt_area = self.compute_node_area_pin(pos, node_size_x, node_size_y, 
+                        # clamp the pin utilization map 
+                        pin_utilization_map.clamp(min=self.min_pin_opt_adjust_rate, max=self.max_pin_opt_adjust_rate))
 
             # compute the extra area max(route_opt_area, pin_opt_area) over the base area for each movable node
             if adjust_route_area_flag and adjust_pin_area_flag:
@@ -220,7 +251,7 @@ class AdjustNodeArea(nn.Module):
             # check whether the total area is larger than the max area requirement
             # If yes, scale the extra area to meet the requirement
             # We assume the total base area is no greater than the max area requirement
-            scale_factor = (max_total_area - old_movable_area_sum) / area_increment_sum
+            scale_factor = (min(0.1 * self.total_whitespace_area, self.total_place_area - old_movable_area_sum) / area_increment_sum).item()
 
             # set the new_movable_area as base_area + scaled area increment
             if scale_factor <= 0:
@@ -233,15 +264,20 @@ class AdjustNodeArea(nn.Module):
                 area_increment_sum *= scale_factor
             new_movable_area_sum = old_movable_area_sum + area_increment_sum
             area_increment_ratio = area_increment_sum / old_movable_area_sum
+            logger.info("area_increment = %E, area_increment / movable = %g, area_adjust_stop_ratio = %g" % (area_increment_sum, area_increment_ratio, self.area_adjust_stop_ratio))
+            logger.info("area_increment / total_place_area = %g, area_increment / filler = %g, area_increment / total_whitespace_area = %g" 
+                    % (area_increment_sum / self.total_place_area, area_increment_sum / old_filler_area_sum, area_increment_sum / self.total_whitespace_area))
 
             # compute the adjusted area increase ratio
             # disable some of the area adjustment if the condition holds
             if adjust_route_area_flag:
                 route_area_increment_ratio = F.relu(route_opt_area - old_movable_area).sum() / old_movable_area_sum
                 adjust_route_area_flag = route_area_increment_ratio.data.item() > self.route_area_adjust_stop_ratio
+                logger.info("route_area_increment_ratio = %g, route_area_adjust_stop_ratio = %g" % (route_area_increment_ratio, self.route_area_adjust_stop_ratio))
             if adjust_pin_area_flag:
                 pin_area_increment_ratio = F.relu(pin_opt_area - old_movable_area).sum() / old_movable_area_sum
                 adjust_pin_area_flag = pin_area_increment_ratio.data.item() > self.pin_area_adjust_stop_ratio
+                logger.info("pin_area_increment_ratio = %g, pin_area_adjust_stop_ratio = %g" % (pin_area_increment_ratio, self.pin_area_adjust_stop_ratio))
             adjust_area_flag = (area_increment_ratio.data.item() > self.area_adjust_stop_ratio) and (adjust_route_area_flag or adjust_pin_area_flag)
 
             if not adjust_area_flag:
@@ -251,8 +287,9 @@ class AdjustNodeArea(nn.Module):
             # adjust the size and positions of movable nodes
             # each movable node have its own inflation ratio, the shape of movable_nodes_ratio is (num_movable_nodes)
             # we keep the centers the same 
-            movable_nodes_ratio = torch.sqrt(new_movable_area / old_movable_area)
+            movable_nodes_ratio = new_movable_area / old_movable_area
             logger.info("inflation ratio for movable nodes: avg/max %g/%g" % (movable_nodes_ratio.mean(), movable_nodes_ratio.max()))
+            movable_nodes_ratio.sqrt_()
             # convert positions to centers 
             pos.data[:self.num_movable_nodes] += node_size_x_movable * 0.5
             pos.data[num_nodes: num_nodes + self.num_movable_nodes] += node_size_y_movable * 0.5
@@ -263,24 +300,30 @@ class AdjustNodeArea(nn.Module):
             pos.data[:self.num_movable_nodes] -= node_size_x_movable * 0.5
             pos.data[num_nodes:num_nodes + self.num_movable_nodes] -= node_size_y_movable * 0.5
 
-            # finally scale the filler instance areas to let the total area be max_total_area
+            # finally scale the filler instance areas to let the total area be self.total_place_area
             # all the filler nodes share the same deflation ratio, filler_nodes_ratio is a scalar
             # we keep the centers the same 
-            node_size_x_filler = node_size_x[-self.num_filler_nodes:]
-            node_size_y_filler = node_size_y[-self.num_filler_nodes:]
-            old_filler_area_sum = (node_size_x_filler * node_size_y_filler).sum()
-            new_filler_area_sum = F.relu(max_total_area - new_movable_area_sum)
-            filler_nodes_ratio = torch.sqrt(new_filler_area_sum / old_filler_area_sum).data.item()
-            logger.info("inflation ratio for filler nodes: %g" % (filler_nodes_ratio))
-            # convert positions to centers 
-            pos.data[num_nodes - self.num_filler_nodes:num_nodes] += node_size_x_filler * 0.5
-            pos.data[-self.num_filler_nodes:] += node_size_y_filler * 0.5
-            # scale size 
-            node_size_x_filler *= filler_nodes_ratio
-            node_size_y_filler *= filler_nodes_ratio
-            # convert back to lower left corners
-            pos.data[num_nodes - self.num_filler_nodes:num_nodes] -= node_size_x_filler * 0.5
-            pos.data[-self.num_filler_nodes:] -= node_size_y_filler * 0.5
+            if new_movable_area_sum + old_filler_area_sum > self.total_place_area: 
+                new_filler_area_sum = F.relu(self.total_place_area - new_movable_area_sum)
+                filler_nodes_ratio = new_filler_area_sum / old_filler_area_sum
+                logger.info("inflation ratio for filler nodes: %g" % (filler_nodes_ratio))
+                filler_nodes_ratio.sqrt_()
+                # convert positions to centers 
+                pos.data[num_nodes - self.num_filler_nodes:num_nodes] += node_size_x_filler * 0.5
+                pos.data[-self.num_filler_nodes:] += node_size_y_filler * 0.5
+                # scale size 
+                node_size_x_filler *= filler_nodes_ratio
+                node_size_y_filler *= filler_nodes_ratio
+                # convert back to lower left corners
+                pos.data[num_nodes - self.num_filler_nodes:num_nodes] -= node_size_x_filler * 0.5
+                pos.data[-self.num_filler_nodes:] -= node_size_y_filler * 0.5
+            else:
+                new_filler_area_sum = old_filler_area_sum 
+
+            logger.info("old total movable nodes area %.3E, filler area %.3E, total movable + filler area %.3E, total_place_area %.3E" % (old_movable_area_sum, old_filler_area_sum, old_movable_area_sum + old_filler_area_sum, self.total_place_area))
+            logger.info("new total movable nodes area %.3E, filler area %.3E, total movable + filler area %.3E, total_place_area %.3E" % (new_movable_area_sum, new_filler_area_sum, new_movable_area_sum + new_filler_area_sum, self.total_place_area))
+            target_density.data.copy_((new_movable_area_sum + new_filler_area_sum) / self.total_place_area)
+            logger.info("new target_density %g" % (target_density))
 
             if pos.is_cuda:
                 update_pin_offset_cuda.forward(

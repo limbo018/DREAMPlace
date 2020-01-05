@@ -904,12 +904,12 @@ void PlaceDB::set_bookshelf_shape(BookshelfParser::NodeShape const& shape)
     }
     Node const& node = m_vNode.at(found->second);
     Macro& macro = m_vMacro.at(this->macroId(node));
-    // regard shape boxes as obstruction as M1
+    // regard shape boxes as obstruction as a dummy layer called Bookshelf.Shape
     for (index_type i = 0, ie = shape.vShapeBox.size(); i != ie; ++i)
     {
         coordinate_type xl = shape.vShapeBox[i].origin[0] - node.xl() - macro.initOrigin().x(); 
         coordinate_type yl = shape.vShapeBox[i].origin[1] - node.yl() - macro.initOrigin().y(); 
-        macro.obs().add("M1", Box<coordinate_type>(
+        macro.obs().add("Bookshelf.Shape", Box<coordinate_type>(
                     xl, 
                     yl, 
                     xl + shape.vShapeBox[i].size[0], 
@@ -932,12 +932,69 @@ void PlaceDB::set_bookshelf_route_info(BookshelfParser::RouteInfo const& info)
     m_routingTileSize[kX] = info.tileSize[0]; 
     m_routingTileSize[kY] = info.tileSize[1]; 
     m_routingBlockagePorosity = info.blockagePorosity;
+
+    char buf[64]; 
+    for (index_type layer = 0; layer < (index_type)info.numLayers; ++layer)
+    {
+        dreamplaceSPrint(kNONE, buf, "%u", layer + 1); 
+        std::string layerName = buf; 
+        m_vLayerName.push_back(layerName);
+        dreamplaceAssertMsg(m_mLayerName2Index.insert(std::make_pair(std::string(layerName), layer)).second, "failed to insert layer (%s, %u)", layerName.c_str(), layer); 
+    }
 }
-void PlaceDB::add_bookshelf_niterminal_layer(std::string const&, int)
+void PlaceDB::add_bookshelf_niterminal_layer(std::string const&, std::string const&)
 {
 }
-void PlaceDB::add_bookshelf_blockage_layers(std::string const&, std::vector<int> const&)
+void PlaceDB::add_bookshelf_blockage_layers(std::string const& name, std::vector<std::string> const& vLayer)
 {
+    string2index_map_type::iterator found = m_mNodeName2Index.find(name);
+    if (found == m_mNodeName2Index.end())
+    {
+        dreamplacePrint(kWARN, "component not found from .shapes file: %s\n", name.c_str());
+        return;
+    }
+    Node const& node = m_vNode.at(found->second);
+    Macro& macro = m_vMacro.at(this->macroId(node));
+
+    if (macro.obs().empty()) // no shape 
+    {
+        // necessary to add a shape indicator 
+        macro.obs().add("Bookshelf.Shape", Box<coordinate_type>(
+                    0, 
+                    0, 
+                    node.width(), 
+                    node.height()
+                    ));
+        for (std::vector<std::string>::const_iterator it = vLayer.begin(); it != vLayer.end(); ++it)
+        {
+            std::string const& layerName = *it; 
+            macro.obs().add(layerName, Box<coordinate_type>(
+                        0, 
+                        0, 
+                        node.width(), 
+                        node.height()
+                        ));
+        }
+    }
+    else // has shapes 
+    {
+        MacroObs::ObsConstIterator foundObs = macro.obs().obsMap().find("Bookshelf.Shape"); 
+        dreamplaceAssertMsg(foundObs != macro.obs().obsMap().end(), "Node %s must have Bookshelf.Shape layer defined in obstruction if obstruction exists", name.c_str());
+        std::vector<MacroObs::box_type> const& vBox = foundObs->second; 
+        for (std::vector<MacroObs::box_type>::const_iterator itb = vBox.begin(); itb != vBox.end(); ++itb)
+        {
+            for (std::vector<std::string>::const_iterator it = vLayer.begin(); it != vLayer.end(); ++it)
+            {
+                std::string const& layerName = *it; 
+                macro.obs().add(layerName, Box<coordinate_type>(
+                            itb->xl(), 
+                            itb->yl(), 
+                            itb->xh(), 
+                            itb->yh()
+                            ));
+            }
+        }
+    }
 }
 void PlaceDB::set_bookshelf_design(std::string& name)
 {
@@ -1351,6 +1408,17 @@ IOPinMacroConstIterator PlaceDB::iopinMacroEnd() const
     index_type last = m_vMacro.size();
     return IOPinMacroConstIterator(last, m_numMacro, last, this);
 }
+PlaceDB::index_type PlaceDB::getLayer(std::string const& layerName) const 
+{
+    string2index_map_type::const_iterator found = m_mLayerName2Index.find(layerName);
+    dreamplaceAssertMsg(found != m_mLayerName2Index.end(), "Layer not found: %s\n", layerName.c_str());
+    return found->second;
+}
+std::string PlaceDB::getLayerName(PlaceDB::index_type layer) const 
+{
+    return m_vLayerName.at(layer);
+}
+
 void PlaceDB::adjustParams()
 {
     dreamplacePrint(kWARN, "%lu nets with %lu pins from same nodes\n", m_numNetsWithDuplicatePins, m_numPinsDuplicatedInNets);

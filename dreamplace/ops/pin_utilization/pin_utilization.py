@@ -18,9 +18,8 @@ class PinUtilization(nn.Module):
             xl, xh, yl, yh,
             num_movable_nodes, num_filler_nodes,
             num_bins_x, num_bins_y,
-            tile_pin_capacity,
+            unit_pin_capacity,
             pin_stretch_ratio,
-            max_pin_opt_adjust_rate,
             num_threads=8
             ):
         super(PinUtilization, self).__init__()
@@ -40,11 +39,8 @@ class PinUtilization(nn.Module):
         self.bin_size_y = (yh - yl) / num_bins_y
         self.num_threads = num_threads
 
-        self.tile_pin_capacity = tile_pin_capacity
+        self.unit_pin_capacity = unit_pin_capacity
         self.pin_stretch_ratio = pin_stretch_ratio 
-        # maximum and minimum instance area adjustment rate for routability optimization
-        self.max_pin_opt_adjust_rate = max_pin_opt_adjust_rate
-        self.min_pin_opt_adjust_rate = 1.0 / max_pin_opt_adjust_rate
 
         # for each physical node, we use the pin counts as the weights
         if pin_weights is not None:
@@ -101,7 +97,6 @@ class PinUtilization(nn.Module):
                     )
 
         # convert demand to utilization in each bin
-        output.mul_(1 / (self.tile_pin_capacity));
-        output.clamp_(min=self.min_pin_opt_adjust_rate, max=self.max_pin_opt_adjust_rate);
+        output.mul_(1 / (self.bin_size_x * self.bin_size_y * self.unit_pin_capacity));
 
         return output

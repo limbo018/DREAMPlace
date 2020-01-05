@@ -72,10 +72,6 @@ class DensityOverflowOpTest(unittest.TestCase):
         num_movable_nodes = len(xx) - 1
         num_terminals = 1 
         num_filler_nodes = 0
-        flat_fixed_node_boxes = []
-        for i in range(num_nodes-num_terminals, num_nodes):
-            flat_fixed_node_boxes.append([xx[i], yy[i], xx[i] + node_size_x[i], yy[i] + node_size_y[i]])
-        flat_fixed_node_boxes = np.array(flat_fixed_node_boxes)
 
         bin_center_x = np.zeros(num_bins_x, dtype=dtype)
         for id_x in range(num_bins_x): 
@@ -88,7 +84,6 @@ class DensityOverflowOpTest(unittest.TestCase):
         # test cpu 
         custom = density_overflow.DensityOverflow(
                     torch.from_numpy(node_size_x), torch.from_numpy(node_size_y), 
-                    torch.from_numpy(flat_fixed_node_boxes), 
                     torch.from_numpy(bin_center_x), torch.from_numpy(bin_center_y), 
                     target_density=target_density, 
                     xl=xl, yl=yl, xh=xh, yh=yh, 
@@ -106,7 +101,6 @@ class DensityOverflowOpTest(unittest.TestCase):
         if torch.cuda.device_count(): 
             custom_cuda = density_overflow.DensityOverflow(
                         torch.from_numpy(node_size_x).cuda(), torch.from_numpy(node_size_y).cuda(), 
-                        torch.from_numpy(flat_fixed_node_boxes).cuda(), 
                         torch.from_numpy(bin_center_x).cuda(), torch.from_numpy(bin_center_y).cuda(), 
                         target_density=target_density, 
                         xl=xl, yl=yl, xh=xh, yh=yh, 
@@ -126,13 +120,12 @@ class DensityOverflowOpTest(unittest.TestCase):
 
 def eval_runtime(design):
     with gzip.open(design, "rb") as f:
-        node_size_x, node_size_y, flat_fixed_node_boxes, bin_center_x, bin_center_y, target_density, xl, yl, xh, yh, bin_size_x, bin_size_y, num_movable_nodes, num_terminals, num_filler_nodes = pickle.load(f)
+        node_size_x, node_size_y, bin_center_x, bin_center_y, target_density, xl, yl, xh, yh, bin_size_x, bin_size_y, num_movable_nodes, num_terminals, num_filler_nodes = pickle.load(f)
 
     pos_var = Variable(torch.empty(len(node_size_x)*2, dtype=torch.float64).uniform_(xl, xh), requires_grad=True).cuda()
     custom_cuda = density_overflow.DensityOverflow(
                 torch.from_numpy(node_size_x).cuda(), torch.from_numpy(node_size_y).cuda(), 
                 torch.from_numpy(bin_center_x).cuda(), torch.from_numpy(bin_center_y).cuda(), 
-                torch.from_numpy(flat_fixed_node_boxes).cuda(), 
                 target_density=target_density, 
                 xl=xl, yl=yl, xh=xh, yh=yh, 
                 bin_size_x=bin_size_x, bin_size_y=bin_size_y, 

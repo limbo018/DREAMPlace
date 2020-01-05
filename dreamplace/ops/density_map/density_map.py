@@ -88,12 +88,11 @@ class DensityMap(object):
     The density map for fixed cells is pre-computed. 
     Each call will only compute the density map for movable cells. 
     """
-    def __init__(self, node_size_x, node_size_y, flat_fixed_node_boxes, bin_center_x, bin_center_y, xl, yl, xh, yh, bin_size_x, bin_size_y, num_movable_nodes, num_terminals, num_filler_nodes, num_threads=8):
+    def __init__(self, node_size_x, node_size_y, bin_center_x, bin_center_y, xl, yl, xh, yh, bin_size_x, bin_size_y, num_movable_nodes, num_terminals, num_filler_nodes, num_threads=8):
         """
         @brief initialization 
         @param node_size_x cell width array consisting of movable cells, fixed cells, and filler cells in order  
         @param node_size_y cell height array consisting of movable cells, fixed cells, and filler cells in order   
-        @param flat_fixed_node_boxes array of boxes of fixed cells 
         @param bin_center_x bin center x locations 
         @param bin_center_y bin center y locations 
         @param xl left boundary 
@@ -109,7 +108,6 @@ class DensityMap(object):
         super(DensityMap, self).__init__()
         self.node_size_x = node_size_x
         self.node_size_y = node_size_y
-        self.flat_fixed_node_boxes = flat_fixed_node_boxes 
         self.bin_center_x = bin_center_x
         self.bin_center_y = bin_center_y
         self.xl = xl 
@@ -131,19 +129,9 @@ class DensityMap(object):
         if self.initial_density_map is None:
             if pos.is_cuda:
                 self.initial_density_map = density_map_cuda.fixed_density_map(
-                        self.flat_fixed_node_boxes.view(self.flat_fixed_node_boxes.numel()), 
-                        self.bin_center_x, 
-                        self.bin_center_y, 
-                        self.xl, 
-                        self.yl, 
-                        self.xh, 
-                        self.yh, 
-                        self.bin_size_x, 
-                        self.bin_size_y
-                        )
-            else:
-                self.initial_density_map = density_map_cpp.fixed_density_map(
-                        self.flat_fixed_node_boxes.view(self.flat_fixed_node_boxes.numel()), 
+                        pos, 
+                        self.node_size_x, 
+                        self.node_size_y, 
                         self.bin_center_x, 
                         self.bin_center_y, 
                         self.xl, 
@@ -152,6 +140,24 @@ class DensityMap(object):
                         self.yh, 
                         self.bin_size_x, 
                         self.bin_size_y, 
+                        self.num_movable_nodes, 
+                        self.num_terminals
+                        )
+            else:
+                self.initial_density_map = density_map_cpp.fixed_density_map(
+                        pos, 
+                        self.node_size_x, 
+                        self.node_size_y, 
+                        self.bin_center_x, 
+                        self.bin_center_y, 
+                        self.xl, 
+                        self.yl, 
+                        self.xh, 
+                        self.yh, 
+                        self.bin_size_x, 
+                        self.bin_size_y, 
+                        self.num_movable_nodes, 
+                        self.num_terminals, 
                         self.num_threads
                         )
             #plot(self.initial_density_map.clone().div(self.bin_size_x*self.bin_size_y).cpu().numpy(), 'initial_density_map')

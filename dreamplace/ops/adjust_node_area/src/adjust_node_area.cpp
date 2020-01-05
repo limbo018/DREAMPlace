@@ -8,12 +8,19 @@
 #include "utility/src/torch.h"
 #include "utility/src/Msg.h"
 #include "utility/src/utils.h"
+#include "adjust_node_area/src/scaling_function.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
 
 #define CHECK_FLAT(x) AT_ASSERTM(!x.is_cuda() && x.ndimension() == 1, #x "must be a flat tensor on CPU")
 #define CHECK_EVEN(x) AT_ASSERTM((x.numel() & 1) == 0, #x "must have even number of elements")
 #define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x "must be contiguous")
+
+template <typename T>
+DEFINE_AVERAGE_SCALING_FUNCTION(T); 
+
+template <typename T>
+DEFINE_MAX_SCALING_FUNCTION(T); 
 
 template <typename T>
 int computeInstanceRoutabilityOptimizationMapLauncher(
@@ -51,21 +58,17 @@ int computeInstanceRoutabilityOptimizationMapLauncher(
         bin_index_yl = DREAMPLACE_STD_NAMESPACE::max(bin_index_yl, 0);
         bin_index_yh = DREAMPLACE_STD_NAMESPACE::min(bin_index_yh, num_bins_y);
 
-        T &area = instance_route_area[i];
-        area = 0;
-        for (int x = bin_index_xl; x < bin_index_xh; ++x)
-        {
-            for (int y = bin_index_yl; y < bin_index_yh; ++y)
-            {
-                T bin_xl = xl + x * bin_size_x; 
-                T bin_yl = yl + y * bin_size_y; 
-                T bin_xh = bin_xl + bin_size_x; 
-                T bin_yh = bin_yl + bin_size_y; 
-                T overlap = DREAMPLACE_STD_NAMESPACE::max(DREAMPLACE_STD_NAMESPACE::min(x_max, bin_xh) - DREAMPLACE_STD_NAMESPACE::max(x_min, bin_xl), (T)0) *
-                            DREAMPLACE_STD_NAMESPACE::max(DREAMPLACE_STD_NAMESPACE::min(y_max, bin_yh) - DREAMPLACE_STD_NAMESPACE::max(y_min, bin_yl), (T)0);
-                area += overlap * routing_utilization_map[x * num_bins_y + y];
-            }
-        }
+        instance_route_area[i] = SCALING_OP(
+                routing_utilization_map, 
+                xl, yl, 
+                bin_size_x, bin_size_y, 
+                num_bins_x, num_bins_y, 
+                bin_index_xl, 
+                bin_index_yl, 
+                bin_index_xh, 
+                bin_index_yh, 
+                x_min, y_min, x_max, y_max
+                );
     }
 
     return 0;

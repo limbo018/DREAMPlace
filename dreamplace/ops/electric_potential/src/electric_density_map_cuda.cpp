@@ -32,9 +32,10 @@ int computeTriangleDensityMapCudaLauncher(
 /// using cell-to-bin strategy
 template <typename T>
 int computeExactDensityMapCudaLauncher(
-        const T* flat_fixed_node_boxes, 
+        const T* x_tensor, const T* y_tensor,
+        const T* node_size_x_tensor, const T* node_size_y_tensor,
         const T* bin_center_x_tensor, const T* bin_center_y_tensor,
-        const int num_boxes,
+        const int num_nodes,
         const int num_bins_x, const int num_bins_y, 
         const int num_impacted_bins_x, const int num_impacted_bins_y, 
         const T xl, const T yl, const T xh, const T yh, 
@@ -48,9 +49,10 @@ int computeExactDensityMapCudaLauncher(
 /// using cell-by-cell parallelization strategy
 template <typename T>
 int computeExactDensityMapCellByCellCudaLauncher(
-        const T* flat_fixed_node_boxes, 
+        const T* x_tensor, const T* y_tensor,
+        const T* node_size_x_tensor, const T* node_size_y_tensor,
         const T* bin_center_x_tensor, const T* bin_center_y_tensor,
-        const int num_boxes,
+        const int num_nodes,
         const int num_bins_x, const int num_bins_y, 
         const int num_impacted_bins_x, const int num_impacted_bins_y, 
         const T xl, const T yl, const T xh, const T yh, 
@@ -175,7 +177,8 @@ at::Tensor density_map(
 
 /// @brief compute density map for fixed cells 
 at::Tensor fixed_density_map(
-        at::Tensor flat_fixed_node_boxes, ///< array of boxes for fixed cells 
+        at::Tensor pos,
+        at::Tensor node_size_x, at::Tensor node_size_y,
         at::Tensor bin_center_x, 
         at::Tensor bin_center_y, 
         double xl, 
@@ -184,26 +187,29 @@ at::Tensor fixed_density_map(
         double yh, 
         double bin_size_x, 
         double bin_size_y, 
+        int num_movable_nodes,
+        int num_terminals, 
         int num_bins_x, int num_bins_y,
         int num_fixed_impacted_bins_x, int num_fixed_impacted_bins_y
         ) 
 {
-    CHECK_FLAT(flat_fixed_node_boxes);
-    CHECK_EVEN(flat_fixed_node_boxes);
-    CHECK_CONTIGUOUS(flat_fixed_node_boxes);
+    CHECK_FLAT(pos);
+    CHECK_EVEN(pos);
+    CHECK_CONTIGUOUS(pos);
 
-    at::Tensor density_map = at::zeros({num_bins_x, num_bins_y}, flat_fixed_node_boxes.options());
+    at::Tensor density_map = at::zeros({num_bins_x, num_bins_y}, pos.options());
 
-    int num_boxes = flat_fixed_node_boxes.numel() / 4; 
+    int num_nodes = pos.numel() / 2; 
 
     // Call the cuda kernel launcher
-    if (num_boxes)
+    if (num_terminals)
     {
-        DREAMPLACE_DISPATCH_FLOATING_TYPES(flat_fixed_node_boxes.type(), "computeExactDensityMapCudaLauncher", [&] {
+        DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeExactDensityMapCudaLauncher", [&] {
                 computeExactDensityMapCellByCellCudaLauncher<scalar_t>(
-                        flat_fixed_node_boxes.data<scalar_t>(), 
+                        pos.data<scalar_t>() + num_movable_nodes, pos.data<scalar_t>() + num_nodes + num_movable_nodes, 
+                        node_size_x.data<scalar_t>() + num_movable_nodes, node_size_y.data<scalar_t>() + num_movable_nodes, 
                         bin_center_x.data<scalar_t>(), bin_center_y.data<scalar_t>(), 
-                        num_boxes, 
+                        num_terminals, 
                         num_bins_x, num_bins_y, 
                         num_fixed_impacted_bins_x, num_fixed_impacted_bins_y, 
                         xl, yl, xh, yh, 

@@ -136,7 +136,6 @@ class ElectricDensityMapFunction(Function):
 class ElectricOverflow(nn.Module):
     def __init__(self,
             node_size_x, node_size_y,
-            flat_fixed_node_boxes, 
             bin_center_x, bin_center_y,
             target_density,
             xl, yl, xh, yh,
@@ -152,7 +151,6 @@ class ElectricOverflow(nn.Module):
         super(ElectricOverflow, self).__init__()
         self.node_size_x = node_size_x
         self.node_size_y = node_size_y
-        self.flat_fixed_node_boxes = flat_fixed_node_boxes 
 
         self.bin_center_x = bin_center_x
         self.bin_center_y = bin_center_y
@@ -187,8 +185,8 @@ class ElectricOverflow(nn.Module):
         self.offset_x = (self.node_size_x - self.node_size_x_clamped).mul(0.5)
         self.node_size_y_clamped = self.node_size_y.clamp(min=self.bin_size_y*sqrt2)
         self.offset_y = (self.node_size_y - self.node_size_y_clamped).mul(0.5)
-        node_area = self.node_size_x * self.node_size_y
-        self.ratio = node_area / (self.node_size_x_clamped * self.node_size_y_clamped)
+        node_areas = self.node_size_x * self.node_size_y
+        self.ratio = node_areas / (self.node_size_x_clamped * self.node_size_y_clamped)
 
         # detect movable macros and scale down the density to avoid halos 
         # the definition of movable macros should be different according to algorithms 
@@ -230,16 +228,19 @@ class ElectricOverflow(nn.Module):
             num_fixed_impacted_bins_x = 0
             num_fixed_impacted_bins_y = 0
         else:
-            max_size_x = (self.flat_fixed_node_boxes[:, 2] - self.flat_fixed_node_boxes[:, 0]).max()
-            max_size_y = (self.flat_fixed_node_boxes[:, 3] - self.flat_fixed_node_boxes[:, 1]).max()
+            max_size_x = self.node_size_x[self.num_movable_nodes : self.num_movable_nodes + self.num_terminals].max()
+            max_size_y = self.node_size_y[self.num_movable_nodes : self.num_movable_nodes + self.num_terminals].max()
             num_fixed_impacted_bins_x = ((max_size_x+self.bin_size_x)/self.bin_size_x).ceil().clamp(max=self.num_bins_x)
             num_fixed_impacted_bins_y = ((max_size_y+self.bin_size_y)/self.bin_size_y).ceil().clamp(max=self.num_bins_y)
         if pos.is_cuda:
             self.initial_density_map = electric_potential_cuda.fixed_density_map(
-                    self.flat_fixed_node_boxes.view(self.flat_fixed_node_boxes.numel()), 
+                    pos, 
+                    self.node_size_x, self.node_size_y, 
                     self.bin_center_x, self.bin_center_y,
                     self.xl, self.yl, self.xh, self.yh,
                     self.bin_size_x, self.bin_size_y,
+                    self.num_movable_nodes, 
+                    self.num_terminals, 
                     self.num_bins_x,
                     self.num_bins_y,
                     num_fixed_impacted_bins_x,
@@ -248,11 +249,14 @@ class ElectricOverflow(nn.Module):
         else:
             self.buf = torch.empty(self.num_threads * self.num_bins_x * self.num_bins_y, dtype=pos.dtype, device=pos.device)
             self.initial_density_map = electric_potential_cpp.fixed_density_map(
-                    self.flat_fixed_node_boxes.view(self.flat_fixed_node_boxes.numel()), 
+                    pos, 
+                    self.node_size_x, self.node_size_y, 
                     self.bin_center_x, self.bin_center_y,
                     self.buf, 
                     self.xl, self.yl, self.xh, self.yh,
                     self.bin_size_x, self.bin_size_y,
+                    self.num_movable_nodes, 
+                    self.num_terminals, 
                     self.num_bins_x,
                     self.num_bins_y,
                     num_fixed_impacted_bins_x,

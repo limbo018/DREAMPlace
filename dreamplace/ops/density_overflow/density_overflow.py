@@ -20,12 +20,11 @@ class DensityOverflow(DensityMap):
     The density map for fixed cells is pre-computed. 
     Each call will only compute the density map for movable cells. 
     """
-    def __init__(self, node_size_x, node_size_y, flat_fixed_node_boxes, bin_center_x, bin_center_y, target_density, xl, yl, xh, yh, bin_size_x, bin_size_y, num_movable_nodes, num_terminals, num_filler_nodes, num_threads=8):
+    def __init__(self, node_size_x, node_size_y, bin_center_x, bin_center_y, target_density, xl, yl, xh, yh, bin_size_x, bin_size_y, num_movable_nodes, num_terminals, num_filler_nodes, num_threads=8):
         """
         @brief initialization 
         @param node_size_x cell width array consisting of movable cells, fixed cells, and filler cells in order  
         @param node_size_y cell height array consisting of movable cells, fixed cells, and filler cells in order   
-        @param flat_fixed_node_boxes array of boxes of fixed cells 
         @param bin_center_x bin center x locations 
         @param bin_center_y bin center y locations 
         @param target_density target density 
@@ -42,7 +41,6 @@ class DensityOverflow(DensityMap):
         super(DensityOverflow, self).__init__(
                 node_size_x=node_size_x,
                 node_size_y=node_size_y,
-                flat_fixed_node_boxes=flat_fixed_node_boxes ,
                 bin_center_x=bin_center_x,
                 bin_center_y=bin_center_y,
                 xl=xl ,

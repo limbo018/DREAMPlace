@@ -43,9 +43,8 @@ class PlaceDB (object):
         self.node_size_x = None # 1D array, cell width  
         self.node_size_y = None # 1D array, cell height
 
-        self.node2shape_map = None # some fixed cells may have non-rectangular shapes, these are relative locations to lower left corners 
-        self.flat_fixed_node_boxes = None  # a flat array of boxes for fixed cells regardless of its parent fixed cell
-                                           # these are absolute box locations 
+        self.node2orig_node_map = None # some fixed cells may have non-rectangular shapes; we flatten them and create new nodes 
+                                        # this map maps the current multiple node ids into the original one 
 
         self.pin_direct = None # 1D array, pin direction IO 
         self.pin_offset_x = None # 1D array, pin offset x to its node 
@@ -94,11 +93,19 @@ class PlaceDB (object):
         self.total_filler_node_area = None 
         self.num_filler_nodes = None
 
+        self.routing_grid_xl = None 
+        self.routing_grid_yl = None 
+        self.routing_grid_xh = None 
+        self.routing_grid_yh = None 
         self.num_routing_grids_x = None
         self.num_routing_grids_y = None
-        self.num_horizontal_tracks = None # per tile 
-        self.num_vertical_tracks = None # per tile 
-        self.tile_pin_capacity = None # per tile 
+        self.num_routing_layers = None
+        self.unit_horizontal_capacity = None # per unit distance, projected to one layer 
+        self.unit_vertical_capacity = None # per unit distance, projected to one layer 
+        self.unit_horizontal_capacities = None # per unit distance, layer by layer 
+        self.unit_vertical_capacities = None # per unit distance, layer by layer 
+        self.initial_horizontal_demand_map = None # routing demand map from fixed cells, indexed by (grid x, grid y), projected to one layer  
+        self.initial_vertical_demand_map = None # routing demand map from fixed cells, indexed by (grid x, grid y), projected to one layer  
 
         self.dtype = None 
 
@@ -307,6 +314,14 @@ class PlaceDB (object):
             centers[id_x] = (bin_l+bin_h)/2
         return centers 
 
+    @property
+    def routing_grid_size_x(self):
+        return (self.routing_grid_xh - self.routing_grid_xl) / self.num_routing_grids_x 
+
+    @property 
+    def routing_grid_size_y(self):
+        return (self.routing_grid_yh - self.routing_grid_yl) / self.num_routing_grids_y 
+
     def net_hpwl(self, x, y, net_id): 
         """
         @brief compute HPWL of a net 
@@ -471,8 +486,7 @@ class PlaceDB (object):
             self.node_orient = np.array(pydb.node_orient, dtype=np.string_)
         self.node_size_x = np.array(pydb.node_size_x, dtype=self.dtype)
         self.node_size_y = np.array(pydb.node_size_y, dtype=self.dtype)
-        self.node2shape_map = pydb.node2shape_map
-        self.flat_fixed_node_boxes = np.array(pydb.flat_fixed_node_boxes, dtype=self.dtype).reshape([-1, 4])
+        self.node2orig_node_map = np.array(pydb.node2orig_node_map, dtype=np.int32)
         self.pin_direct = np.array(pydb.pin_direct, dtype=np.string_)
         self.pin_offset_x = np.array(pydb.pin_offset_x, dtype=self.dtype)
         self.pin_offset_y = np.array(pydb.pin_offset_y, dtype=self.dtype)
@@ -502,18 +516,26 @@ class PlaceDB (object):
         self.site_width = float(pydb.site_width)
         self.num_movable_pins = pydb.num_movable_pins
 
+        self.routing_grid_xl = float(pydb.routing_grid_xl) 
+        self.routing_grid_yl = float(pydb.routing_grid_yl) 
+        self.routing_grid_xh = float(pydb.routing_grid_xh) 
+        self.routing_grid_yh = float(pydb.routing_grid_yh) 
         if pydb.num_routing_grids_x: 
             self.num_routing_grids_x = pydb.num_routing_grids_x 
             self.num_routing_grids_y = pydb.num_routing_grids_y 
-            self.num_horizontal_tracks = np.array(pydb.num_horizontal_tracks, dtype=np.int32).sum()
-            self.num_vertical_tracks = np.array(pydb.num_vertical_tracks, dtype=np.int32).sum()
-            self.tile_pin_capacity = max(self.num_horizontal_tracks, self.num_vertical_tracks)
+            self.num_routing_layers = len(pydb.unit_horizontal_capacities)
+            self.unit_horizontal_capacity = np.array(pydb.unit_horizontal_capacities, dtype=self.dtype).sum()
+            self.unit_vertical_capacity = np.array(pydb.unit_vertical_capacities, dtype=self.dtype).sum()
+            self.unit_horizontal_capacities = np.array(pydb.unit_horizontal_capacities, dtype=self.dtype)
+            self.unit_vertical_capacities = np.array(pydb.unit_vertical_capacities, dtype=self.dtype)
+            self.initial_horizontal_demand_map = np.array(pydb.initial_horizontal_demand_map, dtype=self.dtype).reshape((-1, self.num_routing_grids_x, self.num_routing_grids_y)).sum(axis=0)
+            self.initial_vertical_demand_map = np.array(pydb.initial_vertical_demand_map, dtype=self.dtype).reshape((-1, self.num_routing_grids_x, self.num_routing_grids_y)).sum(axis=0)
         else:
             self.num_routing_grids_x = params.route_num_bins_x
             self.num_routing_grids_y = params.route_num_bins_y
-            self.num_horizontal_tracks = params.num_horizontal_tracks 
-            self.num_vertical_tracks = params.num_vertical_tracks
-            self.tile_pin_capacity = placedb.tile_pin_capacity
+            self.num_routing_layers = 1
+            self.unit_horizontal_capacity = params.unit_horizontal_capacity
+            self.unit_vertical_capacity = params.unit_vertical_capacity
 
         # convert node2pin_map to array of array 
         for i in range(len(self.node2pin_map)):
@@ -544,12 +566,10 @@ class PlaceDB (object):
         content = """
 ================================= Benchmark Statistics =================================
 #nodes = %d, #terminals = %d, # terminal_NIs = %d, #movable = %d, #nets = %d
-#fixed boxes = %d 
 die area = (%g, %g, %g, %g) %g
 row height = %g, site width = %g
 """ % (
                 self.num_physical_nodes, self.num_terminals, self.num_terminal_NIs, self.num_movable_nodes, len(self.net_names), 
-                len(self.flat_fixed_node_boxes), 
                 self.xl, self.yl, self.xh, self.yh, self.area, 
                 self.row_height, self.site_width
                 )
@@ -604,8 +624,8 @@ row height = %g, site width = %g
         if params.routability_opt_flag: 
             content += "================================== routing information =================================\n"
             content += "routing grids (%d, %d)\n" % (self.num_routing_grids_x, self.num_routing_grids_y)
-            content += "routing capacity H/V (%d, %d)\n" % (self.num_horizontal_tracks, self.num_vertical_tracks)
-            content += "pin capacity per tile %d\n" % (self.tile_pin_capacity)
+            content += "routing grid sizes (%g, %g)\n" % (self.routing_grid_size_x, self.routing_grid_size_y)
+            content += "routing capacity H/V (%g, %g) per tile\n" % (self.unit_horizontal_capacity * self.routing_grid_size_y, self.unit_vertical_capacity * self.routing_grid_size_x)
         content += "========================================================================================"
 
         logging.info(content)
@@ -678,17 +698,29 @@ row height = %g, site width = %g
         content = "UCLA pl 1.0\n"
         str_node_names = np.array(self.node_names).astype(np.str)
         str_node_orient = np.array(self.node_orient).astype(np.str)
-        for i in range(self.num_physical_nodes):
+        for i in range(self.num_movable_nodes):
             content += "\n%s %g %g : %s" % (
                     str_node_names[i],
                     node_x[i], 
                     node_y[i], 
                     str_node_orient[i]
                     )
-            if i >= self.num_movable_nodes:
-                content += " /FIXED"
-                if i >= self.num_movable_nodes + self.num_terminals:
-                    content += "_NI"
+        # use the original fixed cells, because they are expanded if they contain shapes 
+        fixed_node_indices = list(self.rawdb.fixedNodeIndices())
+        for i, node_id in enumerate(fixed_node_indices):
+            content += "\n%s %g %g : %s /FIXED" % (
+                    str(self.rawdb.nodeName(node_id)), 
+                    float(self.rawdb.node(node_id).xl()), 
+                    float(self.rawdb.node(node_id).yl()), 
+                    "N" # still hard-coded 
+                    )
+        for i in range(self.num_movable_nodes + self.num_terminals, self.num_movable_nodes + self.num_terminals + self.num_terminal_NIs):
+            content += "\n%s %g %g : %s /FIXED_NI" % (
+                    str_node_names[i],
+                    node_x[i], 
+                    node_y[i], 
+                    str_node_orient[i]
+                    )
         with open(pl_file, "w") as f:
             f.write(content)
         logging.info("write_pl takes %.3f seconds" % (time.time()-tt))

@@ -104,40 +104,6 @@ int computeDensityMapLauncher(
     return 0; 
 }
 
-/// @brief same function with different API 
-/// @param boxes an array of boxes to distribute 
-template <typename T>
-int computeDensityMapLauncher(
-        const T* boxes, 
-        const T* bin_center_x_tensor, const T* bin_center_y_tensor, 
-        const int num_boxes, 
-        const int num_bins_x, const int num_bins_y, 
-        const T xl, const T yl, const T xh, const T yh, 
-        const T bin_size_x, const T bin_size_y, 
-        int num_threads, 
-        T* density_map_tensor
-        )
-{
-    // density_map_tensor should be initialized outside 
-    
-#pragma omp parallel for num_threads(num_threads)
-    for (int i = 0; i < num_boxes; ++i)
-    {
-        auto box = boxes + i * 4; 
-        distributeBox2Bin(
-                bin_center_x_tensor, bin_center_y_tensor, 
-                num_bins_x, num_bins_y, 
-                xl, yl, xh, yh, 
-                bin_size_x, bin_size_y, 
-                box[0], box[1], box[2], box[3], 
-                density_map_tensor
-                );
-    }
-
-    return 0; 
-}
-
-
 #define CHECK_FLAT(x) AT_ASSERTM(!x.is_cuda() && x.ndimension() == 1, #x "must be a flat tensor on CPU")
 #define CHECK_EVEN(x) AT_ASSERTM((x.numel()&1) == 0, #x "must have even number of elements")
 #define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x "must be contiguous")
@@ -219,7 +185,6 @@ at::Tensor density_map_forward(
 
 /// @brief Compute the density overflow for fixed cells. 
 /// This map can be used as the initial density map since it only needs to be computed once.  
-/// @param flat_fixed_node_boxes flat array of boxes of fixed cells 
 /// @param bin_center_x_tensor bin center x locations 
 /// @param bin_center_y_tensor bin center y locations 
 /// @param xl left boundary 
@@ -232,7 +197,9 @@ at::Tensor density_map_forward(
 /// @param num_terminals number of fixed cells 
 /// @return a density map for fixed cells 
 at::Tensor fixed_density_map(
-        at::Tensor flat_fixed_node_boxes, 
+        at::Tensor pos, 
+        at::Tensor node_size_x, 
+        at::Tensor node_size_y, 
         at::Tensor bin_center_x, 
         at::Tensor bin_center_y, 
         double xl, 
@@ -241,22 +208,25 @@ at::Tensor fixed_density_map(
         double yh, 
         double bin_size_x, 
         double bin_size_y, 
+        int num_movable_nodes, 
+        int num_terminals, 
         int num_threads
         ) 
 {
     int num_bins_x = int(ceil((xh-xl)/bin_size_x));
     int num_bins_y = int(ceil((yh-yl)/bin_size_y));
-    int num_boxes = flat_fixed_node_boxes.numel() / 4; 
-    at::Tensor density_map = at::zeros({num_bins_x, num_bins_y}, flat_fixed_node_boxes.options());
+    int num_nodes = pos.numel() / 2; 
+    at::Tensor density_map = at::zeros({num_bins_x, num_bins_y}, pos.options());
 
-    if (num_boxes)
+    if (num_terminals)
     {
         // Call the cuda kernel launcher
-        DREAMPLACE_DISPATCH_FLOATING_TYPES(flat_fixed_node_boxes.type(), "computeDensityMapLauncher", [&] {
+        DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeDensityMapLauncher", [&] {
                 computeDensityMapLauncher<scalar_t>(
-                        flat_fixed_node_boxes.data<scalar_t>(), 
+                        pos.data<scalar_t>() + num_movable_nodes, pos.data<scalar_t>() + num_nodes + num_movable_nodes, 
+                        node_size_x.data<scalar_t>() + num_movable_nodes, node_size_y.data<scalar_t>() + num_movable_nodes, 
                         bin_center_x.data<scalar_t>(), bin_center_y.data<scalar_t>(), 
-                        num_boxes, 
+                        num_terminals, 
                         num_bins_x, num_bins_y, 
                         xl, yl, xh, yh, 
                         bin_size_x, bin_size_y, 

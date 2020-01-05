@@ -156,6 +156,18 @@
     "descripton" : "the overflow where to adjust node area", 
     "default" : 0.15
     },
+"max_num_area_adjust" : {
+    "descripton" : "maximum times to adjust node area", 
+    "default" : 3
+    },
+"adjust_route_area_flag" : {
+    "descripton" : "whether use RUDY/RISA map to guide area adjustment", 
+    "default" : 1
+    },
+"adjust_pin_area_flag" : {
+    "descripton" : "whether use pin utilization map to guide area adjustment", 
+    "default" : 1
+    },
 "area_adjust_stop_ratio" : {
     "descripton" : "area_adjust_stop_ratio", 
     "default" : 0.01
@@ -168,20 +180,24 @@
     "descripton" : "pin_area_adjust_stop_ratio", 
     "default" : 0.05
     },
-"num_horizontal_tracks" : {
-    "descripton" : "number of horizontal routing tracks per routing tile", 
-    "default" : 50
+"unit_horizontal_capacity" : {
+    "descripton" : "number of horizontal routing tracks per unit distance", 
+    "default" : 1.5625
     },
-"num_vertical_tracks" : {
-    "descripton" : "number of vertical routing tracks per routing tile", 
-    "default" : 50
+"unit_vertical_capacity" : {
+    "descripton" : "number of vertical routing tracks per unit distance", 
+    "default" : 1.45
     },
-"tile_pin_capacity" : {
-    "descripton" : "pin capacity per routing tile", 
-    "default" : 50.0
+"unit_pin_capacity" : {
+    "descripton" : "number of pins per unit area", 
+    "default" : 0.058
     },
 "max_route_opt_adjust_rate" : {
     "descripton" : "max_route_opt_adjust_rate", 
+    "default" : 2.0
+    },
+"route_opt_adjust_exponent" : {
+    "descripton" : "exponent to adjust the routing utilization map", 
     "default" : 2.0
     },
 "pin_stretch_ratio" : {

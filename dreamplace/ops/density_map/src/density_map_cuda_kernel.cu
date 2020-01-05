@@ -83,32 +83,6 @@ __global__ void computeDensityMap(
     }
 }
 
-template <typename T>
-__global__ void computeDensityMap(
-        const T* boxes, 
-        const T* bin_center_x_tensor, const T* bin_center_y_tensor, 
-        const int num_boxes, 
-        const int num_bins_x, const int num_bins_y, 
-        const T xl, const T yl, const T xh, const T yh, 
-        const T bin_size_x, const T bin_size_y, 
-        T* density_map_tensor
-        )
-{
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i < num_boxes)
-    {
-        auto box = boxes + i * 4; 
-        distributeBox2Bin(
-                bin_center_x_tensor, bin_center_y_tensor, 
-                num_bins_x, num_bins_y, 
-                xl, yl, xh, yh, 
-                bin_size_x, bin_size_y, 
-                box[0], box[1], box[2], box[3], 
-                density_map_tensor
-                );
-    }
-}
-
 /// @brief compute density map 
 /// @param x_tensor cell x locations
 /// @param y_tensor cell y locations 
@@ -155,50 +129,12 @@ int computeDensityMapCudaLauncher(
     return 0; 
 }
 
-/// @brief same function with different API 
-/// @param boxes an array of boxes to distribute 
-template <typename T>
-int computeDensityMapCudaLauncher(
-        const T* boxes, 
-        const T* bin_center_x_tensor, const T* bin_center_y_tensor, 
-        const int num_boxes, 
-        const int num_bins_x, const int num_bins_y, 
-        const T xl, const T yl, const T xh, const T yh, 
-        const T bin_size_x, const T bin_size_y, 
-        T* density_map_tensor
-        )
-{
-    int thread_count = 256; 
-    int block_count = CPUCeilDiv(num_boxes, thread_count);
-
-    computeDensityMap<<<block_count, thread_count>>>(
-            boxes, 
-            bin_center_x_tensor, bin_center_y_tensor, 
-            num_boxes, 
-            num_bins_x, num_bins_y, 
-            xl, yl, xh, yh, 
-            bin_size_x, bin_size_y, 
-            density_map_tensor
-            );
-
-    return 0; 
-}
-
 #define REGISTER_KERNEL_LAUNCHER(T) \
     template int computeDensityMapCudaLauncher<T>(\
             const T* x_tensor, const T* y_tensor, \
             const T* node_size_x_tensor, const T* node_size_y_tensor, \
             const T* bin_center_x_tensor, const T* bin_center_y_tensor, \
             const int num_nodes, \
-            const int num_bins_x, const int num_bins_y, \
-            const T xl, const T yl, const T xh, const T yh, \
-            const T bin_size_x, const T bin_size_y, \
-            T* density_map_tensor\
-            );\
-    template int computeDensityMapCudaLauncher<T>(\
-            const T* boxes,                                          \
-            const T* bin_center_x_tensor, const T* bin_center_y_tensor, \
-            const int num_boxes, \
             const int num_bins_x, const int num_bins_y, \
             const T xl, const T yl, const T xh, const T yh, \
             const T bin_size_x, const T bin_size_y, \

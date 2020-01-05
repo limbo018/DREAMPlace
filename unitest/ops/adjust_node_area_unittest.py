@@ -60,8 +60,11 @@ class AdjustNodeAreaUnittest(unittest.TestCase):
         area_adjust_stop_ratio = 0.01
         route_area_adjust_stop_ratio = 0.01
         pin_area_adjust_stop_ratio = 0.05
-        unit_pin_capacity = 0.5
+        tile_pin_capacity = 0.5
         pin_weights = None
+
+        max_route_opt_adjust_rate = 3.0
+        max_pin_opt_adjust_rate = 10.0
 
         # test cpu
         adjust_node_area_op = adjust_node_area.AdjustNodeArea(
@@ -78,10 +81,12 @@ class AdjustNodeAreaUnittest(unittest.TestCase):
             route_num_bins_y=route_num_bins_y,
             pin_num_bins_x=pin_num_bins_x,
             pin_num_bins_y=pin_num_bins_y,
+            max_route_opt_adjust_rate=max_route_opt_adjust_rate,
+            max_pin_opt_adjust_rate=max_pin_opt_adjust_rate, 
             area_adjust_stop_ratio=area_adjust_stop_ratio,
             route_area_adjust_stop_ratio=route_area_adjust_stop_ratio,
             pin_area_adjust_stop_ratio=pin_area_adjust_stop_ratio,
-            unit_pin_capacity=unit_pin_capacity,
+            tile_pin_capacity=tile_pin_capacity,
             num_threads=8
         )
 
@@ -114,10 +119,12 @@ class AdjustNodeAreaUnittest(unittest.TestCase):
                 route_num_bins_y=route_num_bins_y,
                 pin_num_bins_x=pin_num_bins_x,
                 pin_num_bins_y=pin_num_bins_y,
+                max_route_opt_adjust_rate=max_route_opt_adjust_rate,
+                max_pin_opt_adjust_rate=max_pin_opt_adjust_rate, 
                 area_adjust_stop_ratio=area_adjust_stop_ratio,
                 route_area_adjust_stop_ratio=route_area_adjust_stop_ratio,
                 pin_area_adjust_stop_ratio=pin_area_adjust_stop_ratio,
-                unit_pin_capacity=unit_pin_capacity
+                tile_pin_capacity=tile_pin_capacity
             )
             pos_cuda = pos.t().contiguous().view(-1).cuda()
             node_size_x_cuda = node_size_x.cuda()

@@ -297,7 +297,6 @@ class ElectricPotential(ElectricOverflow):
 
     def __init__(self,
                  node_size_x, node_size_y,
-                 flat_fixed_node_boxes, 
                  bin_center_x, bin_center_y,
                  target_density,
                  xl, yl, xh, yh,
@@ -317,7 +316,6 @@ class ElectricPotential(ElectricOverflow):
         Otherwise, GPU version can be weirdly slow.
         @param node_size_x cell width array consisting of movable cells, fixed cells, and filler cells in order
         @param node_size_y cell height array consisting of movable cells, fixed cells, and filler cells in order
-        @param flat_fixed_node_boxes flat array of boxes for fixed cells 
         @param movable_macro_mask some large movable macros need to be scaled to avoid halos
         @param bin_center_x bin center x locations
         @param bin_center_y bin center y locations
@@ -337,7 +335,6 @@ class ElectricPotential(ElectricOverflow):
         """
         super(ElectricPotential, self).__init__(
                 node_size_x=node_size_x, node_size_y=node_size_y,
-                flat_fixed_node_boxes=flat_fixed_node_boxes, 
                 bin_center_x=bin_center_x, bin_center_y=bin_center_y,
                 target_density=target_density,
                 xl=xl, yl=yl, xh=xh, yh=yh,

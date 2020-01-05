@@ -196,6 +196,8 @@ class PlaceDB : public DefParser::DefDataBase
         index_type routingBlockagePorosity() const {return m_routingBlockagePorosity;}
         /// @brief compute number of routing tracks per tile 
         index_type numRoutingTracks(PlanarDirectEnum::PlanarDirectType d, index_type layer) const {return routingCapacity(d).at(layer) / (minWireWidth().at(layer) + minWireSpacing().at(layer));}
+        index_type getLayer(std::string const& layerName) const; 
+        std::string getLayerName(index_type layer) const; 
 
         /// traverse movable node 
         MovableNodeIterator movableNodeBegin();
@@ -369,8 +371,8 @@ class PlaceDB : public DefParser::DefDataBase
         virtual void set_bookshelf_net_weight(std::string const& name, double w); 
         virtual void set_bookshelf_shape(BookshelfParser::NodeShape const& shape); 
         virtual void set_bookshelf_route_info(BookshelfParser::RouteInfo const&);
-        virtual void add_bookshelf_niterminal_layer(std::string const&, int);
-        virtual void add_bookshelf_blockage_layers(std::string const&, std::vector<int> const&);
+        virtual void add_bookshelf_niterminal_layer(std::string const&, std::string const&);
+        virtual void add_bookshelf_blockage_layers(std::string const&, std::vector<std::string> const&);
         virtual void set_bookshelf_design(std::string& name);
         virtual void bookshelf_end(); 
 
@@ -439,6 +441,8 @@ class PlaceDB : public DefParser::DefDataBase
         string2index_map_type m_mMacroName2Index; ///< map name of macro to index of m_vMacro
         string2index_map_type m_mNodeName2Index; ///< map instance name to index of m_vNode
         string2index_map_type m_mNetName2Index; ///< map net name to index of m_vNet 
+        string2index_map_type m_mLayerName2Index; ///< map layer name to layer 
+        std::vector<std::string> m_vLayerName; ///< layer to layer name 
 
         Box<coordinate_type> m_rowBbox; ///< bounding box of row regions, it may be different from die area  
                                         ///< different rows may have different width, this is the largest box 

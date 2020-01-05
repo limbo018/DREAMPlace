@@ -13,6 +13,7 @@ add_subdirectory(weighted_average_wirelength)
 add_subdirectory(rmst_wl)
 add_subdirectory(place_io)
 # legalization operators 
+add_subdirectory(legality_check)
 add_subdirectory(macro_legalize)
 add_subdirectory(greedy_legalize)
 add_subdirectory(abacus_legalize)
@@ -24,6 +25,7 @@ add_subdirectory(k_reorder)
 add_subdirectory(pin_utilization)
 add_subdirectory(rudy)
 add_subdirectory(adjust_node_area)
+add_subdirectory(nctugr_binary)
 
 file(GLOB INSTALL_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/*.py")
 install(
