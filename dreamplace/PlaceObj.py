@@ -25,6 +25,10 @@ import dreamplace.ops.weighted_average_wirelength.weighted_average_wirelength as
 import dreamplace.ops.logsumexp_wirelength.logsumexp_wirelength as logsumexp_wirelength
 import dreamplace.ops.electric_potential.electric_potential as electric_potential
 import dreamplace.ops.density_potential.density_potential as density_potential
+import dreamplace.ops.rudy.rudy as rudy 
+import dreamplace.ops.pin_utilization.pin_utilization as pin_utilization 
+import dreamplace.ops.nctugr_binary.nctugr_binary as nctugr_binary
+import dreamplace.ops.adjust_node_area.adjust_node_area as adjust_node_area
 
 class PlaceObj(nn.Module):
     """
@@ -63,10 +67,28 @@ class PlaceObj(nn.Module):
         self.op_collections.update_density_weight_op = self.build_update_density_weight(params, placedb)
         self.op_collections.precondition_op = self.build_precondition(params, placedb, self.data_collections)
         self.op_collections.noise_op = self.build_noise(params, placedb, self.data_collections)
+        if params.routability_opt_flag: 
+            # compute congestion map, RISA/RUDY congestion map  
+            self.op_collections.route_utilization_map_op = self.build_route_utilization_map(params, placedb, self.data_collections)
+            self.op_collections.pin_utilization_map_op = self.build_pin_utilization_map(params, placedb, self.data_collections)
+            self.op_collections.nctugr_congestion_map_op = self.build_nctugr_congestion_map(params, placedb, self.data_collections)
+            # adjust instance area with congestion map
+            self.op_collections.adjust_node_area_op = self.build_adjust_node_area(params, placedb, self.data_collections)
 
-        self.iteration = global_place_params["iteration"]
-        #self.learning_rate = global_place_params["learning_rate"]*max((placedb.xh-placedb.xl)/global_place_params["num_bins_x"], (placedb.yh-placedb.yl)/global_place_params["num_bins_y"])
-        self.learning_rate = global_place_params["learning_rate"]
+
+        self.Lgamma_iteration = global_place_params["iteration"]
+        if 'Llambda_density_weight_iteration' in global_place_params: 
+            self.Llambda_density_weight_iteration = global_place_params['Llambda_density_weight_iteration']
+        else:
+            self.Llambda_density_weight_iteration = 1
+        if 'Lsub_iteration' in global_place_params:
+            self.Lsub_iteration = global_place_params['Lsub_iteration']
+        else:
+            self.Lsub_iteration = 1
+        if 'routability_Lsub_iteration' in global_place_params:
+            self.routability_Lsub_iteration = global_place_params['routability_Lsub_iteration']
+        else:
+            self.routability_Lsub_iteration = self.Lsub_iteration
 
     def obj_fn(self, pos):
         """
@@ -110,7 +132,6 @@ class PlaceObj(nn.Module):
         @param pos locations of cells
         """
         wirelength = self.op_collections.wirelength_op(pos)
-        density = self.op_collections.density_op(pos)
 
         if pos.grad is not None:
             pos.grad.zero_()
@@ -118,12 +139,29 @@ class PlaceObj(nn.Module):
         wirelength_grad = pos.grad.clone()
 
         pos.grad.zero_()
+        density = self.density_weight * self.op_collections.density_op(pos)
         density.backward()
         density_grad = pos.grad.clone()
 
-        logging.debug("wirelength_grad\n%s" % (wirelength_grad.view([2, -1]).t()))
-        logging.debug("density_grad\n%s" % (density_grad.view([2, -1]).t()))
+        wirelength_grad_norm = wirelength_grad.norm(p=1)
+        density_grad_norm = density_grad.norm(p=1)
+
+        logging.info("wirelength_grad norm = %.6E" % (wirelength_grad_norm))
+        logging.info("density_grad norm    = %.6E" % (density_grad_norm))
         pos.grad.zero_()
+
+    def estimate_initial_learning_rate(self, x_k, lr):
+        """
+        @brief Estimate initial learning rate by moving a small step. 
+        Computed as | x_k - x_k_1 |_2 / | g_k - g_k_1 |_2. 
+        @param x_k current solution 
+        @param lr small step 
+        """
+        obj_k, g_k = self.obj_and_grad_fn(x_k)
+        x_k_1 = torch.autograd.Variable(x_k - lr * g_k, requires_grad=True)
+        obj_k_1, g_k_1 = self.obj_and_grad_fn(x_k_1)
+
+        return (x_k - x_k_1).norm(p=2) / (g_k - g_k_1).norm(p=2)
 
     def build_weighted_average_wl(self, params, placedb, data_collections, pin_pos_op):
         """
@@ -256,7 +294,7 @@ class PlaceObj(nn.Module):
                 ax=torch.tensor(ax.ravel(), dtype=data_collections.pos[0].dtype, device=data_collections.pos[0].device), bx=torch.tensor(bx.ravel(), dtype=data_collections.pos[0].dtype, device=data_collections.pos[0].device), cx=torch.tensor(cx.ravel(), dtype=data_collections.pos[0].dtype, device=data_collections.pos[0].device),
                 ay=torch.tensor(ay.ravel(), dtype=data_collections.pos[0].dtype, device=data_collections.pos[0].device), by=torch.tensor(by.ravel(), dtype=data_collections.pos[0].dtype, device=data_collections.pos[0].device), cy=torch.tensor(cy.ravel(), dtype=data_collections.pos[0].dtype, device=data_collections.pos[0].device),
                 bin_center_x=data_collections.bin_center_x_padded(padding), bin_center_y=data_collections.bin_center_y_padded(padding),
-                target_density=params.target_density,
+                target_density=data_collections.target_density,
                 num_movable_nodes=placedb.num_movable_nodes,
                 num_terminals=placedb.num_terminals,
                 num_filler_nodes=placedb.num_filler_nodes,
@@ -301,7 +339,7 @@ class PlaceObj(nn.Module):
         return electric_potential.ElectricPotential(
                 node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y,
                 bin_center_x=data_collections.bin_center_x_padded(placedb, padding), bin_center_y=data_collections.bin_center_y_padded(placedb, padding),
-                target_density=params.target_density,
+                target_density=data_collections.target_density,
                 xl=xl, yl=yl, xh=xh, yh=yh,
                 bin_size_x=bin_size_x, bin_size_y=bin_size_y,
                 num_movable_nodes=placedb.num_movable_nodes,
@@ -309,7 +347,8 @@ class PlaceObj(nn.Module):
                 num_filler_nodes=placedb.num_filler_nodes,
                 padding=padding,
                 sorted_node_map=data_collections.sorted_node_map,
-                fast_mode=True, 
+                movable_macro_mask=data_collections.movable_macro_mask, 
+                fast_mode=params.RePlAce_skip_energy_flag, 
                 num_threads=params.num_threads
                 )
 
@@ -344,13 +383,12 @@ class PlaceObj(nn.Module):
         ref_hpwl = params.RePlAce_ref_hpwl
         LOWER_PCOF = params.RePlAce_LOWER_PCOF
         UPPER_PCOF = params.RePlAce_UPPER_PCOF
-        def update_density_weight_op(metrics):
+        def update_density_weight_op(cur_metric, prev_metric, iteration):
             with torch.no_grad():
-                delta_hpwl = metrics[-1].hpwl-metrics[-2].hpwl
+                delta_hpwl = cur_metric.hpwl - prev_metric.hpwl
                 if delta_hpwl < 0:
-                    #UPPER_PCOF = np.maximum(UPPER_PCOF*np.power(0.9999, float(len(metrics))), 1.03)
-                    #mu = UPPER_PCOF
-                    mu = UPPER_PCOF*np.maximum(np.power(0.9999, float(len(metrics))), 0.98)
+                    mu = UPPER_PCOF*np.maximum(np.power(0.9999, float(iteration)), 0.98)
+                    #mu = UPPER_PCOF*np.maximum(np.power(0.9999, float(iteration)), 1.03)
                 else:
                     mu = UPPER_PCOF*torch.pow(UPPER_PCOF, -delta_hpwl/ref_hpwl).clamp(min=LOWER_PCOF, max=UPPER_PCOF)
                 self.density_weight *= mu
@@ -402,26 +440,121 @@ class PlaceObj(nn.Module):
         @param placedb placement database
         @param data_collections a collection of data and variables required for constructing ops
         """
-        num_pins_in_nodes = np.zeros(placedb.num_nodes)
-        for  i in range(placedb.num_physical_nodes):
-            num_pins_in_nodes[i] = len(placedb.node2pin_map[i])
-        num_pins_in_nodes = torch.tensor(num_pins_in_nodes, dtype=data_collections.pos[0].dtype, device=data_collections.pos[0].device)
-        node_areas = torch.tensor(placedb.node_size_x*placedb.node_size_y, dtype=data_collections.pos[0].dtype, device=data_collections.pos[0].device)
 
         def precondition_op(grad):
-            precond = num_pins_in_nodes + self.density_weight*node_areas
-            precond.clamp_(min=1.0)
-            grad[0:placedb.num_nodes].div_(precond)
-            grad[placedb.num_nodes:placedb.num_nodes*2].div_(precond)
-            #for p in pos:
-            #    grad_norm = p.grad.norm(p=2)
-            #    logging.debug("grad_norm = %g" % (grad_norm.data))
-            #    p.grad.div_(grad_norm.data)
-            #    logging.debug("grad_norm = %g" % (p.grad.norm(p=2).data))
-            #grad.data[0:placedb.num_movable_nodes].div_(grad[0:placedb.num_movable_nodes].norm(p=2))
-            #grad.data[placedb.num_nodes:placedb.num_nodes+placedb.num_movable_nodes].div_(grad[placedb.num_nodes:placedb.num_nodes+placedb.num_movable_nodes].norm(p=2))
-
+            with torch.no_grad(): 
+                # preconditioning 
+                node_areas = data_collections.node_size_x * data_collections.node_size_y
+                precond = self.density_weight * node_areas
+                precond[:placedb.num_physical_nodes].add_(data_collections.pin_weights)
+                precond.clamp_(min=1.0)
+                grad[0:placedb.num_nodes].div_(precond)
+                grad[placedb.num_nodes:placedb.num_nodes*2].div_(precond)
+                #for p in pos:
+                #    grad_norm = p.grad.norm(p=2)
+                #    logging.debug("grad_norm = %g" % (grad_norm.data))
+                #    p.grad.div_(grad_norm.data)
+                #    logging.debug("grad_norm = %g" % (p.grad.norm(p=2).data))
+                #grad.data[0:placedb.num_movable_nodes].div_(grad[0:placedb.num_movable_nodes].norm(p=2))
+                #grad.data[placedb.num_nodes:placedb.num_nodes+placedb.num_movable_nodes].div_(grad[placedb.num_nodes:placedb.num_nodes+placedb.num_movable_nodes].norm(p=2))
             return grad
 
         return precondition_op
 
+    def build_route_utilization_map(self, params, placedb, data_collections):
+        """
+        @brief routing congestion map based on current cell locations 
+        @param params parameters 
+        @param placedb placement database 
+        @param data_collections a collection of all data and variables required for constructing the ops 
+        """
+        congestion_op = rudy.Rudy(
+                netpin_start=data_collections.flat_net2pin_start_map, flat_netpin=data_collections.flat_net2pin_map, net_weights=data_collections.net_weights,
+                xl=placedb.routing_grid_xl, yl=placedb.routing_grid_yl, xh=placedb.routing_grid_xh, yh=placedb.routing_grid_yh,
+                num_bins_x=placedb.num_routing_grids_x, num_bins_y=placedb.num_routing_grids_y,
+                unit_horizontal_capacity=placedb.unit_horizontal_capacity,
+                unit_vertical_capacity=placedb.unit_vertical_capacity,
+                initial_horizontal_utilization_map=data_collections.initial_horizontal_utilization_map, 
+                initial_vertical_utilization_map=data_collections.initial_vertical_utilization_map, 
+                num_threads=params.num_threads
+                )
+        def route_utilization_map_op(pos): 
+            pin_pos = self.op_collections.pin_pos_op(pos)
+            return congestion_op(pin_pos)
+        return route_utilization_map_op
+
+    def build_pin_utilization_map(self, params, placedb, data_collections):
+        """
+        @brief pin density map based on current cell locations 
+        @param params parameters 
+        @param placedb placement database 
+        @param data_collections a collection of all data and variables required for constructing the ops 
+        """
+        return pin_utilization.PinUtilization(
+                pin_weights=data_collections.pin_weights, 
+                flat_node2pin_start_map=data_collections.flat_node2pin_start_map,
+                node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y,
+                xl=placedb.routing_grid_xl, yl=placedb.routing_grid_yl, xh=placedb.routing_grid_xh, yh=placedb.routing_grid_yh,
+                num_movable_nodes=placedb.num_movable_nodes, num_filler_nodes=placedb.num_filler_nodes, 
+                num_bins_x=placedb.num_routing_grids_x, num_bins_y=placedb.num_routing_grids_y,
+                unit_pin_capacity=data_collections.unit_pin_capacity,
+                pin_stretch_ratio=params.pin_stretch_ratio,
+                num_threads=params.num_threads
+                )
+    
+    def build_nctugr_congestion_map(self, params, placedb, data_collections):
+        """
+        @brief call NCTUgr for congestion estimation 
+        """
+        path = "%s/%s" % (params.result_dir, params.design_name())
+        return nctugr_binary.NCTUgr(
+                aux_input_file=os.path.realpath(params.aux_input), 
+                param_setting_file="%s/../thirdparty/NCTUgr.ICCAD2012/DAC12.set" % (os.path.dirname(os.path.realpath(__file__))), 
+                tmp_pl_file="%s/%s.NCTUgr.pl" % (os.path.realpath(path), params.design_name()), 
+                tmp_output_file="%s/%s.NCTUgr" % (os.path.realpath(path), params.design_name()), 
+                horizontal_routing_capacities=torch.from_numpy(placedb.unit_horizontal_capacities * placedb.routing_grid_size_y), 
+                vertical_routing_capacities=torch.from_numpy(placedb.unit_vertical_capacities * placedb.routing_grid_size_x), 
+                params=params, 
+                placedb=placedb
+                )
+
+    def build_adjust_node_area(self, params, placedb, data_collections):
+        """
+        @brief adjust cell area according to routing congestion and pin utilization map 
+        """
+        total_movable_area = (data_collections.node_size_x[:placedb.num_movable_nodes] * data_collections.node_size_y[:placedb.num_movable_nodes]).sum()
+        total_filler_area = (data_collections.node_size_x[-placedb.num_filler_nodes:] * data_collections.node_size_y[-placedb.num_filler_nodes:]).sum() 
+        total_place_area = (total_movable_area + total_filler_area) / data_collections.target_density
+        adjust_node_area_op = adjust_node_area.AdjustNodeArea(
+                flat_node2pin_map=data_collections.flat_node2pin_map,
+                flat_node2pin_start_map=data_collections.flat_node2pin_start_map, 
+                pin_weights=data_collections.pin_weights, 
+                xl=placedb.routing_grid_xl, yl=placedb.routing_grid_yl, xh=placedb.routing_grid_xh, yh=placedb.routing_grid_yh,
+                num_movable_nodes=placedb.num_movable_nodes, 
+                num_filler_nodes=placedb.num_filler_nodes, 
+                route_num_bins_x=placedb.num_routing_grids_x,
+                route_num_bins_y=placedb.num_routing_grids_y,
+                pin_num_bins_x=placedb.num_routing_grids_x,
+                pin_num_bins_y=placedb.num_routing_grids_y,
+                total_place_area=total_place_area, 
+                total_whitespace_area=total_place_area - total_movable_area, 
+                max_route_opt_adjust_rate=params.max_route_opt_adjust_rate,
+                route_opt_adjust_exponent=params.route_opt_adjust_exponent, 
+                max_pin_opt_adjust_rate=params.max_pin_opt_adjust_rate,
+                area_adjust_stop_ratio=params.area_adjust_stop_ratio,
+                route_area_adjust_stop_ratio=params.route_area_adjust_stop_ratio,
+                pin_area_adjust_stop_ratio=params.pin_area_adjust_stop_ratio,
+                unit_pin_capacity=data_collections.unit_pin_capacity,
+                num_threads=params.num_threads
+            )
+        def build_adjust_node_area_op(pos, route_utilization_map, pin_utilization_map, iteration):
+            return adjust_node_area_op(
+                    pos, 
+                    data_collections.node_size_x, data_collections.node_size_y, 
+                    data_collections.pin_offset_x, data_collections.pin_offset_y, 
+                    data_collections.target_density, 
+                    route_utilization_map, 
+                    pin_utilization_map, 
+                    iteration
+                    )
+        return build_adjust_node_area_op

@@ -267,16 +267,16 @@ __global__ void computeTriangleDensityMapUnroll(
 /// @brief Compute exact density map using cell-to-bin parallelization strategy
 template <typename T>
 __global__ void computeExactDensityMap(
-    const T *x_tensor, const T *y_tensor,
-    const T *node_size_x_tensor, const T *node_size_y_tensor,
-    const T *bin_center_x_tensor, const T *bin_center_y_tensor,
-    const int num_nodes,
-    const int num_bins_x, const int num_bins_y,
-    const T xl, const T yl, const T xh, const T yh,
-    const T bin_size_x, const T bin_size_y,
-    const int num_impacted_bins_x, const int num_impacted_bins_y,
-    bool fixed_node_flag,
-    T *density_map_tensor
+        const T* x_tensor, const T* y_tensor,
+        const T* node_size_x_tensor, const T* node_size_y_tensor,
+        const T* bin_center_x_tensor, const T* bin_center_y_tensor,
+        const int num_nodes,
+        const int num_bins_x, const int num_bins_y,
+        const T xl, const T yl, const T xh, const T yh,
+        const T bin_size_x, const T bin_size_y,
+        const int num_impacted_bins_x, const int num_impacted_bins_y,
+        bool fixed_node_flag,
+        T *density_map_tensor
     )
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -285,8 +285,12 @@ __global__ void computeExactDensityMap(
     {
         int node_id = i / (num_impacted_bins_x * num_impacted_bins_y);
         int residual_index = i - node_id * num_impacted_bins_x * num_impacted_bins_y;
+        T bxl = x_tensor[node_id]; 
+        T byl = y_tensor[node_id];
+        T bxh = bxl + node_size_x_tensor[node_id]; 
+        T byh = byl + node_size_y_tensor[node_id];
         // x direction
-        int bin_index_xl = int((x_tensor[node_id] - xl) / bin_size_x);
+        int bin_index_xl = int((bxl - xl) / bin_size_x);
         bin_index_xl = DREAMPLACE_STD_NAMESPACE::max(bin_index_xl, 0);
         int k = bin_index_xl + int(residual_index / num_impacted_bins_y);
         if (k + 1 > num_bins_x)
@@ -294,7 +298,7 @@ __global__ void computeExactDensityMap(
             return;
         }
         // y direction
-        int bin_index_yl = int((y_tensor[node_id] - yl) / bin_size_y);
+        int bin_index_yl = int((byl - yl) / bin_size_y);
         bin_index_yl = DREAMPLACE_STD_NAMESPACE::max(bin_index_yl, 0);
         int h = bin_index_yl + (residual_index % num_impacted_bins_y);
         if (h + 1 > num_bins_y)
@@ -302,8 +306,8 @@ __global__ void computeExactDensityMap(
             return;
         }
 
-        T px = exact_density_function(x_tensor[node_id], node_size_x_tensor[node_id], bin_center_x_tensor[k], bin_size_x, xl, xh, fixed_node_flag);
-        T py = exact_density_function(y_tensor[node_id], node_size_y_tensor[node_id], bin_center_y_tensor[h], bin_size_y, yl, yh, fixed_node_flag);
+        T px = exact_density_function(bxl, bxh - bxl, bin_center_x_tensor[k], bin_size_x, xl, xh, fixed_node_flag);
+        T py = exact_density_function(byl, byh - byl, bin_center_y_tensor[h], bin_size_y, yl, yh, fixed_node_flag);
 
         // still area 
         atomicAdd(&density_map_tensor[k*num_bins_y+h], px*py); 
@@ -324,32 +328,40 @@ __global__ void computeExactDensityMapCellByCell(
         T* density_map_tensor
         )
 {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i < num_nodes)
-    {
+    auto box2bin = [&](T bxl, T byl, T bxh, T byh, T* buf_map){
         // x direction
-        int bin_index_xl = int((x_tensor[i]-xl)/bin_size_x);
-        int bin_index_xh = int(ceil((x_tensor[i]-xl+node_size_x_tensor[i])/bin_size_x))+1; // exclusive
+        int bin_index_xl = int((bxl-xl)/bin_size_x);
+        int bin_index_xh = int(ceil((bxh-xl)/bin_size_x))+1; // exclusive
         bin_index_xl = DREAMPLACE_STD_NAMESPACE::max(bin_index_xl, 0);
         bin_index_xh = DREAMPLACE_STD_NAMESPACE::min(bin_index_xh, num_bins_x);
 
         // y direction
-        int bin_index_yl = int((y_tensor[i]-yl)/bin_size_y);
-        int bin_index_yh = int(ceil((y_tensor[i]-yl+node_size_y_tensor[i])/bin_size_y))+1; // exclusive
+        int bin_index_yl = int((byl-yl)/bin_size_y);
+        int bin_index_yh = int(ceil((byh-yl)/bin_size_y))+1; // exclusive
         bin_index_yl = DREAMPLACE_STD_NAMESPACE::max(bin_index_yl, 0);
         bin_index_yh = DREAMPLACE_STD_NAMESPACE::min(bin_index_yh, num_bins_y);
 
         for (int k = bin_index_xl; k < bin_index_xh; ++k)
         {
-            T px = exact_density_function(x_tensor[i], node_size_x_tensor[i], bin_center_x_tensor[k], bin_size_x, xl, xh, fixed_node_flag);
+            T px = exact_density_function(bxl, bxh-bxl, bin_center_x_tensor[k], bin_size_x, xl, xh, fixed_node_flag);
             for (int h = bin_index_yl; h < bin_index_yh; ++h)
             {
-                T py = exact_density_function(y_tensor[i], node_size_y_tensor[i], bin_center_y_tensor[h], bin_size_y, yl, yh, fixed_node_flag);
+                T py = exact_density_function(byl, byh-byl, bin_center_y_tensor[h], bin_size_y, yl, yh, fixed_node_flag);
 
-                // still area 
-                atomicAdd(&density_map_tensor[k*num_bins_y+h], px*py); 
+                // still area
+                atomicAdd(&buf_map[k*num_bins_y+h], px * py);
             }
         }
+    };
+
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_nodes)
+    {
+        T bxl = x_tensor[i];
+        T byl = y_tensor[i];
+        T bxh = bxl + node_size_x_tensor[i]; 
+        T byh = byl + node_size_y_tensor[i];
+        box2bin(bxl, byl, bxh, byh, density_map_tensor);
     }
 }
 
@@ -395,31 +407,32 @@ int computeTriangleDensityMapCudaLauncher(
 /// @brief Compute exact density map using cell-to-bin parallelization strategy
 template <typename T>
 int computeExactDensityMapCudaLauncher(
-    const T *x_tensor, const T *y_tensor,
-    const T *node_size_x_tensor, const T *node_size_y_tensor,
-    const T *bin_center_x_tensor, const T *bin_center_y_tensor,
-    const int num_nodes,
-    const int num_bins_x, const int num_bins_y,
-    const int num_impacted_bins_x, const int num_impacted_bins_y,
-    const T xl, const T yl, const T xh, const T yh,
-    const T bin_size_x, const T bin_size_y,
-    bool fixed_node_flag,
-    T *density_map_tensor)
+        const T* x_tensor, const T* y_tensor,
+        const T* node_size_x_tensor, const T* node_size_y_tensor,
+        const T* bin_center_x_tensor, const T* bin_center_y_tensor,
+        const int num_nodes,
+        const int num_bins_x, const int num_bins_y,
+        const int num_impacted_bins_x, const int num_impacted_bins_y,
+        const T xl, const T yl, const T xh, const T yh,
+        const T bin_size_x, const T bin_size_y,
+        bool fixed_node_flag,
+        T *density_map_tensor
+    )
 {
     int thread_count = 512;
     int block_count = (num_nodes * num_impacted_bins_x * num_impacted_bins_y - 1 + thread_count) / thread_count;
 
     computeExactDensityMap<<<block_count, thread_count>>>(
-        x_tensor, y_tensor,
-        node_size_x_tensor, node_size_y_tensor,
-        bin_center_x_tensor, bin_center_y_tensor,
-        num_nodes,
-        num_bins_x, num_bins_y,
-        xl, yl, xh, yh,
-        bin_size_x, bin_size_y,
-        num_impacted_bins_x, num_impacted_bins_y,
-        fixed_node_flag,
-        density_map_tensor
+            x_tensor, y_tensor, 
+            node_size_x_tensor, node_size_y_tensor, 
+            bin_center_x_tensor, bin_center_y_tensor,
+            num_nodes,
+            num_bins_x, num_bins_y,
+            xl, yl, xh, yh,
+            bin_size_x, bin_size_y,
+            num_impacted_bins_x, num_impacted_bins_y,
+            fixed_node_flag,
+            density_map_tensor
         );
 
     return 0;
@@ -428,30 +441,31 @@ int computeExactDensityMapCudaLauncher(
 /// @brief Compute exact density map using cell-by-cell parallelization strategy
 template <typename T>
 int computeExactDensityMapCellByCellCudaLauncher(
-    const T *x_tensor, const T *y_tensor,
-    const T *node_size_x_tensor, const T *node_size_y_tensor,
-    const T *bin_center_x_tensor, const T *bin_center_y_tensor,
-    const int num_nodes,
-    const int num_bins_x, const int num_bins_y,
-    const int num_impacted_bins_x, const int num_impacted_bins_y,
-    const T xl, const T yl, const T xh, const T yh,
-    const T bin_size_x, const T bin_size_y,
-    bool fixed_node_flag,
-    T *density_map_tensor)
+        const T* x_tensor, const T* y_tensor,
+        const T* node_size_x_tensor, const T* node_size_y_tensor,
+        const T* bin_center_x_tensor, const T* bin_center_y_tensor,
+        const int num_nodes,
+        const int num_bins_x, const int num_bins_y,
+        const int num_impacted_bins_x, const int num_impacted_bins_y,
+        const T xl, const T yl, const T xh, const T yh,
+        const T bin_size_x, const T bin_size_y,
+        bool fixed_node_flag,
+        T *density_map_tensor
+        )
 {
     int thread_count = 256;
     int block_count = (num_nodes - 1 + thread_count) / thread_count;
 
     computeExactDensityMapCellByCell<<<block_count, thread_count>>>(
-        x_tensor, y_tensor,
-        node_size_x_tensor, node_size_y_tensor,
-        bin_center_x_tensor, bin_center_y_tensor,
-        num_nodes,
-        num_bins_x, num_bins_y,
-        xl, yl, xh, yh,
-        bin_size_x, bin_size_y,
-        fixed_node_flag,
-        density_map_tensor
+            x_tensor, y_tensor, 
+            node_size_x_tensor, node_size_y_tensor, 
+            bin_center_x_tensor, bin_center_y_tensor,
+            num_nodes,
+            num_bins_x, num_bins_y,
+            xl, yl, xh, yh,
+            bin_size_x, bin_size_y,
+            fixed_node_flag,
+            density_map_tensor
         );
 
     return 0;
@@ -488,8 +502,8 @@ int computeExactDensityMapCellByCellCudaLauncher(
     }                                                                                 \
                                                                                       \
     int instantiateComputeExactDensityMapLauncher(                                    \
-        const T *x_tensor, const T *y_tensor,                                         \
-        const T *node_size_x_tensor, const T *node_size_y_tensor,                     \
+        const T* x_tensor, const T* y_tensor,                                         \
+        const T* node_size_x_tensor, const T* node_size_y_tensor,                     \
         const T *bin_center_x_tensor, const T *bin_center_y_tensor,                   \
         const int num_nodes,                                                          \
         const int num_bins_x, const int num_bins_y,                                   \

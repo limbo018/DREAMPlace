@@ -1,0 +1,67 @@
+from setuptools import setup
+import torch
+from torch.utils.cpp_extension import BuildExtension, CppExtension, CUDAExtension
+import os
+import sys
+import copy
+
+os.environ["CC"] = "${CMAKE_C_COMPILER}"
+os.environ["CXX"] = "${CMAKE_CXX_COMPILER}"
+
+utility_dir = "${UTILITY_LIBRARY_DIRS}"
+ops_dir = "${OPS_DIR}"
+
+cuda_flags = '${CMAKE_CUDA_FLAGS}'.split(';')
+print("cuda_flags = %s" % (' '.join(cuda_flags)))
+
+include_dirs = [ops_dir]
+lib_dirs = [utility_dir]
+libs = ['utility']
+
+tokens = str(torch.__version__).split('.')
+torch_major_version = "-DTORCH_MAJOR_VERSION=%d" % (int(tokens[0]))
+torch_minor_version = "-DTORCH_MINOR_VERSION=%d" % (int(tokens[1]))
+
+
+def add_prefix(filename):
+    return os.path.join('${CMAKE_CURRENT_SOURCE_DIR}/src', filename)
+
+
+modules = []
+
+modules.extend([
+    CppExtension('rudy_cpp',
+                 [
+                     add_prefix('rudy.cpp')
+                 ],
+                 include_dirs=copy.deepcopy(include_dirs),
+                 library_dirs=copy.deepcopy(lib_dirs),
+                 libraries=copy.deepcopy(libs),
+                 extra_compile_args={
+                     'cxx': [torch_major_version, torch_minor_version, '-fopenmp']
+                 }),
+])
+
+if "${CUDA_FOUND}".upper() == 'TRUE':
+    modules.extend([
+        CUDAExtension('rudy_cuda',
+                      [
+                          add_prefix('rudy_cuda.cpp'),
+                          add_prefix('rudy_cuda_kernel.cu')
+                      ],
+                      include_dirs=copy.deepcopy(include_dirs),
+                      library_dirs=copy.deepcopy(lib_dirs),
+                      libraries=['culibos'] + libs,
+                      extra_compile_args={
+                          'cxx': ['-O2', torch_major_version, torch_minor_version],
+                          'nvcc': copy.deepcopy(cuda_flags)  
+                      }
+                      ),
+    ])
+
+setup(
+    name='rudy',
+    ext_modules=modules,
+    cmdclass={
+        'build_ext': BuildExtension
+    })

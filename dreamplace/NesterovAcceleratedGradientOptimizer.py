@@ -41,10 +41,10 @@ class NesterovAcceleratedGradientOptimizer(Optimizer):
                 u_k=[], v_k=[], g_k=[], a_k=[], alpha_k=[],
                 v_k_1=[], g_k_1=[],
                 v_kp1 = [None],
-                obj_and_grad_fn=obj_and_grad_fn,
-                constraint_fn=constraint_fn,
                 obj_eval_count=0)
         super(NesterovAcceleratedGradientOptimizer, self).__init__(params, defaults)
+        self.obj_and_grad_fn = obj_and_grad_fn 
+        self.constraint_fn = constraint_fn 
 
         # I do not know how to get generator's length
         if len(self.param_groups) != 1:
@@ -63,8 +63,8 @@ class NesterovAcceleratedGradientOptimizer(Optimizer):
             loss = closure()
 
         for group in self.param_groups:
-            obj_and_grad_fn = group['obj_and_grad_fn']
-            constraint_fn = group['constraint_fn']
+            obj_and_grad_fn = self.obj_and_grad_fn
+            constraint_fn = self.constraint_fn
             for i, p in enumerate(group['params']):
                 if p.grad is None:
                     continue

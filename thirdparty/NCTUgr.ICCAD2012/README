@@ -1,0 +1,38 @@
+#NCTU-GR 2.0 is designed by Wen-Hao Liu. Last updated 2012/05/04
+
+
+== FILE_LIST == 
+NCTUgr
+PORT9.dat
+POST9.dat
+POWV9.dat
+DAC12.set
+README
+
+== Contest Execution Command ==
+./NCTUgr DAC <circuit.aux> <solution.pl> <parameter setting file> [output file]
+
+circuit.aux            : Benchmark auxiliary file
+solution.pl            : Solution .pl file from the placer
+parameter setting file : "DAC12.set" (Settings for the DAC-2012 contest)
+output file            : Output file to dump the global routing solution
+
+== Contest Release Version ==
+NCTU-GR 2.0 - CRV2.1
+
+== NOTES ==
+1) "DAC12.set" is the default parameter setting file for the DAC-2012 contest.
+
+2) All the files associated with the router (listed above) should be present 
+   in the run directory.
+
+3) The benchmark and solution.pl files may be present in a different directory.
+
+4) Alternate/general execution command:
+   ./NCTUgr DAC <benchmark_dir/circuit.aux> <solution_dir/solution.pl> DAC12.set [Output file]
+
+5) Related Publication:
+Wen-Hao Liu, Wei-Chun Kao, Yih-Lang Li, and Kai-Yuan Chao, "Multi-Threaded 
+Collision-Aware Global Routing with Bounded-Length Maze Routing," In Proc. 
+Design Automation Conference, pp. 200-205, 2010.
+
