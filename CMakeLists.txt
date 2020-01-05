@@ -71,13 +71,6 @@ set(LEMON_LINK_DIRS ${LEMON_BINARY_DIR}/lemon)
 message("-- LEMON_INCLUDE_DIRS ${LEMON_INCLUDE_DIRS}")
 message("-- LEMON_LINK_DIRS ${LEMON_LINK_DIRS}")
 
-# NCTUgr ISPD2014 contest version for routing congestion estimation
-set(NCTUgr_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/NCTUgr/)
-set(NCTUgr_LINK_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/NCTUgr/)
-message("-- NCTUgr_INCLUDE_DIRS ${NCTUgr_INCLUDE_DIRS}")
-message("-- NCTUgr_LINK_DIRS ${NCTUgr_LINK_DIRS}")
-
-
 if (CUDA_FOUND)
 if (NOT CMAKE_CUDA_FLAGS)
     set(CMAKE_CUDA_FLAGS "-arch=sm_60"
