@@ -5,6 +5,7 @@
 #
 
 import os 
+import stat
 import sys 
 import logging
 import torch
@@ -35,6 +36,10 @@ class NCTUgr(object):
         self.params = params 
         self.placedb = placedb 
         self.nctugr_dir = "%s/../../../thirdparty/NCTUgr.ICCAD2012" % (os.path.dirname(os.path.realpath(__file__)))
+
+        nctugr_bin = "%s/NCTUgr" % (self.nctugr_dir)
+        st = os.stat(nctugr_bin)
+        os.chmod(nctugr_bin, st.st_mode | stat.S_IEXEC)
 
     def __call__(self, pos):
         return self.forward(pos)
