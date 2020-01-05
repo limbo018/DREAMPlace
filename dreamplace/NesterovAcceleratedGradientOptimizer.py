@@ -33,13 +33,15 @@ class NesterovAcceleratedGradientOptimizer(Optimizer):
 
         # u_k is major solution
         # v_k is reference solution
+        # obj_k is the objective at v_k 
         # a_k is optimization parameter
         # alpha_k is the step size
         # v_k_1 is previous reference solution
         # g_k_1 is gradient to v_k_1
+        # obj_k_1 is the objective at v_k_1
         defaults = dict(lr=lr,
-                u_k=[], v_k=[], g_k=[], a_k=[], alpha_k=[],
-                v_k_1=[], g_k_1=[],
+                u_k=[], v_k=[], g_k=[], obj_k=[], a_k=[], alpha_k=[],
+                v_k_1=[], g_k_1=[], obj_k_1=[], 
                 v_kp1 = [None],
                 obj_eval_count=0)
         super(NesterovAcceleratedGradientOptimizer, self).__init__(params, defaults)
@@ -75,18 +77,22 @@ class NesterovAcceleratedGradientOptimizer(Optimizer):
                     group['v_k'].append(p)
                     obj, grad = obj_and_grad_fn(group['v_k'][i])
                     group['g_k'].append(grad.data.clone()) # must clone
+                    group['obj_k'].append(obj.data.clone())
                 u_k = group['u_k'][i]
                 v_k = group['v_k'][i]
                 g_k = group['g_k'][i]
+                obj_k = group['obj_k'][i]
                 if not group['a_k']:
                     group['a_k'].append(torch.ones(1, dtype=g_k.dtype, device=g_k.device))
                     group['v_k_1'].append(torch.autograd.Variable(torch.zeros_like(v_k), requires_grad=True))
                     group['v_k_1'][i].data.copy_(group['v_k'][i]-group['lr']*g_k)
                     obj, grad = obj_and_grad_fn(group['v_k_1'][i])
                     group['g_k_1'].append(grad.data)
+                    group['obj_k_1'].append(obj.data.clone())
                 a_k = group['a_k'][i]
                 v_k_1 = group['v_k_1'][i]
                 g_k_1 = group['g_k_1'][i]
+                obj_k_1 = group['obj_k_1'][i]
                 if not group['alpha_k']:
                     group['alpha_k'].append((v_k-v_k_1).norm(p=2) / (g_k-g_k_1).norm(p=2))
                 alpha_k = group['alpha_k'][i]
@@ -136,10 +142,12 @@ class NesterovAcceleratedGradientOptimizer(Optimizer):
 
                 v_k_1.data.copy_(v_k.data)
                 g_k_1.data.copy_(g_k.data)
+                obj_k_1.data.copy_(obj_k.data)
 
                 u_k.data.copy_(u_kp1.data)
                 v_k.data.copy_(v_kp1.data)
                 g_k.data.copy_(g_kp1.data)
+                obj_k.data.copy_(f_kp1.data)
                 a_k.data.copy_(a_kp1.data)
 
                 # although the solution should be u_k

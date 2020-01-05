@@ -1,19 +1,23 @@
 {
 "aux_input" : {
     "descripton" : "input .aux file", 
-    "default" : "required for Bookshelf"
+    "default" : "", 
+    "required" : "required for Bookshelf"
     }, 
 "lef_input" : {
     "descripton" : "input LEF file", 
-    "default" : "required for LEF/DEF"
+    "default" : "", 
+    "required" : "required for LEF/DEF"
     },
 "def_input" : {
     "descripton" : "input DEF file", 
-    "default" : "required for LEF/DEF"
+    "default" : "", 
+    "required" : "required for LEF/DEF"
     },
 "verilog_input" : {
     "descripton" : "input VERILOG file, provide circuit netlist information if it is not included in DEF file", 
-    "default" : "optional for LEF/DEF"
+    "default" : "", 
+    "required" : "optional for LEF/DEF"
     },
 "gpu" : {
     "descripton" : "enable gpu or not", 
@@ -28,8 +32,9 @@
     "default" : 512
     },
 "global_place_stages" : {
-    "descripton" : "global placement configurations of each stage, a dictionary of {\"num_bins_x\", \"num_bins_y\", \"iteration\", \"learning_rate\"}, learning_rate is relative to bin size", 
-    "default" : "required"
+    "descripton" : "global placement configurations of each stage, a dictionary of {\"num_bins_x\", \"num_bins_y\", \"iteration\", \"learning_rate\", \"learning_rate_decay\"}", 
+    "default" : "", 
+    "required" : "required"
     },
 "target_density" : {
     "descripton" : "target density", 
@@ -52,8 +57,8 @@
     "default" : "results"
     },
 "scale_factor" : {
-    "descripton" : "scale factor to avoid numerical overflow", 
-    "default" : 1.0
+    "descripton" : "scale factor to avoid numerical overflow; 0.0 means not set", 
+    "default" : 0.0
     },
 "ignore_net_degree" : {
     "descripton" : "ignore net degree larger than some value", 
@@ -110,6 +115,10 @@
 "RePlAce_UPPER_PCOF" : {
     "descripton" : "upper bound ratio used in RePlAce for updating density weight", 
     "default" : 1.05
+    },
+"RePlAce_skip_energy_flag" : {
+    "descripton" : "whether skip density energy computation for fast mode, may not work with some solvers", 
+    "default" : 0
     },
 "random_center_init_flag" : {
     "descripton" : "whether perform random initialization around the center for global placement", 

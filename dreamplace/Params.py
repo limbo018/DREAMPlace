@@ -6,8 +6,10 @@
 #
 
 import os
+import sys
 import json 
 import math 
+from collections import OrderedDict
 import pdb
 
 class Params:
@@ -22,12 +24,12 @@ class Params:
         self.__dict__ = {}
         params_dict = {}
         with open(filename, "r") as f:
-            params_dict = json.load(f)
+            params_dict = json.load(f, object_pairs_hook=OrderedDict)
         for key, value in params_dict.items():
-            if isinstance(value['default'], str) and (value['default'].startswith('required') or value['default'].startswith('optional')): 
-                self.__dict__[key] = None
-            else:
+            if 'default' in value: 
                 self.__dict__[key] = value['default']
+            else:
+                self.__dict__[key] = None
         self.__dict__['params_dict'] = params_dict
 
     def printWelcome(self):
@@ -60,9 +62,19 @@ class Params:
         description_length = len('Description')
         description_length_map = []
 
+        def getDefaultColumn(key, value):
+            if sys.version_info.major < 3: # python 2
+                flag = isinstance(value['default'], unicode)
+            else: #python 3
+                flag = isinstance(value['default'], str)
+            if flag and not value['default'] and 'required' in value: 
+                return value['required']
+            else:
+                return value['default']
+
         for key, value in self.params_dict.items():
             key_length_map.append(len(key))
-            default_length_map.append(len(str(value['default'])))
+            default_length_map.append(len(str(getDefaultColumn(key, value))))
             description_length_map.append(len(value['descripton']))
             key_length = max(key_length, key_length_map[-1])
             default_length = max(default_length, default_length_map[-1])
@@ -86,7 +98,7 @@ class Params:
             content += "| %s %s| %s %s| %s %s|\n" % (
                     key, 
                     " " * (key_length - key_length_map[count] + 1), 
-                    str(value['default']), 
+                    str(getDefaultColumn(key, value)), 
                     " " * (default_length - default_length_map[count] + 1), 
                     value['descripton'], 
                     " " * (description_length - description_length_map[count] + 1)
@@ -153,7 +165,7 @@ class Params:
         """
         @brief speculate placement solution file suffix 
         """
-        if self.def_input is not None: # LEF/DEF 
+        if self.def_input is not None and os.path.exists(self.def_input): # LEF/DEF 
             return "def"
         else: # Bookshelf
             return "pl"
