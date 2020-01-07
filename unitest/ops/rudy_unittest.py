@@ -44,8 +44,8 @@ class RudyUnittest(unittest.TestCase):
         yl, yh = 0.0, 4.0
         num_bins_x = 8
         num_bins_y = 8
-        num_horizontal_tracks = 3.0
-        num_vertical_tracks = 3.0
+        unit_horizontal_capacity = 0.1
+        unit_vertical_capacity = 0.2 
 
         # test cpu
         rudy_op = rudy.Rudy(
@@ -58,8 +58,8 @@ class RudyUnittest(unittest.TestCase):
             yh=yh,
             num_bins_x=num_bins_x,
             num_bins_y=num_bins_y,
-            num_horizontal_tracks=num_horizontal_tracks,
-            num_vertical_tracks=num_vertical_tracks,
+            unit_horizontal_capacity=unit_horizontal_capacity,
+            unit_vertical_capacity=unit_vertical_capacity,
             num_threads=8
         )
 
@@ -78,8 +78,8 @@ class RudyUnittest(unittest.TestCase):
                 yh=yh,
                 num_bins_x=num_bins_x,
                 num_bins_y=num_bins_y,
-                num_horizontal_tracks=num_horizontal_tracks,
-                num_vertical_tracks=num_vertical_tracks
+                unit_horizontal_capacity=unit_horizontal_capacity,
+                unit_vertical_capacity=unit_vertical_capacity
             )
 
             result_cuda = rudy_op_cuda.forward(pin_pos.t().contiguous().view(-1).cuda())

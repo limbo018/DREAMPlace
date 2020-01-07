@@ -57,7 +57,7 @@ class PinUtilizationUnittest(unittest.TestCase):
         bin_size_y = (yh - yl) / num_bins_y
 
         pin_weights = None
-        tile_pin_capacity = 0.5
+        unit_pin_capacity = 0.5
         pin_stretch_ratio = math.sqrt(2)
 
         # test cpu
@@ -74,7 +74,7 @@ class PinUtilizationUnittest(unittest.TestCase):
                 num_filler_nodes=num_filler_nodes,
                 num_bins_x=num_bins_x,
                 num_bins_y=num_bins_y,
-                tile_pin_capacity=tile_pin_capacity,
+                unit_pin_capacity=unit_pin_capacity,
                 pin_stretch_ratio=pin_stretch_ratio,
                 num_threads=8
                  )
@@ -97,7 +97,7 @@ class PinUtilizationUnittest(unittest.TestCase):
                     num_filler_nodes=num_filler_nodes,
                     num_bins_x=num_bins_x,
                     num_bins_y=num_bins_y,
-                    tile_pin_capacity=tile_pin_capacity,
+                    unit_pin_capacity=unit_pin_capacity,
                     pin_stretch_ratio=pin_stretch_ratio,
                     )
 
