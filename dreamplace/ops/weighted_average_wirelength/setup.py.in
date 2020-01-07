@@ -97,19 +97,6 @@ if "${CUDA_FOUND}".upper() == 'TRUE':
                     'cxx': ['-O2', torch_major_version, torch_minor_version],
                     'nvcc': copy.deepcopy(cuda_flags)
                     }),
-            CUDAExtension('weighted_average_wirelength_cuda_sparse',
-                [
-                    add_prefix('weighted_average_wirelength_cuda_sparse.cpp'),
-                    add_prefix('weighted_average_wirelength_cuda_sparse_kernel.cu'),
-                    add_prefix('integrate_net_weights_cuda_kernel.cu')
-                    ],
-                include_dirs=copy.deepcopy(include_dirs),
-                library_dirs=copy.deepcopy(lib_dirs),
-                libraries=copy.deepcopy(libs),
-                extra_compile_args={
-                    'cxx': ['-O2', torch_major_version, torch_minor_version],
-                    'nvcc': copy.deepcopy(cuda_flags)
-                    }),
             CUDAExtension('weighted_average_wirelength_cuda_merged',
                 [
                     add_prefix('weighted_average_wirelength_cuda_merged.cpp'),

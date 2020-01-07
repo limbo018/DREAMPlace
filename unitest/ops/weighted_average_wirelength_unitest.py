@@ -224,28 +224,6 @@ class WeightedAverageWirelengthOpTest(unittest.TestCase):
             np.testing.assert_allclose(result_cuda.data.cpu().numpy(), golden_value, atol=1e-6)
             np.testing.assert_allclose(grad_cuda.data.cpu().numpy(), grad.data.numpy(), rtol=1e-6, atol=1e-6)
 
-        # test gpu sparse
-        if torch.cuda.device_count():
-            pin_pos_var.grad.zero_()
-            custom_cuda = weighted_average_wirelength.WeightedAverageWirelength(
-                    flat_netpin=Variable(torch.from_numpy(flat_net2pin_map)).cuda(),
-                    netpin_start=Variable(torch.from_numpy(flat_net2pin_start_map)).cuda(),
-                    pin2net_map=torch.from_numpy(pin2net_map).cuda(),
-                    net_weights=torch.from_numpy(net_weights).cuda(),
-                    net_mask=torch.from_numpy(net_mask).cuda(),
-                    pin_mask=torch.from_numpy(pin_mask).cuda(),
-                    gamma=torch.tensor(gamma, dtype=dtype).cuda(),
-                    algorithm='sparse'
-                    )
-            result_cuda = custom_cuda.forward(pin_pos_var.cuda())
-            print("custom_cuda_result sparse = ", result_cuda.data.cpu())
-            result_cuda.backward()
-            grad_cuda = pin_pos_var.grad.clone()
-            print("custom_grad_cuda sparse = ", grad_cuda.data.cpu())
-
-            np.testing.assert_allclose(result_cuda.data.cpu().numpy(), golden_value, atol=1e-6)
-            np.testing.assert_allclose(grad_cuda.data.cpu().numpy(), grad.data.numpy(), rtol=1e-6, atol=1e-6)
-
         # test gpu merged
         if torch.cuda.device_count():
             pin_pos_var.grad.zero_()

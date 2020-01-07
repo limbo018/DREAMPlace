@@ -187,70 +187,6 @@ class WeightedAverageWirelengthAtomicFunction(Function):
         logger.debug("wirelength backward %.3f ms" % ((time.time()-tt)*1000))
         return output, None, None, None, None, None, None, None, None
 
-class WeightedAverageWirelengthSparseFunction(Function):
-    """
-    @brief compute weighted average wirelength.
-    """
-    @staticmethod
-    def forward(ctx, pos, flat_netpin, netpin_start, netpin_values, pin2net_map, net_weights, net_mask, pin_mask, inv_gamma):
-        """
-        @param pos pin location (x array, y array), not cell location
-        @param pin2net_map pin2net map
-        @param net_weights weight of nets
-        @param net_mask whether to compute wirelength
-        @param pin_mask whether compute gradient for a pin, 1 means to fill with zero, 0 means to compute
-        @param inv_gamma the larger, the closer to HPWL
-        """
-        tt = time.time()
-        if pos.is_cuda:
-            output = weighted_average_wirelength_cuda_sparse.forward(pos.view(pos.numel()), flat_netpin, netpin_start, netpin_values, pin2net_map, net_weights, net_mask, inv_gamma)
-        else:
-            assert 0, "CPU version NOT IMPLEMENTED"
-        ctx.pin2net_map = pin2net_map
-        ctx.net_weights = net_weights
-        ctx.net_mask = net_mask
-        ctx.pin_mask = pin_mask
-        ctx.inv_gamma = inv_gamma
-        ctx.exp_xy = output[1]
-        ctx.exp_nxy = output[2]
-        ctx.exp_xy_sum = output[3]
-        ctx.exp_nxy_sum = output[4]
-        ctx.xyexp_xy_sum = output[5]
-        ctx.xyexp_nxy_sum = output[6]
-        ctx.pos = pos
-        #if torch.isnan(ctx.exp_xy).any() or torch.isnan(ctx.exp_nxy).any() or torch.isnan(ctx.exp_xy_sum).any() or torch.isnan(ctx.exp_nxy_sum).any() or torch.isnan(output[0]).any():
-        #    pdb.set_trace()
-        if pos.is_cuda:
-            torch.cuda.synchronize()
-        logger.debug("wirelength forward %.3f ms" % ((time.time()-tt)*1000))
-        return output[0]
-
-    @staticmethod
-    def backward(ctx, grad_pos):
-        tt = time.time()
-        if grad_pos.is_cuda:
-            output = weighted_average_wirelength_cuda_sparse.backward(
-                    grad_pos,
-                    ctx.pos,
-                    ctx.exp_xy.view([-1]), ctx.exp_nxy.view([-1]),
-                    ctx.exp_xy_sum.view([-1]), ctx.exp_nxy_sum.view([-1]),
-                    ctx.xyexp_xy_sum.view([-1]), ctx.xyexp_nxy_sum.view([-1]),
-                    ctx.pin2net_map,
-                    ctx.net_weights,
-                    ctx.net_mask,
-                    ctx.inv_gamma
-                    )
-        else:
-            assert 0, "CPU version NOT IMPLEMENTED"
-        output[:output.numel()//2].masked_fill_(ctx.pin_mask, 0.0)
-        output[output.numel()//2:].masked_fill_(ctx.pin_mask, 0.0)
-        #if torch.isnan(output).any():
-        #    pdb.set_trace()
-        if grad_pos.is_cuda:
-            torch.cuda.synchronize()
-        logger.debug("wirelength backward %.3f ms" % ((time.time()-tt)*1000))
-        return output, None, None, None, None, None, None, None, None, None
-
 class WeightedAverageWirelengthMergedFunction(Function):
     """
     @brief compute weighted average wirelength.
@@ -324,7 +260,7 @@ class WeightedAverageWirelength(nn.Module):
     """
     @brief Compute weighted average wirelength.
     CPU only supports net-by-net algorithm.
-    GPU supports three algorithms: net-by-net, atomic, sparse.
+    GPU supports three algorithms: net-by-net, atomic, merged.
     Different parameters are required for different algorithms.
     """
     def __init__(self, flat_netpin=None, netpin_start=None, pin2net_map=None, net_weights=None, net_mask=None, pin_mask=None, gamma=None, algorithm='atomic', num_threads=8):
@@ -337,19 +273,18 @@ class WeightedAverageWirelength(nn.Module):
         @param net_mask whether to compute wirelength, 1 means to compute, 0 means to ignore
         @param pin_mask whether compute gradient for a pin, 1 means to fill with zero, 0 means to compute
         @param gamma the smaller, the closer to HPWL
-        @param algorithm must be net-by-net | atomic | sparse
+        @param algorithm must be net-by-net | atomic | merged
         """
         super(WeightedAverageWirelength, self).__init__()
         assert net_weights is not None \
                 and net_mask is not None \
                 and pin_mask is not None \
                 and gamma is not None, "net_weights, net_mask, pin_mask, gamma are requried parameters"
-        if algorithm == 'net-by-net':
-            assert flat_netpin is not None and netpin_start is not None and pin2net_map is not None, "flat_netpin, netpin_start, pin2net_map are requried parameters for algorithm net-by-net"
+        if algorithm in ['net-by-net', 'merged']:
+            assert flat_netpin is not None and netpin_start is not None and pin2net_map is not None, "flat_netpin, netpin_start, pin2net_map are requried parameters for algorithm %s" % (algorithm)
         elif algorithm == 'atomic':
             assert pin2net_map is not None, "pin2net_map is required for algorithm atomic"
-        elif algorithm == 'sparse':
-            assert flat_netpin is not None and netpin_start is not None and pin2net_map is not None, "flat_netpin, netpin_start, pin2net_map are requried parameters for algorithm sparse"
+
         self.flat_netpin = flat_netpin
         self.netpin_start = netpin_start
         self.netpin_values = None
@@ -382,19 +317,6 @@ class WeightedAverageWirelength(nn.Module):
                     self.pin_mask,
                     1.0/self.gamma, # do not store inv_gamma as gamma is changing
                     self.num_threads
-                    )
-        elif self.algorithm == 'sparse':
-            if self.netpin_values is None:
-                self.netpin_values = torch.ones_like(self.flat_netpin, dtype=pos.dtype)
-            return WeightedAverageWirelengthSparseFunction.apply(pos,
-                    self.flat_netpin,
-                    self.netpin_start,
-                    self.netpin_values,
-                    self.pin2net_map,
-                    self.net_weights,
-                    self.net_mask,
-                    self.pin_mask,
-                    1.0/self.gamma # do not store inv_gamma as gamma is changing
                     )
         elif self.algorithm == 'merged':
             return WeightedAverageWirelengthMergedFunction.apply(pos,
