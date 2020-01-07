@@ -43,9 +43,6 @@ at::Tensor pin_utilization_map_forward(
     double yh,
     double bin_size_x,
     double bin_size_y,
-    double unit_pin_capacity,
-    double max_pin_opt_adjust_rate,
-    double min_pin_opt_adjust_rate,
     int num_physical_nodes,
     int num_bins_x,
     int num_bins_y
@@ -92,10 +89,6 @@ at::Tensor pin_utilization_map_forward(
                     pin_utilization_map.data<scalar_t>()
                     );
     });
-
-    // convert demand to utilization in each bin
-    pin_utilization_map.mul_(1 / (bin_size_x * bin_size_y * unit_pin_capacity));
-    pin_utilization_map.clamp_(min_pin_opt_adjust_rate, max_pin_opt_adjust_rate);
 
     return pin_utilization_map;
 }

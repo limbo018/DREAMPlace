@@ -51,8 +51,12 @@ __global__ void pinDemandMap(const T *node_x, const T *node_y,
         {
             for (int y = bin_index_yl; y < bin_index_yh; ++y)
             {
-                T overlap = (DREAMPLACE_STD_NAMESPACE::min(x_max, (x + 1) * bin_size_x) - DREAMPLACE_STD_NAMESPACE::max(x_min, x * bin_size_x)) *
-                            (DREAMPLACE_STD_NAMESPACE::min(y_max, (y + 1) * bin_size_y) - DREAMPLACE_STD_NAMESPACE::max(y_min, y * bin_size_y));
+                T bin_xl = xl + x * bin_size_x; 
+                T bin_yl = yl + y * bin_size_y; 
+                T bin_xh = bin_xl + bin_size_x; 
+                T bin_yh = bin_yl + bin_size_y; 
+                T overlap = DREAMPLACE_STD_NAMESPACE::max(DREAMPLACE_STD_NAMESPACE::min(x_max, bin_xh) - DREAMPLACE_STD_NAMESPACE::max(x_min, bin_xl), (T)0) *
+                            DREAMPLACE_STD_NAMESPACE::max(DREAMPLACE_STD_NAMESPACE::min(y_max, bin_yh) - DREAMPLACE_STD_NAMESPACE::max(y_min, bin_yl), (T)0);
                 int index = x * num_bins_y + y;
                 atomicAdd(pin_utilization_map + index, overlap * density);
             }

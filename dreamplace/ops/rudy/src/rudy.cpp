@@ -34,8 +34,8 @@ int rudyLauncher(const T *pin_pos_x,
                           int num_bins_x, int num_bins_y,
                           int num_nets,
                           int num_threads,
-                          T *routing_utilization_map_x,
-                          T *routing_utilization_map_y)
+                          T *horizontal_utilization_map,
+                          T *vertical_utilization_map)
 {
     const T inv_bin_size_x = 1.0 / bin_size_x;
     const T inv_bin_size_y = 1.0 / bin_size_y;
@@ -51,18 +51,14 @@ int rudyLauncher(const T *pin_pos_x,
 
         for (int j = netpin_start[i]; j < netpin_start[i + 1]; ++j)
         {
-            const T xx = pin_pos_x[flat_netpin[j]];
-
+            int pin_id = flat_netpin[j];
+            const T xx = pin_pos_x[pin_id];
             x_max = DREAMPLACE_STD_NAMESPACE::max(xx, x_max);
             x_min = DREAMPLACE_STD_NAMESPACE::min(xx, x_min);
-            const T yy = pin_pos_y[flat_netpin[j]];
+            const T yy = pin_pos_y[pin_id];
             y_max = DREAMPLACE_STD_NAMESPACE::max(yy, y_max);
             y_min = DREAMPLACE_STD_NAMESPACE::min(yy, y_min);
         }
-
-        // Following Wuxi's implementation, a tolerance is added to avoid 0-size bounding box
-        x_max += TOLERANCE;
-        y_max += TOLERANCE;
 
         // compute the bin box that this net will affect
         int bin_index_xl = int((x_min - xl) * inv_bin_size_x);
@@ -85,20 +81,26 @@ int rudyLauncher(const T *pin_pos_x,
         {
             for (int y = bin_index_yl; y < bin_index_yh; ++y)
             {
-                T overlap = wt * (DREAMPLACE_STD_NAMESPACE::min(x_max, (x + 1) * bin_size_x) - DREAMPLACE_STD_NAMESPACE::max(x_min, x * bin_size_x)) *
-                            (DREAMPLACE_STD_NAMESPACE::min(y_max, (y + 1) * bin_size_y) - DREAMPLACE_STD_NAMESPACE::max(y_min, y * bin_size_y));
+                T bin_xl = xl + x * bin_size_x; 
+                T bin_yl = yl + y * bin_size_y; 
+                T bin_xh = bin_xl + bin_size_x; 
+                T bin_yh = bin_yl + bin_size_y; 
+                T overlap = DREAMPLACE_STD_NAMESPACE::max(DREAMPLACE_STD_NAMESPACE::min(x_max, bin_xh) - DREAMPLACE_STD_NAMESPACE::max(x_min, bin_xl), (T)0) *
+                            DREAMPLACE_STD_NAMESPACE::max(DREAMPLACE_STD_NAMESPACE::min(y_max, bin_yh) - DREAMPLACE_STD_NAMESPACE::max(y_min, bin_yl), (T)0);
+                overlap *= wt; 
                 int index = x * num_bins_y + y;
+                // Following Wuxi's implementation, a tolerance is added to avoid 0-size bounding box
                 #pragma omp atomic update
-                routing_utilization_map_x[index] += overlap / (y_max - y_min);
+                horizontal_utilization_map[index] += overlap / (y_max - y_min + std::numeric_limits<T>::epsilon());
                 #pragma omp atomic update
-                routing_utilization_map_y[index] += overlap / (x_max - x_min);
+                vertical_utilization_map[index] += overlap / (x_max - x_min + std::numeric_limits<T>::epsilon());
             }
         }
     }
     return 0;
 }
 
-at::Tensor rudy_forward(
+void rudy_forward(
     at::Tensor pin_pos,
     at::Tensor netpin_start,
     at::Tensor flat_netpin,
@@ -109,13 +111,11 @@ at::Tensor rudy_forward(
     double yl,
     double xh,
     double yh,
-    double unit_horizontal_routing_capacity,
-    double unit_vertical_routing_capacity,
-    double max_route_opt_adjust_rate,
-    double min_route_opt_adjust_rate,
     int num_bins_x,
     int num_bins_y,
-    int num_threads
+    int num_threads, 
+    at::Tensor horizontal_utilization_map, 
+    at::Tensor vertical_utilization_map 
     )
 {
     CHECK_FLAT(pin_pos);
@@ -133,8 +133,6 @@ at::Tensor rudy_forward(
 
     int num_nets = netpin_start.numel() - 1; 
     int num_pins = pin_pos.numel() / 2;
-    at::Tensor routing_utilization_map_x = at::zeros({num_bins_x, num_bins_y}, pin_pos.options());
-    at::Tensor routing_utilization_map_y = at::zeros({num_bins_x, num_bins_y}, pin_pos.options());
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pin_pos.type(), "rudyLauncher", [&] {
         rudyLauncher<scalar_t>(
@@ -148,19 +146,9 @@ at::Tensor rudy_forward(
             num_bins_x, num_bins_y,
             num_nets,
             num_threads,
-            routing_utilization_map_x.data<scalar_t>(),
-            routing_utilization_map_y.data<scalar_t>());
+            horizontal_utilization_map.data<scalar_t>(),
+            vertical_utilization_map.data<scalar_t>());
     });
-
-    // convert demand to utilization in each bin
-    routing_utilization_map_x.mul_(1 / (bin_size_x * bin_size_y * unit_horizontal_routing_capacity));
-    routing_utilization_map_y.mul_(1 / (bin_size_x * bin_size_y * unit_vertical_routing_capacity));
-    // infinity norm
-    at::Tensor routing_utilization_map = at::max(routing_utilization_map_x.abs(), routing_utilization_map_y.abs());
-    // clamp the routing square of routing utilization map
-    routing_utilization_map.pow_(2).clamp_(min_route_opt_adjust_rate, max_route_opt_adjust_rate);
-
-    return routing_utilization_map;
 }
 
 DREAMPLACE_END_NAMESPACE

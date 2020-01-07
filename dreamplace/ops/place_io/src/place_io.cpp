@@ -11,6 +11,7 @@
 #include <sstream>
 //#include <boost/timer/timer.hpp>
 #include "PlaceDB.h"
+#include "Iterators.h"
 #include "utility/src/torch.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
@@ -268,6 +269,9 @@ struct PyPlaceDB
     pybind11::list node_size_x; ///< 1D array, cell width  
     pybind11::list node_size_y; ///< 1D array, cell height
 
+    pybind11::list node2orig_node_map; ///< due to some fixed nodes may have non-rectangular shapes, we flat the node list; 
+                                        ///< this map maps the new indices back to the original ones 
+
     pybind11::list pin_direct; ///< 1D array, pin direction IO 
     pybind11::list pin_offset_x; ///< 1D array, pin offset x to its node 
     pybind11::list pin_offset_y; ///< 1D array, pin offset y to its node 
@@ -294,6 +298,17 @@ struct PyPlaceDB
 
     pybind11::list node2fence_region_map; ///< only record fence regions for each cell 
 
+    unsigned int num_routing_grids_x; ///< number of routing grids in x 
+    unsigned int num_routing_grids_y; ///< number of routing grids in y 
+    int routing_grid_xl; ///< routing grid region may be different from placement region 
+    int routing_grid_yl; 
+    int routing_grid_xh; 
+    int routing_grid_yh;
+    pybind11::list unit_horizontal_capacities; ///< number of horizontal tracks of layers per unit distance 
+    pybind11::list unit_vertical_capacities; /// number of vertical tracks of layers per unit distance 
+    pybind11::list initial_horizontal_demand_map; ///< initial routing demand from fixed cells, indexed by (layer, grid x, grid y) 
+    pybind11::list initial_vertical_demand_map; ///< initial routing demand from fixed cells, indexed by (layer, grid x, grid y)   
+
     int xl; 
     int yl; 
     int xh; 
@@ -315,38 +330,111 @@ struct PyPlaceDB
 
     void set(PlaceDB const& db)
     {
-        num_nodes = db.nodes().size(); 
-        num_terminals = db.numFixed() + db.numPlaceBlockages(); // regard both fixed macros and placement blockages as macros 
         num_terminal_NIs = db.numIOPin(); // IO pins 
+        // record original node to new node mapping 
+        std::vector<std::vector<PlaceDB::index_type> > mNode2NewNodes (db.nodes().size()); 
 
-        for (PlaceDB::string2index_map_type::const_iterator it = db.nodeName2Index().begin(), ite = db.nodeName2Index().end(); it != ite; ++it)
-        {
-            node_name2id_map[pybind11::str(it->first)] = it->second; 
-        }
-        int count = 0; 
-        for (unsigned int i = 0; i < num_nodes; ++i)
+        // general add a node 
+        auto addNode = [&](Node const& node, 
+                std::string const& name, Orient orient, 
+                Box<PlaceDB::coordinate_type> const& box) {
+            // this id may be different from node id 
+            int id = node_names.size(); 
+            node_name2id_map[pybind11::str(name)] = id; 
+            node_names.append(pybind11::str(name)); 
+            node_x.append(box.xl()); 
+            node_y.append(box.yl()); 
+            node_orient.append(pybind11::str(std::string(orient))); 
+            node_size_x.append(box.width()); 
+            node_size_y.append(box.height()); 
+            // map new node to original index 
+            node2orig_node_map.append(node.id()); 
+            // record original node to new node mapping 
+            mNode2NewNodes.at(node.id()).push_back(id); 
+        };
+        // add obstruction boxes for fixed nodes 
+        // initialize node shapes from obstruction 
+        // I do not differentiate obstruction boxes at different layers
+        // At least, this is true for DAC/ICCAD 2012 benchmarks 
+        auto addObsBoxes = [&](Node const& node, std::vector<Box<PlaceDB::coordinate_type> > const& vBox){
+            for (PlaceDB::index_type i = 0; i < vBox.size(); ++i)
+            {
+                auto box = vBox[i]; 
+                box.set(box.xl() + node.xl(), 
+                        box.yl() + node.yl(), 
+                        box.xh() + node.xl(), 
+                        box.yh() + node.yl()
+                       );
+                char buf[128]; 
+                dreamplaceSPrint(kNONE, buf, "%s.DREAMPlace.Shape%u", db.nodeName(node).c_str(), i); 
+                addNode(node, std::string(buf), Orient(node.orient()), box);
+            }
+        };
+
+        num_terminals = 0; // regard both fixed macros and placement blockages as macros 
+        for (unsigned int i = 0; i < db.nodes().size(); ++i)
         {
             Node const& node = db.node(i); 
-            node_names.append(pybind11::str(db.nodeName(i))); 
-            node_x.append(node.xl());
-            node_y.append(node.yl());
-            node_orient.append(pybind11::str(std::string(Orient(node.orient())))); 
-            node_size_x.append(node.width()); 
-            node_size_y.append(node.height());
-
-            pybind11::list pins;
-            for (std::vector<Node::index_type>::const_iterator it = node.pins().begin(), ite = node.pins().end(); it != ite; ++it)
+            if (node.status() != PlaceStatusEnum::FIXED || i >= db.nodes().size() - num_terminal_NIs)
             {
-                pins.append(*it);
+                addNode(node, db.nodeName(node), Orient(node.orient()), node); 
             }
-            node2pin_map.append(pins); 
-
-            for (std::vector<Node::index_type>::const_iterator it = node.pins().begin(), ite = node.pins().end(); it != ite; ++it)
+            else // fixed cells are special cases 
             {
-                flat_node2pin_map.append(*it); 
+                Macro const& macro = db.macro(db.macroId(node));
+
+                if (!macro.obs().empty())
+                {
+                    MacroObs::ObsConstIterator foundObs = macro.obs().obsMap().find("Bookshelf.Shape"); 
+                    if (foundObs != macro.obs().end()) // for BOOKSHELF
+                    {
+                        addObsBoxes(node, foundObs->second); 
+                        num_terminals += foundObs->second.size(); 
+                    }
+                    else 
+                    {
+                        for (auto it = macro.obs().begin(), ite = macro.obs().end(); it != ite; ++it)
+                        {
+                            addObsBoxes(node, it->second); 
+                            num_terminals += it->second.size(); 
+                        }
+                    }
+                }
+                else 
+                {
+                    addNode(node, db.nodeName(node), Orient(node.orient()), node); 
+                    num_terminals += 1; 
+                }
             }
-            flat_node2pin_start_map.append(count); 
-            count += node.pins().size(); 
+        }
+        dreamplacePrint(kINFO, "convert %u fixed cells into %u ones due to some non-rectangular cells\n", db.numFixed(), num_terminals); 
+        // we only know num_nodes when all fixed cells with shapes are expanded 
+        num_nodes = db.nodes().size() + num_terminals - db.numFixed(); 
+        dreamplaceAssertMsg(num_nodes == node_x.size(), "%u != %lu", num_nodes, node_x.size());
+
+        // construct node2pin_map and flat_node2pin_map
+        int count = 0; 
+        for (unsigned int i = 0; i < mNode2NewNodes.size(); ++i)
+        {
+            Node const& node = db.node(i);
+            for (unsigned int j = 0; j < mNode2NewNodes.at(i).size(); ++j)
+            {
+                pybind11::list pins; 
+                if (j == 0) // for fixed macros with multiple boxes, put all pins to the first one 
+                {
+                    for (auto pin_id : node.pins())
+                    {
+                        pins.append(pin_id); 
+                        flat_node2pin_map.append(pin_id); 
+                    }
+                }
+                node2pin_map.append(pins); 
+                flat_node2pin_start_map.append(count); 
+                if (j == 0) // for fixed macros with multiple boxes, put all pins to the first one 
+                {
+                    count += node.pins().size(); 
+                }
+            }
         }
         flat_node2pin_start_map.append(count); 
 
@@ -356,9 +444,12 @@ struct PyPlaceDB
             Pin const& pin = db.pin(i); 
             Node const& node = db.getNode(pin); 
             pin_direct.append(std::string(pin.direct())); 
-            pin_offset_x.append(pin.offset().x()); 
-            pin_offset_y.append(pin.offset().y()); 
-            pin2node_map.append(node.id()); 
+            // for fixed macros with multiple boxes, put all pins to the first one 
+            PlaceDB::index_type new_node_id = mNode2NewNodes.at(node.id()).at(0); 
+            Pin::point_type pin_pos (node.pinPos(pin));
+            pin_offset_x.append(pin_pos.x() - node_x[new_node_id].cast<PlaceDB::coordinate_type>()); 
+            pin_offset_y.append(pin_pos.y() - node_y[new_node_id].cast<PlaceDB::coordinate_type>()); 
+            pin2node_map.append(new_node_id); 
             pin2net_map.append(db.getNet(pin).id()); 
 
             if (node.status() != PlaceStatusEnum::FIXED /*&& node.status() != PlaceStatusEnum::DUMMY_FIXED*/)
@@ -424,7 +515,10 @@ struct PyPlaceDB
                 for (std::vector<Group::index_type>::const_iterator itn = group.nodes().begin(), itne = group.nodes().end(); itn != itne; ++itn)
                 {
                     Group::index_type node_id = *itn; 
-                    vNode2FenceRegion.at(node_id) = region.id();
+                    if (db.node(node_id).status() != PlaceStatusEnum::FIXED) // ignore fixed cells 
+                    {
+                        vNode2FenceRegion.at(node_id) = region.id();
+                    }
                 }
             }
         }
@@ -440,6 +534,104 @@ struct PyPlaceDB
 
         row_height = db.rowHeight(); 
         site_width = db.siteWidth(); 
+
+        // routing information initialized 
+        num_routing_grids_x = 0; 
+        num_routing_grids_y = 0; 
+        routing_grid_xl = xl; 
+        routing_grid_yl = yl; 
+        routing_grid_xh = xh; 
+        routing_grid_yh = yh; 
+        if (!db.routingCapacity(PlanarDirectEnum::HORIZONTAL).empty())
+        {
+            num_routing_grids_x = db.numRoutingGrids(kX); 
+            num_routing_grids_y = db.numRoutingGrids(kY);
+            routing_grid_xl = db.routingGridOrigin(kX);
+            routing_grid_yl = db.routingGridOrigin(kY); 
+            routing_grid_xh = routing_grid_xl + num_routing_grids_x * db.routingTileSize(kX); 
+            routing_grid_yh = routing_grid_yl + num_routing_grids_y * db.routingTileSize(kY); 
+            for (PlaceDB::index_type layer = 0; layer < db.numRoutingLayers(); ++layer)
+            {
+                unit_horizontal_capacities.append((double)db.numRoutingTracks(PlanarDirectEnum::HORIZONTAL, layer) / db.routingTileSize(kY)); 
+                unit_vertical_capacities.append((double)db.numRoutingTracks(PlanarDirectEnum::VERTICAL, layer) / db.routingTileSize(kX));
+            }
+            // this is slightly different from db.routingGridOrigin 
+            // to be consistent with global placement 
+            double routing_grid_size_x = db.routingTileSize(kX); 
+            double routing_grid_size_y = db.routingTileSize(kY);
+            double routing_grid_area = routing_grid_size_x * routing_grid_size_y;
+            std::vector<int> initial_horizontal_routing_map (db.numRoutingLayers() * num_routing_grids_x * num_routing_grids_y, 0); 
+            std::vector<int> initial_vertical_routing_map (initial_horizontal_routing_map.size(), 0); 
+            for (FixedNodeConstIterator it = db.fixedNodeBegin(); it.inRange(); ++it)
+            {
+                Node const& node = *it; 
+                Macro const& macro = db.macro(db.macroId(node)); 
+
+                for (MacroObs::ObsConstIterator ito = macro.obs().begin(); ito != macro.obs().end(); ++ito)
+                {
+                    if (ito->first != "Bookshelf.Shape") // skip dummy layer for BOOKSHELF 
+                    {
+                        std::string const& layerName = ito->first; 
+                        PlaceDB::index_type layer = db.getLayer(layerName); 
+                        for (auto const& obs_box : ito->second)
+                        {
+                            // convert to absolute box 
+                            MacroObs::box_type box (node.xl() + obs_box.xl(), node.yl() + obs_box.yl(), 
+                                    node.xl() + obs_box.xh(), node.yl() + obs_box.yh());
+                            PlaceDB::index_type grid_index_xl = std::max(int((box.xl() - db.routingGridOrigin(kX)) / routing_grid_size_x), 0); 
+                            PlaceDB::index_type grid_index_yl = std::max(int((box.yl() - db.routingGridOrigin(kY)) / routing_grid_size_y), 0);
+                            PlaceDB::index_type grid_index_xh = std::min(unsigned((box.xh() - db.routingGridOrigin(kX)) / routing_grid_size_x) + 1, num_routing_grids_x); 
+                            PlaceDB::index_type grid_index_yh = std::min(unsigned((box.yh() - db.routingGridOrigin(kY)) / routing_grid_size_y) + 1, num_routing_grids_y); 
+                            for (PlaceDB::index_type k = grid_index_xl; k < grid_index_xh; ++k)
+                            {
+                                PlaceDB::coordinate_type grid_xl = db.routingGridOrigin(kX) + k * routing_grid_size_x; 
+                                PlaceDB::coordinate_type grid_xh = grid_xl + routing_grid_size_x;
+                                for (PlaceDB::index_type h = grid_index_yl; h < grid_index_yh; ++h)
+                                {
+                                    PlaceDB::coordinate_type grid_yl = db.routingGridOrigin(kY) + h * routing_grid_size_y; 
+                                    PlaceDB::coordinate_type grid_yh = grid_yl + routing_grid_size_y; 
+                                    MacroObs::box_type grid_box (grid_xl, grid_yl, grid_xh, grid_yh); 
+                                    PlaceDB::index_type index = layer * num_routing_grids_x * num_routing_grids_y + (k * num_routing_grids_y + h);
+                                    double intersect_ratio = intersectArea(box, grid_box) / routing_grid_area;
+                                    dreamplaceAssert(intersect_ratio <= 1);
+                                    initial_horizontal_routing_map[index] += ceil(intersect_ratio * db.numRoutingTracks(PlanarDirectEnum::HORIZONTAL, layer)); 
+                                    initial_vertical_routing_map[index] += ceil(intersect_ratio * db.numRoutingTracks(PlanarDirectEnum::VERTICAL, layer)); 
+                                    if (layer == 2)
+                                    {
+                                        dreamplaceAssert(db.numRoutingTracks(PlanarDirectEnum::VERTICAL, layer) == 0);
+                                        dreamplaceAssertMsg(initial_vertical_routing_map[index] == 0, "intersect_ratio %g, initial_vertical_routing_map[%u] = %d, capacity %u, product %g", 
+                                                intersect_ratio, index, initial_vertical_routing_map[index], 
+                                                db.numRoutingTracks(PlanarDirectEnum::VERTICAL, layer), 
+                                                intersect_ratio * db.numRoutingTracks(PlanarDirectEnum::VERTICAL, layer)
+                                                );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            // clamp maximum for overlapping fixed cells 
+            for (PlaceDB::index_type layer = 0; layer < db.numRoutingLayers(); ++layer)
+            {
+                for (int i = 0, ie = num_routing_grids_x * num_routing_grids_y; i < ie; ++i)
+                {
+                    auto& hvalue = initial_horizontal_routing_map[layer * ie + i];
+                    hvalue = std::min(hvalue, (int)db.numRoutingTracks(PlanarDirectEnum::HORIZONTAL, layer));
+
+                    auto& vvalue = initial_vertical_routing_map[layer * ie + i];
+                    vvalue = std::min(vvalue, (int)db.numRoutingTracks(PlanarDirectEnum::VERTICAL, layer));
+                }
+            }
+            for (auto item : initial_horizontal_routing_map)
+            {
+                initial_horizontal_demand_map.append(item); 
+            }
+            for (auto item : initial_vertical_routing_map)
+            {
+                initial_vertical_demand_map.append(item); 
+            }
+        }
     }
 };
 
@@ -983,6 +1175,12 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         .def("isIgnoredNet", (bool (PlaceDB::*)(PlaceDB::index_type) const) &PlaceDB::isIgnoredNet)
         .def("isIgnoredNet", (bool (PlaceDB::*)(Net const&) const) &PlaceDB::isIgnoredNet)
         .def("netIgnoreFlag", &PlaceDB::netIgnoreFlag)
+        .def("numRoutingGrids", (PlaceDB::index_type (PlaceDB::*)(Direction1DType) const) &PlaceDB::numRoutingGrids)
+        .def("numRoutingLayers", &PlaceDB::numRoutingLayers)
+        .def("routingGridOrigin", (PlaceDB::coordinate_type (PlaceDB::*)(Direction1DType) const) &PlaceDB::routingGridOrigin)
+        .def("routingTileSize", (PlaceDB::coordinate_type (PlaceDB::*)(Direction1DType) const) &PlaceDB::routingTileSize)
+        .def("routingBlockagePorosity", &PlaceDB::routingBlockagePorosity)
+        .def("numRoutingTracks", (PlaceDB::index_type (PlaceDB::*)(Direction1DType, PlaceDB::index_type) const) &PlaceDB::numRoutingTracks)
         ;
 
     pybind11::class_<DREAMPLACE_NAMESPACE::PyPlaceDB>(m, "PyPlaceDB")
@@ -997,6 +1195,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         .def_readwrite("node_orient", &DREAMPLACE_NAMESPACE::PyPlaceDB::node_orient)
         .def_readwrite("node_size_x", &DREAMPLACE_NAMESPACE::PyPlaceDB::node_size_x)
         .def_readwrite("node_size_y", &DREAMPLACE_NAMESPACE::PyPlaceDB::node_size_y)
+        .def_readwrite("node2orig_node_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::node2orig_node_map)
         .def_readwrite("pin_direct", &DREAMPLACE_NAMESPACE::PyPlaceDB::pin_direct)
         .def_readwrite("pin_offset_x", &DREAMPLACE_NAMESPACE::PyPlaceDB::pin_offset_x)
         .def_readwrite("pin_offset_y", &DREAMPLACE_NAMESPACE::PyPlaceDB::pin_offset_y)
@@ -1023,6 +1222,16 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         .def_readwrite("row_height", &DREAMPLACE_NAMESPACE::PyPlaceDB::row_height)
         .def_readwrite("site_width", &DREAMPLACE_NAMESPACE::PyPlaceDB::site_width)
         .def_readwrite("num_movable_pins", &DREAMPLACE_NAMESPACE::PyPlaceDB::num_movable_pins)
+        .def_readwrite("num_routing_grids_x", &DREAMPLACE_NAMESPACE::PyPlaceDB::num_routing_grids_x)
+        .def_readwrite("num_routing_grids_y", &DREAMPLACE_NAMESPACE::PyPlaceDB::num_routing_grids_y)
+        .def_readwrite("routing_grid_xl", &DREAMPLACE_NAMESPACE::PyPlaceDB::routing_grid_xl)
+        .def_readwrite("routing_grid_yl", &DREAMPLACE_NAMESPACE::PyPlaceDB::routing_grid_yl)
+        .def_readwrite("routing_grid_xh", &DREAMPLACE_NAMESPACE::PyPlaceDB::routing_grid_xh)
+        .def_readwrite("routing_grid_yh", &DREAMPLACE_NAMESPACE::PyPlaceDB::routing_grid_yh)
+        .def_readwrite("unit_horizontal_capacities", &DREAMPLACE_NAMESPACE::PyPlaceDB::unit_horizontal_capacities)
+        .def_readwrite("unit_vertical_capacities", &DREAMPLACE_NAMESPACE::PyPlaceDB::unit_vertical_capacities)
+        .def_readwrite("initial_horizontal_demand_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::initial_horizontal_demand_map)
+        .def_readwrite("initial_vertical_demand_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::initial_vertical_demand_map)
         ;
 
     m.def("forward", &place_io_forward, "PlaceDB IO Read");

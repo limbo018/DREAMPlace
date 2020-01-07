@@ -10,30 +10,35 @@ DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T>
 void updatePinOffset(
-    const int *flat_node2pin_start_map,
-    const int *flat_node2pin_map,
-    const T *node_ratios,
-    const int num_nodes,
-    T *pin_offset_x, T *pin_offset_y,
-    const int num_threads)
+        const T* node_size_x, const T* node_size_y, 
+        const int *flat_node2pin_start_map,
+        const int *flat_node2pin_map,
+        const T *node_ratios,
+        const int num_nodes,
+        T *pin_offset_x, T *pin_offset_y,
+        const int num_threads)
 {
     #pragma omp parallel for num_threads(num_threads)
     for (int i = 0; i < num_nodes; ++i)
     {
-        T ratio = node_ratios[i];
+        T ratio = (node_ratios[i] - 1) / 2;
+        T sx = node_size_x[i]; 
+        T sy = node_size_y[i]; 
 
         int start = flat_node2pin_start_map[i];
         int end = flat_node2pin_start_map[i + 1];
         for (int j = start; j < end; ++j)
         {
             int pin_id = flat_node2pin_map[j];
-            pin_offset_x[pin_id] *= ratio;
-            pin_offset_y[pin_id] *= ratio;
+            pin_offset_x[pin_id] += ratio * sx;
+            pin_offset_y[pin_id] += ratio * sy;
         }
     }
 }
 
 void update_pin_offset_forward(
+    at::Tensor node_size_x, 
+    at::Tensor node_size_y, 
     at::Tensor flat_node2pin_start_map,
     at::Tensor flat_node2pin_map,
     at::Tensor node_ratios,
@@ -59,6 +64,8 @@ void update_pin_offset_forward(
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pin_offset_x.type(), "updatePinOffset", [&] {
         updatePinOffset<scalar_t>(
+            node_size_x.data<scalar_t>(), 
+            node_size_y.data<scalar_t>(), 
             flat_node2pin_start_map.data<int>(),
             flat_node2pin_map.data<int>(),
             node_ratios.data<scalar_t>(),

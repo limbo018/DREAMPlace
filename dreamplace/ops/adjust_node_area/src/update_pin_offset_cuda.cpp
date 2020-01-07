@@ -9,6 +9,8 @@ DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T>
 void updatePinOffsetCudaLauncher(
+    const T* node_size_x, 
+    const T* node_size_y, 
     const int *flat_node2pin_start_map,
     const int *flat_node2pin_map,
     const T *node_ratios,
@@ -17,6 +19,8 @@ void updatePinOffsetCudaLauncher(
     );
 
 void update_pin_offset_forward(
+    at::Tensor node_size_x, 
+    at::Tensor node_size_y, 
     at::Tensor flat_node2pin_start_map,
     at::Tensor flat_node2pin_map,
     at::Tensor node_ratios,
@@ -42,6 +46,8 @@ void update_pin_offset_forward(
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pin_offset_x.type(), "updatePinOffsetCudaLauncher", [&] {
         updatePinOffsetCudaLauncher<scalar_t>(
+            node_size_x.data<scalar_t>(), 
+            node_size_y.data<scalar_t>(), 
             flat_node2pin_start_map.data<int>(),
             flat_node2pin_map.data<int>(),
             node_ratios.data<scalar_t>(),

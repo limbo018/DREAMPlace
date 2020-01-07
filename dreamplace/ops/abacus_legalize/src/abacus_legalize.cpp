@@ -7,7 +7,6 @@
 #include "utility/src/LegalizationDB.h"
 #include "utility/src/LegalizationDBUtils.h"
 #include "abacus_legalize/src/abacus_legalize_cpu.h"
-#include "greedy_legalize/src/legality_check_cpu.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
 

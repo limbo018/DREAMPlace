@@ -9,7 +9,7 @@
 
 #include "utility/src/Msg.h"
 #include "utility/src/Box.h"
-#include "greedy_legalize/src/legality_check_cpu.h"
+#include "legality_check/src/legality_check.h"
 #include "draw_place/src/draw_place.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
@@ -366,10 +366,9 @@ struct DetailedPlaceDB
     bool check_legality() const 
     {
         return legalityCheckKernelCPU(
-                init_x, init_y, 
+                x, y, 
                 node_size_x, node_size_y, 
                 flat_region_boxes, flat_region_boxes_start, node2fence_region_map, 
-                x, y, 
                 site_width, row_height, 
                 xl, yl, xh, yh,
                 num_nodes, 
