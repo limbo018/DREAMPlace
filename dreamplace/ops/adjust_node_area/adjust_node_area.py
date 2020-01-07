@@ -129,11 +129,11 @@ class AdjustNodeArea(nn.Module):
                  route_num_bins_y,
                  pin_num_bins_x,
                  pin_num_bins_y,
-                 total_place_area, 
-                 total_whitespace_area, 
+                 total_place_area, # total placement area excluding fixed cells 
+                 total_whitespace_area, # total white space area excluding movable and fixed cells 
                  max_route_opt_adjust_rate,
-                 route_opt_adjust_exponent, 
-                 max_pin_opt_adjust_rate,
+                 route_opt_adjust_exponent=2.5, 
+                 max_pin_opt_adjust_rate=2.5,
                  area_adjust_stop_ratio=0.01,
                  route_area_adjust_stop_ratio=0.01,
                  pin_area_adjust_stop_ratio=0.05,
@@ -202,8 +202,7 @@ class AdjustNodeArea(nn.Module):
                 pin_offset_x, pin_offset_y,
                 target_density, 
                 route_utilization_map,
-                pin_utilization_map, 
-                iteration
+                pin_utilization_map
                 ):
 
         with torch.no_grad(): 

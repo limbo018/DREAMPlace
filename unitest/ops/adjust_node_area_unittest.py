@@ -26,6 +26,7 @@ class AdjustNodeAreaUnittest(unittest.TestCase):
         node2pin_map = np.array([np.array([0, 4]), np.array([1, 2, 3])])
         num_movable_nodes = len(node2pin_map)
         num_filler_nodes = 1
+        # assume no terminals 
 
         num_pins = 0
         for pins in node2pin_map:
@@ -54,17 +55,22 @@ class AdjustNodeAreaUnittest(unittest.TestCase):
         route_num_bins_x, route_num_bins_y = 8, 8
         pin_num_bins_x, pin_num_bins_y = 16, 16
 
+        total_place_area = (xh - xl) * (yh - yl) 
+        total_whitespace_area = (total_place_area - (node_size_x[:num_movable_nodes] * node_size_y[:num_movable_nodes]).sum()).item()
+
         route_utilization_map = torch.ones([route_num_bins_x, route_num_bins_y]).uniform_(0.5, 2)
         pin_utilization_map = torch.ones([pin_num_bins_x, pin_num_bins_y]).uniform_(0.5, 2)
 
         area_adjust_stop_ratio = 0.01
         route_area_adjust_stop_ratio = 0.01
         pin_area_adjust_stop_ratio = 0.05
-        tile_pin_capacity = 0.5
+        unit_pin_capacity = 0.5
         pin_weights = None
 
         max_route_opt_adjust_rate = 3.0
         max_pin_opt_adjust_rate = 10.0
+
+        target_density = torch.Tensor([0.9])
 
         # test cpu
         adjust_node_area_op = adjust_node_area.AdjustNodeArea(
@@ -81,12 +87,14 @@ class AdjustNodeAreaUnittest(unittest.TestCase):
             route_num_bins_y=route_num_bins_y,
             pin_num_bins_x=pin_num_bins_x,
             pin_num_bins_y=pin_num_bins_y,
+            total_place_area=total_place_area, 
+            total_whitespace_area=total_whitespace_area, 
             max_route_opt_adjust_rate=max_route_opt_adjust_rate,
             max_pin_opt_adjust_rate=max_pin_opt_adjust_rate, 
             area_adjust_stop_ratio=area_adjust_stop_ratio,
             route_area_adjust_stop_ratio=route_area_adjust_stop_ratio,
             pin_area_adjust_stop_ratio=pin_area_adjust_stop_ratio,
-            tile_pin_capacity=tile_pin_capacity,
+            unit_pin_capacity=unit_pin_capacity,
             num_threads=8
         )
 
@@ -101,6 +109,7 @@ class AdjustNodeAreaUnittest(unittest.TestCase):
             node_size_y_cpu,
             pin_offset_x_cpu,
             pin_offset_y_cpu,
+            target_density, 
             route_utilization_map.clone(),
             pin_utilization_map.clone())
 
@@ -119,12 +128,14 @@ class AdjustNodeAreaUnittest(unittest.TestCase):
                 route_num_bins_y=route_num_bins_y,
                 pin_num_bins_x=pin_num_bins_x,
                 pin_num_bins_y=pin_num_bins_y,
+                total_place_area=total_place_area, 
+                total_whitespace_area=total_whitespace_area, 
                 max_route_opt_adjust_rate=max_route_opt_adjust_rate,
                 max_pin_opt_adjust_rate=max_pin_opt_adjust_rate, 
                 area_adjust_stop_ratio=area_adjust_stop_ratio,
                 route_area_adjust_stop_ratio=route_area_adjust_stop_ratio,
                 pin_area_adjust_stop_ratio=pin_area_adjust_stop_ratio,
-                tile_pin_capacity=tile_pin_capacity
+                unit_pin_capacity=unit_pin_capacity
             )
             pos_cuda = pos.t().contiguous().view(-1).cuda()
             node_size_x_cuda = node_size_x.cuda()
@@ -137,6 +148,7 @@ class AdjustNodeAreaUnittest(unittest.TestCase):
                 node_size_y_cuda,
                 pin_offset_x_cuda,
                 pin_offset_y_cuda,
+                target_density.cuda(), 
                 route_utilization_map.cuda(),
                 pin_utilization_map.cuda())
 

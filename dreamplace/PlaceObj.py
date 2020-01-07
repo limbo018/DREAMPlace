@@ -547,14 +547,13 @@ class PlaceObj(nn.Module):
                 unit_pin_capacity=data_collections.unit_pin_capacity,
                 num_threads=params.num_threads
             )
-        def build_adjust_node_area_op(pos, route_utilization_map, pin_utilization_map, iteration):
+        def build_adjust_node_area_op(pos, route_utilization_map, pin_utilization_map):
             return adjust_node_area_op(
                     pos, 
                     data_collections.node_size_x, data_collections.node_size_y, 
                     data_collections.pin_offset_x, data_collections.pin_offset_y, 
                     data_collections.target_density, 
                     route_utilization_map, 
-                    pin_utilization_map, 
-                    iteration
+                    pin_utilization_map
                     )
         return build_adjust_node_area_op
