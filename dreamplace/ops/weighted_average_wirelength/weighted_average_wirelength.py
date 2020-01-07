@@ -360,84 +360,49 @@ class WeightedAverageWirelength(nn.Module):
         self.algorithm = algorithm
         self.num_threads = num_threads
     def forward(self, pos):
-        if pos.is_cuda:
-            if self.algorithm == 'net-by-net':
-                return WeightedAverageWirelengthFunction.apply(pos,
-                        self.flat_netpin,
-                        self.netpin_start,
-                        self.pin2net_map,
-                        self.net_weights,
-                        self.net_mask,
-                        self.pin_mask,
-                        1.0/self.gamma, # do not store inv_gamma as gamma is changing
-                        self.num_threads
-                        )
-            elif self.algorithm == 'atomic':
-                return WeightedAverageWirelengthAtomicFunction.apply(pos,
-                        self.pin2net_map,
-                        self.flat_netpin,
-                        self.netpin_start,
-                        self.net_weights,
-                        self.net_mask,
-                        self.pin_mask,
-                        1.0/self.gamma, # do not store inv_gamma as gamma is changing
-                        self.num_threads
-                        )
-            elif self.algorithm == 'sparse':
-                if self.netpin_values is None:
-                    self.netpin_values = torch.ones_like(self.flat_netpin, dtype=pos.dtype)
-                return WeightedAverageWirelengthSparseFunction.apply(pos,
-                        self.flat_netpin,
-                        self.netpin_start,
-                        self.netpin_values,
-                        self.pin2net_map,
-                        self.net_weights,
-                        self.net_mask,
-                        self.pin_mask,
-                        1.0/self.gamma # do not store inv_gamma as gamma is changing
-                        )
-            elif self.algorithm == 'merged':
-                return WeightedAverageWirelengthMergedFunction.apply(pos,
-                        self.flat_netpin,
-                        self.netpin_start,
-                        self.pin2net_map,
-                        self.net_weights,
-                        self.net_mask,
-                        self.pin_mask,
-                        1.0/self.gamma, # do not store inv_gamma as gamma is changing
-                        self.num_threads
-                        )
-        else:
-            if self.algorithm == 'net-by-net':
-                return WeightedAverageWirelengthFunction.apply(pos,
-                        self.flat_netpin,
-                        self.netpin_start,
-                        self.pin2net_map,
-                        self.net_weights,
-                        self.net_mask,
-                        self.pin_mask,
-                        1.0/self.gamma, # do not store inv_gamma as gamma is changing
-                        self.num_threads
-                        )
-            elif self.algorithm == 'atomic':
-                return WeightedAverageWirelengthAtomicFunction.apply(pos,
-                        self.pin2net_map,
-                        self.flat_netpin,
-                        self.netpin_start,
-                        self.net_weights,
-                        self.net_mask,
-                        self.pin_mask,
-                        1.0/self.gamma, # do not store inv_gamma as gamma is changing
-                        self.num_threads
-                        )
-            elif self.algorithm == 'merged':
-                return WeightedAverageWirelengthMergedFunction.apply(pos,
-                        self.flat_netpin,
-                        self.netpin_start,
-                        self.pin2net_map,
-                        self.net_weights,
-                        self.net_mask,
-                        self.pin_mask,
-                        1.0/self.gamma, # do not store inv_gamma as gamma is changing
-                        self.num_threads
-                        )
+        if self.algorithm == 'net-by-net':
+            return WeightedAverageWirelengthFunction.apply(pos,
+                    self.flat_netpin,
+                    self.netpin_start,
+                    self.pin2net_map,
+                    self.net_weights,
+                    self.net_mask,
+                    self.pin_mask,
+                    1.0/self.gamma, # do not store inv_gamma as gamma is changing
+                    self.num_threads
+                    )
+        elif self.algorithm == 'atomic':
+            return WeightedAverageWirelengthAtomicFunction.apply(pos,
+                    self.pin2net_map,
+                    self.flat_netpin,
+                    self.netpin_start,
+                    self.net_weights,
+                    self.net_mask,
+                    self.pin_mask,
+                    1.0/self.gamma, # do not store inv_gamma as gamma is changing
+                    self.num_threads
+                    )
+        elif self.algorithm == 'sparse':
+            if self.netpin_values is None:
+                self.netpin_values = torch.ones_like(self.flat_netpin, dtype=pos.dtype)
+            return WeightedAverageWirelengthSparseFunction.apply(pos,
+                    self.flat_netpin,
+                    self.netpin_start,
+                    self.netpin_values,
+                    self.pin2net_map,
+                    self.net_weights,
+                    self.net_mask,
+                    self.pin_mask,
+                    1.0/self.gamma # do not store inv_gamma as gamma is changing
+                    )
+        elif self.algorithm == 'merged':
+            return WeightedAverageWirelengthMergedFunction.apply(pos,
+                    self.flat_netpin,
+                    self.netpin_start,
+                    self.pin2net_map,
+                    self.net_weights,
+                    self.net_mask,
+                    self.pin_mask,
+                    1.0/self.gamma, # do not store inv_gamma as gamma is changing
+                    self.num_threads
+                    )
