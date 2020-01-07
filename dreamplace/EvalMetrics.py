@@ -12,12 +12,14 @@ class EvalMetrics (object):
     """
     @brief evaluation metrics at one step 
     """
-    def __init__(self, iteration=None):
+    def __init__(self, iteration=None, detailed_step=None):
         """
         @brief initialization
         @param iteration optimization step 
         """
         self.iteration = iteration 
+        self.detailed_step = detailed_step
+        self.objective = None 
         self.wirelength = None
         self.density = None 
         self.density_weight = None
@@ -35,6 +37,10 @@ class EvalMetrics (object):
         content = ""
         if self.iteration is not None:
             content = "iteration %4d" % (self.iteration)
+        if self.detailed_step is not None:
+            content += ", (%4d, %2d, %2d)" % (self.detailed_step[0], self.detailed_step[1], self.detailed_step[2])
+        if self.objective is not None:
+            content += ", objective %.6E" % (self.objective)
         if self.wirelength is not None:
             content += ", wirelength %.3E" % (self.wirelength)
         if self.density is not None: 
@@ -70,6 +76,8 @@ class EvalMetrics (object):
         @param var variables 
         """
         tt = time.time()
+        if "objective" in ops: 
+            self.objective = ops["objective"](var).data
         if "wirelength" in ops:
             self.wirelength = ops["wirelength"](var).data
         if "density" in ops:

@@ -1,12 +1,11 @@
 {
-"lef_input" : "benchmarks/ispd2005/bigblue1/lefdef/bigblue1.lef", 
-"def_input" : "benchmarks/ispd2005/bigblue1/lefdef/bigblue1.def", 
+"aux_input" : "benchmarks/ispd2005/bigblue2/bigblue2.aux", 
 "gpu" : 1,
-"num_bins_x" : 512,
-"num_bins_y" : 512, 
+"num_bins_x" : 1024,
+"num_bins_y" : 1024,
 "global_place_stages" : [
-    {"num_bins_x" : 512, "num_bins_y" : 512, "iteration" : 1000, "learning_rate" : 0.01, "wirelength" : "weighted_average", "optimizer" : "nesterov"}
-], 
+    {"num_bins_x" : 1024, "num_bins_y" : 1024, "iteration" : 2000, "learning_rate" : 0.01, "learning_rate_decay" : 0.995, "wirelength" : "weighted_average", "optimizer" : "adam", "L2_density_weight_iteration" : 1, "L3_iteration" : 5}
+],
 "target_density" : 1.0,
 "density_weight" : 8e-5,
 "gamma" : 0.1318231577,
@@ -14,8 +13,8 @@
 "scale_factor" : 1.0,
 "ignore_net_degree" : 100,
 "enable_fillers" : 1,
-"gp_noise_ratio" : 0.025, 
-"global_place_flag" : 1, 
+"gp_noise_ratio" : 0.025,
+"global_place_flag" : 1,
 "legalize_flag" : 1,
 "detailed_place_flag" : 1,
 "detailed_place_engine" : "thirdparty/ntuplace3", 
@@ -24,5 +23,6 @@
 "dtype" : "float32", 
 "plot_flag" : 0, 
 "random_center_init_flag" : 1, 
+"sort_nets_by_degree" : 0, 
 "num_threads" : 8
 }

@@ -49,16 +49,27 @@ class PlaceDataCollection (object):
         torch.set_num_threads(params.num_threads)
         # position should be parameter 
         self.pos = pos 
+        
         # other tensors required to build ops 
+        
         self.node_size_x = torch.from_numpy(placedb.node_size_x).to(device)
         self.node_size_y = torch.from_numpy(placedb.node_size_y).to(device)
+        # original node size for legalization, since they will be adjusted in global placement
+        self.original_node_size_x = self.node_size_x.clone()
+        self.original_node_size_y = self.node_size_y.clone()
 
         self.pin_offset_x = torch.tensor(placedb.pin_offset_x, dtype=self.pos[0].dtype, device=device)
         self.pin_offset_y = torch.tensor(placedb.pin_offset_y, dtype=self.pos[0].dtype, device=device)
+        # original pin offset for legalization, since they will be adjusted in global placement
+        self.original_pin_offset_x = self.pin_offset_x.clone()
+        self.original_pin_offset_y = self.pin_offset_y.clone()
+
 
         self.pin2node_map = torch.from_numpy(placedb.pin2node_map).to(device)
         self.flat_node2pin_map = torch.from_numpy(placedb.flat_node2pin_map).to(device)
         self.flat_node2pin_start_map = torch.from_numpy(placedb.flat_node2pin_start_map).to(device)
+        # number of pins for each cell  
+        self.pin_weights = (self.flat_node2pin_start_map[1:] - self.flat_node2pin_start_map[:-1]).to(self.node_size_x.dtype)
 
         self.pin2net_map = torch.from_numpy(placedb.pin2net_map).to(device)
         self.flat_net2pin_map = torch.from_numpy(placedb.flat_net2pin_map).to(device)
@@ -148,6 +159,9 @@ class PlaceOpCollection (object):
         self.precondition_op = None 
         self.noise_op = None 
         self.draw_place_op = None
+        self.route_utilization_map_op = None
+        self.pin_utilization_map_op = None 
+        self.adjust_node_area_op = None
 
 class BasicPlace (nn.Module):
     """
