@@ -401,7 +401,7 @@ class PlaceObj(nn.Module):
         @param params parameters
         @param placedb placement database
         """
-        return 4*(placedb.bin_size_x+placedb.bin_size_y)
+        return params.gamma*(placedb.bin_size_x+placedb.bin_size_y)
 
     def update_gamma(self, iteration, overflow, base_gamma):
         """

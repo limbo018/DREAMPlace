@@ -32,7 +32,7 @@
     "default" : 512
     },
 "global_place_stages" : {
-    "descripton" : "global placement configurations of each stage, a dictionary of {\"num_bins_x\", \"num_bins_y\", \"iteration\", \"learning_rate\", \"learning_rate_decay\"}", 
+    "descripton" : "global placement configurations of each stage, a dictionary of {\"num_bins_x\", \"num_bins_y\", \"iteration\", \"learning_rate\", \"learning_rate_decay\", \"wirelength\", \"optimizer\", \"Llambda_density_weight_iteration\", \"Lsub_iteration\"}", 
     "default" : "", 
     "required" : "required"
     },
@@ -42,11 +42,7 @@
     },
 "density_weight" : {
     "descripton" : "initial weight of density cost", 
-    "default" : 1.0
-    },
-"gamma" : {
-    "descripton" : "initial coefficient for log-sum-exp and weighted-average wirelength", 
-    "default" : 0.5
+    "default" : 8e-5
     },
 "random_seed" : {
     "descripton" : "random seed", 
@@ -115,6 +111,10 @@
 "RePlAce_UPPER_PCOF" : {
     "descripton" : "upper bound ratio used in RePlAce for updating density weight", 
     "default" : 1.05
+    },
+"gamma" : {
+    "descripton" : "base coefficient for log-sum-exp and weighted-average wirelength, a relative value to bin size",
+    "default" : 4.0
     },
 "RePlAce_skip_energy_flag" : {
     "descripton" : "whether skip density energy computation for fast mode, may not work with some solvers", 
