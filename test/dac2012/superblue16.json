@@ -38,7 +38,7 @@
 "unit_vertical_capacity" : 58, 
 "unit_pin_capacity" : 100, 
 "max_route_opt_adjust_rate" : 2.5, 
-"route_opt_adjust_exponent" : 3.0, 
+"route_opt_adjust_exponent" : 2.5, 
 "pin_stretch_ratio" : 1.414213562, 
 "max_pin_opt_adjust_rate" : 1.5, 
 "num_threads" : 8
