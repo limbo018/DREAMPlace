@@ -112,7 +112,7 @@ at::Tensor greedy_legalization_forward(
                     num_filler_nodes
                     );
             greedyLegalizationLauncher<scalar_t>(db);
-            db.check_legality();
+            //db.check_legality();
             });
     timer_stop = get_globaltime(); 
     dreamplacePrint(kINFO, "Greedy legalization takes %g ms\n", (timer_stop-timer_start)*get_timer_period());

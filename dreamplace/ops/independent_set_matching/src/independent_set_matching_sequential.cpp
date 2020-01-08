@@ -407,9 +407,6 @@ void independentSetMatchingCPULauncher(DetailedPlaceDB<T> db,
         }
     }
 
-    bool legal_flag = db.check_legality();
-    dreamplacePrint(kDEBUG, "legal_flag = %d\n", (int)legal_flag);
-
     //drawPlaceLauncher<T>(
     //        db.x, db.y, 
     //        db.node_size_x, db.node_size_y, 

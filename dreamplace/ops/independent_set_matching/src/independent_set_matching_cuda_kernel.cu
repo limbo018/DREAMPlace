@@ -521,15 +521,10 @@ int independentSetMatchingCUDALauncher(DetailedPlaceDB<T> db,
 
     total_timer_stop = get_globaltime(); 
 
-    checkCUDA(cudaMemcpy(host_db.x.data(), db.x, sizeof(T)*db.num_nodes, cudaMemcpyDeviceToHost));
-    checkCUDA(cudaMemcpy(host_db.y.data(), db.y, sizeof(T)*db.num_nodes, cudaMemcpyDeviceToHost));
-    bool legal_flag = db.check_legality(host_db.x.data(), host_db.y.data(), host_db.node_size_x.data(), host_db.node_size_y.data());
-    dreamplacePrint(kDEBUG, "independent set matching legal_flag = %d\n", (int)legal_flag);
-
     dreamplacePrint(kINFO, "Kernel time %g ms\n", get_timer_period()*(kernel_timer_stop-kernel_timer_start));
     dreamplacePrint(kINFO, "Independent set matching time %g ms\n", get_timer_period()*(total_timer_stop-total_timer_start));
 
-    return legal_flag; 
+    return 0; 
 }
 
 #define REGISTER_KERNEL_LAUNCHER(T) \

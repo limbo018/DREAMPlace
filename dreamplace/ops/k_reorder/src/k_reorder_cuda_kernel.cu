@@ -1207,13 +1207,6 @@ int kreorderCUDALauncher(DetailedPlaceDB<T> db, int K, int max_iters, int num_th
 
     total_time_stop = get_globaltime();
 
-//#ifdef DEBUG
-    checkCUDA(cudaMemcpy(cpu_db.x, db.x, sizeof(T)*db.num_nodes, cudaMemcpyDeviceToHost));
-    checkCUDA(cudaMemcpy(cpu_db.y, db.y, sizeof(T)*db.num_nodes, cudaMemcpyDeviceToHost));
-    bool legal_flag = db.check_legality(cpu_db.x, cpu_db.y, cpu_db.node_size_x, cpu_db.node_size_y);
-    dreamplacePrint(kDEBUG, "k-reorder legal_flag = %d\n", (int)legal_flag);
-//#endif
-
     // destroy cpu db 
     iter_time_start = get_globaltime(); 
     {
