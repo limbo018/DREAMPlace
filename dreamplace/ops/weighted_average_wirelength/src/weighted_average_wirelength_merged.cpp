@@ -115,6 +115,8 @@ int computeWeightedAverageWirelengthMergedLauncher(
             }
         }
     }
+
+    return 0; 
 }
 
 #define CHECK_FLAT(x) AT_ASSERTM(!x.is_cuda() && x.ndimension() == 1, #x "must be a flat tensor on CPU")
