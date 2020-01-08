@@ -450,9 +450,6 @@ int globalSwapCPULauncher(DetailedPlaceDB<T> db, int max_iters)
 	dreamplacePrint(kINFO, "find_best_candidate \t %g \t %d \t %g\n", get_timer_period() * find_best_candidate_time, find_best_candidate_runs, get_timer_period() * find_best_candidate_time / find_best_candidate_runs);
 	dreamplacePrint(kINFO, "apply_solution \t %g \t %d \t %g\n", get_timer_period() * apply_solution_time, apply_solution_runs, get_timer_period() * apply_solution_time / apply_solution_runs);
 
-    bool legal_flag = db.check_legality();
-    dreamplacePrint(kDEBUG, "legal_flag = %d\n", (int)legal_flag);
-
     //db.draw_place("final.gds");
 
     return 0; 

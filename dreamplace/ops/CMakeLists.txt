@@ -15,6 +15,7 @@ add_subdirectory(place_io)
 add_subdirectory(macro_legalize)
 add_subdirectory(greedy_legalize)
 add_subdirectory(abacus_legalize)
+add_subdirectory(legality_check)
 # detailed placement operators 
 add_subdirectory(global_swap)
 add_subdirectory(independent_set_matching)

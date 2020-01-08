@@ -10,7 +10,6 @@
 #include "utility/src/LegalizationDB.h"
 #include "greedy_legalize/src/bin_assignment_cpu.h"
 #include "greedy_legalize/src/merge_bin_cpu.h"
-#include "greedy_legalize/src/legality_check_cpu.h"
 #include "greedy_legalize/src/status_summary_cpu.h"
 #include "greedy_legalize/src/compare_cpu.h"
 
