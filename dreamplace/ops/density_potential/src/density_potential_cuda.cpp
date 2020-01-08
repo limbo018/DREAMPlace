@@ -86,7 +86,6 @@ typedef double T;
 /// @param num_movable_nodes number of movable cells 
 /// @param num_filler_nodes number of filler cells 
 /// @param padding bin padding to boundary of placement region 
-/// @param padding_mask padding mask with 0 and 1 to indicate padding bins with padding regions to be 1   
 /// @param num_bins_x number of bins in horizontal bins 
 /// @param num_bins_y number of bins in vertical bins 
 /// @param num_impacted_bins_x number of impacted bins for any cell in x direction 
@@ -109,7 +108,6 @@ std::vector<at::Tensor> density_potential_forward(
         int num_movable_nodes, 
         int num_filler_nodes, 
         int padding, 
-        at::Tensor padding_mask, 
         int num_bins_x, int num_bins_y, 
         int num_impacted_bins_x, int num_impacted_bins_y
         ) 
@@ -169,11 +167,6 @@ std::vector<at::Tensor> density_potential_forward(
     }
 
     auto max_density = density_map.max(); 
-    // set padding density 
-    if (padding > 0)
-    {
-        density_map.masked_fill_(padding_mask.to(at::ScalarType::Bool), at::Scalar(target_area));
-    }
 
     // (max(0, density-target_area))^2
     //auto delta = (density_map-target_area).clamp_min(0).pow(2); 

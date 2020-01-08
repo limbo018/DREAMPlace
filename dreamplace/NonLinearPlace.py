@@ -282,8 +282,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                             adjust_area_flag, adjust_route_area_flag, adjust_pin_area_flag = model.op_collections.adjust_node_area_op(
                                     pos,
                                     route_utilization_map,
-                                    pin_utilization_map, 
-                                    num_area_adjust
+                                    pin_utilization_map
                                     )
                             content += " -> (%d, %d, %d)" % (adjust_area_flag, adjust_route_area_flag, adjust_pin_area_flag)
                             logging.info(content)

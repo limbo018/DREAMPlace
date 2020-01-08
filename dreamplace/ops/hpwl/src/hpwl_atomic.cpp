@@ -52,10 +52,10 @@ at::Tensor hpwl_atomic_forward(
     at::Tensor partial_hpwl_min = at::zeros({2, num_nets}, pos.type()); 
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeHPWLAtomicLauncher", [&] {
-            partial_hpwl_max[0].masked_fill_(net_mask.to(at::ScalarType::Bool), std::numeric_limits<scalar_t>::min());
-            partial_hpwl_max[1].masked_fill_(net_mask.to(at::ScalarType::Bool), std::numeric_limits<scalar_t>::min());
-            partial_hpwl_min[0].masked_fill_(net_mask.to(at::ScalarType::Bool), std::numeric_limits<scalar_t>::max());
-            partial_hpwl_min[1].masked_fill_(net_mask.to(at::ScalarType::Bool), std::numeric_limits<scalar_t>::max());
+            partial_hpwl_max[0].fill_(std::numeric_limits<scalar_t>::min());
+            partial_hpwl_max[1].fill_(std::numeric_limits<scalar_t>::min());
+            partial_hpwl_min[0].fill_(std::numeric_limits<scalar_t>::max());
+            partial_hpwl_min[1].fill_(std::numeric_limits<scalar_t>::max());
             computeHPWLAtomicLauncher<scalar_t>(
                     pos.data<scalar_t>(), pos.data<scalar_t>()+pos.numel()/2, 
                     pin2net_map.data<int>(), 
@@ -104,6 +104,13 @@ int computeHPWLAtomicLauncher(
             partial_hpwl_x_min[net_id] = std::min(partial_hpwl_x_min[net_id], x[i]); 
             partial_hpwl_y_max[net_id] = std::max(partial_hpwl_y_max[net_id], y[i]); 
             partial_hpwl_y_min[net_id] = std::min(partial_hpwl_y_min[net_id], y[i]); 
+        }
+        else 
+        {
+            partial_hpwl_x_max[net_id] = 0; 
+            partial_hpwl_x_min[net_id] = 0; 
+            partial_hpwl_y_max[net_id] = 0; 
+            partial_hpwl_y_min[net_id] = 0; 
         }
     }
 

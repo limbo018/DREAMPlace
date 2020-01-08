@@ -76,7 +76,6 @@ int computeExactDensityMapLauncher(
 /// @param num_movable_nodes number of movable cells
 /// @param num_filler_nodes number of filler cells
 /// @param padding bin padding to boundary of placement region
-/// @param padding_mask padding mask with 0 and 1 to indicate padding bins with padding regions to be 1
 /// @param num_bins_x number of bins in horizontal bins
 /// @param num_bins_y number of bins in vertical bins
 /// @param num_movable_impacted_bins_x number of impacted bins for any movable cell in x direction
@@ -102,7 +101,6 @@ at::Tensor density_map(
         int num_movable_nodes,
         int num_filler_nodes,
         int padding,
-        at::Tensor padding_mask,
         int num_bins_x, int num_bins_y,
         int num_movable_impacted_bins_x, int num_movable_impacted_bins_y,
         int num_filler_impacted_bins_x, int num_filler_impacted_bins_y,
@@ -162,12 +160,6 @@ at::Tensor density_map(
                         density_map.data<scalar_t>()
                         );
                 });
-    }
-
-    // set padding density
-    if (padding > 0)
-    {
-        density_map.masked_fill_(padding_mask.to(at::ScalarType::Bool), at::Scalar(target_density*bin_size_x*bin_size_y));
     }
 
     return density_map;
