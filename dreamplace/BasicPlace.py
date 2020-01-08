@@ -26,6 +26,7 @@ import dreamplace.ops.rmst_wl.rmst_wl as rmst_wl
 import dreamplace.ops.macro_legalize.macro_legalize as macro_legalize 
 import dreamplace.ops.greedy_legalize.greedy_legalize as greedy_legalize 
 import dreamplace.ops.abacus_legalize.abacus_legalize as abacus_legalize 
+import dreamplace.ops.legality_check.legality_check as legality_check 
 import dreamplace.ops.draw_place.draw_place as draw_place 
 import dreamplace.ops.pin_pos.pin_pos as pin_pos
 import dreamplace.ops.global_swap.global_swap as global_swap 
@@ -150,6 +151,7 @@ class PlaceOpCollection (object):
         self.hpwl_op = None
         self.rmst_wl_op = None 
         self.density_overflow_op = None 
+        self.legality_check_op = None 
         self.legalize_op = None 
         self.detailed_place_op = None
         self.wirelength_op = None 
@@ -226,6 +228,8 @@ class BasicPlace (nn.Module):
         #self.op_collections.rmst_wl_op = self.build_rmst_wl(params, placedb, self.op_collections.pin_pos_op, torch.device("cpu"))
         #self.op_collections.density_overflow_op = self.build_density_overflow(params, placedb, self.data_collections, self.device)
         self.op_collections.density_overflow_op = self.build_electric_overflow(params, placedb, self.data_collections, self.device)
+        # legality check 
+        self.op_collections.legality_check_op = self.build_legality_check(params, placedb, self.data_collections, self.device)
         # legalization 
         self.op_collections.legalize_op = self.build_legalization(params, placedb, self.data_collections, self.device)
         # detailed placement 
@@ -393,6 +397,23 @@ class BasicPlace (nn.Module):
                 num_threads=params.num_threads
                 )
 
+    def build_legality_check(self, params, placedb, data_collections, device):
+        """
+        @brief legality check 
+        @param params parameters 
+        @param placedb placement database 
+        @param data_collections a collection of all data and variables required for constructing the ops 
+        @param device cpu or cuda 
+        """
+        return legality_check.LegalityCheck(
+                node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
+                flat_region_boxes=data_collections.flat_region_boxes, flat_region_boxes_start=data_collections.flat_region_boxes_start, node2fence_region_map=data_collections.node2fence_region_map, 
+                xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
+                site_width=placedb.site_width, row_height=placedb.row_height, 
+                num_terminals=placedb.num_terminals, 
+                num_movable_nodes=placedb.num_movable_nodes
+                )
+
     def build_legalization(self, params, placedb, data_collections, device):
         """
         @brief legalization 
@@ -441,6 +462,10 @@ class BasicPlace (nn.Module):
             logging.info("Start legalization")
             pos1 = ml(pos, pos)
             pos2 = gl(pos1, pos1)
+            legal = self.op_collections.legality_check_op(pos2)
+            if not legal:
+                logging.error("legality check failed in greedy legalization")
+                return pos2 
             return al(pos1, pos2)
         return build_legalization_op
 
@@ -514,9 +539,25 @@ class BasicPlace (nn.Module):
             pos1 = pos 
             for i in range(1): 
                 pos1 = kr(pos1)
+                legal = self.op_collections.legality_check_op(pos1)
+                logging.info("K-Reorder legal flag = %d" % (legal))
+                if not legal:
+                    return pos1 
                 pos1 = ism(pos1)
+                legal = self.op_collections.legality_check_op(pos1)
+                logging.info("Independent set matching legal flag = %d" % (legal))
+                if not legal:
+                    return pos1 
                 pos1 = gs(pos1)
+                legal = self.op_collections.legality_check_op(pos1)
+                logging.info("Global swap legal flag = %d" % (legal))
+                if not legal:
+                    return pos1 
                 pos1 = kr(pos1)
+                legal = self.op_collections.legality_check_op(pos1)
+                logging.info("K-Reorder legal flag = %d" % (legal))
+                if not legal:
+                    return pos1 
             return pos1 
         return build_detailed_placement_op
 

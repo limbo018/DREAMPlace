@@ -11,7 +11,7 @@
 #include "utility/src/Msg.h"
 #include "utility/src/Box.cuh"
 #include "utility/src/utils.cuh"
-#include "greedy_legalize/src/legality_check_cpu.h"
+#include "legality_check/src/legality_check.h"
 #include "draw_place/src/draw_place.h"
 //#include <thrust/host_vector.h>
 //#include <thrust/device_vector.h>
@@ -453,10 +453,6 @@ struct DetailedPlaceDB
     /// @brief check whether placement is legal 
     bool check_legality(const T* host_x, const T* host_y, const T* host_node_size_x, const T* host_node_size_y) const 
     {
-        std::vector<T> host_init_x (num_nodes);
-        std::vector<T> host_init_y (num_nodes);
-        checkCUDA(cudaMemcpy(host_init_x.data(), init_x, sizeof(T)*num_nodes, cudaMemcpyDeviceToHost));
-        checkCUDA(cudaMemcpy(host_init_y.data(), init_y, sizeof(T)*num_nodes, cudaMemcpyDeviceToHost));
         std::vector<int> host_flat_region_boxes_start (num_regions + 1); 
         std::vector<int> host_node2fence_region_map (num_movable_nodes); 
         checkCUDA(cudaMemcpy(host_flat_region_boxes_start.data(), flat_region_boxes_start, sizeof(int)*host_flat_region_boxes_start.size(), cudaMemcpyDeviceToHost));
@@ -465,12 +461,11 @@ struct DetailedPlaceDB
         checkCUDA(cudaMemcpy(host_flat_region_boxes.data(), flat_region_boxes, sizeof(T)*host_flat_region_boxes.size(), cudaMemcpyDeviceToHost));
 
         return legalityCheckKernelCPU(
-                host_init_x.data(), host_init_y.data(), 
+                host_x, host_y, 
                 host_node_size_x, host_node_size_y, 
                 host_flat_region_boxes.data(), host_flat_region_boxes_start.data(), host_node2fence_region_map.data(), 
-                host_x, host_y, 
-                site_width, row_height, 
                 xl, yl, xh, yh,
+                site_width, row_height, 
                 num_nodes, 
                 num_movable_nodes, 
                 num_regions

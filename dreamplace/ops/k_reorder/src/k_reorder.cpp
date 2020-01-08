@@ -399,9 +399,6 @@ int kreorderCPULauncher(DetailedPlaceDB<T>& db, int K, int max_iters, int
                 get_timer_period() * time / runs);
     }
 
-    bool legal_flag = db.check_legality();
-    dreamplacePrint(kDEBUG, "legal_flag = %d\n", (int)legal_flag);
-
     //db.draw_place("final.gds");
 
     return 0; 

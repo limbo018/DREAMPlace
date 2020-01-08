@@ -639,10 +639,6 @@ int globalSwapCPULauncher(DetailedPlaceDB<T> db, int batch_size, int max_iters,
     kernel_time_stop = get_globaltime(); 
     dreamplacePrint(kINFO, " Global swap time: %g ms\n", get_timer_period()*(kernel_time_stop-kernel_time_start));
 
-//#ifdef DEBUG
-    bool legal_flag = db.check_legality();
-    dreamplacePrint(kDEBUG, "global swap legal_flag = %d\n", (int)legal_flag);
-//#endif
     return 0; 
 }
 

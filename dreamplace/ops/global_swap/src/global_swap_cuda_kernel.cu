@@ -1467,13 +1467,6 @@ int globalSwapCUDALauncher(DetailedPlaceDB<T> db, int batch_size, int max_iters,
     dreamplacePrint(kINFO, "Kernel time: %g ms\n", get_timer_period()*(kernel_time_stop-kernel_time_start));
     dreamplacePrint(kINFO, "Global swap time: %g ms\n", get_timer_period()*(total_time_stop-total_time_start));
 
-//#ifdef DEBUG
-    checkCUDA(cudaMemcpy(host_x.data(), db.x, sizeof(T)*db.num_nodes, cudaMemcpyDeviceToHost));
-    checkCUDA(cudaMemcpy(host_y.data(), db.y, sizeof(T)*db.num_nodes, cudaMemcpyDeviceToHost));
-    bool legal_flag = db.check_legality(host_x.data(), host_y.data(), host_node_size_x.data(), host_node_size_y.data());
-    dreamplacePrint(kDEBUG, "global swap legal_flag = %d\n", (int)legal_flag);
-//#endif
-
     return 0; 
 }
 

@@ -264,9 +264,6 @@ void independentSetMatchingCPULauncher(DetailedPlaceDB<T> db,
     dreamplacePrint(kDEBUG, "apply solution takes %g ms, %d runs, average %g ms\n", 
             get_timer_period()*apply_solution_time, apply_solution_runs, get_timer_period()*apply_solution_time/apply_solution_runs);
 
-    bool legal_flag = db.check_legality();
-    dreamplacePrint(kDEBUG, "legal_flag = %d\n", (int)legal_flag);
-
     //drawPlaceLauncher<T>(
     //        db.x, db.y, 
     //        db.node_size_x, db.node_size_y, 
