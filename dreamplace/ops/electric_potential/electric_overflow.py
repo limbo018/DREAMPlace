@@ -96,7 +96,6 @@ class ElectricDensityMapFunction(Function):
                     num_movable_nodes,
                     num_filler_nodes,
                     padding,
-                    padding_mask,
                     num_bins_x,
                     num_bins_y,
                     num_movable_impacted_bins_x,
@@ -120,7 +119,6 @@ class ElectricDensityMapFunction(Function):
                     num_movable_nodes,
                     num_filler_nodes,
                     padding,
-                    padding_mask,
                     num_bins_x,
                     num_bins_y,
                     num_movable_impacted_bins_x,
@@ -131,6 +129,10 @@ class ElectricDensityMapFunction(Function):
                     )
 
         density_map = output.view([num_bins_x, num_bins_y])
+        # set padding density
+        if padding > 0:
+            density_map.masked_fill_(padding_mask, target_density*bin_size_x*bin_size_y)
+
         return density_map
 
 class ElectricOverflow(nn.Module):

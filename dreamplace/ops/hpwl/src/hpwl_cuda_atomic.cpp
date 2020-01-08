@@ -53,10 +53,10 @@ at::Tensor hpwl_atomic_forward(
     at::Tensor scaled_pos = at::_cast_Int(pos.mul(1000), false);
     at::Tensor partial_hpwl_max = at::zeros({2, num_nets}, scaled_pos.type()); 
     at::Tensor partial_hpwl_min = at::zeros({2, num_nets}, scaled_pos.type()); 
-    partial_hpwl_max[0].masked_fill_(net_mask.to(at::ScalarType::Bool), std::numeric_limits<T>::min());
-    partial_hpwl_max[1].masked_fill_(net_mask.to(at::ScalarType::Bool), std::numeric_limits<T>::min());
-    partial_hpwl_min[0].masked_fill_(net_mask.to(at::ScalarType::Bool), std::numeric_limits<T>::max());
-    partial_hpwl_min[1].masked_fill_(net_mask.to(at::ScalarType::Bool), std::numeric_limits<T>::max());
+    partial_hpwl_max[0].fill_(std::numeric_limits<T>::min());
+    partial_hpwl_max[1].fill_(std::numeric_limits<T>::min());
+    partial_hpwl_min[0].fill_(std::numeric_limits<T>::max());
+    partial_hpwl_min[1].fill_(std::numeric_limits<T>::max());
 
     computeHPWLCudaAtomicLauncher<T>(
             scaled_pos.data<T>(), scaled_pos.data<T>()+scaled_pos.numel()/2, 
