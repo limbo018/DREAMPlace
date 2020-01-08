@@ -1,0 +1,24 @@
+#NCTU-GR 2.0 is designed by Wen-Hao Liu. Last updated 2012/04/14
+#All values in this file must be integer
+Via Cost = 1					# It must be >=1
+Wirelength Optimization Level = 10 # It must be set between 1 and 500. The wirelength of routing result is shorter as this value is larger.
+Layer Assignment Algorithm = 2 # 1: greedy LA  2: dynamic-programming-based LA 3: negotiation-based LA
+Output Routing Result = Yes # Yes or No
+Output Overflow Information = Yes # Yes or No
+Ignored Net Threshold = -1 # The nets with g-pins > the given threshold are ignored. If the given threshold is set to -1, all nets will be routed.
+Pin Blockage Factor = 0.05 # It must be >=0.0
+
+# The routing iteration of each stage
+Pattern Routing Iteration = 1		# It must be >=1
+Monotonic Routing Iteration = 1	# It must be >=0
+Maze Routing Iteration = 1		# If it is set to -1, the maze routing stage finishes when overflows = 0
+Post Routing Iteration = 1		# It must be >=0. If the inputed benchmark is hard-to-route, it can be set larger than 2.
+3D Optimization Iteration = 0		# It must be >=0
+
+####### Following utilities will be provided in future ######
+# Light Mode = Yes # Yes or No
+# Layer Directives = No
+# Scenic Control = No
+# Overflow Elimination Iteration = 0	# It must be >=0, If the inputed benchmark is hard-to-route, it can be set larger than 4.
+# Thread number on Multi-Core Platform = 1
+# Acceleration using GPU = No 

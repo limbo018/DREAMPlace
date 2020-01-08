@@ -31,6 +31,8 @@ PlaceDB::PlaceDB()
 
     m_numNetsWithDuplicatePins = 0;
     m_numPinsDuplicatedInNets = 0;
+
+    m_numRoutingGrids[0] = m_numRoutingGrids[1] = m_numRoutingGrids[2] = 0; 
 }
 
 ///==== LEF Callbacks ====
@@ -651,15 +653,27 @@ void PlaceDB::resize_bookshelf_row(int n)
 {
     m_vRow.reserve(n);
 }
+void PlaceDB::resize_bookshelf_shapes(int /*n*/)
+{
+}
+void PlaceDB::resize_bookshelf_niterminal_layers(int)
+{
+}
+void PlaceDB::resize_bookshelf_blockage_layers(int)
+{
+}
 void PlaceDB::add_bookshelf_terminal(std::string& name, int w, int h)
 {
     // it seems no difference
     add_bookshelf_node(name, w, h);
-    // bookshelf does not differentiate fixed cells and io pins
-    // I have to create my own criteria
-    // regard this as io pins
-    if (w == 0 || h == 0)
-        m_numIOPin += 1;
+}
+void PlaceDB::add_bookshelf_terminal_NI(std::string& name, int w, int h)
+{
+    // it seems no difference
+    add_bookshelf_node(name, w, h);
+    // bookshelf use terminal_NI and FIXED_NI to denotes IO pins 
+    // I assume IO pins are appended to the list 
+    m_numIOPin += 1;
 }
 void PlaceDB::add_bookshelf_node(std::string& name, int w, int h)
 {
@@ -673,9 +687,15 @@ void PlaceDB::add_bookshelf_node(std::string& name, int w, int h)
     }
 
     Node& node = m_vNode.at(insertRet.first);
-    NodeProperty& property = m_vNodeProperty.at(node.id());
-    property.setMacroId(std::numeric_limits<index_type>::max()); // set macroId to invalid
     node.set(0, 0, w, h); // must update width and height
+
+    // create dummy macro 
+    std::pair<index_type, bool> insertMacroRet = addMacro("DREAMPlace." + name); 
+    // check duplicate 
+    dreamplaceAssert(insertMacroRet.second);
+
+    NodeProperty& property = m_vNodeProperty.at(node.id());
+    property.setMacroId(insertMacroRet.first); 
 }
 // sort NetPin by node name to avoid a net containing multiple pins from the same node
 struct SortNetPinByNode
@@ -783,17 +803,24 @@ void PlaceDB::add_bookshelf_row(BookshelfParser::Row const& r)
     // only support HORIZONTAL row, because I don't know how to deal with vertical rows
     if (r.orient == "HORIZONTAL")
     {
-        // currently only support 0 and 1
-        switch (r.site_orient)
+        if (r.site_orient_str.empty())
         {
-            case 0:
-                row.setOrient(OrientEnum::FS);
-                break;
-            case 1:
-                row.setOrient(OrientEnum::N);
-                break;
-            default:
-                dreamplaceAssertMsg(0, "unknown row orientation %d", r.site_orient);
+            // currently only support 0 and 1
+            switch (r.site_orient)
+            {
+                case 0:
+                    row.setOrient(OrientEnum::FS);
+                    break;
+                case 1:
+                    row.setOrient(OrientEnum::N);
+                    break;
+                default:
+                    dreamplaceAssertMsg(0, "unknown row orientation %d", r.site_orient);
+            }
+        }
+        else 
+        {
+            row.setOrient(r.site_orient_str);
         }
     }
     else
@@ -819,10 +846,16 @@ void PlaceDB::set_bookshelf_node_position(std::string const& name, double x, dou
     Node& node = m_vNode.at(found->second);
     moveTo(node, round(x), round(y)); // update position
     node.setOrient(orient); // update orient
+    bool iopinFlag = false; 
     if (!plFlag) // only update when plFlag is false
     {
         if (status.empty())
             node.setStatus(PlaceStatusEnum::PLACED); // update status
+        else if (limbo::iequals(status, "FIXED_NI")) // IO pin 
+        {
+            iopinFlag = true; 
+            node.setStatus(PlaceStatusEnum::FIXED); 
+        }
         else
             node.setStatus(status); // update status
         // a heuristic fix for some special cases, first move it to a legal position and then fix it
@@ -837,7 +870,7 @@ void PlaceDB::set_bookshelf_node_position(std::string const& name, double x, dou
 
         // update statistics
         // may need to change the criteria of fixed cells according to benchmarks
-        if (node.width() > 0 && node.height() > 0) // exclude io pins
+        if (!iopinFlag) // exclude io pins
         {
             if (node.status() == PlaceStatusEnum::FIXED)
             {
@@ -860,6 +893,108 @@ void PlaceDB::set_bookshelf_net_weight(std::string const& name, double w)
     dreamplaceAssertMsg(found != m_mNetName2Index.end(), "failed to find net %s", name.c_str());
     Net& net = this->net(found->second);
     net.setWeight(w);
+}
+void PlaceDB::set_bookshelf_shape(BookshelfParser::NodeShape const& shape) 
+{
+    string2index_map_type::iterator found = m_mNodeName2Index.find(shape.node_name);
+    if (found == m_mNodeName2Index.end())
+    {
+        dreamplacePrint(kWARN, "component not found from .shapes file: %s\n", shape.node_name.c_str());
+        return;
+    }
+    Node const& node = m_vNode.at(found->second);
+    Macro& macro = m_vMacro.at(this->macroId(node));
+    // regard shape boxes as obstruction as a dummy layer called Bookshelf.Shape
+    for (index_type i = 0, ie = shape.vShapeBox.size(); i != ie; ++i)
+    {
+        coordinate_type xl = shape.vShapeBox[i].origin[0] - node.xl() - macro.initOrigin().x(); 
+        coordinate_type yl = shape.vShapeBox[i].origin[1] - node.yl() - macro.initOrigin().y(); 
+        macro.obs().add("Bookshelf.Shape", Box<coordinate_type>(
+                    xl, 
+                    yl, 
+                    xl + shape.vShapeBox[i].size[0], 
+                    yl + shape.vShapeBox[i].size[1]
+                    ));
+    }
+}
+void PlaceDB::set_bookshelf_route_info(BookshelfParser::RouteInfo const& info)
+{
+    m_numRoutingGrids[kX] = info.numGrids[0]; 
+    m_numRoutingGrids[kY] = info.numGrids[1]; 
+    m_numRoutingGrids[2] = info.numLayers; 
+    m_vRoutingCapacity[PlanarDirectEnum::VERTICAL].assign(info.vVerticalCapacity.begin(), info.vVerticalCapacity.end()); 
+    m_vRoutingCapacity[PlanarDirectEnum::HORIZONTAL].assign(info.vHorizontalCapacity.begin(), info.vHorizontalCapacity.end()); 
+    m_vMinWireWidth.assign(info.vMinWireWidth.begin(), info.vMinWireWidth.end()); 
+    m_vMinWireSpacing.assign(info.vMinWireSpacing.begin(), info.vMinWireSpacing.end());
+    m_vViaSpacing.assign(info.vViaSpacing.begin(), info.vViaSpacing.end()); 
+    m_routingGridOrigin[kX] = info.gridOrigin[0]; 
+    m_routingGridOrigin[kY] = info.gridOrigin[1]; 
+    m_routingTileSize[kX] = info.tileSize[0]; 
+    m_routingTileSize[kY] = info.tileSize[1]; 
+    m_routingBlockagePorosity = info.blockagePorosity;
+
+    char buf[64]; 
+    for (index_type layer = 0; layer < (index_type)info.numLayers; ++layer)
+    {
+        dreamplaceSPrint(kNONE, buf, "%u", layer + 1); 
+        std::string layerName = buf; 
+        m_vLayerName.push_back(layerName);
+        dreamplaceAssertMsg(m_mLayerName2Index.insert(std::make_pair(std::string(layerName), layer)).second, "failed to insert layer (%s, %u)", layerName.c_str(), layer); 
+    }
+}
+void PlaceDB::add_bookshelf_niterminal_layer(std::string const&, std::string const&)
+{
+}
+void PlaceDB::add_bookshelf_blockage_layers(std::string const& name, std::vector<std::string> const& vLayer)
+{
+    string2index_map_type::iterator found = m_mNodeName2Index.find(name);
+    if (found == m_mNodeName2Index.end())
+    {
+        dreamplacePrint(kWARN, "component not found from .shapes file: %s\n", name.c_str());
+        return;
+    }
+    Node const& node = m_vNode.at(found->second);
+    Macro& macro = m_vMacro.at(this->macroId(node));
+
+    if (macro.obs().empty()) // no shape 
+    {
+        // necessary to add a shape indicator 
+        macro.obs().add("Bookshelf.Shape", Box<coordinate_type>(
+                    0, 
+                    0, 
+                    node.width(), 
+                    node.height()
+                    ));
+        for (std::vector<std::string>::const_iterator it = vLayer.begin(); it != vLayer.end(); ++it)
+        {
+            std::string const& layerName = *it; 
+            macro.obs().add(layerName, Box<coordinate_type>(
+                        0, 
+                        0, 
+                        node.width(), 
+                        node.height()
+                        ));
+        }
+    }
+    else // has shapes 
+    {
+        MacroObs::ObsConstIterator foundObs = macro.obs().obsMap().find("Bookshelf.Shape"); 
+        dreamplaceAssertMsg(foundObs != macro.obs().obsMap().end(), "Node %s must have Bookshelf.Shape layer defined in obstruction if obstruction exists", name.c_str());
+        std::vector<MacroObs::box_type> const& vBox = foundObs->second; 
+        for (std::vector<MacroObs::box_type>::const_iterator itb = vBox.begin(); itb != vBox.end(); ++itb)
+        {
+            for (std::vector<std::string>::const_iterator it = vLayer.begin(); it != vLayer.end(); ++it)
+            {
+                std::string const& layerName = *it; 
+                macro.obs().add(layerName, Box<coordinate_type>(
+                            itb->xl(), 
+                            itb->yl(), 
+                            itb->xh(), 
+                            itb->yh()
+                            ));
+            }
+        }
+    }
 }
 void PlaceDB::set_bookshelf_design(std::string& name)
 {
@@ -1273,6 +1408,17 @@ IOPinMacroConstIterator PlaceDB::iopinMacroEnd() const
     index_type last = m_vMacro.size();
     return IOPinMacroConstIterator(last, m_numMacro, last, this);
 }
+PlaceDB::index_type PlaceDB::getLayer(std::string const& layerName) const 
+{
+    string2index_map_type::const_iterator found = m_mLayerName2Index.find(layerName);
+    dreamplaceAssertMsg(found != m_mLayerName2Index.end(), "Layer not found: %s\n", layerName.c_str());
+    return found->second;
+}
+std::string PlaceDB::getLayerName(PlaceDB::index_type layer) const 
+{
+    return m_vLayerName.at(layer);
+}
+
 void PlaceDB::adjustParams()
 {
     dreamplacePrint(kWARN, "%lu nets with %lu pins from same nodes\n", m_numNetsWithDuplicatePins, m_numPinsDuplicatedInNets);

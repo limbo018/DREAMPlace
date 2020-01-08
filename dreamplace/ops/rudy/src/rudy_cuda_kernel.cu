@@ -9,6 +9,7 @@
  */
 
 #include "utility/src/utils.cuh"
+#include "utility/src/limits.cuh"
 #include "rudy/src/parameters.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
@@ -27,8 +28,8 @@ __global__ void rudy(const T *pin_pos_x,
 
                               int num_bins_x, int num_bins_y,
                               int num_nets,
-                              T *routing_utilization_map_x,
-                              T *routing_utilization_map_y)
+                              T *horizontal_utilization_map,
+                              T *vertical_utilization_map)
 {
     const int i = threadIdx.x + blockDim.x * blockIdx.x;
     if (i < num_nets)
@@ -36,24 +37,21 @@ __global__ void rudy(const T *pin_pos_x,
         const int start = netpin_start[i];
         const int end = netpin_start[i + 1];
 
-        T x_max = pin_pos_x[flat_netpin[start]];
-        T x_min = x_max;
-        T y_max = pin_pos_y[flat_netpin[start]];
-        T y_min = y_max;
+        T x_max = -cuda::numeric_limits<T>::max();
+        T x_min = cuda::numeric_limits<T>::max();
+        T y_max = -cuda::numeric_limits<T>::max();
+        T y_min = cuda::numeric_limits<T>::max();
 
-        for (int j = start + 1; j < end; ++j)
+        for (int j = start; j < end; ++j)
         {
-            const T xx = pin_pos_x[flat_netpin[j]];
+            int pin_id = flat_netpin[j];
+            const T xx = pin_pos_x[pin_id];
             x_max = DREAMPLACE_STD_NAMESPACE::max(xx, x_max);
             x_min = DREAMPLACE_STD_NAMESPACE::min(xx, x_min);
-            const T yy = pin_pos_y[flat_netpin[j]];
+            const T yy = pin_pos_y[pin_id];
             y_max = DREAMPLACE_STD_NAMESPACE::max(yy, y_max);
             y_min = DREAMPLACE_STD_NAMESPACE::min(yy, y_min);
         }
-
-        // Following Wuxi's implementation, a tolerance is added to avoid 0-size bounding box
-        x_max += TOLERANCE;
-        y_max += TOLERANCE;
 
         // compute the bin box that this net will affect
         int bin_index_xl = int((x_min - xl) / bin_size_x);
@@ -76,11 +74,17 @@ __global__ void rudy(const T *pin_pos_x,
         {
             for (int y = bin_index_yl; y < bin_index_yh; ++y)
             {
-                T overlap = wt * (DREAMPLACE_STD_NAMESPACE::min(x_max, (x + 1) * bin_size_x) - DREAMPLACE_STD_NAMESPACE::max(x_min, x * bin_size_x)) *
-                            (DREAMPLACE_STD_NAMESPACE::min(y_max, (y + 1) * bin_size_y) - DREAMPLACE_STD_NAMESPACE::max(y_min, y * bin_size_y));
+                T bin_xl = xl + x * bin_size_x; 
+                T bin_yl = yl + y * bin_size_y; 
+                T bin_xh = bin_xl + bin_size_x; 
+                T bin_yh = bin_yl + bin_size_y; 
+                T overlap = DREAMPLACE_STD_NAMESPACE::max(DREAMPLACE_STD_NAMESPACE::min(x_max, bin_xh) - DREAMPLACE_STD_NAMESPACE::max(x_min, bin_xl), (T)0) *
+                            DREAMPLACE_STD_NAMESPACE::max(DREAMPLACE_STD_NAMESPACE::min(y_max, bin_yh) - DREAMPLACE_STD_NAMESPACE::max(y_min, bin_yl), (T)0);
+                overlap *= wt; 
                 int index = x * num_bins_y + y;
-                atomicAdd(routing_utilization_map_x + index, overlap / (y_max - y_min));
-                atomicAdd(routing_utilization_map_y + index, overlap / (x_max - x_min));
+                // Following Wuxi's implementation, a tolerance is added to avoid 0-size bounding box
+                atomicAdd(horizontal_utilization_map + index, overlap / (y_max - y_min + cuda::numeric_limits<T>::epsilon()));
+                atomicAdd(vertical_utilization_map + index, overlap / (x_max - x_min + cuda::numeric_limits<T>::epsilon()));
             }
         }
     }
@@ -98,8 +102,8 @@ int rudyCudaLauncher(const T *pin_pos_x,
 
                               int num_bins_x, int num_bins_y,
                               int num_nets,
-                              T *routing_utilization_map_x,
-                              T *routing_utilization_map_y)
+                              T *horizontal_utilization_map,
+                              T *vertical_utilization_map)
 {
     int thread_count = 512;
     int block_count = CPUCeilDiv(num_nets, thread_count);
@@ -113,8 +117,8 @@ int rudyCudaLauncher(const T *pin_pos_x,
             xl, yl, xh, yh,
             num_bins_x, num_bins_y,
             num_nets,
-            routing_utilization_map_x,
-            routing_utilization_map_y
+            horizontal_utilization_map,
+            vertical_utilization_map
             );
     return 0;
 }
@@ -130,8 +134,8 @@ int rudyCudaLauncher(const T *pin_pos_x,
                                                                               \
                                               int num_bins_x, int num_bins_y, \
                                               int num_nets,                   \
-                                              T *routing_utilization_map_x,   \
-                                              T *routing_utilization_map_y);  \
+                                              T *horizontal_utilization_map,   \
+                                              T *vertical_utilization_map);  \
 
 REGISTER_KERNEL_LAUNCHER(float);
 REGISTER_KERNEL_LAUNCHER(double);

@@ -51,63 +51,95 @@ class PlaceDataCollection (object):
         # position should be parameter 
         self.pos = pos 
         
-        # other tensors required to build ops 
-        
-        self.node_size_x = torch.from_numpy(placedb.node_size_x).to(device)
-        self.node_size_y = torch.from_numpy(placedb.node_size_y).to(device)
-        # original node size for legalization, since they will be adjusted in global placement
-        self.original_node_size_x = self.node_size_x.clone()
-        self.original_node_size_y = self.node_size_y.clone()
+        with torch.no_grad(): 
+            # other tensors required to build ops 
+            
+            self.node_size_x = torch.from_numpy(placedb.node_size_x).to(device)
+            self.node_size_y = torch.from_numpy(placedb.node_size_y).to(device)
+            # original node size for legalization, since they will be adjusted in global placement
+            if params.routability_opt_flag: 
+                self.original_node_size_x = self.node_size_x.clone()
+                self.original_node_size_y = self.node_size_y.clone()
 
-        self.pin_offset_x = torch.tensor(placedb.pin_offset_x, dtype=self.pos[0].dtype, device=device)
-        self.pin_offset_y = torch.tensor(placedb.pin_offset_y, dtype=self.pos[0].dtype, device=device)
-        # original pin offset for legalization, since they will be adjusted in global placement
-        self.original_pin_offset_x = self.pin_offset_x.clone()
-        self.original_pin_offset_y = self.pin_offset_y.clone()
+            self.pin_offset_x = torch.tensor(placedb.pin_offset_x, dtype=self.pos[0].dtype, device=device)
+            self.pin_offset_y = torch.tensor(placedb.pin_offset_y, dtype=self.pos[0].dtype, device=device)
+            # original pin offset for legalization, since they will be adjusted in global placement
+            if params.routability_opt_flag: 
+                self.original_pin_offset_x = self.pin_offset_x.clone()
+                self.original_pin_offset_y = self.pin_offset_y.clone()
 
+            self.target_density = torch.empty(1, dtype=self.pos[0].dtype, device=device)
+            self.target_density.data.fill_(params.target_density)
 
-        self.pin2node_map = torch.from_numpy(placedb.pin2node_map).to(device)
-        self.flat_node2pin_map = torch.from_numpy(placedb.flat_node2pin_map).to(device)
-        self.flat_node2pin_start_map = torch.from_numpy(placedb.flat_node2pin_start_map).to(device)
-        # number of pins for each cell  
-        self.pin_weights = (self.flat_node2pin_start_map[1:] - self.flat_node2pin_start_map[:-1]).to(self.node_size_x.dtype)
+            # detect movable macros and scale down the density to avoid halos 
+            # I use a heuristic that cells whose areas are 10x of the mean area will be regarded movable macros in global placement 
+            node_areas = self.node_size_x * self.node_size_y
+            if self.target_density < 1: 
+                mean_area = node_areas[:placedb.num_movable_nodes].mean().mul_(10)
+                row_height = self.node_size_y[:placedb.num_movable_nodes].min().mul_(2)
+                self.movable_macro_mask = (node_areas[:placedb.num_movable_nodes] > mean_area) & (self.node_size_y[:placedb.num_movable_nodes] > row_height)
+            else: # no movable macros 
+                self.movable_macro_mask = None
 
-        self.pin2net_map = torch.from_numpy(placedb.pin2net_map).to(device)
-        self.flat_net2pin_map = torch.from_numpy(placedb.flat_net2pin_map).to(device)
-        self.flat_net2pin_start_map = torch.from_numpy(placedb.flat_net2pin_start_map).to(device)
-        if np.amin(placedb.net_weights) != np.amax(placedb.net_weights): # weights are meaningful 
-            self.net_weights = torch.from_numpy(placedb.net_weights).to(device)
-        else: # an empty tensor 
-            logging.warning("net weights are all the same, ignored")
-            self.net_weights = torch.Tensor().to(device)
+            self.pin2node_map = torch.from_numpy(placedb.pin2node_map).to(device)
+            self.flat_node2pin_map = torch.from_numpy(placedb.flat_node2pin_map).to(device)
+            self.flat_node2pin_start_map = torch.from_numpy(placedb.flat_node2pin_start_map).to(device)
+            # number of pins for each cell  
+            self.pin_weights = (self.flat_node2pin_start_map[1:] - self.flat_node2pin_start_map[:-1]).to(self.node_size_x.dtype)
 
-        # regions 
-        self.flat_region_boxes = torch.from_numpy(placedb.flat_region_boxes).to(device)
-        self.flat_region_boxes_start = torch.from_numpy(placedb.flat_region_boxes_start).to(device)
-        self.node2fence_region_map = torch.from_numpy(placedb.node2fence_region_map).to(device)
-        
-        self.net_mask_all = torch.from_numpy(np.ones(placedb.num_nets, dtype=np.uint8)).to(device) # all nets included 
-        net_degrees = np.array([len(net2pin) for net2pin in placedb.net2pin_map])
-        net_mask = np.logical_and(2 <= net_degrees, net_degrees < params.ignore_net_degree).astype(np.uint8)
-        self.net_mask_ignore_large_degrees = torch.from_numpy(net_mask).to(device) # nets with large degrees are ignored 
+            self.unit_pin_capacity = torch.empty(1, dtype=self.pos[0].dtype, device=device)
+            self.unit_pin_capacity.data.fill_(params.unit_pin_capacity)
+            if params.routability_opt_flag:
+                unit_pin_capacity = self.pin_weights[:placedb.num_movable_nodes] / node_areas[:placedb.num_movable_nodes]
+                avg_pin_capacity = unit_pin_capacity.mean() * self.target_density
+                # min(computed, params.unit_pin_capacity)
+                self.unit_pin_capacity = avg_pin_capacity.clamp_(max=params.unit_pin_capacity)
+                logging.info("unit_pin_capacity = %g" % (self.unit_pin_capacity))
 
-        # avoid computing gradient for fixed macros 
-        # 1 is for fixed macros 
-        self.pin_mask_ignore_fixed_macros = (self.pin2node_map >= placedb.num_movable_nodes)
+            # routing information 
+            # project initial routing utilization map to one layer 
+            self.initial_horizontal_utilization_map = None 
+            self.initial_vertical_utilization_map = None
+            if params.routability_opt_flag and placedb.initial_horizontal_demand_map is not None: 
+                self.initial_horizontal_utilization_map = torch.from_numpy(placedb.initial_horizontal_demand_map).to(device).div_(placedb.routing_grid_size_y * placedb.unit_horizontal_capacity)
+                self.initial_vertical_utilization_map = torch.from_numpy(placedb.initial_vertical_demand_map).to(device).div_(placedb.routing_grid_size_x * placedb.unit_vertical_capacity)
 
-        self.bin_center_x = torch.from_numpy(placedb.bin_center_x).to(device)
-        self.bin_center_y = torch.from_numpy(placedb.bin_center_y).to(device)
+            self.pin2net_map = torch.from_numpy(placedb.pin2net_map).to(device)
+            self.flat_net2pin_map = torch.from_numpy(placedb.flat_net2pin_map).to(device)
+            self.flat_net2pin_start_map = torch.from_numpy(placedb.flat_net2pin_start_map).to(device)
+            if np.amin(placedb.net_weights) != np.amax(placedb.net_weights): # weights are meaningful 
+                self.net_weights = torch.from_numpy(placedb.net_weights).to(device)
+            else: # an empty tensor 
+                logging.warning("net weights are all the same, ignored")
+                self.net_weights = torch.Tensor().to(device)
 
-        # sort nodes by size, return their sorted indices, designed for memory coalesce in electrical force
-        movable_size_x = self.node_size_x[:placedb.num_movable_nodes]
-        _, self.sorted_node_map = torch.sort(movable_size_x)
-        self.sorted_node_map = self.sorted_node_map.to(torch.int32) 
-        # self.sorted_node_map = torch.arange(0, placedb.num_movable_nodes, dtype=torch.int32, device=device)
+            # regions 
+            self.flat_region_boxes = torch.from_numpy(placedb.flat_region_boxes).to(device)
+            self.flat_region_boxes_start = torch.from_numpy(placedb.flat_region_boxes_start).to(device)
+            self.node2fence_region_map = torch.from_numpy(placedb.node2fence_region_map).to(device)
+            
+            self.net_mask_all = torch.from_numpy(np.ones(placedb.num_nets, dtype=np.uint8)).to(device) # all nets included 
+            net_degrees = np.array([len(net2pin) for net2pin in placedb.net2pin_map])
+            net_mask = np.logical_and(2 <= net_degrees, net_degrees < params.ignore_net_degree).astype(np.uint8)
+            self.net_mask_ignore_large_degrees = torch.from_numpy(net_mask).to(device) # nets with large degrees are ignored 
 
-        # logging.debug(self.node_size_x[placedb.num_movable_nodes//2 :placedb.num_movable_nodes//2+20])
-        # logging.debug(self.sorted_node_map[placedb.num_movable_nodes//2 :placedb.num_movable_nodes//2+20])
-        # logging.debug(self.node_size_x[self.sorted_node_map[0: 10].long()])
-        # logging.debug(self.node_size_x[self.sorted_node_map[-10:].long()])
+            # avoid computing gradient for fixed macros 
+            # 1 is for fixed macros 
+            self.pin_mask_ignore_fixed_macros = (self.pin2node_map >= placedb.num_movable_nodes)
+
+            self.bin_center_x = torch.from_numpy(placedb.bin_center_x).to(device)
+            self.bin_center_y = torch.from_numpy(placedb.bin_center_y).to(device)
+
+            # sort nodes by size, return their sorted indices, designed for memory coalesce in electrical force
+            movable_size_x = self.node_size_x[:placedb.num_movable_nodes]
+            _, self.sorted_node_map = torch.sort(movable_size_x)
+            self.sorted_node_map = self.sorted_node_map.to(torch.int32) 
+            # self.sorted_node_map = torch.arange(0, placedb.num_movable_nodes, dtype=torch.int32, device=device)
+
+            # logging.debug(self.node_size_x[placedb.num_movable_nodes//2 :placedb.num_movable_nodes//2+20])
+            # logging.debug(self.sorted_node_map[placedb.num_movable_nodes//2 :placedb.num_movable_nodes//2+20])
+            # logging.debug(self.node_size_x[self.sorted_node_map[0: 10].long()])
+            # logging.debug(self.node_size_x[self.sorted_node_map[-10:].long()])
 
         
     def bin_center_x_padded(self, placedb, padding): 
@@ -163,6 +195,7 @@ class PlaceOpCollection (object):
         self.draw_place_op = None
         self.route_utilization_map_op = None
         self.pin_utilization_map_op = None 
+        self.nctugr_congestion_map_op = None 
         self.adjust_node_area_op = None
 
 class BasicPlace (nn.Module):
@@ -313,7 +346,7 @@ class BasicPlace (nn.Module):
                 pin2net_map=data_collections.pin2net_map, 
                 net_weights=data_collections.net_weights, 
                 net_mask=data_collections.net_mask_all, 
-                algorithm='atomic', 
+                algorithm='net-by-net', 
                 num_threads=params.num_threads
                 )
 
@@ -333,8 +366,8 @@ class BasicPlace (nn.Module):
         """
         # wirelength cost 
 
-        POWVFILE = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../thirdparty/flute-3.1/POWV9.dat"))
-        POSTFILE = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../thirdparty/flute-3.1/POST9.dat"))
+        POWVFILE = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../thirdparty/NCTUgr.ICCAD2012/POWV9.dat"))
+        POSTFILE = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../thirdparty/NCTUgr.ICCAD2012/POST9.dat"))
         logging.info("POWVFILE = %s" % (POWVFILE))
         logging.info("POSTFILE = %s" % (POSTFILE))
         wirelength_for_pin_op = rmst_wl.RMSTWL(
@@ -365,13 +398,12 @@ class BasicPlace (nn.Module):
         return density_overflow.DensityOverflow(
                 data_collections.node_size_x, data_collections.node_size_x, 
                 data_collections.bin_center_x, data_collections.bin_center_y, 
-                target_density=params.target_density, 
+                target_density=data_collections.target_density, 
                 xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
                 bin_size_x=placedb.bin_size_x, bin_size_y=placedb.bin_size_y, 
                 num_movable_nodes=placedb.num_movable_nodes, 
                 num_terminals=placedb.num_terminals, 
                 num_filler_nodes=0,
-                algorithm='by-node', 
                 num_threads=params.num_threads
                 )
 
@@ -384,9 +416,9 @@ class BasicPlace (nn.Module):
         @param device cpu or cuda 
         """
         return electric_overflow.ElectricOverflow(
-                data_collections.node_size_x, data_collections.node_size_y, 
-                data_collections.bin_center_x, data_collections.bin_center_y, 
-                target_density=params.target_density, 
+                node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
+                bin_center_x=data_collections.bin_center_x, bin_center_y=data_collections.bin_center_y, 
+                target_density=data_collections.target_density, 
                 xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
                 bin_size_x=placedb.bin_size_x, bin_size_y=placedb.bin_size_y, 
                 num_movable_nodes=placedb.num_movable_nodes, 
@@ -394,6 +426,7 @@ class BasicPlace (nn.Module):
                 num_filler_nodes=0,
                 padding=0, 
                 sorted_node_map=data_collections.sorted_node_map,
+                movable_macro_mask=data_collections.movable_macro_mask, 
                 num_threads=params.num_threads
                 )
 

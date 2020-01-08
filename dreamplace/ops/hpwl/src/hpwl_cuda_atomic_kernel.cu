@@ -18,10 +18,7 @@ __global__ void computeHPWLMax(
     if (i < num_pins)
     {
         int net_id = pin2net_map[i];
-        if (net_mask[net_id])
-        {
-            atomicMax(&partial_hpwl_x_max[net_id], x[i]); 
-        }
+        atomicMax(&partial_hpwl_x_max[net_id], (T)net_mask[net_id] * x[i]); 
     }
 }
 
@@ -37,10 +34,7 @@ __global__ void computeHPWLMin(
     if (i < num_pins)
     {
         int net_id = pin2net_map[i];
-        if (net_mask[net_id])
-        {
-            atomicMin(&partial_hpwl_x_min[net_id], x[i]); 
-        }
+        atomicMin(&partial_hpwl_x_min[net_id], (T)net_mask[net_id] * x[i]); 
     }
 }
 
@@ -57,14 +51,14 @@ __global__ void computeHPWLMaxMin(
     if (i < num_pins)
     {
         int net_id = pin2net_map[i];
-        if (net_mask[net_id])
-        {
-            atomicMax(&partial_hpwl_x_max[net_id], x[i]);
-            atomicMin(&partial_hpwl_x_min[net_id], x[i]);
-            
-            atomicMax(&partial_hpwl_y_max[net_id], y[i]);
-            atomicMin(&partial_hpwl_y_min[net_id], y[i]);
-        }
+
+        T xx = (T)net_mask[net_id] * x[i]; 
+        atomicMax(&partial_hpwl_x_max[net_id], xx);
+        atomicMin(&partial_hpwl_x_min[net_id], xx);
+
+        T yy = (T)net_mask[net_id] * y[i]; 
+        atomicMax(&partial_hpwl_y_max[net_id], yy);
+        atomicMin(&partial_hpwl_y_min[net_id], yy);
     }
 }
 

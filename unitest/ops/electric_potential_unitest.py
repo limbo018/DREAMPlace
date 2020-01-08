@@ -115,7 +115,8 @@ class ElectricPotentialOpTest(unittest.TestCase):
             num_terminals=num_terminals,
             num_filler_nodes=0,
             padding=0,
-            sorted_node_map=sorted_node_map
+            sorted_node_map=sorted_node_map,
+            movable_macro_mask=None
         )
 
         pos = Variable(torch.from_numpy(np.concatenate([xx, yy])), requires_grad=True)
@@ -138,7 +139,8 @@ class ElectricPotentialOpTest(unittest.TestCase):
                         num_terminals=num_terminals,
                         num_filler_nodes=0,
                         padding=0,
-                        sorted_node_map=sorted_node_map.cuda()
+                        sorted_node_map=sorted_node_map.cuda(), 
+                        movable_macro_mask=None
                         )
 
             pos = Variable(torch.from_numpy(np.concatenate([xx, yy])).cuda(), requires_grad=True)

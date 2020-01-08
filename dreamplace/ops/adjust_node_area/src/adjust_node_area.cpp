@@ -2,12 +2,13 @@
  * @file   adjust_node_area.cpp
  * @author Zixuan Jiang, Jiaqi Gu, Yibo Lin
  * @date   Dec 2019
- * @brief  Adjust cell area according to congestion map. 
+ * @brief  Adjust cell area according to congestion map.
  */
 
 #include "utility/src/torch.h"
 #include "utility/src/Msg.h"
 #include "utility/src/utils.h"
+#include "adjust_node_area/src/scaling_function.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
 
@@ -16,29 +17,34 @@ DREAMPLACE_BEGIN_NAMESPACE
 #define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x "must be contiguous")
 
 template <typename T>
+DEFINE_AVERAGE_SCALING_FUNCTION(T); 
+
+template <typename T>
+DEFINE_MAX_SCALING_FUNCTION(T); 
+
+template <typename T>
 int computeInstanceRoutabilityOptimizationMapLauncher(
     const T *pos_x, const T *pos_y,
     const T *node_size_x, const T *node_size_y,
     const T *routing_utilization_map,
     T xl, T yl,
     T bin_size_x, T bin_size_y,
-    int num_nodes,
     int num_bins_x, int num_bins_y,
+    int num_movable_nodes,
     int num_threads,
-    T *instance_route_area
-    )
+    T *instance_route_area)
 {
     const T inv_bin_size_x = 1.0 / bin_size_x;
     const T inv_bin_size_y = 1.0 / bin_size_y;
 
-    int chunk_size = DREAMPLACE_STD_NAMESPACE::max(int(num_nodes / num_threads / 16), 1);
+    int chunk_size = DREAMPLACE_STD_NAMESPACE::max(int(num_movable_nodes / num_threads / 16), 1);
 #pragma omp parallel for num_threads(num_threads) schedule(dynamic, chunk_size)
-    for (int i = 0; i < num_nodes; ++i)
+    for (int i = 0; i < num_movable_nodes; ++i)
     {
-        const T x_max = pos_x[i] + node_size_x[i];
         const T x_min = pos_x[i];
-        const T y_max = pos_y[i] + node_size_y[i];
+        const T x_max = x_min + node_size_x[i];
         const T y_min = pos_y[i];
+        const T y_max = y_min + node_size_y[i];
 
         // compute the bin box that this net will affect
         // We do NOT follow Wuxi's implementation. Instead, we clamp the bounding box.
@@ -52,17 +58,17 @@ int computeInstanceRoutabilityOptimizationMapLauncher(
         bin_index_yl = DREAMPLACE_STD_NAMESPACE::max(bin_index_yl, 0);
         bin_index_yh = DREAMPLACE_STD_NAMESPACE::min(bin_index_yh, num_bins_y);
 
-        T& area = instance_route_area[i];
-        area = 0; 
-        for (int x = bin_index_xl; x < bin_index_xh; ++x)
-        {
-            for (int y = bin_index_yl; y < bin_index_yh; ++y)
-            {
-                T overlap = (DREAMPLACE_STD_NAMESPACE::min(x_max, (x + 1) * bin_size_x) - DREAMPLACE_STD_NAMESPACE::max(x_min, x * bin_size_x)) *
-                            (DREAMPLACE_STD_NAMESPACE::min(y_max, (y + 1) * bin_size_y) - DREAMPLACE_STD_NAMESPACE::max(y_min, y * bin_size_y));
-                area += overlap * routing_utilization_map[x * num_bins_y + y];
-            }
-        }
+        instance_route_area[i] = SCALING_OP(
+                routing_utilization_map, 
+                xl, yl, 
+                bin_size_x, bin_size_y, 
+                num_bins_x, num_bins_y, 
+                bin_index_xl, 
+                bin_index_yl, 
+                bin_index_xh, 
+                bin_index_yh, 
+                x_min, y_min, x_max, y_max
+                );
     }
 
     return 0;
@@ -82,8 +88,7 @@ at::Tensor adjust_node_area_forward(
     int num_movable_nodes,
     int num_bins_x,
     int num_bins_y,
-    int num_threads
-    )
+    int num_threads)
 {
     CHECK_FLAT(pos);
     CHECK_EVEN(pos);
@@ -95,8 +100,8 @@ at::Tensor adjust_node_area_forward(
     CHECK_FLAT(node_size_y);
     CHECK_CONTIGUOUS(node_size_y);
 
-    int num_nodes = pos.numel() / 2; 
-    at::Tensor instance_route_area = at::empty({num_nodes}, pos.options());
+    int num_nodes = pos.numel() / 2;
+    at::Tensor instance_route_area = at::empty({num_movable_nodes}, pos.options());
 
     // compute routability and density optimziation instance area
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeInstanceRoutabilityOptimizationMapLauncher", [&] {
@@ -112,7 +117,7 @@ at::Tensor adjust_node_area_forward(
             instance_route_area.data<scalar_t>());
     });
 
-    return instance_route_area; 
+    return instance_route_area;
 }
 
 DREAMPLACE_END_NAMESPACE
