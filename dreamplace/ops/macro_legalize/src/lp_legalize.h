@@ -139,7 +139,9 @@ void lpLegalizeLauncher(LegalizationDB<T> db, std::vector<int>& macros)
 
         if (dx < 0 && dy < 0) // case I: overlap
         {
-            if (fabs(dx) < fabs(dy)) // horizontal movement has better displacement
+            T hmove = std::min(xh2 - xl1, xh1 - xl2);
+            T vmove = std::min(yh2 - yl1, yh1 - yl2);
+            if (hmove < vmove) // horizontal movement has better displacement
             {
                 add2Hcg(i, xl1, width1, j, xl2, width2);
             }

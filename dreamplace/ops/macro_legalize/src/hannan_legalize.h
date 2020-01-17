@@ -37,13 +37,25 @@ class HannanGrids
         std::size_t grid_x(T x) const 
         {
             auto it = std::lower_bound(m_coordx.begin(), m_coordx.end(), x);
-            return std::min((std::size_t)std::distance(m_coordx.begin(), it), dim_x()-1);
+            std::size_t ix = std::min((std::size_t)std::distance(m_coordx.begin(), it), dim_x()-1);
+            T gxl = m_coordx[ix]; 
+            if (gxl > x && ix)
+            {
+                ix -= 1; 
+            }
+            return ix;
         }
         /// @brief query y index in log(n) time complexity
         std::size_t grid_y(T y) const 
         {
             auto it = std::lower_bound(m_coordy.begin(), m_coordy.end(), y);
-            return std::min((std::size_t)std::distance(m_coordy.begin(), it), dim_y()-1);
+            std::size_t iy = std::min((std::size_t)std::distance(m_coordy.begin(), it), dim_y()-1);
+            T gyl = m_coordy[iy]; 
+            if (gyl > y && iy)
+            {
+                iy -= 1; 
+            }
+            return iy;
         }
         /// @brief get x coordinate of a grid 
         T coord_x(std::size_t ix) const 
@@ -120,6 +132,19 @@ class HannanGrids
             // they should already be unique 
             std::sort(m_coordx.begin(), m_coordx.end());
             std::sort(m_coordy.begin(), m_coordy.end());
+
+#ifdef DEBUG
+            for (auto cx : m_coordx)
+            {
+                dreamplacePrint(kNONE, "%g ", (double)cx);
+            }
+            dreamplacePrint(kNONE, "\n"); 
+            for (auto cy : m_coordy)
+            {
+                dreamplacePrint(kNONE, "%g ", (double)cy);
+            }
+            dreamplacePrint(kNONE, "\n"); 
+#endif
         }
 
         std::vector<T> m_coordx; ///< coordinates of grid lines in x direction 
@@ -140,37 +165,6 @@ class HannanGridMap : public HannanGrids<T>
         {
             // construct 2D binary map 
             m_map.assign(this->dim_x()*this->dim_y(), 0);
-            // the right and top boundary should always be occupied 
-            for (std::size_t ix = 0; ix < this->dim_x(); ++ix)
-            {
-                set(ix, this->dim_y()-1, 1);
-            }
-            for (std::size_t iy = 0; iy < this->dim_y(); ++iy)
-            {
-                set(this->dim_x()-1, iy, 1);
-            }
-            for (std::size_t i = 0; i < n; ++i)
-            {
-                T xl = x[i];
-                T xh = xl+width[i]; 
-                T yl = y[i];
-                T yh = yl+height[i];
-                std::size_t ixl = this->grid_x(xl); 
-                std::size_t ixh = this->grid_x(xh); 
-                std::size_t iyl = this->grid_y(yl); 
-                std::size_t iyh = this->grid_y(yh); 
-
-                for (std::size_t ix = ixl; ix <= ixh; ++ix)
-                {
-                    for (std::size_t iy = iyl; iy <= iyh; ++iy)
-                    {
-                        if (this->base_type::overlap(ix, iy, xl, yl, xh, yh))
-                        {
-                            this->set(ix, iy, 1); 
-                        }
-                    }
-                }
-            }
         }
 
         /// @brief set an entry in grid map 
@@ -189,13 +183,13 @@ class HannanGridMap : public HannanGrids<T>
         bool overlap(T xl, T yl, T xh, T yh) const 
         {
             std::size_t ixl = this->grid_x(xl); 
-            std::size_t ixh = this->grid_x(xh); 
+            std::size_t ixh = this->grid_x(xh) + 1; 
             std::size_t iyl = this->grid_y(yl); 
-            std::size_t iyh = this->grid_y(yh); 
+            std::size_t iyh = this->grid_y(yh) + 1; 
 
-            for (std::size_t ix = ixl; ix <= ixh; ++ix)
+            for (std::size_t ix = ixl; ix < ixh; ++ix)
             {
-                for (std::size_t iy = iyl; iy <= iyh; ++iy)
+                for (std::size_t iy = iyl; iy < iyh; ++iy)
                 {
                     if (this->base_type::overlap(ix, iy, xl, yl, xh, yh) && this->at(ix, iy))
                     {
@@ -210,13 +204,13 @@ class HannanGridMap : public HannanGrids<T>
         void add(T xl, T yl, T xh, T yh) 
         {
             std::size_t ixl = this->grid_x(xl); 
-            std::size_t ixh = this->grid_x(xh); 
+            std::size_t ixh = this->grid_x(xh) + 1; 
             std::size_t iyl = this->grid_y(yl); 
-            std::size_t iyh = this->grid_y(yh); 
+            std::size_t iyh = this->grid_y(yh) + 1; 
 
-            for (std::size_t ix = ixl; ix <= ixh; ++ix)
+            for (std::size_t ix = ixl; ix < ixh; ++ix)
             {
-                for (std::size_t iy = iyl; iy <= iyh; ++iy)
+                for (std::size_t iy = iyl; iy < iyh; ++iy)
                 {
                     if (this->base_type::overlap(ix, iy, xl, yl, xh, yh))
                     {
@@ -237,19 +231,22 @@ class HannanGridMap : public HannanGrids<T>
 ///     Find the first one with minimum displacement; 
 ///     Update the grid map; 
 /// If the layout is very tight, it may not be able to find a solution. 
+/// @return true if all macros legalized 
 template <typename T>
-void hannanLegalizeLauncher(LegalizationDB<T> db, std::vector<int>& macros)
+bool hannanLegalizeLauncher(LegalizationDB<T> db, std::vector<int>& macros)
 {
     dreamplacePrint(kINFO, "Legalize movable macros on Hannan grids\n");
 
     // sort from left to right, large to small 
     std::sort(macros.begin(), macros.end(), 
             [&](int node_id1, int node_id2){
-                T x1 = db.x[node_id1];
-                T x2 = db.x[node_id2]; 
                 T a1 = db.node_size_x[node_id1]*db.node_size_y[node_id1];
                 T a2 = db.node_size_x[node_id2]*db.node_size_y[node_id2];
-                return x1 < x2 || (x1 == x2 && (a1 > a2 || (a1 == a2 && node_id1 < node_id2)));
+                T x1 = db.x[node_id1];
+                T x2 = db.x[node_id2]; 
+                T y1 = db.y[node_id1];
+                T y2 = db.y[node_id2]; 
+                return a1 > a2 || (a1 == a2 && (x1 < x2 || (x1 == x2 && (y1 < y2 || (y1 == y2 && node_id1 < node_id2)))));
             });
 
     T spacing_x = std::numeric_limits<T>::max();
@@ -266,14 +263,68 @@ void hannanLegalizeLauncher(LegalizationDB<T> db, std::vector<int>& macros)
             (double)spacing_x, (double)spacing_y, (int)((db.xh-db.xl)/spacing_x), (int)((db.yh-db.yl)/spacing_y));
 
     // construct hannan grid map for fixed macros 
-    HannanGridMap<T> grid_map (db.init_x+db.num_movable_nodes, db.init_y+db.num_movable_nodes, 
-            db.node_size_x+db.num_movable_nodes, db.node_size_y+db.num_movable_nodes, db.num_nodes-db.num_movable_nodes, 
+    // collect fixed and dummy fixed nodes 
+    std::vector<T> vx; 
+    std::vector<T> vy; 
+    std::vector<T> node_size_x; 
+    std::vector<T> node_size_y; 
+    vx.reserve(db.num_nodes); 
+    vy.reserve(db.num_nodes); 
+    node_size_x.reserve(db.num_nodes);
+    node_size_y.reserve(db.num_nodes);
+    for (int node_id = 0; node_id < db.num_nodes; ++node_id)
+    {
+        if (node_id >= db.num_movable_nodes || db.is_dummy_fixed(node_id))
+        {
+            vx.push_back(db.x[node_id]); 
+            vy.push_back(db.y[node_id]); 
+            node_size_x.push_back(db.node_size_x[node_id]); 
+            node_size_y.push_back(db.node_size_y[node_id]); 
+        }
+    }
+
+    HannanGridMap<T> grid_map (vx.data(), vy.data(), 
+            node_size_x.data(), node_size_y.data(), vx.size(), 
             db.xl, db.yl, db.xh, db.yh, 
             spacing_x, spacing_y);
+
+    // the right and top boundary should always be occupied 
+    for (std::size_t ix = 0; ix < grid_map.dim_x(); ++ix)
+    {
+        grid_map.set(ix, grid_map.dim_y()-1, 1);
+    }
+    for (std::size_t iy = 0; iy < grid_map.dim_y(); ++iy)
+    {
+        grid_map.set(grid_map.dim_x()-1, iy, 1);
+    }
+    // set fixed nodes to occupy the grid map 
+    for (int i = db.num_movable_nodes; i < db.num_nodes; ++i)
+    {
+        T xl = db.init_x[i];
+        T xh = xl + db.node_size_x[i]; 
+        T yl = db.init_y[i];
+        T yh = yl + db.node_size_y[i];
+        std::size_t ixl = grid_map.grid_x(xl); 
+        std::size_t ixh = grid_map.grid_x(xh); 
+        std::size_t iyl = grid_map.grid_y(yl); 
+        std::size_t iyh = grid_map.grid_y(yh); 
+
+        for (std::size_t ix = ixl; ix <= ixh; ++ix)
+        {
+            for (std::size_t iy = iyl; iy <= iyh; ++iy)
+            {
+                if (grid_map.HannanGrids<T>::overlap(ix, iy, xl, yl, xh, yh))
+                {
+                    grid_map.set(ix, iy, 1); 
+                }
+            }
+        }
+    }
 
     auto search_grids = diamond_search_sequence(grid_map.dim_y(), grid_map.dim_x()); 
     dreamplacePrint(kDEBUG, "Construct %lux%lu Hannan grids, diamond search sequence %lu\n", grid_map.dim_x(), grid_map.dim_y(), search_grids.size());
 
+    bool legal = true; 
     for (auto node_id : macros)
     {
         T node_x = db.x[node_id];
@@ -294,6 +345,12 @@ void hannanLegalizeLauncher(LegalizationDB<T> db, std::vector<int>& macros)
             {
                 T xl = grid_map.coord_x(ix);
                 T yl = grid_map.coord_y(iy);
+                if (grid_offset.ic == 0 && grid_offset.ir == 0)
+                {
+                    dreamplaceAssertMsg(xl == node_x, "%g != %g", xl, node_x);
+                    dreamplaceAssertMsg(yl == node_y, "%g != %g", yl, node_y);
+                }
+
                 // make sure the coordinates are aligned to row and site 
                 T aligned_xl = db.align2site(xl, width);
                 T aligned_yl = db.align2row(yl, height);
@@ -323,8 +380,10 @@ void hannanLegalizeLauncher(LegalizationDB<T> db, std::vector<int>& macros)
             dreamplacePrint(kERROR, "failed to find legal position for macro %d (%g, %g, %g, %g)\n", 
                     node_id, node_x, node_y, node_x + width, node_y + height
                     );
+            legal = false; 
         }
     }
+    return legal; 
 }
 
 DREAMPLACE_END_NAMESPACE
