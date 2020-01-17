@@ -13,50 +13,9 @@ DREAMPLACE_BEGIN_NAMESPACE
 
 /// @brief The macro legalization follows the way of floorplanning, 
 /// because macros have quite different sizes. 
+/// @return true if legal 
 template <typename T>
-void macroLegalizationLauncher(LegalizationDB<T> db);
-
-/// @brief legalize movable macros only. 
-/// Standard cells are not considered, but overlaps with fixed macros will be avoided. 
-/// 
-/// @param init_x initial x location of nodes, including movable nodes, fixed nodes, and filler nodes, [0, num_movable_nodes) are movable nodes, [num_movable_nodes, num_nodes-num_filler_nodes) are fixed nodes, [num_nodes-num_filler_nodes, num_nodes) are filler nodes
-/// @param init_y initial y location of nodes, including movable nodes, fixed nodes, and filler nodes, same as init_x
-/// @param node_size_x width of nodes, including movable nodes, fixed nodes, and filler nodes, [0, num_movable_nodes) are movable nodes, [num_movable_nodes, num_nodes-num_filler_nodes) are fixed nodes, [num_nodes-num_filler_nodes, num_nodes) are filler nodes
-/// @param node_size_y height of nodes, including movable nodes, fixed nodes, and filler nodes, same as node_size_x
-/// @param xl left edge of bounding box of layout area 
-/// @param yl bottom edge of bounding box of layout area 
-/// @param xh right edge of bounding box of layout area 
-/// @param yh top edge of bounding box of layout area 
-/// @param site_width width of a placement site 
-/// @param row_height height of a placement row 
-/// @param num_bins_x number of bins in horizontal direction 
-/// @param num_bins_y number of bins in vertical direction 
-/// @param num_nodes total number of nodes, including movable nodes, fixed nodes, and filler nodes; fixed nodes are in the range of [num_movable_nodes, num_nodes-num_filler_nodes)
-/// @param num_movable_nodes number of movable nodes, movable nodes are in the range of [0, num_movable_nodes)
-template <typename T>
-int macroLegalizationLauncher(
-        const T* init_x, const T* init_y, 
-        const T* node_size_x, const T* node_size_y, 
-        T* x, T* y, 
-        const T xl, const T yl, const T xh, const T yh, 
-        const T site_width, const T row_height, 
-        int num_bins_x, int num_bins_y, 
-        const int num_nodes, 
-        const int num_movable_nodes
-        )
-{
-    macroLegalizationCPU(
-            init_x, init_y, 
-            node_size_x, node_size_y, 
-            x, y, 
-            xl, yl, xh, yh, 
-            site_width, row_height, 
-            num_bins_x, num_bins_y, 
-            num_nodes, 
-            num_movable_nodes
-            );
-    return 0; 
-}
+bool macroLegalizationLauncher(LegalizationDB<T> db);
 
 #define CHECK_FLAT(x) AT_ASSERTM(!x.is_cuda() && x.ndimension() == 1, #x "must be a flat tensor on CPU")
 #define CHECK_EVEN(x) AT_ASSERTM((x.numel()&1) == 0, #x "must have even number of elements")
@@ -132,7 +91,7 @@ at::Tensor macro_legalization_forward(
 }
 
 template <typename T>
-void check_macro_legality(LegalizationDB<T> db, const std::vector<int>& macros)
+bool check_macro_legality(LegalizationDB<T> db, const std::vector<int>& macros, bool fast_check)
 {
     // check legality between movable and fixed macros 
     // for debug only, so it is slow 
@@ -143,7 +102,7 @@ void check_macro_legality(LegalizationDB<T> db, const std::vector<int>& macros)
         T yh2 = yl2 + height2; 
         if (std::min(xh1, xh2) > std::max(xl1, xl2) && std::min(yh1, yh2) > std::max(yl1, yl2))
         {
-            dreamplacePrint(kERROR, "macro %d (%g, %g, %g, %g) var %d overlaps with macro %d (%g, %g, %g, %g) var %d, fixed: %d\n", 
+            dreamplacePrint((fast_check)? kWARN : kERROR, "macro %d (%g, %g, %g, %g) var %d overlaps with macro %d (%g, %g, %g, %g) var %d, fixed: %d\n", 
                     node_id1, xl1, yl1, xh1, yh1, i, 
                     node_id2, xl2, yl2, xh2, yh2, j, 
                     (int)(node_id2 >= db.num_movable_nodes)
@@ -174,6 +133,10 @@ void check_macro_legality(LegalizationDB<T> db, const std::vector<int>& macros)
             if (overlap)
             {
                 legal = false; 
+                if (fast_check)
+                {
+                    return legal; 
+                }
             }
         }
         // constraints with fixed macros 
@@ -191,6 +154,10 @@ void check_macro_legality(LegalizationDB<T> db, const std::vector<int>& macros)
             if (overlap)
             {
                 legal = false; 
+                if (fast_check)
+                {
+                    return legal; 
+                }
             }
         }
     }
@@ -202,6 +169,8 @@ void check_macro_legality(LegalizationDB<T> db, const std::vector<int>& macros)
     {
         dreamplacePrint(kERROR, "Macro legality check FAILED\n");
     }
+
+    return legal; 
 }
 
 template <typename T>
@@ -216,7 +185,7 @@ T compute_displace(const LegalizationDB<T>& db, const std::vector<int>& macros)
 }
 
 template <typename T>
-void macroLegalizationLauncher(LegalizationDB<T> db)
+bool macroLegalizationLauncher(LegalizationDB<T> db)
 {
     // collect macros 
     std::vector<int> macros; 
@@ -235,20 +204,28 @@ void macroLegalizationLauncher(LegalizationDB<T> db)
     // in case there is no movable macros 
     if (macros.empty())
     {
-        return;
+        return true;
     }
 
-    hannanLegalizeLauncher(db, macros);
-    dreamplacePrint(kINFO, "Macro displacement %g\n", compute_displace(db, macros));
-#ifdef DEBUG
-    check_macro_legality(db, macros);
-#endif
-
+    // first round with LP 
     lpLegalizeLauncher(db, macros);
     dreamplacePrint(kINFO, "Macro displacement %g\n", compute_displace(db, macros));
-#ifdef DEBUG
-    check_macro_legality(db, macros);
-#endif
+    bool legal = check_macro_legality(db, macros, true);
+
+    // try Hannan grid legalization if still not legal 
+    if (!legal)
+    {
+        legal = hannanLegalizeLauncher(db, macros);
+        dreamplacePrint(kINFO, "Macro displacement %g\n", compute_displace(db, macros));
+        legal = check_macro_legality(db, macros, false);
+
+        // refine with LP if legal 
+        if (legal)
+        {
+            lpLegalizeLauncher(db, macros);
+            dreamplacePrint(kINFO, "Macro displacement %g\n", compute_displace(db, macros));
+        }
+    }
 
     dreamplacePrint(kINFO, "Align macros to site and rows\n");
     // align the lower left corner to row and site
@@ -259,9 +236,9 @@ void macroLegalizationLauncher(LegalizationDB<T> db)
         db.y[node_id] = db.align2row(db.y[node_id], db.node_size_y[node_id]);
     }
 
-//#ifdef DEBUG
-    check_macro_legality(db, macros);
-//#endif
+    legal = check_macro_legality(db, macros, false);
+
+    return legal; 
 }
 
 DREAMPLACE_END_NAMESPACE
