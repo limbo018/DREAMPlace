@@ -135,5 +135,9 @@
 "dump_legalize_solution_flag" : {
     "descripton" : "whether dump intermediate legalization solution as a compressed pickle object", 
     "default" : 0
+    },
+"deterministic_flag" : {
+    "descripton" : "whether require run-to-run determinism, may have efficiency overhead", 
+    "default" : 0
     }
 }

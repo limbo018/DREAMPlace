@@ -70,6 +70,7 @@ class ElectricPotentialFunction(Function):
         num_movable_impacted_bins_y,
         num_filler_impacted_bins_x,
         num_filler_impacted_bins_y,
+        deterministic_flag, 
         sorted_node_map,
         exact_expkM=None,  # exp(-j*pi*k/M)
         exact_expkN=None,  # exp(-j*pi*k/N)
@@ -106,6 +107,7 @@ class ElectricPotentialFunction(Function):
                 num_movable_impacted_bins_y,
                 num_filler_impacted_bins_x,
                 num_filler_impacted_bins_y,
+                deterministic_flag, 
                 sorted_node_map
             )
 
@@ -310,7 +312,7 @@ class ElectricPotentialFunction(Function):
             None, None, None, None, \
             None, None, None, None, \
             None, None, None, None, \
-            None, None
+            None, None, None
 
 class ElectricPotential(nn.Module):
     """
@@ -327,6 +329,7 @@ class ElectricPotential(nn.Module):
                  num_terminals,
                  num_filler_nodes,
                  padding,
+                 deterministic_flag, # control whether to use deterministic routine 
                  sorted_node_map,
                  fast_mode=False,
                  num_threads=8
@@ -350,6 +353,7 @@ class ElectricPotential(nn.Module):
         @param num_terminals number of fixed cells
         @param num_filler_nodes number of filler cells
         @param padding bin padding to boundary of placement region
+        @param deterministic_flag control whether to use deterministic routine 
         @param fast_mode if true, only gradient is computed, while objective computation is skipped
         @param num_threads number of threads
         """
@@ -388,6 +392,7 @@ class ElectricPotential(nn.Module):
         self.num_terminals = num_terminals
         self.num_filler_nodes = num_filler_nodes
         self.padding = padding
+        self.deterministic_flag = deterministic_flag
         self.sorted_node_map = sorted_node_map
         # compute maximum impacted bins
         self.num_bins_x = int(math.ceil((xh - xl) / bin_size_x))
@@ -461,7 +466,8 @@ class ElectricPotential(nn.Module):
                     self.num_bins_x,
                     self.num_bins_y,
                     num_fixed_impacted_bins_x,
-                    num_fixed_impacted_bins_y
+                    num_fixed_impacted_bins_y, 
+                    self.deterministic_flag
                 )
             else:
                 self.buf = torch.empty(self.num_threads * self.num_bins_x * self.num_bins_y, dtype=pos.dtype, device=pos.device)
@@ -530,6 +536,7 @@ class ElectricPotential(nn.Module):
             self.num_movable_impacted_bins_y,
             self.num_filler_impacted_bins_x,
             self.num_filler_impacted_bins_y,
+            self.deterministic_flag, 
             self.sorted_node_map,
             self.exact_expkM, self.exact_expkN,
             self.inv_wu2_plus_wv2,

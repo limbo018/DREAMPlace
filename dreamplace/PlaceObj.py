@@ -308,6 +308,7 @@ class PlaceObj(nn.Module):
                 num_terminals=placedb.num_terminals,
                 num_filler_nodes=placedb.num_filler_nodes,
                 padding=padding,
+                deterministic_flag=params.deterministic_flag, 
                 sorted_node_map=data_collections.sorted_node_map,
                 fast_mode=True, 
                 num_threads=params.num_threads
