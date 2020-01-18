@@ -207,5 +207,9 @@
 "max_pin_opt_adjust_rate" : {
     "descripton" : "max_pin_opt_adjust_rate", 
     "default" : 1.5
+    }, 
+"deterministic_flag" : {
+    "descripton" : "whether require run-to-run determinism, may have efficiency overhead", 
+    "default" : 0
     }
 }

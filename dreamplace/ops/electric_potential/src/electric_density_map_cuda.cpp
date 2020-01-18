@@ -23,13 +23,13 @@ int computeTriangleDensityMapCudaLauncher(
         int num_impacted_bins_x, int num_impacted_bins_y, 
         const T xl, const T yl, const T xh, const T yh, 
         const T bin_size_x, const T bin_size_y, 
+        bool deterministic_flag, 
         T* density_map_tensor,
         const int* sorted_node_map
         );
 
-/// @brief  The exact density model
-/// Compute the exact overlap area for density 
-/// using cell-to-bin strategy
+// The exact density model
+// Compute the exact overlap area for density 
 template <typename T>
 int computeExactDensityMapCudaLauncher(
         const T* x_tensor, const T* y_tensor,
@@ -41,23 +41,7 @@ int computeExactDensityMapCudaLauncher(
         const T xl, const T yl, const T xh, const T yh, 
         const T bin_size_x, const T bin_size_y, 
         bool fixed_node_flag, 
-        T* density_map_tensor
-        );
-
-/// @brief The exact density model
-/// Compute the exact overlap area for density 
-/// using cell-by-cell parallelization strategy
-template <typename T>
-int computeExactDensityMapCellByCellCudaLauncher(
-        const T* x_tensor, const T* y_tensor,
-        const T* node_size_x_tensor, const T* node_size_y_tensor,
-        const T* bin_center_x_tensor, const T* bin_center_y_tensor,
-        const int num_nodes,
-        const int num_bins_x, const int num_bins_y, 
-        const int num_impacted_bins_x, const int num_impacted_bins_y, 
-        const T xl, const T yl, const T xh, const T yh, 
-        const T bin_size_x, const T bin_size_y, 
-        bool fixed_node_flag, 
+        bool deterministic_flag, 
         T* density_map_tensor
         );
 
@@ -113,6 +97,7 @@ at::Tensor density_map(
         int num_bins_x, int num_bins_y, 
         int num_movable_impacted_bins_x, int num_movable_impacted_bins_y, 
         int num_filler_impacted_bins_x, int num_filler_impacted_bins_y,
+        int deterministic_flag, 
         at::Tensor sorted_node_map
         ) 
 {
@@ -136,7 +121,7 @@ at::Tensor density_map(
                     num_movable_impacted_bins_x, num_movable_impacted_bins_y, 
                     xl, yl, xh, yh, 
                     bin_size_x, bin_size_y, 
-                    //false, 
+                    (bool)deterministic_flag, 
                     density_map.data<scalar_t>(),
                     sorted_node_map.data<int>()
                     );
@@ -157,7 +142,7 @@ at::Tensor density_map(
                         num_filler_impacted_bins_x, num_filler_impacted_bins_y, 
                         xl, yl, xh, yh, 
                         bin_size_x, bin_size_y, 
-                        //false, 
+                        (bool)deterministic_flag, 
                         density_map.data<scalar_t>(),
                         NULL
                         );
@@ -182,7 +167,8 @@ at::Tensor fixed_density_map(
         int num_movable_nodes,
         int num_terminals, 
         int num_bins_x, int num_bins_y,
-        int num_fixed_impacted_bins_x, int num_fixed_impacted_bins_y
+        int num_fixed_impacted_bins_x, int num_fixed_impacted_bins_y,
+        int deterministic_flag
         ) 
 {
     CHECK_FLAT(pos);
@@ -197,9 +183,9 @@ at::Tensor fixed_density_map(
     if (num_terminals)
     {
         DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeExactDensityMapCudaLauncher", [&] {
-                computeExactDensityMapCellByCellCudaLauncher<scalar_t>(
-                        pos.data<scalar_t>() + num_movable_nodes, pos.data<scalar_t>() + num_nodes + num_movable_nodes, 
-                        node_size_x.data<scalar_t>() + num_movable_nodes, node_size_y.data<scalar_t>() + num_movable_nodes, 
+                computeExactDensityMapCudaLauncher<scalar_t>(
+                        pos.data<scalar_t>()+num_movable_nodes, pos.data<scalar_t>()+num_nodes+num_movable_nodes, 
+                        node_size_x.data<scalar_t>()+num_movable_nodes, node_size_y.data<scalar_t>()+num_movable_nodes, 
                         bin_center_x.data<scalar_t>(), bin_center_y.data<scalar_t>(), 
                         num_terminals, 
                         num_bins_x, num_bins_y, 
@@ -207,13 +193,10 @@ at::Tensor fixed_density_map(
                         xl, yl, xh, yh, 
                         bin_size_x, bin_size_y, 
                         true, 
+                        (bool)deterministic_flag, 
                         density_map.data<scalar_t>()
                         );
                 });
-
-        // Fixed cells may have overlaps. We should not over-compute the density map. 
-        // This is just an approximate fix. It does not guarantee the exact value in each bin. 
-        density_map.clamp_max_(bin_size_x*bin_size_y);
     }
 
     return density_map;
