@@ -264,6 +264,7 @@ class BasicPlace (nn.Module):
                 flat_node2pin_map=data_collections.flat_node2pin_map, 
                 flat_node2pin_start_map=data_collections.flat_node2pin_start_map, 
                 num_physical_nodes=placedb.num_physical_nodes, 
+                algorithm="node-by-node", 
                 num_threads=params.num_threads
                 )
 
@@ -379,6 +380,7 @@ class BasicPlace (nn.Module):
                 num_terminals=placedb.num_terminals, 
                 num_filler_nodes=0,
                 padding=0, 
+                deterministic_flag=params.deterministic_flag, 
                 sorted_node_map=data_collections.sorted_node_map,
                 num_threads=params.num_threads
                 )

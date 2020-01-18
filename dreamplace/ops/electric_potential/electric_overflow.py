@@ -79,6 +79,7 @@ class ElectricOverflowFunction(Function):
           num_movable_impacted_bins_y,
           num_filler_impacted_bins_x,
           num_filler_impacted_bins_y,
+          deterministic_flag, 
           sorted_node_map,
           num_threads
           ):
@@ -104,6 +105,7 @@ class ElectricOverflowFunction(Function):
                     num_movable_impacted_bins_y,
                     num_filler_impacted_bins_x,
                     num_filler_impacted_bins_y,
+                    deterministic_flag, 
                     sorted_node_map
                     )
         else:
@@ -154,6 +156,7 @@ class ElectricOverflow(nn.Module):
             num_terminals,
             num_filler_nodes,
             padding,
+            deterministic_flag, # control whether to use deterministic routine 
             sorted_node_map,
             num_threads=8
             ):
@@ -215,6 +218,7 @@ class ElectricOverflow(nn.Module):
 
         self.num_threads = num_threads
 
+        self.deterministic_flag = deterministic_flag
         # initial density_map due to fixed cells
         self.initial_density_map = None
         # buffer for deterministic density map computation on CPU 
@@ -240,7 +244,8 @@ class ElectricOverflow(nn.Module):
                         self.num_bins_x,
                         self.num_bins_y,
                         num_fixed_impacted_bins_x,
-                        num_fixed_impacted_bins_y
+                        num_fixed_impacted_bins_y, 
+                        self.deterministic_flag
                         )
             else:
                 self.buf = torch.empty(self.num_threads * self.num_bins_x * self.num_bins_y, dtype=pos.dtype, device=pos.device)
@@ -284,6 +289,7 @@ class ElectricOverflow(nn.Module):
                 self.num_movable_impacted_bins_y,
                 self.num_filler_impacted_bins_x,
                 self.num_filler_impacted_bins_y,
+                self.deterministic_flag, 
                 self.sorted_node_map,
                 self.num_threads
                 )
