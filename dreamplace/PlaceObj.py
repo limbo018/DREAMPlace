@@ -205,23 +205,22 @@ class PlaceObj(nn.Module):
         @param data_collections a collection of data and variables required for constructing ops
         @param pin_pos_op the op to compute pin locations according to cell locations
         """
-        gamma = 10*self.base_gamma(params, placedb)
-        logging.info("gamma = %g" % (gamma))
 
         wirelength_for_pin_op = logsumexp_wirelength.LogSumExpWirelength(
                 flat_netpin=data_collections.flat_net2pin_map,
                 netpin_start=data_collections.flat_net2pin_start_map,
                 pin2net_map=data_collections.pin2net_map, 
+                net_weights=data_collections.net_weights, 
                 net_mask=data_collections.net_mask_ignore_large_degrees, 
-                gamma=torch.tensor(gamma, dtype=data_collections.pos[0].dtype, device=data_collections.pos[0].device), 
-                algorithm='atomic', 
+                pin_mask=data_collections.pin_mask_ignore_fixed_macros,
+                gamma=self.gamma, 
+                algorithm='merged', 
                 num_threads=params.num_threads
                 )
 
         # wirelength for position
         def build_wirelength_op(pos):
-            pin_pos = pin_pos_op(pos)
-            return wirelength_for_pin_op(pin_pos)
+            return wirelength_for_pin_op(pin_pos_op(pos))
 
         # update gamma
         base_gamma = self.base_gamma(params, placedb)

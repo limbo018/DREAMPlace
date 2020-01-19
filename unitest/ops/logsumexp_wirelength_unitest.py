@@ -63,6 +63,7 @@ def build_wirelength(pin_x, pin_y, pin2net_map, net2pin_map, gamma, ignore_net_d
 
 class LogSumExpWirelengthOpTest(unittest.TestCase):
     def test_logsumexp_wirelength_random(self):
+        dtype = torch.float32
         pin_pos = np.array([[0.0, 0.0], [1.0, 2.0], [1.5, 0.2], [0.5, 3.1], [0.6, 1.1]], dtype=np.float32)*10
         net2pin_map = np.array([np.array([0, 4]), np.array([1, 2, 3])])
         pin2net_map = np.zeros(len(pin_pos), dtype=np.int32)
@@ -75,6 +76,7 @@ class LogSumExpWirelengthOpTest(unittest.TestCase):
         pin_y = pin_pos[:, 1]
         gamma = torch.tensor(0.5, dtype=torch.float32)
         ignore_net_degree = 4
+        pin_mask = np.zeros(len(pin2net_map), dtype=np.uint8)
 
         # net mask 
         net_mask = np.ones(len(net2pin_map), dtype=np.uint8)
@@ -112,13 +114,14 @@ class LogSumExpWirelengthOpTest(unittest.TestCase):
         # clone is very important, because the custom op cannot deep copy the data 
         pin_pos_var.grad.zero_()
         custom = logsumexp_wirelength.LogSumExpWirelength(
-                flat_netpin=torch.from_numpy(flat_net2pin_map), 
-                netpin_start=torch.from_numpy(flat_net2pin_start_map),
-                pin2net_map=torch.from_numpy(pin2net_map), 
-                net_weights=torch.from_numpy(net_weights), 
-                net_mask=torch.from_numpy(net_mask), 
-                gamma=gamma, 
-                algorithm='sparse'
+                flat_netpin=Variable(torch.from_numpy(flat_net2pin_map)),
+                netpin_start=Variable(torch.from_numpy(flat_net2pin_start_map)),
+                pin2net_map=torch.from_numpy(pin2net_map),
+                net_weights=torch.from_numpy(net_weights),
+                net_mask=torch.from_numpy(net_mask),
+                pin_mask=torch.from_numpy(pin_mask),
+                gamma=torch.tensor(gamma, dtype=dtype),
+                algorithm='merged'
                 )
         result = custom.forward(pin_pos_var)
         print("custom = ", result)
@@ -133,13 +136,14 @@ class LogSumExpWirelengthOpTest(unittest.TestCase):
         if torch.cuda.device_count(): 
             pin_pos_var.grad.zero_()
             custom_cuda = logsumexp_wirelength.LogSumExpWirelength(
-                    flat_netpin=Variable(torch.from_numpy(flat_net2pin_map)).cuda(), 
+                    flat_netpin=Variable(torch.from_numpy(flat_net2pin_map)).cuda(),
                     netpin_start=Variable(torch.from_numpy(flat_net2pin_start_map)).cuda(),
-                    pin2net_map=torch.from_numpy(pin2net_map).cuda(), 
-                    net_weights=torch.from_numpy(net_weights).cuda(), 
-                    net_mask=torch.from_numpy(net_mask).cuda(), 
-                    gamma=gamma.cuda(), 
-                    algorithm='sparse'
+                    pin2net_map=torch.from_numpy(pin2net_map).cuda(),
+                    net_weights=torch.from_numpy(net_weights).cuda(),
+                    net_mask=torch.from_numpy(net_mask).cuda(),
+                    pin_mask=torch.from_numpy(pin_mask).cuda(),
+                    gamma=torch.tensor(gamma, dtype=dtype).cuda(),
+                    algorithm='merged'
                     )
             result_cuda = custom_cuda.forward(pin_pos_var.cuda())
             print("custom_cuda_result = ", result_cuda.data.cpu())
@@ -159,6 +163,7 @@ class LogSumExpWirelengthOpTest(unittest.TestCase):
                     pin2net_map=torch.from_numpy(pin2net_map).cuda(), 
                     net_weights=torch.from_numpy(net_weights).cuda(), 
                     net_mask=torch.from_numpy(net_mask).cuda(), 
+                    pin_mask=torch.from_numpy(pin_mask).cuda(),
                     gamma=gamma.cuda(), 
                     algorithm='atomic'
                     )
