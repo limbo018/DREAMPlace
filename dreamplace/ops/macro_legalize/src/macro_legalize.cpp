@@ -207,6 +207,25 @@ bool macroLegalizationLauncher(LegalizationDB<T> db)
         return true;
     }
 
+    // store the best legalization solution found
+    std::vector<T> best_x (macros.size());
+    std::vector<T> best_y (macros.size());
+    T best_displace = std::numeric_limits<T>::max();
+
+    // update current best solution  
+    auto update_best = [&](bool legal, T displace){
+        if (legal && displace < best_displace)
+        {
+            for (unsigned int i = 0, ie = macros.size(); i < ie; ++i)
+            {
+                int macro_id = macros[i];
+                best_x[i] = db.x[macro_id];
+                best_y[i] = db.y[macro_id];
+            }
+            best_displace = displace; 
+        }
+    };
+
     // first round with LP 
     lpLegalizeLauncher(db, macros);
     dreamplacePrint(kINFO, "Macro displacement %g\n", compute_displace(db, macros));
@@ -216,14 +235,31 @@ bool macroLegalizationLauncher(LegalizationDB<T> db)
     if (!legal)
     {
         legal = hannanLegalizeLauncher(db, macros);
-        dreamplacePrint(kINFO, "Macro displacement %g\n", compute_displace(db, macros));
-        legal = check_macro_legality(db, macros, false);
+        T displace = compute_displace(db, macros);
+        dreamplacePrint(kINFO, "Macro displacement %g\n", displace);
+        legal = check_macro_legality(db, macros, true);
+        update_best(legal, displace);
 
         // refine with LP if legal 
         if (legal)
         {
             lpLegalizeLauncher(db, macros);
-            dreamplacePrint(kINFO, "Macro displacement %g\n", compute_displace(db, macros));
+            displace = compute_displace(db, macros);
+            dreamplacePrint(kINFO, "Macro displacement %g\n", displace);
+            legal = check_macro_legality(db, macros, true);
+            update_best(legal, displace);
+        }
+    }
+
+    // apply best solution 
+    if (best_displace < std::numeric_limits<T>::max())
+    {
+        dreamplacePrint(kINFO, "use best macro displacement %g\n", best_displace);
+        for (unsigned int i = 0, ie = macros.size(); i < ie; ++i)
+        {
+            int macro_id = macros[i];
+            db.x[macro_id] = best_x[i];
+            db.y[macro_id] = best_y[i];
         }
     }
 
