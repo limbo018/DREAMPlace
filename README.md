@@ -31,7 +31,8 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
 
 * [Yibo Lin](http://yibolin.com), [Wuxi Li](http://wuxili.net), Jiaqi Gu, Haoxing Ren, Brucek Khailany and [David Z. Pan](http://users.ece.utexas.edu/~dpan), 
   "**ABCDPlace: Accelerated Batch-based Concurrent Detailed Placement on Multi-threaded CPUs and GPUs**", 
-  IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems (TCAD), 2020 (in submission)
+  IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems (TCAD), 2020 
+  ([preprint](http://yibolin.com/publications/papers/ABCDPLACE_TCAD2020_Lin.pdf)) (accepted)
 
 # Dependency 
 
@@ -250,3 +251,6 @@ The list of options as follows will be shown.
     - Integrate ABCDPlace: multi-threaded CPU and GPU acceleration for detailed placement
     - Support independent set matching, local reordering, and global swap with run-to-run determinism on one machine
     - Support movable macros with Tetris-like macro legalization and min-cost flow refinement
+
+* [2.1.0](https://github.com/limbo018/DREAMPlace/releases/tag/2.1.0)
+    - Support deterministic mode to ensure run-to-run determinism with minor runtime overhead
