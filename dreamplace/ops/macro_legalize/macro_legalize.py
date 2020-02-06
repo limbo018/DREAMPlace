@@ -23,6 +23,7 @@ class MacroLegalizeFunction(Function):
           flat_region_boxes, 
           flat_region_boxes_start, 
           node2fence_region_map, 
+          node_weights, 
           xl, 
           yl, 
           xh, 
@@ -41,6 +42,7 @@ class MacroLegalizeFunction(Function):
                     pos.view(pos.numel()).cpu(), 
                     node_size_x.cpu(),
                     node_size_y.cpu(),
+                    node_weights.cpu(), 
                     flat_region_boxes.cpu(), 
                     flat_region_boxes_start.cpu(), 
                     node2fence_region_map.cpu(), 
@@ -62,6 +64,7 @@ class MacroLegalizeFunction(Function):
                     pos.view(pos.numel()), 
                     node_size_x,
                     node_size_y,
+                    node_weights, 
                     flat_region_boxes, 
                     flat_region_boxes_start, 
                     node2fence_region_map, 
@@ -82,12 +85,13 @@ class MacroLegalizeFunction(Function):
 class MacroLegalize(object):
     """ Legalize movable macros without considering standard cells
     """
-    def __init__(self, node_size_x, node_size_y, 
+    def __init__(self, node_size_x, node_size_y, node_weights, 
             flat_region_boxes, flat_region_boxes_start, node2fence_region_map, 
             xl, yl, xh, yh, site_width, row_height, num_bins_x, num_bins_y, num_movable_nodes, num_terminal_NIs, num_filler_nodes):
         super(MacroLegalize, self).__init__()
         self.node_size_x = node_size_x
         self.node_size_y = node_size_y
+        self.node_weights = node_weights # node_weights of cells when computing displacement 
         self.flat_region_boxes = flat_region_boxes 
         self.flat_region_boxes_start = flat_region_boxes_start 
         self.node2fence_region_map = node2fence_region_map
@@ -112,6 +116,7 @@ class MacroLegalize(object):
                 pos,
                 node_size_x=self.node_size_x,
                 node_size_y=self.node_size_y,
+                node_weights=self.node_weights, 
                 flat_region_boxes=self.flat_region_boxes, 
                 flat_region_boxes_start=self.flat_region_boxes_start, 
                 node2fence_region_map=self.node2fence_region_map, 

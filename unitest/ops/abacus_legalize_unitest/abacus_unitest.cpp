@@ -14,6 +14,7 @@ void test_row()
     std::vector<double> init_x = {20, 1, 300, 25, 10, 70};
     std::vector<double> node_size_x = {10, 30, 5, 2, 20, 30};
     std::vector<double> node_size_y = {10, 10, 10, 10, 10, 10};
+    std::vector<double> node_weights = {1, 1, 1, 1, 1, 1};
     std::vector<double> x = {20, 1, 300, 25, 10, 70};
     double row_height = 10; 
     int num_nodes = 6; 
@@ -27,6 +28,7 @@ void test_row()
             init_x.data(), 
             node_size_x.data(), 
             node_size_y.data(), 
+            node_weights.data(), 
             x.data(), 
             row_height, 
             xl, xh, 

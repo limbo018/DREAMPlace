@@ -32,6 +32,7 @@ LegalizationDB<T> make_placedb(
         at::Tensor pos, 
         at::Tensor node_size_x,
         at::Tensor node_size_y,
+        at::Tensor node_weights, 
         at::Tensor flat_region_boxes, 
         at::Tensor flat_region_boxes_start, 
         at::Tensor node2fence_region_map, 
@@ -54,6 +55,7 @@ LegalizationDB<T> make_placedb(
     db.init_y = init_pos.data<T>()+num_nodes; 
     db.node_size_x = node_size_x.data<T>(); 
     db.node_size_y = node_size_y.data<T>(); 
+    db.node_weights = node_weights.data<T>();
     db.flat_region_boxes = flat_region_boxes.data<T>();
     db.flat_region_boxes_start = flat_region_boxes_start.data<int>();
     db.node2fence_region_map = node2fence_region_map.data<int>();
