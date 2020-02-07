@@ -33,10 +33,11 @@ struct NodeAttribute
 };
 
 template <typename T>
-void longestPathLegalizeLauncher(LegalizationDB<T> db, const std::vector<int>& macros, std::array<lemon::ListDigraph, 2>& cg, unsigned int& source, unsigned int& terminal)
+void longestPathLegalizeLauncher(LegalizationDB<T> db, const std::vector<int>& macros, const std::vector<int>& fixed_macros, 
+        std::array<lemon::ListDigraph, 2>& cg, unsigned int& source, unsigned int& terminal)
 {
     typedef lemon::ListDigraph lemon_graph_type; 
-    unsigned int num_fixed_nodes = db.num_nodes - db.num_movable_nodes; 
+    unsigned int num_fixed_nodes = fixed_macros.size(); 
     unsigned int num_graph_nodes = macros.size() + num_fixed_nodes + 2;
     std::vector<NodeAttribute<T> > attribute_map (num_graph_nodes);
     source = macros.size() + num_fixed_nodes;
@@ -96,7 +97,7 @@ void longestPathLegalizeLauncher(LegalizationDB<T> db, const std::vector<int>& m
         }
         else // fixed cells 
         {
-            int node_id = i - macros.size() + db.num_movable_nodes; 
+            int node_id = fixed_macros.at(i - macros.size()); 
             attr.cost[kX] = db.node_size_x[node_id];
             attr.cost[kY] = db.node_size_y[node_id];
             attr.demand[kX] = attr.require[kX] = db.init_x[node_id];
@@ -114,7 +115,7 @@ void longestPathLegalizeLauncher(LegalizationDB<T> db, const std::vector<int>& m
 
     auto add2Hcg = [&](int i, T xl1, T width1, int j, T xl2, T width2){
         auto var1 = cg[kX].nodeFromId(i);
-        auto var2 = (j < db.num_movable_nodes)? cg[kX].nodeFromId(j) : cg[kX].nodeFromId(j - db.num_movable_nodes + macros.size());
+        auto var2 = cg[kX].nodeFromId(j);
         T dx1 = std::max(xl1 - xl2 + width1, (T)0);
         T dx2 = std::max(xl2 - xl1 + width2, (T)0);
         if (dx1 < dx2) // (i, j) is easier to resolve overlap 
@@ -128,7 +129,7 @@ void longestPathLegalizeLauncher(LegalizationDB<T> db, const std::vector<int>& m
     };
     auto add2Vcg = [&](int i, T yl1, T height1, int j, T yl2, T height2){
         auto var1 = cg[kY].nodeFromId(i);
-        auto var2 = (j < db.num_movable_nodes)? cg[kY].nodeFromId(j) : cg[kY].nodeFromId(j - db.num_movable_nodes + macros.size());
+        auto var2 = cg[kY].nodeFromId(j);
         T dy1 = std::max(yl1 - yl2 + height1, (T)0);
         T dy2 = std::max(yl2 - yl1 + height2, (T)0);
         if (dy1 < dy2) // (i, j) is easier to resolve overlap 
@@ -207,15 +208,15 @@ void longestPathLegalizeLauncher(LegalizationDB<T> db, const std::vector<int>& m
         // constraints with fixed macros 
         // when considering fixed macros, there is no guarantee to find legal solution 
         // with current ad-hoc constraint graphs 
-        for (int j = db.num_movable_nodes; j < db.num_nodes; ++j)
+        for (unsigned int j = 0, je = fixed_macros.size(); j < je; ++j)
         {
-            int node_id2 = j; 
+            int node_id2 = fixed_macros.at(j); 
             T xl2 = db.init_x[node_id2];
             T yl2 = db.init_y[node_id2];
             T width2 = db.node_size_x[node_id2];
             T height2 = db.node_size_y[node_id2];
 
-            process2Nodes(i, xl1, yl1, width1, height1, j, xl2, yl2, width2, height2);
+            process2Nodes(i, xl1, yl1, width1, height1, j + macros.size(), xl2, yl2, width2, height2);
         }
     }
 
@@ -535,7 +536,7 @@ void longestPathLegalizeLauncher(LegalizationDB<T> db, const std::vector<int>& m
 /// If the input macro solution is not legal, there is no guarantee to find a legal solution. 
 /// But if it is legal, the output should still be legal. 
 template <typename T>
-void lpLegalizeGraphLauncher(LegalizationDB<T> db, const std::vector<int>& macros)
+void lpLegalizeGraphLauncher(LegalizationDB<T> db, const std::vector<int>& macros, const std::vector<int>& fixed_macros)
 {
     dreamplacePrint(kINFO, "Legalize movable macros with linear programming on constraint graphs\n");
 
@@ -551,7 +552,7 @@ void lpLegalizeGraphLauncher(LegalizationDB<T> db, const std::vector<int>& macro
     std::array<lemon_graph_type, 2> cg; 
     unsigned int source = std::numeric_limits<unsigned int>::max();
     unsigned int terminal = std::numeric_limits<unsigned int>::max();
-    longestPathLegalizeLauncher(db, macros, cg, source, terminal);
+    longestPathLegalizeLauncher(db, macros, fixed_macros, cg, source, terminal);
 
     char buf[64];
     // two linear programming models represent horizontal and vertical constraint graphs
@@ -615,16 +616,14 @@ void lpLegalizeGraphLauncher(LegalizationDB<T> db, const std::vector<int>& macro
                 }
                 else if (u != source && u != terminal) // u is fixed cell 
                 {
-                    dreamplaceAssertMsg(0, "cannot reach here");
-                    int node_id2 = u - macros.size() + db.num_movable_nodes;
+                    int node_id2 = fixed_macros.at(u - macros.size()); 
                     T xl2 = db_x[node_id2];
                     model.updateVariableUpperBound(var1, floor(xl2 - width1));
                 }
             }
             else if (v != source && v != terminal) // v is fixed cell 
             {
-                dreamplaceAssertMsg(0, "cannot reach here");
-                int node_id1 = v - macros.size() + db.num_movable_nodes;
+                int node_id1 = fixed_macros.at(v - macros.size());
                 T xl1 = db_x[node_id1];
                 T width1 = db_node_size_x[node_id1];
 
@@ -708,7 +707,7 @@ void lpLegalizeGraphLauncher(LegalizationDB<T> db, const std::vector<int>& macro
 }
 
 template <typename T>
-void lpLegalizeLauncher(LegalizationDB<T> db, std::vector<int>& macros)
+void lpLegalizeLauncher(LegalizationDB<T> db, const std::vector<int>& macros, const std::vector<int>& fixed_macros)
 {
     dreamplacePrint(kINFO, "Legalize movable macros with linear programming on constraint graphs\n");
 
@@ -881,15 +880,15 @@ void lpLegalizeLauncher(LegalizationDB<T> db, std::vector<int>& macros)
         // constraints with fixed macros 
         // when considering fixed macros, there is no guarantee to find legal solution 
         // with current ad-hoc constraint graphs 
-        for (int j = db.num_movable_nodes; j < db.num_nodes; ++j)
+        for (unsigned int j = 0, je = fixed_macros.size(); j < je; ++j)
         {
-            int node_id2 = j; 
+            int node_id2 = fixed_macros.at(j); 
             T xl2 = db.init_x[node_id2];
             T yl2 = db.init_y[node_id2];
             T width2 = db.node_size_x[node_id2];
             T height2 = db.node_size_y[node_id2];
 
-            process2Nodes(i, xl1, yl1, width1, height1, j, xl2, yl2, width2, height2);
+            process2Nodes(i, xl1, yl1, width1, height1, node_id2, xl2, yl2, width2, height2);
         }
     }
 

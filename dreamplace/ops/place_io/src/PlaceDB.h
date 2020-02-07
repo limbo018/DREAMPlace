@@ -86,6 +86,10 @@ class PlaceDB : public DefParser::DefDataBase
         Node& node(index_type id) {return m_vNode.at(id);}
         NodeProperty const& nodeProperty(index_type id) const {return m_vNodeProperty.at(id);}
         NodeProperty const& nodeProperty(Node const& n) const {return nodeProperty(n.id());}
+        /// some shortcut functions to set nodes for python binding 
+        Node const& setNodeStatus(index_type id, PlaceStatusEnum::PlaceStatusType s) {return m_vNode.at(id).setStatus(s);}
+        Node const& setNodeMultiRowAttr(index_type id, MultiRowAttrEnum::MultiRowAttrType a) {return m_vNode.at(id).setMultiRowAttr(a);}
+        Node const& setNodeOrient(index_type id, OrientEnum::OrientType o) {return m_vNode.at(id).setOrient(o);}
 
         std::vector<Net> const& nets() const {return m_vNet;}
         std::vector<Net>& nets() {return m_vNet;}
@@ -93,6 +97,8 @@ class PlaceDB : public DefParser::DefDataBase
         Net& net(index_type id) {return m_vNet.at(id);}
         NetProperty const& netProperty(index_type id) const {return m_vNetProperty.at(id);}
         NetProperty const& netProperty(Net const& n) const {return netProperty(n.id());}
+        /// some shortcut functions to set nets for python binding 
+        Net const& setNetWeight(index_type id, Net::weight_type w) {return m_vNet.at(id).setWeight(w);}
 
         std::vector<Pin> const& pins() const {return m_vPin;}
         std::vector<Pin>& pins() {return m_vPin;}

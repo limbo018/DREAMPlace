@@ -388,7 +388,12 @@ bool macroLegalizationLauncher(LegalizationDB<T> db)
     {
         if (db.is_dummy_fixed(i))
         {
-            macros.push_back(i);
+            // in some extreme case, some macros with 0 area should be ignored  
+            T area = db.node_size_x[i] * db.node_size_y[i]; 
+            if (area > 0)
+            {
+                macros.push_back(i);
+            }
 #ifdef DEBUG
             dreamplacePrint(kDEBUG, "macro %d %gx%g\n", i, db.node_size_x[i], db.node_size_y[i]);
 #endif
@@ -407,7 +412,12 @@ bool macroLegalizationLauncher(LegalizationDB<T> db)
     fixed_macros.reserve(db.num_nodes - db.num_movable_nodes); 
     for (int i = db.num_movable_nodes; i < db.num_nodes; ++i)
     {
-        fixed_macros.push_back(i);
+        // in some extreme case, some fixed macros with 0 area should be ignored  
+        T area = db.node_size_x[i] * db.node_size_y[i]; 
+        if (area > 0)
+        {
+            fixed_macros.push_back(i);
+        }
     }
 
     // store the best legalization solution found
@@ -439,7 +449,7 @@ bool macroLegalizationLauncher(LegalizationDB<T> db)
     roughLegalizeLauncher(db, macros, fixed_macros, small_clusters_flag, blocked_macros_flag);
 
     // second round with LP 
-    lpLegalizeGraphLauncher(db, macros);
+    lpLegalizeGraphLauncher(db, macros, fixed_macros);
     auto displace = compute_displace(db, macros);
     dreamplacePrint(kINFO, "Macro displacement total %g, max %g, weighted total %g, max %g\n", 
             displace.total_displace, displace.max_displace, displace.total_weighted_displace, displace.max_weighted_displace);
@@ -458,7 +468,7 @@ bool macroLegalizationLauncher(LegalizationDB<T> db)
         // refine with LP if legal 
         if (legal)
         {
-            lpLegalizeLauncher(db, macros);
+            lpLegalizeLauncher(db, macros, fixed_macros);
             displace = compute_displace(db, macros);
             dreamplacePrint(kINFO, "Macro displacement total %g, max %g, weighted total %g, max %g\n", 
                     displace.total_displace, displace.max_displace, displace.total_weighted_displace, displace.max_weighted_displace);

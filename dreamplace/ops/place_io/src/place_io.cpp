@@ -780,6 +780,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         .def("pinX", &Node::pinX)
         .def("pinY", &Node::pinY)
         .def("siteArea", &Node::siteArea)
+        .def("setStatus", (Node& (Node::*)(PlaceStatusEnum::PlaceStatusType s)) &Node::setStatus)
         ;
     pybind11::bind_vector<std::vector<Node> >(m, "VectorNode");
 
@@ -901,10 +902,14 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         .def("node", (Node const& (PlaceDB::*)(PlaceDB::index_type) const) &PlaceDB::node)
         .def("nodeProperty", (NodeProperty const& (PlaceDB::*)(PlaceDB::index_type) const) &PlaceDB::nodeProperty)
         .def("nodeProperty", (NodeProperty const& (PlaceDB::*)(Node const&) const) &PlaceDB::nodeProperty)
+        .def("setNodeStatus", (Node const& (PlaceDB::*)(PlaceDB::index_type, PlaceStatusEnum::PlaceStatusType)) &PlaceDB::setNodeStatus)
+        .def("setNodeMultiRowAttr", (Node const& (PlaceDB::*)(PlaceDB::index_type, MultiRowAttrEnum::MultiRowAttrType)) &PlaceDB::setNodeMultiRowAttr)
+        .def("setNodeOrient", (Node const& (PlaceDB::*)(PlaceDB::index_type, OrientEnum::OrientType s)) &PlaceDB::setNodeOrient)
         .def("nets", (std::vector<Net> const& (PlaceDB::*)() const) &PlaceDB::nets)
         .def("net", (Net const& (PlaceDB::*)(PlaceDB::index_type) const) &PlaceDB::net)
         .def("netProperty", (NetProperty const& (PlaceDB::*)(PlaceDB::index_type) const) &PlaceDB::netProperty)
         .def("netProperty", (NetProperty const& (PlaceDB::*)(Net const&) const) &PlaceDB::netProperty)
+        .def("setNetWeight", (Net const& (PlaceDB::*)(PlaceDB::index_type, Net::weight_type)) &PlaceDB::setNetWeight)
         .def("pins", (std::vector<Pin> const& (PlaceDB::*)() const) &PlaceDB::pins)
         .def("pin", (Pin const& (PlaceDB::*)(PlaceDB::index_type) const) &PlaceDB::pin)
         .def("macros", (std::vector<Macro> const& (PlaceDB::*)() const) &PlaceDB::macros)
@@ -983,6 +988,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         .def("isIgnoredNet", (bool (PlaceDB::*)(PlaceDB::index_type) const) &PlaceDB::isIgnoredNet)
         .def("isIgnoredNet", (bool (PlaceDB::*)(Net const&) const) &PlaceDB::isIgnoredNet)
         .def("netIgnoreFlag", &PlaceDB::netIgnoreFlag)
+        .def("adjustParams", &PlaceDB::adjustParams)
         ;
 
     pybind11::class_<DREAMPLACE_NAMESPACE::PyPlaceDB>(m, "PyPlaceDB")
