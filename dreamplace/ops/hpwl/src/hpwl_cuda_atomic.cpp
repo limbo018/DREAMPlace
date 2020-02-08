@@ -59,13 +59,13 @@ at::Tensor hpwl_atomic_forward(
     partial_hpwl_min[1].fill_(std::numeric_limits<T>::max());
 
     computeHPWLCudaAtomicLauncher<T>(
-            scaled_pos.data<T>(), scaled_pos.data<T>()+scaled_pos.numel()/2, 
-            pin2net_map.data<int>(), 
-            net_mask.data<unsigned char>(), 
+            DREAMPLACE_TENSOR_DATA_PTR(scaled_pos, T), DREAMPLACE_TENSOR_DATA_PTR(scaled_pos, T)+scaled_pos.numel()/2, 
+            DREAMPLACE_TENSOR_DATA_PTR(pin2net_map, int), 
+            DREAMPLACE_TENSOR_DATA_PTR(net_mask, unsigned char), 
             num_nets, 
             pin2net_map.numel(), 
-            partial_hpwl_max.data<T>(), 
-            partial_hpwl_min.data<T>()
+            DREAMPLACE_TENSOR_DATA_PTR(partial_hpwl_max, T), 
+            DREAMPLACE_TENSOR_DATA_PTR(partial_hpwl_min, T)
             );
 
     //std::cout << "partial_hpwl_max = " << partial_hpwl_max << "\n";

@@ -79,15 +79,15 @@ std::vector<at::Tensor> logsumexp_wirelength_forward(
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeLogSumExpWirelengthCudaLauncher", [&] {
         computeLogSumExpWirelengthCudaLauncher<scalar_t>(
-            pos.data<scalar_t>(), pos.data<scalar_t>() + num_pins,
-            flat_netpin.data<int>(),
-            netpin_start.data<int>(),
-            net_mask.data<unsigned char>(),
+            DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + num_pins,
+            DREAMPLACE_TENSOR_DATA_PTR(flat_netpin, int),
+            DREAMPLACE_TENSOR_DATA_PTR(netpin_start, int),
+            DREAMPLACE_TENSOR_DATA_PTR(net_mask, unsigned char),
             num_nets,
-            gamma.data<scalar_t>(), 
-            inv_gamma.data<scalar_t>(),
-            partial_wl.data<scalar_t>(),
-            grad_intermediate.data<scalar_t>(), grad_intermediate.data<scalar_t>() + num_pins
+            DREAMPLACE_TENSOR_DATA_PTR(gamma, scalar_t), 
+            DREAMPLACE_TENSOR_DATA_PTR(inv_gamma, scalar_t),
+            DREAMPLACE_TENSOR_DATA_PTR(partial_wl, scalar_t),
+            DREAMPLACE_TENSOR_DATA_PTR(grad_intermediate, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(grad_intermediate, scalar_t) + num_pins
             );
         if (net_weights.numel())
         {
@@ -149,10 +149,10 @@ at::Tensor logsumexp_wirelength_backward(
         if (net_weights.numel())
         {
             integrateNetWeightsCudaLauncher(
-                pin2net_map.data<int>(),
-                net_mask.data<unsigned char>(),
-                net_weights.data<scalar_t>(),
-                grad_out.data<scalar_t>(), grad_out.data<scalar_t>() + num_pins,
+                DREAMPLACE_TENSOR_DATA_PTR(pin2net_map, int),
+                DREAMPLACE_TENSOR_DATA_PTR(net_mask, unsigned char),
+                DREAMPLACE_TENSOR_DATA_PTR(net_weights, scalar_t),
+                DREAMPLACE_TENSOR_DATA_PTR(grad_out, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(grad_out, scalar_t) + num_pins,
                 num_pins);
         }
     });

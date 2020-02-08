@@ -233,156 +233,193 @@ class HannanGridMap : public HannanGrids<T>
 /// If the layout is very tight, it may not be able to find a solution. 
 /// @return true if all macros legalized 
 template <typename T>
-bool hannanLegalizeLauncher(LegalizationDB<T> db, std::vector<int>& macros)
+bool hannanLegalizeLauncher(LegalizationDB<T> db, std::vector<int>& macros, const std::vector<int>& fixed_macros, int max_iters)
 {
     dreamplacePrint(kINFO, "Legalize movable macros on Hannan grids\n");
 
-    // sort from left to right, large to small 
-    std::sort(macros.begin(), macros.end(), 
-            [&](int node_id1, int node_id2){
-                T a1 = db.node_size_x[node_id1]*db.node_size_y[node_id1];
-                T a2 = db.node_size_x[node_id2]*db.node_size_y[node_id2];
-                T x1 = db.x[node_id1];
-                T x2 = db.x[node_id2]; 
-                T y1 = db.y[node_id1];
-                T y2 = db.y[node_id2]; 
-                return a1 > a2 || (a1 == a2 && (x1 < x2 || (x1 == x2 && (y1 < y2 || (y1 == y2 && node_id1 < node_id2)))));
-            });
+    // count number of failures to control the order 
+    std::vector<int> failure_counts (db.num_movable_nodes, 0);
+    std::vector<T> x (db.num_movable_nodes, 0);
+    std::vector<T> y (db.num_movable_nodes, 0);
+    bool legal = true; 
 
-    T spacing_x = std::numeric_limits<T>::max();
-    T spacing_y = std::numeric_limits<T>::max();
-    for (auto node_id : macros)
+    for (int iter = 0; iter < max_iters; ++iter)
     {
-        spacing_x = std::min(spacing_x, db.node_size_x[node_id]);
-        spacing_y = std::min(spacing_y, db.node_size_y[node_id]);
-    }
-    // make sure the grid is not too small 
-    spacing_x = std::max(spacing_x, (db.xh-db.xl)/db.num_bins_x); 
-    spacing_y = std::max(spacing_y, (db.yh-db.yl)/db.num_bins_y);
-    dreamplacePrint(kDEBUG, "maximum grid spacing %gx%g, equivalent to %dx%d bins\n", 
-            (double)spacing_x, (double)spacing_y, (int)((db.xh-db.xl)/spacing_x), (int)((db.yh-db.yl)/spacing_y));
-
-    // construct hannan grid map for fixed macros 
-    // collect fixed and dummy fixed nodes 
-    std::vector<T> vx; 
-    std::vector<T> vy; 
-    std::vector<T> node_size_x; 
-    std::vector<T> node_size_y; 
-    vx.reserve(db.num_nodes); 
-    vy.reserve(db.num_nodes); 
-    node_size_x.reserve(db.num_nodes);
-    node_size_y.reserve(db.num_nodes);
-    for (int node_id = 0; node_id < db.num_nodes; ++node_id)
-    {
-        if (node_id >= db.num_movable_nodes || db.is_dummy_fixed(node_id))
+        dreamplacePrint(kINFO, "round %d\n", iter);
+        // copy location to working array 
+        for (auto node_id : macros)
         {
-            vx.push_back(db.x[node_id]); 
-            vy.push_back(db.y[node_id]); 
+            x[node_id] = db.x[node_id];
+            y[node_id] = db.y[node_id];
+        }
+        // sort from left to right, large to small 
+        std::sort(macros.begin(), macros.end(), 
+                [&](int node_id1, int node_id2){
+                    int factor1 = (1 + failure_counts[node_id1]);
+                    int factor2 = (1 + failure_counts[node_id2]);
+                    T a1 = db.node_size_x[node_id1]*db.node_size_y[node_id1]; // * factor1;
+                    T a2 = db.node_size_x[node_id2]*db.node_size_y[node_id2]; // * factor2;
+                    T x1 = x[node_id1] / factor1;
+                    T x2 = x[node_id2] / factor2; 
+                    T y1 = y[node_id1] / factor1;
+                    T y2 = y[node_id2] / factor2; 
+                    //return a1 > a2 || (a1 == a2 && (x1 < x2 || (x1 == x2 && (y1 < y2 || (y1 == y2 && node_id1 < node_id2)))));
+                    //return x1 < x2 || (x1 == x2 && (a1 > a2 || (a1 == a2 && (y1 < y2 || (y1 == y2 && node_id1 < node_id2)))));
+                    return x1 < x2 || (x1 == x2 && (y1 < y2 || (y1 == y2 && (a1 > a2 || (a1 == a2 && node_id1 < node_id2)))));
+                });
+
+        T spacing_x = std::numeric_limits<T>::max();
+        T spacing_y = std::numeric_limits<T>::max();
+        for (auto node_id : macros)
+        {
+            spacing_x = std::min(spacing_x, db.node_size_x[node_id]);
+            spacing_y = std::min(spacing_y, db.node_size_y[node_id]);
+        }
+        // make sure the grid is not too small 
+        spacing_x = std::max(spacing_x, (db.xh-db.xl)/db.num_bins_x); 
+        spacing_y = std::max(spacing_y, (db.yh-db.yl)/db.num_bins_y);
+        dreamplacePrint(kDEBUG, "maximum grid spacing %gx%g, equivalent to %dx%d bins\n", 
+                (double)spacing_x, (double)spacing_y, (int)((db.xh-db.xl)/spacing_x), (int)((db.yh-db.yl)/spacing_y));
+
+        // construct hannan grid map for fixed macros 
+        // collect fixed and dummy fixed nodes 
+        std::vector<T> vx; 
+        std::vector<T> vy; 
+        std::vector<T> node_size_x; 
+        std::vector<T> node_size_y; 
+        vx.reserve(db.num_nodes); 
+        vy.reserve(db.num_nodes); 
+        node_size_x.reserve(db.num_nodes);
+        node_size_y.reserve(db.num_nodes);
+        for (auto node_id : fixed_macros)
+        {
+            vx.push_back(x[node_id]); 
+            vy.push_back(y[node_id]); 
             node_size_x.push_back(db.node_size_x[node_id]); 
             node_size_y.push_back(db.node_size_y[node_id]); 
         }
-    }
-
-    HannanGridMap<T> grid_map (vx.data(), vy.data(), 
-            node_size_x.data(), node_size_y.data(), vx.size(), 
-            db.xl, db.yl, db.xh, db.yh, 
-            spacing_x, spacing_y);
-
-    // the right and top boundary should always be occupied 
-    for (std::size_t ix = 0; ix < grid_map.dim_x(); ++ix)
-    {
-        grid_map.set(ix, grid_map.dim_y()-1, 1);
-    }
-    for (std::size_t iy = 0; iy < grid_map.dim_y(); ++iy)
-    {
-        grid_map.set(grid_map.dim_x()-1, iy, 1);
-    }
-    // set fixed nodes to occupy the grid map 
-    for (int i = db.num_movable_nodes; i < db.num_nodes; ++i)
-    {
-        T xl = db.init_x[i];
-        T xh = xl + db.node_size_x[i]; 
-        T yl = db.init_y[i];
-        T yh = yl + db.node_size_y[i];
-        std::size_t ixl = grid_map.grid_x(xl); 
-        std::size_t ixh = grid_map.grid_x(xh); 
-        std::size_t iyl = grid_map.grid_y(yl); 
-        std::size_t iyh = grid_map.grid_y(yh); 
-
-        for (std::size_t ix = ixl; ix <= ixh; ++ix)
+        for (auto node_id : macros)
         {
-            for (std::size_t iy = iyl; iy <= iyh; ++iy)
+            vx.push_back(x[node_id]); 
+            vy.push_back(y[node_id]); 
+            node_size_x.push_back(db.node_size_x[node_id]); 
+            node_size_y.push_back(db.node_size_y[node_id]); 
+        }
+
+        HannanGridMap<T> grid_map (vx.data(), vy.data(), 
+                node_size_x.data(), node_size_y.data(), vx.size(), 
+                db.xl, db.yl, db.xh, db.yh, 
+                spacing_x, spacing_y);
+
+        // the right and top boundary should always be occupied 
+        for (std::size_t ix = 0; ix < grid_map.dim_x(); ++ix)
+        {
+            grid_map.set(ix, grid_map.dim_y()-1, 1);
+        }
+        for (std::size_t iy = 0; iy < grid_map.dim_y(); ++iy)
+        {
+            grid_map.set(grid_map.dim_x()-1, iy, 1);
+        }
+        // set fixed nodes to occupy the grid map 
+        for (auto node_id : fixed_macros)
+        {
+            T xl = db.init_x[node_id];
+            T xh = xl + db.node_size_x[node_id]; 
+            T yl = db.init_y[node_id];
+            T yh = yl + db.node_size_y[node_id];
+            std::size_t ixl = grid_map.grid_x(xl); 
+            std::size_t ixh = grid_map.grid_x(xh); 
+            std::size_t iyl = grid_map.grid_y(yl); 
+            std::size_t iyh = grid_map.grid_y(yh); 
+
+            for (std::size_t ix = ixl; ix <= ixh; ++ix)
             {
-                if (grid_map.HannanGrids<T>::overlap(ix, iy, xl, yl, xh, yh))
+                for (std::size_t iy = iyl; iy <= iyh; ++iy)
                 {
-                    grid_map.set(ix, iy, 1); 
+                    if (grid_map.HannanGrids<T>::overlap(ix, iy, xl, yl, xh, yh))
+                    {
+                        grid_map.set(ix, iy, 1); 
+                    }
                 }
             }
         }
+
+        auto search_grids = diamond_search_sequence(grid_map.dim_y(), grid_map.dim_x()); 
+        dreamplacePrint(kDEBUG, "Construct %lux%lu Hannan grids, diamond search sequence %lu\n", grid_map.dim_x(), grid_map.dim_y(), search_grids.size());
+
+        legal = true; 
+        for (auto node_id : macros)
+        {
+            T node_x = x[node_id];
+            T node_y = y[node_id];
+            T width = db.node_size_x[node_id];
+            T height = db.node_size_y[node_id];
+            std::size_t init_ix = grid_map.grid_x(node_x);
+            std::size_t init_iy = grid_map.grid_y(node_y);
+
+            bool found = false; 
+            for (auto grid_offset : search_grids)
+            {
+                std::size_t ix = init_ix + grid_offset.ic;
+                std::size_t iy = init_iy + grid_offset.ir;
+
+                // valid grid 
+                if (ix < grid_map.dim_x() && iy < grid_map.dim_y())
+                {
+                    T xl = grid_map.coord_x(ix);
+                    T yl = grid_map.coord_y(iy);
+                    if (grid_offset.ic == 0 && grid_offset.ir == 0)
+                    {
+                        dreamplaceAssertMsg(xl == node_x, "%g != %g", xl, node_x);
+                        dreamplaceAssertMsg(yl == node_y, "%g != %g", yl, node_y);
+                    }
+
+                    // make sure the coordinates are aligned to row and site 
+                    T aligned_xl = db.align2site(xl, width);
+                    T aligned_yl = db.align2row(yl, height);
+                    if (aligned_xl < xl)
+                    {
+                        xl = aligned_xl+db.site_width;
+                    }
+                    if (aligned_yl < yl)
+                    {
+                        yl = aligned_yl+db.row_height;
+                    }
+                    T xh = xl + width;
+                    T yh = yl + height; 
+
+                    if (!grid_map.overlap(xl, yl, xh, yh))
+                    {
+                        x[node_id] = xl; 
+                        y[node_id] = yl; 
+                        grid_map.add(xl, yl, xh, yh);
+                        found = true; 
+                        break; 
+                    }
+                }
+            }
+            if (!found)
+            {
+                dreamplacePrint(kERROR, "failed to find legal position for macro %d (%g, %g, %g, %g)\n", 
+                        node_id, node_x, node_y, node_x + width, node_y + height
+                        );
+                failure_counts[node_id] += 1; 
+                legal = false; 
+            }
+        }
+        if (legal)
+        {
+            break; 
+        }
     }
 
-    auto search_grids = diamond_search_sequence(grid_map.dim_y(), grid_map.dim_x()); 
-    dreamplacePrint(kDEBUG, "Construct %lux%lu Hannan grids, diamond search sequence %lu\n", grid_map.dim_x(), grid_map.dim_y(), search_grids.size());
-
-    bool legal = true; 
+    // copy solutions back 
     for (auto node_id : macros)
     {
-        T node_x = db.x[node_id];
-        T node_y = db.y[node_id];
-        T width = db.node_size_x[node_id];
-        T height = db.node_size_y[node_id];
-        std::size_t init_ix = grid_map.grid_x(node_x);
-        std::size_t init_iy = grid_map.grid_y(node_y);
-
-        bool found = false; 
-        for (auto grid_offset : search_grids)
-        {
-            std::size_t ix = init_ix + grid_offset.ic;
-            std::size_t iy = init_iy + grid_offset.ir;
-
-            // valid grid 
-            if (ix < grid_map.dim_x() && iy < grid_map.dim_y())
-            {
-                T xl = grid_map.coord_x(ix);
-                T yl = grid_map.coord_y(iy);
-                if (grid_offset.ic == 0 && grid_offset.ir == 0)
-                {
-                    dreamplaceAssertMsg(xl == node_x, "%g != %g", xl, node_x);
-                    dreamplaceAssertMsg(yl == node_y, "%g != %g", yl, node_y);
-                }
-
-                // make sure the coordinates are aligned to row and site 
-                T aligned_xl = db.align2site(xl, width);
-                T aligned_yl = db.align2row(yl, height);
-                if (aligned_xl < xl)
-                {
-                    xl = aligned_xl+db.site_width;
-                }
-                if (aligned_yl < yl)
-                {
-                    yl = aligned_yl+db.row_height;
-                }
-                T xh = xl + width;
-                T yh = yl + height; 
-
-                if (!grid_map.overlap(xl, yl, xh, yh))
-                {
-                    db.x[node_id] = xl; 
-                    db.y[node_id] = yl; 
-                    grid_map.add(xl, yl, xh, yh);
-                    found = true; 
-                    break; 
-                }
-            }
-        }
-        if (!found)
-        {
-            dreamplacePrint(kERROR, "failed to find legal position for macro %d (%g, %g, %g, %g)\n", 
-                    node_id, node_x, node_y, node_x + width, node_y + height
-                    );
-            legal = false; 
-        }
+        db.x[node_id] = x[node_id];
+        db.y[node_id] = y[node_id];
     }
+
     return legal; 
 }
 

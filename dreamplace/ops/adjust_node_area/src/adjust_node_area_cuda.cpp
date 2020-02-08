@@ -56,14 +56,14 @@ at::Tensor adjust_node_area_forward(
     // compute routability and density optimziation instance area
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeInstanceRoutabilityOptimizationMapCudaLauncher", [&] {
         computeInstanceRoutabilityOptimizationMapCudaLauncher<scalar_t>(
-            pos.data<scalar_t>(), pos.data<scalar_t>() + num_nodes,
-            node_size_x.data<scalar_t>(), node_size_y.data<scalar_t>(),
-            routing_utilization_map.data<scalar_t>(),
+            DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + num_nodes,
+            DREAMPLACE_TENSOR_DATA_PTR(node_size_x, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(node_size_y, scalar_t),
+            DREAMPLACE_TENSOR_DATA_PTR(routing_utilization_map, scalar_t),
             xl, yl,
             bin_size_x, bin_size_y,
             num_bins_x, num_bins_y,
             num_movable_nodes,
-            instance_route_area.data<scalar_t>());
+            DREAMPLACE_TENSOR_DATA_PTR(instance_route_area, scalar_t));
     });
 
     return instance_route_area;

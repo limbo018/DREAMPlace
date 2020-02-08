@@ -123,6 +123,12 @@ class PlaceDataCollection (object):
             net_mask = np.logical_and(2 <= net_degrees, net_degrees < params.ignore_net_degree).astype(np.uint8)
             self.net_mask_ignore_large_degrees = torch.from_numpy(net_mask).to(device) # nets with large degrees are ignored 
 
+            # number of pins for each node 
+            num_pins_in_nodes = np.zeros(placedb.num_nodes)
+            for  i in range(placedb.num_physical_nodes):
+                num_pins_in_nodes[i] = len(placedb.node2pin_map[i])
+            self.num_pins_in_nodes = torch.tensor(num_pins_in_nodes, dtype=self.pos[0].dtype, device=device)
+
             # avoid computing gradient for fixed macros 
             # 1 is for fixed macros 
             self.pin_mask_ignore_fixed_macros = (self.pin2node_map >= placedb.num_movable_nodes)
@@ -460,7 +466,7 @@ class BasicPlace (nn.Module):
         # for movable macro legalization 
         # the number of bins control the search granularity 
         ml = macro_legalize.MacroLegalize(
-                node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
+                node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, node_weights=data_collections.num_pins_in_nodes, 
                 flat_region_boxes=data_collections.flat_region_boxes, flat_region_boxes_start=data_collections.flat_region_boxes_start, node2fence_region_map=data_collections.node2fence_region_map, 
                 xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
                 site_width=placedb.site_width, row_height=placedb.row_height, 
@@ -471,7 +477,7 @@ class BasicPlace (nn.Module):
                 )
         # for standard cell legalization
         gl = greedy_legalize.GreedyLegalize(
-                node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
+                node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, node_weights=data_collections.num_pins_in_nodes, 
                 flat_region_boxes=data_collections.flat_region_boxes, flat_region_boxes_start=data_collections.flat_region_boxes_start, node2fence_region_map=data_collections.node2fence_region_map, 
                 xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
                 site_width=placedb.site_width, row_height=placedb.row_height, 
@@ -483,7 +489,7 @@ class BasicPlace (nn.Module):
                 )
         # for standard cell legalization
         al = abacus_legalize.AbacusLegalize(
-                node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, 
+                node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y, node_weights=data_collections.num_pins_in_nodes, 
                 flat_region_boxes=data_collections.flat_region_boxes, flat_region_boxes_start=data_collections.flat_region_boxes_start, node2fence_region_map=data_collections.node2fence_region_map, 
                 xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh, 
                 site_width=placedb.site_width, row_height=placedb.row_height, 

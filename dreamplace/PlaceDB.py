@@ -450,6 +450,13 @@ class PlaceDB (object):
         """
         self.dtype = datatypes[params.dtype]
         self.rawdb = place_io.PlaceIOFunction.read(params)
+        self.initialize_from_rawdb(params)
+
+    def initialize_from_rawdb(self, params):
+        """
+        @brief initialize data members from raw database 
+        @param params parameters 
+        """
         pydb = place_io.PlaceIOFunction.pydb(self.rawdb)
 
         self.num_physical_nodes = pydb.num_nodes
@@ -555,6 +562,15 @@ class PlaceDB (object):
         tt = time.time()
 
         self.read(params)
+        self.initialize(params)
+
+        logging.info("reading benchmark takes %g seconds" % (time.time()-tt))
+
+    def initialize(self, params):
+        """
+        @brief initialize data members after reading 
+        @param params parameters 
+        """
 
         # scale 
         # adjust scale_factor if not set 
@@ -629,7 +645,6 @@ row height = %g, site width = %g
         content += "========================================================================================"
 
         logging.info(content)
-        logging.info("reading benchmark takes %g seconds" % (time.time()-tt))
 
     def write(self, params, filename, sol_file_format=None):
         """

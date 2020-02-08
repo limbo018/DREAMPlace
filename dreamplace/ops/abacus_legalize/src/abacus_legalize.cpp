@@ -17,6 +17,7 @@ DREAMPLACE_BEGIN_NAMESPACE
 /// @param init_y initial y location of nodes, including movable nodes, fixed nodes, and filler nodes, same as init_x
 /// @param node_size_x width of nodes, including movable nodes, fixed nodes, and filler nodes, [0, num_movable_nodes) are movable nodes, [num_movable_nodes, num_nodes-num_filler_nodes) are fixed nodes, [num_nodes-num_filler_nodes, num_nodes) are filler nodes
 /// @param node_size_y height of nodes, including movable nodes, fixed nodes, and filler nodes, same as node_size_x
+/// @param node_weights weight of nodes in computing displacement
 /// @param xl left edge of bounding box of layout area 
 /// @param yl bottom edge of bounding box of layout area 
 /// @param xh right edge of bounding box of layout area 
@@ -41,6 +42,7 @@ int abacusLegalizationLauncher(LegalizationDB<T> db);
 /// @param init_pos initial locations of nodes, including movable nodes, fixed nodes, and filler nodes, [0, num_movable_nodes) are movable nodes, [num_movable_nodes, num_nodes-num_filler_nodes) are fixed nodes, [num_nodes-num_filler_nodes, num_nodes) are filler nodes
 /// @param node_size_x width of nodes, including movable nodes, fixed nodes, and filler nodes, [0, num_movable_nodes) are movable nodes, [num_movable_nodes, num_nodes-num_filler_nodes) are fixed nodes, [num_nodes-num_filler_nodes, num_nodes) are filler nodes
 /// @param node_size_y height of nodes, including movable nodes, fixed nodes, and filler nodes, same as node_size_x
+/// @param node_weights weight of nodes in computing displacement
 /// @param xl left edge of bounding box of layout area 
 /// @param yl bottom edge of bounding box of layout area 
 /// @param xh right edge of bounding box of layout area 
@@ -57,6 +59,7 @@ at::Tensor abacus_legalization_forward(
         at::Tensor pos, 
         at::Tensor node_size_x,
         at::Tensor node_size_y,
+        at::Tensor node_weights, 
         at::Tensor flat_region_boxes, 
         at::Tensor flat_region_boxes_start, 
         at::Tensor node2fence_region_map, 
@@ -87,6 +90,7 @@ at::Tensor abacus_legalization_forward(
                     pos_copy, 
                     node_size_x, 
                     node_size_y, 
+                    node_weights, 
                     flat_region_boxes, flat_region_boxes_start, node2fence_region_map, 
                     xl, yl, xh, yh, 
                     site_width, row_height, 
@@ -109,7 +113,7 @@ int abacusLegalizationLauncher(LegalizationDB<T> db)
 {
     abacusLegalizationCPU(
             db.init_x, db.init_y, 
-            db.node_size_x, db.node_size_y, 
+            db.node_size_x, db.node_size_y, db.node_weights, 
             db.x, db.y, 
             db.xl, db.yl, db.xh, db.yh, 
             db.site_width, db.row_height, 

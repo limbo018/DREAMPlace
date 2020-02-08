@@ -113,14 +113,14 @@ std::vector<at::Tensor> weighted_average_wirelength_atomic_forward(
     DREAMPLACE_DISPATCH_FLOATING_TYPES(
         pos.type(), "computeWeightedAverageWirelengthAtomicLauncher", [&] {
             computeWeightedAverageWirelengthAtomicLauncher<scalar_t, V>(
-                pos.data<scalar_t>(), // x then y
-                pin2net_map.data<int>(), flat_netpin.data<int>(),
-                netpin_start.data<int>(), net_mask.data<unsigned char>(), num_nets,
-                num_pins, inv_gamma.data<scalar_t>(), exp_xy.data<scalar_t>(),
-                exp_nxy.data<scalar_t>(), exp_xy_sum.data<scalar_t>(),
-                exp_nxy_sum.data<scalar_t>(), xyexp_xy_sum.data<scalar_t>(),
-                xyexp_nxy_sum.data<scalar_t>(), xy_max.data<V>(), xy_min.data<V>(),
-                partial_wl.data<scalar_t>(), nullptr, nullptr, nullptr,
+                DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t), // x then y
+                DREAMPLACE_TENSOR_DATA_PTR(pin2net_map, int), DREAMPLACE_TENSOR_DATA_PTR(flat_netpin, int),
+                DREAMPLACE_TENSOR_DATA_PTR(netpin_start, int), DREAMPLACE_TENSOR_DATA_PTR(net_mask, unsigned char), num_nets,
+                num_pins, DREAMPLACE_TENSOR_DATA_PTR(inv_gamma, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(exp_xy, scalar_t),
+                DREAMPLACE_TENSOR_DATA_PTR(exp_nxy, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(exp_xy_sum, scalar_t),
+                DREAMPLACE_TENSOR_DATA_PTR(exp_nxy_sum, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(xyexp_xy_sum, scalar_t),
+                DREAMPLACE_TENSOR_DATA_PTR(xyexp_nxy_sum, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(xy_max, V), DREAMPLACE_TENSOR_DATA_PTR(xy_min, V),
+                DREAMPLACE_TENSOR_DATA_PTR(partial_wl, scalar_t), nullptr, nullptr, nullptr,
                 num_threads);
         });
 
@@ -199,24 +199,24 @@ at::Tensor weighted_average_wirelength_atomic_backward(
     DREAMPLACE_DISPATCH_FLOATING_TYPES(
         pos.type(), "computeWeightedAverageWirelengthAtomicLauncher", [&] {
             computeWeightedAverageWirelengthAtomicLauncher<scalar_t, V>(
-                pos.data<scalar_t>(), // x then y
-                pin2net_map.data<int>(), flat_netpin.data<int>(),
-                netpin_start.data<int>(), net_mask.data<unsigned char>(), num_nets,
-                num_pins, inv_gamma.data<scalar_t>(), exp_xy.data<scalar_t>(),
-                exp_nxy.data<scalar_t>(), exp_xy_sum.data<scalar_t>(),
-                exp_nxy_sum.data<scalar_t>(), xyexp_xy_sum.data<scalar_t>(),
-                xyexp_nxy_sum.data<scalar_t>(), nullptr, nullptr, nullptr,
-                grad_pos.data<scalar_t>(),
-                grad_out.data<scalar_t>(), grad_out.data<scalar_t>() + num_pins,
+                DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t), // x then y
+                DREAMPLACE_TENSOR_DATA_PTR(pin2net_map, int), DREAMPLACE_TENSOR_DATA_PTR(flat_netpin, int),
+                DREAMPLACE_TENSOR_DATA_PTR(netpin_start, int), DREAMPLACE_TENSOR_DATA_PTR(net_mask, unsigned char), num_nets,
+                num_pins, DREAMPLACE_TENSOR_DATA_PTR(inv_gamma, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(exp_xy, scalar_t),
+                DREAMPLACE_TENSOR_DATA_PTR(exp_nxy, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(exp_xy_sum, scalar_t),
+                DREAMPLACE_TENSOR_DATA_PTR(exp_nxy_sum, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(xyexp_xy_sum, scalar_t),
+                DREAMPLACE_TENSOR_DATA_PTR(xyexp_nxy_sum, scalar_t), nullptr, nullptr, nullptr,
+                DREAMPLACE_TENSOR_DATA_PTR(grad_pos, scalar_t),
+                DREAMPLACE_TENSOR_DATA_PTR(grad_out, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(grad_out, scalar_t) + num_pins,
                 num_threads);
             if (net_weights.numel())
             {
                 integrateNetWeightsLauncher<scalar_t>(
-                    flat_netpin.data<int>(),
-                    netpin_start.data<int>(),
-                    net_mask.data<unsigned char>(),
-                    net_weights.data<scalar_t>(),
-                    grad_out.data<scalar_t>(), grad_out.data<scalar_t>() + pos.numel() / 2,
+                    DREAMPLACE_TENSOR_DATA_PTR(flat_netpin, int),
+                    DREAMPLACE_TENSOR_DATA_PTR(netpin_start, int),
+                    DREAMPLACE_TENSOR_DATA_PTR(net_mask, unsigned char),
+                    DREAMPLACE_TENSOR_DATA_PTR(net_weights, scalar_t),
+                    DREAMPLACE_TENSOR_DATA_PTR(grad_out, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(grad_out, scalar_t) + pos.numel() / 2,
                     netpin_start.numel() - 1,
                     num_threads);
             }

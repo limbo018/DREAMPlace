@@ -124,16 +124,16 @@ at::Tensor pin_utilization_map_forward(
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "pinDemandMapLauncher", [&] {
         pinDemandMapLauncher<scalar_t>(
-                pos.data<scalar_t>(), pos.data<scalar_t>() + num_nodes, 
-                node_size_x.data<scalar_t>(), node_size_y.data<scalar_t>(), 
-                half_node_size_stretch_x.data<scalar_t>(), half_node_size_stretch_y.data<scalar_t>(),
-                pin_weights.data<scalar_t>(),
+                DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + num_nodes, 
+                DREAMPLACE_TENSOR_DATA_PTR(node_size_x, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(node_size_y, scalar_t), 
+                DREAMPLACE_TENSOR_DATA_PTR(half_node_size_stretch_x, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(half_node_size_stretch_y, scalar_t),
+                DREAMPLACE_TENSOR_DATA_PTR(pin_weights, scalar_t),
                 xl, yl, xh, yh,
                 bin_size_x, bin_size_y,
                 num_bins_x, num_bins_y,
                 num_physical_nodes,
                 num_threads,
-                pin_utilization_map.data<scalar_t>()
+                DREAMPLACE_TENSOR_DATA_PTR(pin_utilization_map, scalar_t)
                 );
     });
 

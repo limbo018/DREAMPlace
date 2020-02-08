@@ -93,7 +93,7 @@ void distributeMovableAndFixedCells2BinsCPU(
 template <typename T>
 bool abacusPlaceRowCPU(
         const T* init_x, 
-        const T* node_size_x, const T* node_size_y, 
+        const T* node_size_x, const T* node_size_y, const T* node_weights, 
         T* x, 
         const T row_height, 
         const T xl, const T xh, 
@@ -185,7 +185,7 @@ bool abacusPlaceRowCPU(
         cluster.next_cluster_id = i+1; 
         cluster.bgn_row_node_id = i; 
         cluster.end_row_node_id = i; 
-        cluster.e = (node_id < num_movable_nodes && node_size_y[node_id] <= row_height)? 1.0 : M; 
+        cluster.e = (node_id < num_movable_nodes && node_size_y[node_id] <= row_height)? 1.0 /*node_weights[node_id]*/ : M; 
         cluster.q = cluster.e*init_x[node_id];
         cluster.w = node_size_x[node_id]; 
         // this is required since we also include fixed nodes 
@@ -265,7 +265,7 @@ bool abacusPlaceRowCPU(
 template <typename T>
 void abacusLegalizeRowCPU(
         const T* init_x, 
-        const T* node_size_x, const T* node_size_y, 
+        const T* node_size_x, const T* node_size_y, const T* node_weights, 
         T* x, 
         const T xl, const T xh, 
         const T bin_size_x, const T bin_size_y, 
@@ -345,7 +345,7 @@ void abacusLegalizeRowCPU(
 
         abacusPlaceRowCPU(
                 init_x, 
-                node_size_x, node_size_y, 
+                node_size_x, node_size_y, node_weights, 
                 x, 
                 bin_size_y, // must be equal to row_height
                 bin_xl, bin_xh, 
@@ -367,7 +367,7 @@ void abacusLegalizeRowCPU(
 template <typename T>
 void abacusLegalizationCPU(
         const T* init_x, const T* init_y, 
-        const T* node_size_x, const T* node_size_y, 
+        const T* node_size_x, const T* node_size_y, const T* node_weights, 
         T* x, T* y, 
         const T xl, const T yl, const T xh, const T yh, 
         const T site_width, const T row_height, 
@@ -403,7 +403,7 @@ void abacusLegalizationCPU(
 
     abacusLegalizeRowCPU(
             init_x, 
-            node_size_x, node_size_y, 
+            node_size_x, node_size_y, node_weights, 
             x, 
             xl, xh, 
             bin_size_x, bin_size_y, 

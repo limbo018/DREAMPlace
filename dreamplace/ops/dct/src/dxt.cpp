@@ -22,10 +22,10 @@ at::Tensor idxct_forward(
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idxct_forward", [&] {
             addX0AndScale<scalar_t>(
-                    x.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t), 
                     M, 
                     N, 
-                    z.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(z, scalar_t), 
 					num_threads
                     );
             });
@@ -49,10 +49,10 @@ at::Tensor idxst_forward(
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idxst_forward", [&] {
             computeFlipAndShift<scalar_t>(
-                    x.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t), 
                     M, 
                     N, 
-                    x_reorder.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(x_reorder, scalar_t), 
 					num_threads
                     );
 
@@ -61,7 +61,7 @@ at::Tensor idxst_forward(
             //std::cout << "y\n" << y << "\n";
 
             negateOddEntries<scalar_t>(
-                    y.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(y, scalar_t), 
                     M, 
                     N, 
 					num_threads
@@ -98,11 +98,11 @@ at::Tensor idcct2_forward(
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idcct2_forward", [&] {
             computeVk<scalar_t>(
-                    x.data<scalar_t>(), 
-                    expk1.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(expk1, scalar_t), 
                     M, 
                     N, 
-                    v.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(v, scalar_t), 
 					num_threads
                     );
 
@@ -116,19 +116,19 @@ at::Tensor idcct2_forward(
             //std::cout << "expk\n" << expk << "\n";
             v.resize_({M, N});
             computeReorderReverse(
-                    y.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(y, scalar_t), 
                     M, 
                     N, 
-                    v.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(v, scalar_t), 
 					num_threads
                     );
             //std::cout << "z\n" << z << "\n";
 
             addX0AndScaleN<scalar_t>(
-                    x.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t), 
                     M, 
                     N, 
-                    v.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(v, scalar_t), 
 					num_threads
                     );
 
@@ -140,11 +140,11 @@ at::Tensor idcct2_forward(
             // vk = 0.5*W_{4N}^{k} (c[k] - c[N-k])
             v.resize_({N, M/2+1, 2});
             computeVk<scalar_t>(
-                    xt.data<scalar_t>(), 
-                    expk0.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(xt, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(expk0, scalar_t), 
                     N, 
                     M, 
-                    v.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(v, scalar_t), 
 					num_threads
                     );
 
@@ -157,19 +157,19 @@ at::Tensor idcct2_forward(
             //std::cout << "expk\n" << expk << "\n";
             v.resize_({N, M});
             computeReorderReverse(
-                    y.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(y, scalar_t), 
                     N, 
                     M, 
-                    v.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(v, scalar_t), 
 					num_threads
                     );
             //std::cout << __func__ << " z\n" << z << "\n";
 
             addX0AndScaleN<scalar_t>(
-                    xt.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(xt, scalar_t), 
                     N, 
                     M, 
-                    v.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(v, scalar_t), 
 					num_threads
                     );
 
@@ -206,11 +206,11 @@ at::Tensor idsct2_forward(
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idsct2_forward", [&] {
             computeVk<scalar_t>(
-                    x.data<scalar_t>(), 
-                    expk1.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(expk1, scalar_t), 
                     M, 
                     N, 
-                    v.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(v, scalar_t), 
 					num_threads
                     );
 
@@ -224,19 +224,19 @@ at::Tensor idsct2_forward(
             //std::cout << "expk\n" << expk << "\n";
             //auto z = at::empty_like(x);
             computeReorderReverse(
-                    y.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(y, scalar_t), 
                     M, 
                     N, 
-                    z.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(z, scalar_t), 
 					num_threads
                     );
             //std::cout << "z\n" << z << "\n";
 
             addX0AndScaleN<scalar_t>(
-                    x.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t), 
                     M, 
                     N, 
-                    z.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(z, scalar_t), 
 					num_threads
                     );
             //std::cout << __func__ << " z\n" << z << "\n";
@@ -247,10 +247,10 @@ at::Tensor idsct2_forward(
             //std::cout << "x\n" << x << "\n";
             z = z.view_as(xt);
             computeFlipAndShift<scalar_t>(
-                    xt.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(xt, scalar_t), 
                     N, 
                     M, 
-                    z.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(z, scalar_t), 
 					num_threads
                     );
 
@@ -258,11 +258,11 @@ at::Tensor idsct2_forward(
             // vk = 0.5*W_{4N}^{k} (c[k] - c[N-k])
             v.resize_({N, M/2+1, 2});
             computeVk<scalar_t>(
-                    z.data<scalar_t>(), 
-                    expk0.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(z, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(expk0, scalar_t), 
                     N, 
                     M, 
-                    v.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(v, scalar_t), 
 					num_threads
                     );
 
@@ -274,10 +274,10 @@ at::Tensor idsct2_forward(
 
             //std::cout << "expk\n" << expk << "\n";
             computeReorderReverse(
-                    y.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(y, scalar_t), 
                     N, 
                     M, 
-                    z.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(z, scalar_t), 
 					num_threads
                     );
             //std::cout << "z\n" << z << "\n";
@@ -286,7 +286,7 @@ at::Tensor idsct2_forward(
             z.mul_(0.25*M); 
 
             negateOddEntries<scalar_t>(
-                    z.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(z, scalar_t), 
                     N, 
                     M, 
 					num_threads
@@ -323,10 +323,10 @@ at::Tensor idcst2_forward(
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idcst2_forward", [&] {
             computeFlipAndShift<scalar_t>(
-                    x.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t), 
                     M, 
                     N, 
-                    z.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(z, scalar_t), 
 					num_threads
                     );
 
@@ -334,11 +334,11 @@ at::Tensor idcst2_forward(
             // vk = 0.5*W_{4N}^{k} (c[k] - c[N-k])
             auto v = at::empty({M*N+std::max(M, N)}, x.options()).resize_({M, N/2+1, 2});
             computeVk<scalar_t>(
-                    z.data<scalar_t>(), 
-                    expk1.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(z, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(expk1, scalar_t), 
                     M, 
                     N, 
-                    v.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(v, scalar_t), 
 					num_threads
                     );
 
@@ -350,10 +350,10 @@ at::Tensor idcst2_forward(
 
             //std::cout << "expk\n" << expk << "\n";
             computeReorderReverse(
-                    y.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(y, scalar_t), 
                     M, 
                     N, 
-                    z.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(z, scalar_t), 
 					num_threads
                     );
             //std::cout << "z\n" << z << "\n";
@@ -362,7 +362,7 @@ at::Tensor idcst2_forward(
             z.mul_(0.25*N); 
 
             negateOddEntries<scalar_t>(
-                    z.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(z, scalar_t), 
                     M, 
                     N, 
 					num_threads
@@ -378,11 +378,11 @@ at::Tensor idcst2_forward(
             // vk = 0.5*W_{4N}^{k} (c[k] - c[N-k])
             v.resize_({N, M/2+1, 2});
             computeVk<scalar_t>(
-                    xt.data<scalar_t>(), 
-                    expk0.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(xt, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(expk0, scalar_t), 
                     N, 
                     M, 
-                    v.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(v, scalar_t), 
 					num_threads
                     );
 
@@ -395,18 +395,18 @@ at::Tensor idcst2_forward(
             //std::cout << "expk\n" << expk << "\n";
             z = z.view_as(xt);
             computeReorderReverse(
-                    y.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(y, scalar_t), 
                     N, 
                     M, 
-                    z.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(z, scalar_t), 
 					num_threads
                     );
             //std::cout << "z\n" << z << "\n";
             addX0AndScaleN<scalar_t>(
-                    xt.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(xt, scalar_t), 
                     N, 
                     M, 
-                    z.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(z, scalar_t), 
 					num_threads
                     );
 
@@ -443,11 +443,11 @@ at::Tensor idxst_idct_forward(
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idsct2_forward", [&] {
             computeVk<scalar_t>(
-                    x.data<scalar_t>(), 
-                    expk1.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(expk1, scalar_t), 
                     M, 
                     N, 
-                    v.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(v, scalar_t), 
                     num_threads
                     );
 
@@ -461,10 +461,10 @@ at::Tensor idxst_idct_forward(
             //std::cout << "expk\n" << expk << "\n";
             //auto z = at::empty_like(x);
             computeReorderReverse(
-                    y.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(y, scalar_t), 
                     M, 
                     N, 
-                    z.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(z, scalar_t), 
                     num_threads
                     );
             //std::cout << "z\n" << z << "\n";
@@ -475,10 +475,10 @@ at::Tensor idxst_idct_forward(
             //std::cout << "x\n" << x << "\n";
             z = z.view_as(xt);
             computeFlipAndShift<scalar_t>(
-                    xt.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(xt, scalar_t), 
                     N, 
                     M, 
-                    z.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(z, scalar_t), 
                     num_threads
                     );
 
@@ -486,11 +486,11 @@ at::Tensor idxst_idct_forward(
             // vk = 0.5*W_{4N}^{k} (c[k] - c[N-k])
             v.resize_({N, M/2+1, 2});
             computeVk<scalar_t>(
-                    z.data<scalar_t>(), 
-                    expk0.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(z, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(expk0, scalar_t), 
                     N, 
                     M, 
-                    v.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(v, scalar_t), 
                     num_threads
                     );
 
@@ -502,10 +502,10 @@ at::Tensor idxst_idct_forward(
 
             //std::cout << "expk\n" << expk << "\n";
             computeReorderReverse(
-                    y.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(y, scalar_t), 
                     N, 
                     M, 
-                    z.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(z, scalar_t), 
                     num_threads
                     );
             //std::cout << "z\n" << z << "\n";
@@ -513,7 +513,7 @@ at::Tensor idxst_idct_forward(
             z.mul_(0.25*M*N); 
 
             negateOddEntries<scalar_t>(
-                    z.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(z, scalar_t), 
                     N, 
                     M, 
                     num_threads
@@ -549,10 +549,10 @@ at::Tensor idct_idxst_forward(
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idcst2_forward", [&] {
             computeFlipAndShift<scalar_t>(
-                    x.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t), 
                     M, 
                     N, 
-                    z.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(z, scalar_t), 
                     num_threads
                     );
 
@@ -560,11 +560,11 @@ at::Tensor idct_idxst_forward(
             // vk = 0.5*W_{4N}^{k} (c[k] - c[N-k])
             auto v = at::empty({M*N+std::max(M, N)}, x.options()).resize_({M, N/2+1, 2});
             computeVk<scalar_t>(
-                    z.data<scalar_t>(), 
-                    expk1.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(z, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(expk1, scalar_t), 
                     M, 
                     N, 
-                    v.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(v, scalar_t), 
                     num_threads
                     );
 
@@ -576,10 +576,10 @@ at::Tensor idct_idxst_forward(
 
             //std::cout << "expk\n" << expk << "\n";
             computeReorderReverse(
-                    y.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(y, scalar_t), 
                     M, 
                     N, 
-                    z.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(z, scalar_t), 
                     num_threads
                     );
             //std::cout << "z\n" << z << "\n";
@@ -587,7 +587,7 @@ at::Tensor idct_idxst_forward(
             z.mul_(0.25*N*M); 
 
             negateOddEntries<scalar_t>(
-                    z.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(z, scalar_t), 
                     M, 
                     N, 
                     num_threads
@@ -603,11 +603,11 @@ at::Tensor idct_idxst_forward(
             // vk = 0.5*W_{4N}^{k} (c[k] - c[N-k])
             v.resize_({N, M/2+1, 2});
             computeVk<scalar_t>(
-                    xt.data<scalar_t>(), 
-                    expk0.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(xt, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(expk0, scalar_t), 
                     N, 
                     M, 
-                    v.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(v, scalar_t), 
                     num_threads
                     );
 
@@ -620,10 +620,10 @@ at::Tensor idct_idxst_forward(
             //std::cout << "expk\n" << expk << "\n";
             z = z.view_as(xt);
             computeReorderReverse(
-                    y.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(y, scalar_t), 
                     N, 
                     M, 
-                    z.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(z, scalar_t), 
                     num_threads
                     );
             //std::cout << "z\n" << z << "\n";

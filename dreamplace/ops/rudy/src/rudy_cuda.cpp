@@ -68,17 +68,17 @@ void rudy_forward(
     // Call the cuda kernel launcher
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pin_pos.type(), "rudyCudaLauncher", [&] {
         rudyCudaLauncher<scalar_t>(
-            pin_pos.data<scalar_t>(), pin_pos.data<scalar_t>() + num_pins,
-            netpin_start.data<int>(),
-            flat_netpin.data<int>(),
-            (net_weights.numel())? net_weights.data<scalar_t>() : nullptr,
+            DREAMPLACE_TENSOR_DATA_PTR(pin_pos, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(pin_pos, scalar_t) + num_pins,
+            DREAMPLACE_TENSOR_DATA_PTR(netpin_start, int),
+            DREAMPLACE_TENSOR_DATA_PTR(flat_netpin, int),
+            (net_weights.numel())? DREAMPLACE_TENSOR_DATA_PTR(net_weights, scalar_t) : nullptr,
             bin_size_x, bin_size_y,
             xl, yl, xh, yh,
 
             num_bins_x, num_bins_y,
             num_nets,
-            horizontal_utilization_map.data<scalar_t>(),
-            vertical_utilization_map.data<scalar_t>());
+            DREAMPLACE_TENSOR_DATA_PTR(horizontal_utilization_map, scalar_t),
+            DREAMPLACE_TENSOR_DATA_PTR(vertical_utilization_map, scalar_t));
     });
 }
 

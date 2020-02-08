@@ -26,10 +26,10 @@ at::Tensor dct_forward(
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "dct_forward", [&] {
             computeReorder<scalar_t>(
-                    x.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t), 
                     M, 
                     N, 
-                    x_reorder.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(x_reorder, scalar_t), 
 					num_threads
                     );
 
@@ -42,11 +42,11 @@ at::Tensor dct_forward(
             //std::cout << "x_reorder\n" << x_reorder << "\n";
             //std::cout << "expk\n" << expk << "\n";
             computeMulExpk(
-                    y.data<scalar_t>(), 
-                    expk.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(y, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(expk, scalar_t), 
                     M, 
                     N, 
-                    x_reorder.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(x_reorder, scalar_t), 
 					num_threads
                     );
             //std::cout << "z\n" << x_reorder << "\n";
@@ -76,11 +76,11 @@ at::Tensor idct_forward(
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idct_forward", [&] {
             computeVk<scalar_t>(
-                    x.data<scalar_t>(), 
-                    expk.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(expk, scalar_t), 
                     M, 
                     N, 
-                    v.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(v, scalar_t), 
 					num_threads
                     );
 
@@ -95,10 +95,10 @@ at::Tensor idct_forward(
             // reuse v 
             v.resize_({M, N});
             computeReorderReverse(
-                    y.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(y, scalar_t), 
                     M, 
                     N, 
-                    v.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(v, scalar_t), 
 					num_threads
                     );
             //std::cout << "z\n" << z << "\n";
@@ -133,10 +133,10 @@ at::Tensor dct2_forward(
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "dct2_forward", [&] {
             computeReorder<scalar_t>(
-                    x.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t), 
                     M, 
                     N, 
-                    x_reorder.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(x_reorder, scalar_t), 
 					num_threads
                     );
 
@@ -149,11 +149,11 @@ at::Tensor dct2_forward(
             // re-use x_reorder as output 
             //std::cout << "expk1\n" << expk1 << "\n";
             computeMulExpk(
-                    y.data<scalar_t>(), 
-                    expk1.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(y, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(expk1, scalar_t), 
                     M, 
                     N, 
-                    x_reorder.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(x_reorder, scalar_t), 
 					num_threads
                     );
             //std::cout << "z\n" << x_reorder << "\n";
@@ -165,10 +165,10 @@ at::Tensor dct2_forward(
             //x_reorder = at::empty_like(xt);
             x_reorder = x_reorder.view_as(xt);
             computeReorder<scalar_t>(
-                    xt.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(xt, scalar_t), 
                     N, 
                     M, 
-                    x_reorder.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(x_reorder, scalar_t), 
 					num_threads
                     );
 
@@ -181,11 +181,11 @@ at::Tensor dct2_forward(
             // re-use x_reorder as output 
             //std::cout << "expk0\n" << expk0 << "\n";
             computeMulExpk(
-                    y.data<scalar_t>(), 
-                    expk0.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(y, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(expk0, scalar_t), 
                     N, 
                     M, 
-                    x_reorder.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(x_reorder, scalar_t), 
 					num_threads
                     );
 
@@ -221,11 +221,11 @@ at::Tensor idct2_forward(
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idct2_forward", [&] {
             computeVk<scalar_t>(
-                    x.data<scalar_t>(), 
-                    expk1.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(expk1, scalar_t), 
                     M, 
                     N, 
-                    v.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(v, scalar_t), 
 					num_threads
                     );
 
@@ -242,10 +242,10 @@ at::Tensor idct2_forward(
             /// reuse v 
             v.resize_({M, N});
             computeReorderReverse(
-                    y.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(y, scalar_t), 
                     M, 
                     N, 
-                    v.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(v, scalar_t), 
 					num_threads
                     );
             //std::cout << "z\n" << z << "\n";
@@ -256,11 +256,11 @@ at::Tensor idct2_forward(
             // vk = 0.5*W_{4N}^{k} (c[k] - c[N-k])
             v.resize_({N, M/2+1, 2});
             computeVk<scalar_t>(
-                    xt.data<scalar_t>(), 
-                    expk0.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(xt, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(expk0, scalar_t), 
                     N, 
                     M, 
-                    v.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(v, scalar_t), 
 					num_threads
                     );
 
@@ -276,10 +276,10 @@ at::Tensor idct2_forward(
             // reuse v 
             v.resize_({N, M});
             computeReorderReverse(
-                    y.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(y, scalar_t), 
                     N, 
                     M, 
-                    v.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(v, scalar_t), 
 					num_threads
                     );
             //std::cout << "z\n" << z << "\n";

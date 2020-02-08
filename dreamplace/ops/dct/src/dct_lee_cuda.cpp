@@ -15,7 +15,7 @@ void dct_lee_precompute_dct_cos(int N, at::Tensor out)
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(out.type(), "dct_lee_precompute_dct_cos", [&] {
             lee::precompute_dct_cos<scalar_t>(
-                    out.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(out, scalar_t), 
                     N
                     );
             });
@@ -27,7 +27,7 @@ void dct_lee_precompute_idct_cos(int N, at::Tensor out)
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(out.type(), "dct_lee_precompute_idct_cos", [&] {
             lee::precompute_idct_cos<scalar_t>(
-                    out.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(out, scalar_t), 
                     N
                     );
             });
@@ -50,10 +50,10 @@ inline void dct_lee_forward(
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "dct_lee_forward", [&] {
             lee::dct(
-                    x.data<scalar_t>(), 
-                    out.data<scalar_t>(), 
-                    buf.data<scalar_t>(), 
-                    cos.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(out, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(buf, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(cos, scalar_t), 
                     M, 
                     N
                     );
@@ -79,10 +79,10 @@ inline void idct_lee_forward(
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idct_lee_forward", [&] {
             lee::idct(
-                    x.data<scalar_t>(), 
-                    out.data<scalar_t>(), 
-                    buf.data<scalar_t>(), 
-                    cos.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(out, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(buf, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(cos, scalar_t), 
                     M, 
                     N
                     );
@@ -105,7 +105,7 @@ void dst_lee_forward(
             //std::cout << "x\n" << x << "\n";
             buf.copy_(x);
             negateOddEntriesCudaLauncher<scalar_t>(
-                    buf.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(buf, scalar_t), 
                     M, 
                     N
                     );
@@ -114,10 +114,10 @@ void dst_lee_forward(
             //std::cout << "y\n" << y << "\n";
 
             computeFlipCudaLauncher<scalar_t>(
-                    out.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(out, scalar_t), 
                     M, 
                     N, 
-                    buf.data<scalar_t>()
+                    DREAMPLACE_TENSOR_DATA_PTR(buf, scalar_t)
                     );
             });
 
@@ -137,17 +137,17 @@ void idst_lee_forward(
     DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idst_lee_forward", [&] {
             //std::cout << "x\n" << x << "\n";
             computeFlipCudaLauncher<scalar_t>(
-                    x.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t), 
                     M, 
                     N, 
-                    buf.data<scalar_t>()
+                    DREAMPLACE_TENSOR_DATA_PTR(buf, scalar_t)
                     );
 
             idct_lee_forward(buf, expk, buf, out);
             //std::cout << "y\n" << y << "\n";
 
             negateOddEntriesCudaLauncher<scalar_t>(
-                    out.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(out, scalar_t), 
                     M, 
                     N
                     );
@@ -245,10 +245,10 @@ void idxct_lee_forward(
             //std::cout << __func__ << " z\n" << z << "\n";
 
             addX0AndScaleCudaLauncher<scalar_t>(
-                    x.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t), 
                     M, 
                     N, 
-                    out.data<scalar_t>()
+                    DREAMPLACE_TENSOR_DATA_PTR(out, scalar_t)
                     );
     });
 }
@@ -266,10 +266,10 @@ void idxst_lee_forward(
     DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idxst_lee_forward", [&] {
             //std::cout << "x\n" << x << "\n";
             computeFlipAndShiftCudaLauncher<scalar_t>(
-                    x.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t), 
                     M, 
                     N, 
-                    buf.data<scalar_t>()
+                    DREAMPLACE_TENSOR_DATA_PTR(buf, scalar_t)
                     );
 
             idct_lee_forward(buf, cos, buf, out);
@@ -277,7 +277,7 @@ void idxst_lee_forward(
             //std::cout << "y\n" << y << "\n";
 
             negateOddEntriesCudaLauncher<scalar_t>(
-                    out.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(out, scalar_t), 
                     M, 
                     N
                     );

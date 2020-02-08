@@ -24,6 +24,7 @@ struct LegalizationDB
     const T* init_y; 
     const T* node_size_x;
     const T* node_size_y;
+    const T* node_weights; 
     const T* flat_region_boxes; ///< number of boxes x 4
     const int* flat_region_boxes_start; ///< number of regions + 1 
     const int* node2fence_region_map; ///< length of number of movable cells 

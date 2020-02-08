@@ -46,13 +46,13 @@ void update_pin_offset_forward(
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pin_offset_x.type(), "updatePinOffsetCudaLauncher", [&] {
         updatePinOffsetCudaLauncher<scalar_t>(
-            node_size_x.data<scalar_t>(), 
-            node_size_y.data<scalar_t>(), 
-            flat_node2pin_start_map.data<int>(),
-            flat_node2pin_map.data<int>(),
-            node_ratios.data<scalar_t>(),
+            DREAMPLACE_TENSOR_DATA_PTR(node_size_x, scalar_t), 
+            DREAMPLACE_TENSOR_DATA_PTR(node_size_y, scalar_t), 
+            DREAMPLACE_TENSOR_DATA_PTR(flat_node2pin_start_map, int),
+            DREAMPLACE_TENSOR_DATA_PTR(flat_node2pin_map, int),
+            DREAMPLACE_TENSOR_DATA_PTR(node_ratios, scalar_t),
             num_movable_nodes,
-            pin_offset_x.data<scalar_t>(), pin_offset_y.data<scalar_t>()
+            DREAMPLACE_TENSOR_DATA_PTR(pin_offset_x, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(pin_offset_y, scalar_t)
             );
     });
 }

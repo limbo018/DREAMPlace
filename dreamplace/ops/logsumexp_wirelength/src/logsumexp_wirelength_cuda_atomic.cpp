@@ -84,16 +84,16 @@ std::vector<at::Tensor> logsumexp_wirelength_atomic_forward(
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeLogSumExpWirelengthCudaAtomicLauncher", [&] {
             computeLogSumExpWirelengthCudaAtomicLauncher<scalar_t, V>(
-                    pos.data<scalar_t>(), pos.data<scalar_t>()+num_pins, 
-                    pin2net_map.data<int>(), 
-                    net_mask.data<unsigned char>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t)+num_pins, 
+                    DREAMPLACE_TENSOR_DATA_PTR(pin2net_map, int), 
+                    DREAMPLACE_TENSOR_DATA_PTR(net_mask, unsigned char), 
                     num_nets, 
                     num_pins, 
-                    gamma.data<scalar_t>(), 
-                    exp_xy.data<scalar_t>(), exp_nxy.data<scalar_t>(), 
-                    exp_xy_sum.data<scalar_t>(), exp_nxy_sum.data<scalar_t>(),
-                    xy_max.data<V>(), xy_min.data<V>(), 
-                    partial_wl.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(gamma, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(exp_xy, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(exp_nxy, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(exp_xy_sum, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(exp_nxy_sum, scalar_t),
+                    DREAMPLACE_TENSOR_DATA_PTR(xy_max, V), DREAMPLACE_TENSOR_DATA_PTR(xy_min, V), 
+                    DREAMPLACE_TENSOR_DATA_PTR(partial_wl, scalar_t), 
                     nullptr, 
                     nullptr, nullptr
                     );
@@ -159,26 +159,26 @@ at::Tensor logsumexp_wirelength_atomic_backward(
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeLogSumExpWirelengthCudaAtomicLauncher", [&] {
             computeLogSumExpWirelengthCudaAtomicLauncher<scalar_t, V>(
-                    pos.data<scalar_t>(), pos.data<scalar_t>()+num_pins, 
-                    pin2net_map.data<int>(), 
-                    net_mask.data<unsigned char>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t)+num_pins, 
+                    DREAMPLACE_TENSOR_DATA_PTR(pin2net_map, int), 
+                    DREAMPLACE_TENSOR_DATA_PTR(net_mask, unsigned char), 
                     num_nets, 
                     num_pins, 
-                    gamma.data<scalar_t>(), 
-                    exp_xy.data<scalar_t>(), exp_nxy.data<scalar_t>(), 
-                    exp_xy_sum.data<scalar_t>(), exp_nxy_sum.data<scalar_t>(),
+                    DREAMPLACE_TENSOR_DATA_PTR(gamma, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(exp_xy, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(exp_nxy, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(exp_xy_sum, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(exp_nxy_sum, scalar_t),
                     nullptr, nullptr, 
                     nullptr, 
-                    grad_pos.data<scalar_t>(), 
-                    grad_out.data<scalar_t>(), grad_out.data<scalar_t>()+num_pins
+                    DREAMPLACE_TENSOR_DATA_PTR(grad_pos, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(grad_out, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(grad_out, scalar_t)+num_pins
                     );
             if (net_weights.numel())
             {
                 integrateNetWeightsCudaLauncher(
-                        pin2net_map.data<int>(), 
-                        net_mask.data<unsigned char>(), 
-                        net_weights.data<scalar_t>(), 
-                        grad_out.data<scalar_t>(), grad_out.data<scalar_t>()+num_pins,
+                        DREAMPLACE_TENSOR_DATA_PTR(pin2net_map, int), 
+                        DREAMPLACE_TENSOR_DATA_PTR(net_mask, unsigned char), 
+                        DREAMPLACE_TENSOR_DATA_PTR(net_weights, scalar_t), 
+                        DREAMPLACE_TENSOR_DATA_PTR(grad_out, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(grad_out, scalar_t)+num_pins,
                         num_pins
                         );
             }

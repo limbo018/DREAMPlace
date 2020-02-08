@@ -62,10 +62,10 @@ int draw_place_forward(
     int ret = 0; 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "drawPlaceLauncher", [&] {
             ret = drawPlaceLauncher<scalar_t>(
-                    pos.data<scalar_t>(), pos.data<scalar_t>()+num_nodes, 
-                    node_size_x.data<scalar_t>(), node_size_y.data<scalar_t>(), 
-                    pin_offset_x.data<scalar_t>(), pin_offset_y.data<scalar_t>(), 
-                    pin2node_map.data<int>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t)+num_nodes, 
+                    DREAMPLACE_TENSOR_DATA_PTR(node_size_x, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(node_size_y, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(pin_offset_x, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(pin_offset_y, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(pin2node_map, int), 
                     num_nodes, 
                     num_movable_nodes, 
                     num_filler_nodes, 
