@@ -90,28 +90,28 @@ std::vector<at::Tensor> density_overflow_forward(
     // Call the cuda kernel launcher
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeDensityOverflowMapCudaByNodeLauncher", [&] {
             computeDensityOverflowMapCudaByNodeLauncher<scalar_t>(
-                    pos.data<scalar_t>(), pos.data<scalar_t>()+num_nodes, 
-                    node_size_x.data<scalar_t>(), node_size_y.data<scalar_t>(), 
-                    bin_center_x.data<scalar_t>(), bin_center_y.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t)+num_nodes, 
+                    DREAMPLACE_TENSOR_DATA_PTR(node_size_x, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(node_size_y, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(bin_center_x, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(bin_center_y, scalar_t), 
                     num_movable_nodes, // only need to compute for movable nodes 
                     num_bins_x, num_bins_y, 
                     xl, yl, xh, yh, 
                     bin_size_x, bin_size_y, 
-                    density_map.data<scalar_t>()
+                    DREAMPLACE_TENSOR_DATA_PTR(density_map, scalar_t)
                     );
             });
     if (num_filler_nodes)
     {
         DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeDensityOverflowMapCudaByNodeLauncher", [&] {
                 computeDensityOverflowMapCudaByNodeLauncher<scalar_t>(
-                        pos.data<scalar_t>()+num_nodes-num_filler_nodes, pos.data<scalar_t>()+num_nodes*2-num_filler_nodes, 
-                        node_size_x.data<scalar_t>()+num_nodes-num_filler_nodes, node_size_y.data<scalar_t>()+num_nodes-num_filler_nodes, 
-                        bin_center_x.data<scalar_t>(), bin_center_y.data<scalar_t>(), 
+                        DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t)+num_nodes-num_filler_nodes, DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t)+num_nodes*2-num_filler_nodes, 
+                        DREAMPLACE_TENSOR_DATA_PTR(node_size_x, scalar_t)+num_nodes-num_filler_nodes, DREAMPLACE_TENSOR_DATA_PTR(node_size_y, scalar_t)+num_nodes-num_filler_nodes, 
+                        DREAMPLACE_TENSOR_DATA_PTR(bin_center_x, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(bin_center_y, scalar_t), 
                         num_filler_nodes, // only need to compute for filler nodes 
                         num_bins_x, num_bins_y, 
                         xl, yl, xh, yh, 
                         bin_size_x, bin_size_y, 
-                        density_map.data<scalar_t>()
+                        DREAMPLACE_TENSOR_DATA_PTR(density_map, scalar_t)
                         );
                 });
     }

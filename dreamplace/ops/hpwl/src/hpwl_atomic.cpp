@@ -52,18 +52,18 @@ at::Tensor hpwl_atomic_forward(
     at::Tensor partial_hpwl_min = at::zeros({2, num_nets}, pos.type()); 
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeHPWLAtomicLauncher", [&] {
-            partial_hpwl_max[0].masked_fill_(net_mask, std::numeric_limits<scalar_t>::min());
-            partial_hpwl_max[1].masked_fill_(net_mask, std::numeric_limits<scalar_t>::min());
-            partial_hpwl_min[0].masked_fill_(net_mask, std::numeric_limits<scalar_t>::max());
-            partial_hpwl_min[1].masked_fill_(net_mask, std::numeric_limits<scalar_t>::max());
+            partial_hpwl_max[0].fill_(std::numeric_limits<scalar_t>::min());
+            partial_hpwl_max[1].fill_(std::numeric_limits<scalar_t>::min());
+            partial_hpwl_min[0].fill_(std::numeric_limits<scalar_t>::max());
+            partial_hpwl_min[1].fill_(std::numeric_limits<scalar_t>::max());
             computeHPWLAtomicLauncher<scalar_t>(
-                    pos.data<scalar_t>(), pos.data<scalar_t>()+pos.numel()/2, 
-                    pin2net_map.data<int>(), 
-                    net_mask.data<unsigned char>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t)+pos.numel()/2, 
+                    DREAMPLACE_TENSOR_DATA_PTR(pin2net_map, int), 
+                    DREAMPLACE_TENSOR_DATA_PTR(net_mask, unsigned char), 
                     num_nets, 
                     pin2net_map.numel(), 
-                    partial_hpwl_max.data<scalar_t>(), 
-                    partial_hpwl_min.data<scalar_t>()
+                    DREAMPLACE_TENSOR_DATA_PTR(partial_hpwl_max, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(partial_hpwl_min, scalar_t)
                     );
             });
 
@@ -104,6 +104,13 @@ int computeHPWLAtomicLauncher(
             partial_hpwl_x_min[net_id] = std::min(partial_hpwl_x_min[net_id], x[i]); 
             partial_hpwl_y_max[net_id] = std::max(partial_hpwl_y_max[net_id], y[i]); 
             partial_hpwl_y_min[net_id] = std::min(partial_hpwl_y_min[net_id], y[i]); 
+        }
+        else 
+        {
+            partial_hpwl_x_max[net_id] = 0; 
+            partial_hpwl_x_min[net_id] = 0; 
+            partial_hpwl_y_max[net_id] = 0; 
+            partial_hpwl_y_min[net_id] = 0; 
         }
     }
 

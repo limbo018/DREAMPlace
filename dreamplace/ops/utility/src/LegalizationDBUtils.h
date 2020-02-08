@@ -32,6 +32,7 @@ LegalizationDB<T> make_placedb(
         at::Tensor pos, 
         at::Tensor node_size_x,
         at::Tensor node_size_y,
+        at::Tensor node_weights, 
         at::Tensor flat_region_boxes, 
         at::Tensor flat_region_boxes_start, 
         at::Tensor node2fence_region_map, 
@@ -50,15 +51,16 @@ LegalizationDB<T> make_placedb(
     LegalizationDB<T> db; 
     int num_nodes = init_pos.numel()/2;
 
-    db.init_x = init_pos.data<T>(); 
-    db.init_y = init_pos.data<T>()+num_nodes; 
-    db.node_size_x = node_size_x.data<T>(); 
-    db.node_size_y = node_size_y.data<T>(); 
-    db.flat_region_boxes = flat_region_boxes.data<T>();
-    db.flat_region_boxes_start = flat_region_boxes_start.data<int>();
-    db.node2fence_region_map = node2fence_region_map.data<int>();
-    db.x = pos.data<T>(); 
-    db.y = pos.data<T>()+num_nodes; 
+    db.init_x = DREAMPLACE_TENSOR_DATA_PTR(init_pos, T); 
+    db.init_y = DREAMPLACE_TENSOR_DATA_PTR(init_pos, T)+num_nodes; 
+    db.node_size_x = DREAMPLACE_TENSOR_DATA_PTR(node_size_x, T); 
+    db.node_size_y = DREAMPLACE_TENSOR_DATA_PTR(node_size_y, T); 
+    db.node_weights = DREAMPLACE_TENSOR_DATA_PTR(node_weights, T);
+    db.flat_region_boxes = DREAMPLACE_TENSOR_DATA_PTR(flat_region_boxes, T);
+    db.flat_region_boxes_start = DREAMPLACE_TENSOR_DATA_PTR(flat_region_boxes_start, int);
+    db.node2fence_region_map = DREAMPLACE_TENSOR_DATA_PTR(node2fence_region_map, int);
+    db.x = DREAMPLACE_TENSOR_DATA_PTR(pos, T); 
+    db.y = DREAMPLACE_TENSOR_DATA_PTR(pos, T)+num_nodes; 
     db.xl = xl; 
     db.yl = yl; 
     db.xh = xh; 

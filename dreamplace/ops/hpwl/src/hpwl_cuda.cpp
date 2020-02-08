@@ -51,16 +51,16 @@ at::Tensor hpwl_forward(
 
     // x then y 
     int num_nets = net_mask.numel();
-    at::Tensor partial_wl = at::zeros({2, num_nets}, pos.type()); 
+    at::Tensor partial_wl = at::zeros({2, num_nets}, pos.options()); 
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeHPWLCudaLauncher", [&] {
             computeHPWLCudaLauncher<scalar_t>(
-                    pos.data<scalar_t>(), pos.data<scalar_t>()+pos.numel()/2, 
-                    flat_netpin.data<int>(), 
-                    netpin_start.data<int>(), 
-                    net_mask.data<unsigned char>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t)+pos.numel()/2, 
+                    DREAMPLACE_TENSOR_DATA_PTR(flat_netpin, int), 
+                    DREAMPLACE_TENSOR_DATA_PTR(netpin_start, int), 
+                    DREAMPLACE_TENSOR_DATA_PTR(net_mask, unsigned char), 
                     num_nets, 
-                    partial_wl.data<scalar_t>()
+                    DREAMPLACE_TENSOR_DATA_PTR(partial_wl, scalar_t)
                     );
             });
     //std::cout << "partial_hpwl = \n" << partial_wl << "\n";

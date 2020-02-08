@@ -141,6 +141,7 @@ class MacroLegalizeOpTest(unittest.TestCase):
         yy = np.random.uniform(yl, yh, size=6).astype(dtype)
         node_size_x = np.array([10, 15, 5, 4, 2, 4]).astype(dtype)
         node_size_y = np.array([10, 20, 30, 2, 4, 6]).astype(dtype)
+        node_weights = np.ones_like(node_size_x)
         num_nodes = len(xx)
         
         num_terminals = 0 
@@ -151,6 +152,9 @@ class MacroLegalizeOpTest(unittest.TestCase):
         row_height = 2 
         num_bins_x = 2
         num_bins_y = 2
+        flat_region_boxes = np.zeros(0, dtype=dtype)
+        flat_region_boxes_start = np.array([0], dtype=np.int32)
+        node2fence_region_map = np.zeros(0, dtype=np.int32)
 
         print("xx = %s" % (xx))
         print("yy = %s" % (yy))
@@ -163,7 +167,8 @@ class MacroLegalizeOpTest(unittest.TestCase):
 
         # test cpu 
         custom = macro_legalize.MacroLegalize(
-                    torch.from_numpy(node_size_x), torch.from_numpy(node_size_y), 
+                    torch.from_numpy(node_size_x), torch.from_numpy(node_size_y), torch.from_numpy(node_weights), 
+                    flat_region_boxes=torch.from_numpy(flat_region_boxes), flat_region_boxes_start=torch.from_numpy(flat_region_boxes_start), node2fence_region_map=torch.from_numpy(node2fence_region_map), 
                     xl=xl, yl=yl, xh=xh, yh=yh, 
                     site_width=site_width, row_height=row_height, 
                     num_bins_x=num_bins_x, num_bins_y=num_bins_y, 
@@ -187,7 +192,8 @@ class MacroLegalizeOpTest(unittest.TestCase):
         # test cuda 
         if torch.cuda.device_count(): 
             custom_cuda = macro_legalize.MacroLegalize(
-                        torch.from_numpy(node_size_x).cuda(), torch.from_numpy(node_size_y).cuda(), 
+                        torch.from_numpy(node_size_x).cuda(), torch.from_numpy(node_size_y).cuda(), torch.from_numpy(node_weights).cuda(), 
+                        flat_region_boxes=torch.from_numpy(flat_region_boxes).cuda(), flat_region_boxes_start=torch.from_numpy(flat_region_boxes_start).cuda(), node2fence_region_map=torch.from_numpy(node2fence_region_map).cuda(), 
                         xl=xl, yl=yl, xh=xh, yh=yh, 
                         site_width=site_width, row_height=row_height, 
                         num_bins_x=num_bins_x, num_bins_y=num_bins_y, 

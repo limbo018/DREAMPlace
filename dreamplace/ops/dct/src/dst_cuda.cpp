@@ -19,7 +19,7 @@ at::Tensor dst_forward(
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "dst_forward", [&] {
             negateOddEntriesCudaLauncher<scalar_t>(
-                    x_reorder.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(x_reorder, scalar_t), 
                     M, 
                     N
                     );
@@ -28,10 +28,10 @@ at::Tensor dst_forward(
             //std::cout << "y\n" << y << "\n";
 
             computeFlipCudaLauncher<scalar_t>(
-                    y.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(y, scalar_t), 
                     M, 
                     N, 
-                    x_reorder.data<scalar_t>()
+                    DREAMPLACE_TENSOR_DATA_PTR(x_reorder, scalar_t)
                     );
             //std::cout << "z\n" << y << "\n";
             });
@@ -52,17 +52,17 @@ at::Tensor idst_forward(
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idst_forward", [&] {
             computeFlipCudaLauncher<scalar_t>(
-                    x.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t), 
                     M, 
                     N, 
-                    x_reorder.data<scalar_t>()
+                    DREAMPLACE_TENSOR_DATA_PTR(x_reorder, scalar_t)
                     );
 
             y = idct_forward(x_reorder, expk);
             //std::cout << "y\n" << y << "\n";
 
             negateOddEntriesCudaLauncher<scalar_t>(
-                    y.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(y, scalar_t), 
                     M, 
                     N
                     );

@@ -20,6 +20,7 @@ class AbacusLegalizeFunction(Function):
           pos,
           node_size_x,
           node_size_y,
+          node_weights, 
           flat_region_boxes, 
           flat_region_boxes_start, 
           node2fence_region_map, 
@@ -41,6 +42,7 @@ class AbacusLegalizeFunction(Function):
                     pos.view(pos.numel()).cpu(), 
                     node_size_x.cpu(),
                     node_size_y.cpu(),
+                    node_weights.cpu(), 
                     flat_region_boxes.cpu(), 
                     flat_region_boxes_start.cpu(), 
                     node2fence_region_map.cpu(), 
@@ -62,6 +64,7 @@ class AbacusLegalizeFunction(Function):
                     pos.view(pos.numel()), 
                     node_size_x,
                     node_size_y,
+                    node_weights, 
                     flat_region_boxes, 
                     flat_region_boxes_start, 
                     node2fence_region_map, 
@@ -82,12 +85,13 @@ class AbacusLegalizeFunction(Function):
 class AbacusLegalize(object):
     """ Legalize cells with abacus approach 
     """
-    def __init__(self, node_size_x, node_size_y, 
+    def __init__(self, node_size_x, node_size_y, node_weights, 
             flat_region_boxes, flat_region_boxes_start, node2fence_region_map, 
             xl, yl, xh, yh, site_width, row_height, num_bins_x, num_bins_y, num_movable_nodes, num_terminal_NIs, num_filler_nodes):
         super(AbacusLegalize, self).__init__()
         self.node_size_x = node_size_x
         self.node_size_y = node_size_y
+        self.node_weights = node_weights 
         self.flat_region_boxes = flat_region_boxes 
         self.flat_region_boxes_start = flat_region_boxes_start 
         self.node2fence_region_map = node2fence_region_map
@@ -112,6 +116,7 @@ class AbacusLegalize(object):
                 pos,
                 node_size_x=self.node_size_x,
                 node_size_y=self.node_size_y,
+                node_weights=self.node_weights, 
                 flat_region_boxes=self.flat_region_boxes, 
                 flat_region_boxes_start=self.flat_region_boxes_start, 
                 node2fence_region_map=self.node2fence_region_map, 

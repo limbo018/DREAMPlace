@@ -97,6 +97,8 @@ struct Box
     T width() const {return xh-xl;}
     /// @return height of the box 
     T height() const {return yh-yl;}
+    /// @return the area of the box 
+    T area() const {return width() * height();}
     /// @return x coordinate of the center of the box 
     T center_x() const {return (xl+xh)/2;}
     /// @return y coordinate of the center of the box 

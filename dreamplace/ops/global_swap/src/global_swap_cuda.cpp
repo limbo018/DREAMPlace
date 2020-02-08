@@ -27,13 +27,12 @@ int globalSwapCUDALauncher(DetailedPlaceDB<T> db, int batch_size, int max_iters,
 /// char does not compile for ATen either 
 #define DISPATCH_CUSTOM_TYPES(TYPE, NAME, ...)                           \
       [&] {                                                                       \
-          const at::Type& the_type = TYPE;                                          \
-          switch (the_type.scalarType()) {                                          \
+          switch (TYPE.scalarType()) {                                          \
                 AT_PRIVATE_CASE_TYPE(at::ScalarType::Float, float, __VA_ARGS__)        \
                 AT_PRIVATE_CASE_TYPE(at::ScalarType::Double, double, __VA_ARGS__)         \
                 AT_PRIVATE_CASE_TYPE(at::ScalarType::Int, int, __VA_ARGS__)        \
                 default:                                                                \
-                  AT_ERROR(#NAME, " not implemented for '", the_type.toString(), "'");  \
+                  AT_ERROR(#NAME, " not implemented for '", TYPE.toString(), "'");  \
                   }                                                                         \
             }()
 

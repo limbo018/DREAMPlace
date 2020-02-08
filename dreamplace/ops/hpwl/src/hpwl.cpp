@@ -52,16 +52,16 @@ at::Tensor hpwl_forward(
     CHECK_CONTIGUOUS(net_mask);
 
     int num_nets = netpin_start.numel()-1; 
-    at::Tensor hpwl = at::zeros(num_nets, pos.type()); 
+    at::Tensor hpwl = at::zeros(num_nets, pos.options()); 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeHPWLLauncher", [&] {
             computeHPWLLauncher<scalar_t>(
-                    pos.data<scalar_t>(), pos.data<scalar_t>()+pos.numel()/2, 
-                    flat_netpin.data<int>(), 
-                    netpin_start.data<int>(), 
-                    net_mask.data<unsigned char>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t)+pos.numel()/2, 
+                    DREAMPLACE_TENSOR_DATA_PTR(flat_netpin, int), 
+                    DREAMPLACE_TENSOR_DATA_PTR(netpin_start, int), 
+                    DREAMPLACE_TENSOR_DATA_PTR(net_mask, unsigned char), 
                     num_nets, 
                     num_threads, 
-                    hpwl.data<scalar_t>()
+                    DREAMPLACE_TENSOR_DATA_PTR(hpwl, scalar_t)
                     );
             });
     if (net_weights.numel())

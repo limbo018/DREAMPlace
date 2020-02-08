@@ -403,14 +403,10 @@ class PlaceObj(nn.Module):
         @param placedb placement database
         @param data_collections a collection of data and variables required for constructing ops
         """
-        num_pins_in_nodes = np.zeros(placedb.num_nodes)
-        for  i in range(placedb.num_physical_nodes):
-            num_pins_in_nodes[i] = len(placedb.node2pin_map[i])
-        num_pins_in_nodes = torch.tensor(num_pins_in_nodes, dtype=data_collections.pos[0].dtype, device=data_collections.pos[0].device)
         node_areas = torch.tensor(placedb.node_size_x*placedb.node_size_y, dtype=data_collections.pos[0].dtype, device=data_collections.pos[0].device)
 
         def precondition_op(grad):
-            precond = num_pins_in_nodes + self.density_weight*node_areas
+            precond = data_collections.num_pins_in_nodes + self.density_weight*node_areas
             precond.clamp_(min=1.0)
             grad[0:placedb.num_nodes].div_(precond)
             grad[placedb.num_nodes:placedb.num_nodes*2].div_(precond)

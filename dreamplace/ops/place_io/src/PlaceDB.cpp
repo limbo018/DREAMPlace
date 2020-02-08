@@ -1627,6 +1627,26 @@ void PlaceDB::sortNetByDegree()
 void PlaceDB::sortNodeByPlaceStatus()
 {
     dreamplacePrint(kINFO, "sort nodes in the order of movable and fixed\n");
+
+    // I assume the total number does not change, 
+    // but the number of movable and fixed cells may change 
+    m_vMovableNodeIndex.clear();
+    m_vFixedNodeIndex.clear();
+    for (std::vector<Node>::const_iterator it = m_vNode.begin(), ite = m_vNode.begin() + numMovable() + numFixed(); it != ite; ++it)
+    {
+        Node const& node = *it;
+        if (node.status() == PlaceStatusEnum::FIXED)
+        {
+            m_vFixedNodeIndex.push_back(node.id());
+        }
+        else
+        {
+            m_vMovableNodeIndex.push_back(node.id());
+        }
+    }
+    m_numMovable = m_vMovableNodeIndex.size();
+    m_numFixed = m_vFixedNodeIndex.size();
+
     // sort m_vNode, m_vNodeProperty, m_mNodeName2Index
     // map order to node id
     // only work on movable and fixed cells, excluding IO pins 
