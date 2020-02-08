@@ -53,15 +53,15 @@ int rmst_wl_forward(
     int ret = 0; 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeRMSTWLLauncher", [&] {
             computeRMSTWLLauncher<scalar_t>(
-                    pos.data<scalar_t>(), pos.data<scalar_t>()+pos.numel()/2, 
-                    flat_netpin.data<int>(), 
-                    netpin_start.data<int>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t)+pos.numel()/2, 
+                    DREAMPLACE_TENSOR_DATA_PTR(flat_netpin, int), 
+                    DREAMPLACE_TENSOR_DATA_PTR(netpin_start, int), 
                     ignore_net_degree, 
                     netpin_start.numel()-1, 
                     read_lut_flag, 
                     POWVFILE, 
                     POSTFILE, 
-                    rmst_wl.data<scalar_t>()
+                    DREAMPLACE_TENSOR_DATA_PTR(rmst_wl, scalar_t)
                     );
             });
     return ret; 

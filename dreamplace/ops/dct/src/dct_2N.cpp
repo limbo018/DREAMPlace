@@ -25,10 +25,10 @@ at::Tensor dct_2N_forward(
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "dct_2N_forward", [&] {
             computePad<scalar_t>(
-                    x.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t), 
                     M, 
                     N, 
-                    x_pad.data<scalar_t>(),
+                    DREAMPLACE_TENSOR_DATA_PTR(x_pad, scalar_t),
 					num_threads
                     );
 
@@ -37,11 +37,11 @@ at::Tensor dct_2N_forward(
             // re-use x_pad as output 
             x_pad.resize_({M, N});
             computeMulExpk_2N(
-                    y.data<scalar_t>(), 
-                    expk.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(y, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(expk, scalar_t), 
                     M, 
                     N, 
-                    x_pad.data<scalar_t>(),
+                    DREAMPLACE_TENSOR_DATA_PTR(x_pad, scalar_t),
 					num_threads
                     );
             x_pad.mul_(1.0/N);
@@ -68,11 +68,11 @@ at::Tensor idct_2N_forward(
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idct_2N_forward", [&] {
             computeMulExpkAndPad_2N<scalar_t>(
-                    x.data<scalar_t>(), 
-                    expk.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(expk, scalar_t), 
                     M, 
                     N, 
-                    x_pad.data<scalar_t>(),
+                    DREAMPLACE_TENSOR_DATA_PTR(x_pad, scalar_t),
 					num_threads
                     );
 
@@ -82,10 +82,10 @@ at::Tensor idct_2N_forward(
             // reuse x_pad 
             x_pad.resize_({M, N});
             computeTruncation(
-                    y.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(y, scalar_t), 
                     M, 
                     N, 
-                    x_pad.data<scalar_t>(),
+                    DREAMPLACE_TENSOR_DATA_PTR(x_pad, scalar_t),
 					num_threads
                     );
             //std::cout << "z\n" << z << "\n";
@@ -121,10 +121,10 @@ at::Tensor dct2_2N_forward(
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "dct2_2N_forward", [&] {
             computePad<scalar_t>(
-                    x.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t), 
                     M, 
                     N, 
-                    x_pad.data<scalar_t>(),
+                    DREAMPLACE_TENSOR_DATA_PTR(x_pad, scalar_t),
 					num_threads
                     );
 
@@ -133,11 +133,11 @@ at::Tensor dct2_2N_forward(
             // re-use x_pad as output 
             x_pad.resize_({M, N});
             computeMulExpk_2N(
-                    y.data<scalar_t>(), 
-                    expk1.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(y, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(expk1, scalar_t), 
                     M, 
                     N, 
-                    x_pad.data<scalar_t>(),
+                    DREAMPLACE_TENSOR_DATA_PTR(x_pad, scalar_t),
 					num_threads
                     );
             //x_pad.mul_(1.0/N);
@@ -148,10 +148,10 @@ at::Tensor dct2_2N_forward(
             // must zero-out x_pad 
             x_pad.resize_({N, 2*M}).zero_();
             computePad<scalar_t>(
-                    xt.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(xt, scalar_t), 
                     N, 
                     M, 
-                    x_pad.data<scalar_t>(),
+                    DREAMPLACE_TENSOR_DATA_PTR(x_pad, scalar_t),
 					num_threads
                     );
 
@@ -161,11 +161,11 @@ at::Tensor dct2_2N_forward(
             // re-use x_reorder as output 
             x_pad.resize_({N, M});
             computeMulExpk_2N(
-                    y.data<scalar_t>(), 
-                    expk0.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(y, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(expk0, scalar_t), 
                     N, 
                     M, 
-                    x_pad.data<scalar_t>(),
+                    DREAMPLACE_TENSOR_DATA_PTR(x_pad, scalar_t),
 					num_threads
                     );
 
@@ -199,11 +199,11 @@ at::Tensor idct2_2N_forward(
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idct2_2N_forward", [&] {
             computeMulExpkAndPad_2N<scalar_t>(
-                    x.data<scalar_t>(), 
-                    expk1.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(expk1, scalar_t), 
                     M, 
                     N, 
-                    x_pad.data<scalar_t>(),
+                    DREAMPLACE_TENSOR_DATA_PTR(x_pad, scalar_t),
 					num_threads
                     );
 
@@ -213,10 +213,10 @@ at::Tensor idct2_2N_forward(
             // reuse x_pad 
             x_pad.resize_({M, N});
             computeTruncation(
-                    y.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(y, scalar_t), 
                     M, 
                     N, 
-                    x_pad.data<scalar_t>(),
+                    DREAMPLACE_TENSOR_DATA_PTR(x_pad, scalar_t),
 					num_threads
                     );
 
@@ -228,11 +228,11 @@ at::Tensor idct2_2N_forward(
             auto xt = x_pad.transpose(-2, -1).contiguous();
             x_pad.resize_({N, 2*M, 2}).zero_();
             computeMulExpkAndPad_2N<scalar_t>(
-                    xt.data<scalar_t>(), 
-                    expk0.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(xt, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(expk0, scalar_t), 
                     N, 
                     M, 
-                    x_pad.data<scalar_t>(),
+                    DREAMPLACE_TENSOR_DATA_PTR(x_pad, scalar_t),
 					num_threads
                     );
 
@@ -242,10 +242,10 @@ at::Tensor idct2_2N_forward(
             // reuse x_pad 
             x_pad.resize_({N, M});
             computeTruncation(
-                    y.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(y, scalar_t), 
                     N, 
                     M, 
-                    x_pad.data<scalar_t>(),
+                    DREAMPLACE_TENSOR_DATA_PTR(x_pad, scalar_t),
 					num_threads
                     );
 

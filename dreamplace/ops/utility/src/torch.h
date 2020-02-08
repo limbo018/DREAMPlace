@@ -10,6 +10,12 @@
 /// As torch may change the header inclusion conventions, it is better to manage it in a consistent way. 
 #if TORCH_MAJOR_VERSION >= 1
 #include <torch/extension.h>
+
+#if TORCH_MINOR_VERSION >= 3
+#define DREAMPLACE_TENSOR_DATA_PTR(TENSOR, TYPE) TENSOR.data_ptr<TYPE>()
+#else
+#define DREAMPLACE_TENSOR_DATA_PTR(TENSOR, TYPE) TENSOR.data<TYPE>()
+#endif
 #else 
 #include <torch/torch.h>
 #endif

@@ -53,19 +53,19 @@ at::Tensor hpwl_atomic_forward(
     at::Tensor scaled_pos = at::_cast_Int(pos.mul(1000), false);
     at::Tensor partial_hpwl_max = at::zeros({2, num_nets}, scaled_pos.type()); 
     at::Tensor partial_hpwl_min = at::zeros({2, num_nets}, scaled_pos.type()); 
-    partial_hpwl_max[0].masked_fill_(net_mask, std::numeric_limits<T>::min());
-    partial_hpwl_max[1].masked_fill_(net_mask, std::numeric_limits<T>::min());
-    partial_hpwl_min[0].masked_fill_(net_mask, std::numeric_limits<T>::max());
-    partial_hpwl_min[1].masked_fill_(net_mask, std::numeric_limits<T>::max());
+    partial_hpwl_max[0].fill_(std::numeric_limits<T>::min());
+    partial_hpwl_max[1].fill_(std::numeric_limits<T>::min());
+    partial_hpwl_min[0].fill_(std::numeric_limits<T>::max());
+    partial_hpwl_min[1].fill_(std::numeric_limits<T>::max());
 
     computeHPWLCudaAtomicLauncher<T>(
-            scaled_pos.data<T>(), scaled_pos.data<T>()+scaled_pos.numel()/2, 
-            pin2net_map.data<int>(), 
-            net_mask.data<unsigned char>(), 
+            DREAMPLACE_TENSOR_DATA_PTR(scaled_pos, T), DREAMPLACE_TENSOR_DATA_PTR(scaled_pos, T)+scaled_pos.numel()/2, 
+            DREAMPLACE_TENSOR_DATA_PTR(pin2net_map, int), 
+            DREAMPLACE_TENSOR_DATA_PTR(net_mask, unsigned char), 
             num_nets, 
             pin2net_map.numel(), 
-            partial_hpwl_max.data<T>(), 
-            partial_hpwl_min.data<T>()
+            DREAMPLACE_TENSOR_DATA_PTR(partial_hpwl_max, T), 
+            DREAMPLACE_TENSOR_DATA_PTR(partial_hpwl_min, T)
             );
 
     //std::cout << "partial_hpwl_max = " << partial_hpwl_max << "\n";
@@ -74,9 +74,8 @@ at::Tensor hpwl_atomic_forward(
 
     auto delta = partial_hpwl_max-partial_hpwl_min;
 
-    const at::Type& the_type = pos.type();
     at::Tensor hpwl; 
-    switch (the_type.scalarType())
+    switch (pos.scalar_type())
     {
         case at::ScalarType::Double:
             hpwl = at::_cast_Double(delta, false); 
@@ -85,7 +84,7 @@ at::Tensor hpwl_atomic_forward(
             hpwl = at::_cast_Float(delta, false);
             break; 
         default:
-            AT_ERROR("hpwl_atomic_forward", " not implemented for '", the_type.toString(), "'"); 
+            AT_ERROR("hpwl_atomic_forward", " not implemented for '", at::toString(pos.scalar_type()), "'"); 
     }
 
     if (net_weights.numel())

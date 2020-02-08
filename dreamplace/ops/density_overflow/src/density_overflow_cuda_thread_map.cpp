@@ -135,16 +135,16 @@ std::vector<at::Tensor> density_overflow_forward(
     // Call the cuda kernel launcher
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeDensityOverflowMapCudaThreadMapLauncher", [&] {
             computeDensityOverflowMapCudaThreadMapLauncher<scalar_t>(
-                    pos.data<scalar_t>(), pos.data<scalar_t>()+pos.numel()/2, 
-                    node_size_x.data<scalar_t>(), node_size_y.data<scalar_t>(), 
-                    bin_center_x.data<scalar_t>(), bin_center_y.data<scalar_t>(), 
-                    thread2node_map.data<int>(), thread2bin_x_map.data<int>(), thread2bin_y_map.data<int>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t)+pos.numel()/2, 
+                    DREAMPLACE_TENSOR_DATA_PTR(node_size_x, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(node_size_y, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(bin_center_x, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(bin_center_y, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(thread2node_map, int), DREAMPLACE_TENSOR_DATA_PTR(thread2bin_x_map, int), DREAMPLACE_TENSOR_DATA_PTR(thread2bin_y_map, int), 
                     thread2node_map.numel(), 
                     num_nodes, 
                     num_bins_x, num_bins_y, 
                     xl, yl, xh, yh, 
                     bin_size_x, bin_size_y, 
-                    density_map.data<scalar_t>()
+                    DREAMPLACE_TENSOR_DATA_PTR(density_map, scalar_t)
                     );
             });
 
@@ -203,15 +203,15 @@ at::Tensor fixed_density_overflow_map(
         // Call the cuda kernel launcher
         DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeDensityOverflowMapCudaLauncher", [&] {
                 computeDensityOverflowMapCudaLauncher<scalar_t>(
-                        pos.data<scalar_t>()+num_movable_nodes, pos.data<scalar_t>()+pos.numel()/2+num_movable_nodes, 
-                        node_size_x.data<scalar_t>()+num_movable_nodes, node_size_y.data<scalar_t>()+num_movable_nodes, 
-                        bin_center_x.data<scalar_t>(), bin_center_y.data<scalar_t>(), 
+                        DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t)+num_movable_nodes, DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t)+pos.numel()/2+num_movable_nodes, 
+                        DREAMPLACE_TENSOR_DATA_PTR(node_size_x, scalar_t)+num_movable_nodes, DREAMPLACE_TENSOR_DATA_PTR(node_size_y, scalar_t)+num_movable_nodes, 
+                        DREAMPLACE_TENSOR_DATA_PTR(bin_center_x, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(bin_center_y, scalar_t), 
                         num_terminals, 
                         num_bins_x, num_bins_y, 
                         num_impacted_bins_x, num_impacted_bins_y, 
                         xl, yl, xh, yh, 
                         bin_size_x, bin_size_y, 
-                        density_map.data<scalar_t>()
+                        DREAMPLACE_TENSOR_DATA_PTR(density_map, scalar_t)
                         );
                 });
     }

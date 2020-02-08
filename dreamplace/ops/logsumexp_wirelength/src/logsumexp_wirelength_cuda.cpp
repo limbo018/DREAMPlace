@@ -87,17 +87,17 @@ std::vector<at::Tensor> logsumexp_wirelength_forward(
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeLogSumExpWirelengthCudaLauncher", [&] {
             computeLogSumExpWirelengthCudaLauncher<scalar_t>(
-                    pos.data<scalar_t>(), pos.data<scalar_t>()+pos.numel()/2, 
-                    flat_netpin.data<int>(), 
-                    netpin_start.data<int>(), 
-                    netpin_values.data<scalar_t>(), 
-                    net_mask.data<unsigned char>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t)+pos.numel()/2, 
+                    DREAMPLACE_TENSOR_DATA_PTR(flat_netpin, int), 
+                    DREAMPLACE_TENSOR_DATA_PTR(netpin_start, int), 
+                    DREAMPLACE_TENSOR_DATA_PTR(netpin_values, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(net_mask, unsigned char), 
                     num_nets, 
                     flat_netpin.numel(),  
-                    gamma.data<scalar_t>(), 
-                    exp_xy.data<scalar_t>(), exp_nxy.data<scalar_t>(), 
-                    exp_xy_sum.data<scalar_t>(), exp_nxy_sum.data<scalar_t>(),
-                    partial_wl.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(gamma, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(exp_xy, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(exp_nxy, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(exp_xy_sum, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(exp_nxy_sum, scalar_t),
+                    DREAMPLACE_TENSOR_DATA_PTR(partial_wl, scalar_t), 
                     nullptr, 
                     nullptr, nullptr
                     );
@@ -168,27 +168,27 @@ at::Tensor logsumexp_wirelength_backward(
 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeLogSumExpWirelengthCudaLauncher", [&] {
             computeLogSumExpWirelengthCudaLauncher<scalar_t>(
-                    pos.data<scalar_t>(), pos.data<scalar_t>()+num_pins, 
-                    flat_netpin.data<int>(), 
-                    netpin_start.data<int>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t)+num_pins, 
+                    DREAMPLACE_TENSOR_DATA_PTR(flat_netpin, int), 
+                    DREAMPLACE_TENSOR_DATA_PTR(netpin_start, int), 
                     nullptr, 
-                    net_mask.data<unsigned char>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(net_mask, unsigned char), 
                     num_nets, 
                     flat_netpin.numel(),  
-                    gamma.data<scalar_t>(), 
-                    exp_xy.data<scalar_t>(), exp_nxy.data<scalar_t>(), 
-                    exp_xy_sum.data<scalar_t>(), exp_nxy_sum.data<scalar_t>(),
+                    DREAMPLACE_TENSOR_DATA_PTR(gamma, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(exp_xy, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(exp_nxy, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(exp_xy_sum, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(exp_nxy_sum, scalar_t),
                     nullptr, 
-                    grad_pos.data<scalar_t>(), 
-                    grad_out.data<scalar_t>(), grad_out.data<scalar_t>()+num_pins
+                    DREAMPLACE_TENSOR_DATA_PTR(grad_pos, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(grad_out, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(grad_out, scalar_t)+num_pins
                     );
             if (net_weights.numel())
             {
                 integrateNetWeightsCudaLauncher(
-                        pin2net_map.data<int>(), 
-                        net_mask.data<unsigned char>(), 
-                        net_weights.data<scalar_t>(), 
-                        grad_out.data<scalar_t>(), grad_out.data<scalar_t>()+num_pins,
+                        DREAMPLACE_TENSOR_DATA_PTR(pin2net_map, int), 
+                        DREAMPLACE_TENSOR_DATA_PTR(net_mask, unsigned char), 
+                        DREAMPLACE_TENSOR_DATA_PTR(net_weights, scalar_t), 
+                        DREAMPLACE_TENSOR_DATA_PTR(grad_out, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(grad_out, scalar_t)+num_pins,
                         num_pins
                         );
             }

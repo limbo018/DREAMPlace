@@ -90,17 +90,17 @@ at::Tensor electric_force(
             computeElectricForceCudaLauncher<scalar_t>(
                     num_bins_x, num_bins_y, 
                     num_movable_impacted_bins_x, num_movable_impacted_bins_y, 
-                    field_map_x.data<scalar_t>(), field_map_y.data<scalar_t>(), 
-                    pos.data<scalar_t>(), pos.data<scalar_t>()+num_nodes, 
-                    node_size_x_clamped.data<scalar_t>(), node_size_y_clamped.data<scalar_t>(), 
-                    offset_x.data<scalar_t>(), offset_y.data<scalar_t>(),
-                    ratio.data<scalar_t>(),
-                    bin_center_x.data<scalar_t>(), bin_center_y.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(field_map_x, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(field_map_y, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t)+num_nodes, 
+                    DREAMPLACE_TENSOR_DATA_PTR(node_size_x_clamped, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(node_size_y_clamped, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(offset_x, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(offset_y, scalar_t),
+                    DREAMPLACE_TENSOR_DATA_PTR(ratio, scalar_t),
+                    DREAMPLACE_TENSOR_DATA_PTR(bin_center_x, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(bin_center_y, scalar_t), 
                     xl, yl, xh, yh, 
                     bin_size_x, bin_size_y, 
                     num_movable_nodes, 
-                    grad_out.data<scalar_t>(), grad_out.data<scalar_t>()+num_nodes,
-                    sorted_node_map.data<int>()
+                    DREAMPLACE_TENSOR_DATA_PTR(grad_out, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(grad_out, scalar_t)+num_nodes,
+                    DREAMPLACE_TENSOR_DATA_PTR(sorted_node_map, int)
                     );
             });
 
@@ -111,16 +111,16 @@ at::Tensor electric_force(
                 computeElectricForceCudaLauncher<scalar_t>(
                         num_bins_x, num_bins_y, 
                         num_filler_impacted_bins_x, num_filler_impacted_bins_y, 
-                        field_map_x.data<scalar_t>(), field_map_y.data<scalar_t>(), 
-                        pos.data<scalar_t>()+num_physical_nodes, pos.data<scalar_t>()+num_nodes+num_physical_nodes, 
-                        node_size_x_clamped.data<scalar_t>()+num_physical_nodes, node_size_y_clamped.data<scalar_t>()+num_physical_nodes, 
-                        offset_x.data<scalar_t>()+num_physical_nodes, offset_y.data<scalar_t>()+num_physical_nodes,
-                        ratio.data<scalar_t>()+num_physical_nodes,
-                        bin_center_x.data<scalar_t>(), bin_center_y.data<scalar_t>(), 
+                        DREAMPLACE_TENSOR_DATA_PTR(field_map_x, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(field_map_y, scalar_t), 
+                        DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t)+num_physical_nodes, DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t)+num_nodes+num_physical_nodes, 
+                        DREAMPLACE_TENSOR_DATA_PTR(node_size_x_clamped, scalar_t)+num_physical_nodes, DREAMPLACE_TENSOR_DATA_PTR(node_size_y_clamped, scalar_t)+num_physical_nodes, 
+                        DREAMPLACE_TENSOR_DATA_PTR(offset_x, scalar_t)+num_physical_nodes, DREAMPLACE_TENSOR_DATA_PTR(offset_y, scalar_t)+num_physical_nodes,
+                        DREAMPLACE_TENSOR_DATA_PTR(ratio, scalar_t)+num_physical_nodes,
+                        DREAMPLACE_TENSOR_DATA_PTR(bin_center_x, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(bin_center_y, scalar_t), 
                         xl, yl, xh, yh, 
                         bin_size_x, bin_size_y, 
                         num_filler_nodes, 
-                        grad_out.data<scalar_t>()+num_physical_nodes, grad_out.data<scalar_t>()+num_nodes+num_physical_nodes,
+                        DREAMPLACE_TENSOR_DATA_PTR(grad_out, scalar_t)+num_physical_nodes, DREAMPLACE_TENSOR_DATA_PTR(grad_out, scalar_t)+num_nodes+num_physical_nodes,
                         NULL
                         );
                 });

@@ -125,19 +125,19 @@ at::Tensor density_map(
     buf.zero_(); 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeTriangleDensityMapLauncher", [&] {
             computeTriangleDensityMapLauncher<scalar_t>(
-                    pos.data<scalar_t>(), pos.data<scalar_t>()+num_nodes,
-                    node_size_x_clamped.data<scalar_t>(), node_size_y_clamped.data<scalar_t>(),
-                    offset_x.data<scalar_t>(), offset_y.data<scalar_t>(),
-                    ratio.data<scalar_t>(),
-                    bin_center_x.data<scalar_t>(), bin_center_y.data<scalar_t>(),
+                    DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t)+num_nodes,
+                    DREAMPLACE_TENSOR_DATA_PTR(node_size_x_clamped, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(node_size_y_clamped, scalar_t),
+                    DREAMPLACE_TENSOR_DATA_PTR(offset_x, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(offset_y, scalar_t),
+                    DREAMPLACE_TENSOR_DATA_PTR(ratio, scalar_t),
+                    DREAMPLACE_TENSOR_DATA_PTR(bin_center_x, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(bin_center_y, scalar_t),
                     num_movable_nodes,
                     num_bins_x, num_bins_y,
                     xl, yl, xh, yh,
                     bin_size_x, bin_size_y,
                     //false,
                     num_threads,
-                    buf.data<scalar_t>(), 
-                    density_map.data<scalar_t>()
+                    DREAMPLACE_TENSOR_DATA_PTR(buf, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(density_map, scalar_t)
                     );
             });
 
@@ -147,19 +147,19 @@ at::Tensor density_map(
         buf.zero_(); 
         DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeTriangleDensityMapLauncher", [&] {
                 computeTriangleDensityMapLauncher<scalar_t>(
-                        pos.data<scalar_t>()+num_physical_nodes, pos.data<scalar_t>()+num_nodes+num_physical_nodes,
-                        node_size_x_clamped.data<scalar_t>()+num_physical_nodes, node_size_y_clamped.data<scalar_t>()+num_physical_nodes,
-                        offset_x.data<scalar_t>()+num_physical_nodes, offset_y.data<scalar_t>()+num_physical_nodes,
-                        ratio.data<scalar_t>()+num_physical_nodes,
-                        bin_center_x.data<scalar_t>(), bin_center_y.data<scalar_t>(),
+                        DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t)+num_physical_nodes, DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t)+num_nodes+num_physical_nodes,
+                        DREAMPLACE_TENSOR_DATA_PTR(node_size_x_clamped, scalar_t)+num_physical_nodes, DREAMPLACE_TENSOR_DATA_PTR(node_size_y_clamped, scalar_t)+num_physical_nodes,
+                        DREAMPLACE_TENSOR_DATA_PTR(offset_x, scalar_t)+num_physical_nodes, DREAMPLACE_TENSOR_DATA_PTR(offset_y, scalar_t)+num_physical_nodes,
+                        DREAMPLACE_TENSOR_DATA_PTR(ratio, scalar_t)+num_physical_nodes,
+                        DREAMPLACE_TENSOR_DATA_PTR(bin_center_x, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(bin_center_y, scalar_t),
                         num_filler_nodes,
                         num_bins_x, num_bins_y,
                         xl, yl, xh, yh,
                         bin_size_x, bin_size_y,
                         //false,
                         num_threads,
-                        buf.data<scalar_t>(), 
-                        density_map.data<scalar_t>()
+                        DREAMPLACE_TENSOR_DATA_PTR(buf, scalar_t), 
+                        DREAMPLACE_TENSOR_DATA_PTR(density_map, scalar_t)
                         );
                 });
     }
@@ -211,17 +211,17 @@ at::Tensor fixed_density_map(
         buf.zero_(); 
         DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeExactDensityMapLauncher", [&] {
                 computeExactDensityMapLauncher<scalar_t>(
-                        pos.data<scalar_t>()+num_movable_nodes, pos.data<scalar_t>()+num_nodes+num_movable_nodes,
-                        node_size_x.data<scalar_t>()+num_movable_nodes, node_size_y.data<scalar_t>()+num_movable_nodes,
-                        bin_center_x.data<scalar_t>(), bin_center_y.data<scalar_t>(),
+                        DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t)+num_movable_nodes, DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t)+num_nodes+num_movable_nodes,
+                        DREAMPLACE_TENSOR_DATA_PTR(node_size_x, scalar_t)+num_movable_nodes, DREAMPLACE_TENSOR_DATA_PTR(node_size_y, scalar_t)+num_movable_nodes,
+                        DREAMPLACE_TENSOR_DATA_PTR(bin_center_x, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(bin_center_y, scalar_t),
                         num_terminals,
                         num_bins_x, num_bins_y,
                         xl, yl, xh, yh,
                         bin_size_x, bin_size_y,
                         true,
                         num_threads,
-                        buf.data<scalar_t>(), 
-                        density_map.data<scalar_t>()
+                        DREAMPLACE_TENSOR_DATA_PTR(buf, scalar_t), 
+                        DREAMPLACE_TENSOR_DATA_PTR(density_map, scalar_t)
                         );
                 });
 

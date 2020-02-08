@@ -35,9 +35,9 @@ bool legality_check_forward(
     // Call the cuda kernel launcher
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "legalityCheckKernelCPU", [&] {
             legal_flag = legalityCheckKernelCPU<scalar_t>(
-                    pos.data<scalar_t>(), pos.data<scalar_t>() + num_nodes, 
-                    node_size_x.data<scalar_t>(), node_size_y.data<scalar_t>(), 
-                    flat_region_boxes.data<scalar_t>(), flat_region_boxes_start.data<int>(), node2fence_region_map.data<int>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + num_nodes, 
+                    DREAMPLACE_TENSOR_DATA_PTR(node_size_x, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(node_size_y, scalar_t), 
+                    DREAMPLACE_TENSOR_DATA_PTR(flat_region_boxes, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(flat_region_boxes_start, int), DREAMPLACE_TENSOR_DATA_PTR(node2fence_region_map, int), 
                     xl, yl, xh, yh,
                     site_width, row_height, 
                     num_movable_nodes + num_fixed_nodes, ///< movable and fixed cells 
