@@ -12,10 +12,9 @@ from torch.autograd import Function
 from torch import nn
 
 import dreamplace.ops.dct.dct_cpp as dct_cpp
-try: 
+import dreamplace.configure as configure
+if configure.compile_configurations["CUDA_FOUND"] == "TRUE": 
     import dreamplace.ops.dct.dct_cuda as dct_cuda
-except:
-    pass 
 
 import dreamplace.ops.dct.discrete_spectral_transform as discrete_spectral_transform
 

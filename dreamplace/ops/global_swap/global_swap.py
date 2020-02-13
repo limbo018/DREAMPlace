@@ -12,10 +12,9 @@ from torch.autograd import Function
 
 import dreamplace.ops.global_swap.global_swap_cpp as global_swap_cpp
 import dreamplace.ops.global_swap.global_swap_concurrent_cpp as global_swap_concurrent_cpp
-try:
+import dreamplace.configure as configure
+if configure.compile_configurations["CUDA_FOUND"] == "TRUE": 
     import dreamplace.ops.global_swap.global_swap_cuda as global_swap_cuda
-except:
-    pass 
 
 import pdb 
 

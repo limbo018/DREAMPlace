@@ -10,11 +10,10 @@ from torch import nn
 from torch.autograd import Function
 
 import dreamplace.ops.logsumexp_wirelength.logsumexp_wirelength_cpp as logsumexp_wirelength_cpp
-try: 
+import dreamplace.configure as configure
+if configure.compile_configurations["CUDA_FOUND"] == "TRUE": 
     import dreamplace.ops.logsumexp_wirelength.logsumexp_wirelength_cuda as logsumexp_wirelength_cuda
     import dreamplace.ops.logsumexp_wirelength.logsumexp_wirelength_cuda_atomic as logsumexp_wirelength_cuda_atomic
-except:
-    pass 
 import pdb 
 
 class LogSumExpWirelengthFunction(Function):

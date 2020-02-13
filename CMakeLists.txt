@@ -88,6 +88,8 @@ endif(NOT CMAKE_CUDA_FLAGS)
 endif(CUDA_FOUND)
 message("-- CMAKE_CUDA_FLAGS: ${CMAKE_CUDA_FLAGS}")
 
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/dreamplace/configure.py.in ${CMAKE_CURRENT_BINARY_DIR}/dreamplace/configure.py)
+
 add_subdirectory(thirdparty)
 add_subdirectory(dreamplace)
 add_subdirectory(unitest)
@@ -98,3 +100,6 @@ install(
     CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_INSTALL_PREFIX}/__init__.py)"
     )
 
+install(
+    FILES ${CMAKE_CURRENT_BINARY_DIR}/dreamplace/configure.py DESTINATION dreamplace
+    )

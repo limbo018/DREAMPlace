@@ -11,10 +11,9 @@ from torch import nn
 import pdb
 
 import dreamplace.ops.dct.dct_lee_cpp as dct_cpp
-try: 
+import dreamplace.configure as configure
+if configure.compile_configurations["CUDA_FOUND"] == "TRUE": 
     import dreamplace.ops.dct.dct_lee_cuda as dct_cuda
-except:
-    pass 
 
 def dct(x, expk, buf, out):
     """compute discrete cosine transformation, DCT II 
