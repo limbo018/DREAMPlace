@@ -15,6 +15,7 @@ import copy
 
 os.environ["CC"] = "${CMAKE_C_COMPILER}"
 os.environ["CXX"] = "${CMAKE_CXX_COMPILER}"
+os.environ["CUDA_HOME"] = "${CUDA_TOOLKIT_ROOT_DIR}"
 
 limbo_source_dir = "${LIMBO_SOURCE_DIR}"
 limbo_binary_dir = "${LIMBO_BINARY_DIR}"

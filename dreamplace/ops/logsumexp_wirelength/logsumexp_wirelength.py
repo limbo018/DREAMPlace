@@ -12,11 +12,10 @@ from torch.autograd import Function
 import logging
 
 import dreamplace.ops.logsumexp_wirelength.logsumexp_wirelength_cpp_merged as logsumexp_wirelength_cpp_merged
-try: 
+import dreamplace.configure as configure
+if configure.compile_configurations["CUDA_FOUND"] == "TRUE": 
     import dreamplace.ops.logsumexp_wirelength.logsumexp_wirelength_cuda_merged as logsumexp_wirelength_cuda_merged
     import dreamplace.ops.logsumexp_wirelength.logsumexp_wirelength_cuda_atomic as logsumexp_wirelength_cuda_atomic
-except:
-    pass 
 import pdb
 
 logger = logging.getLogger(__name__)

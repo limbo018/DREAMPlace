@@ -13,10 +13,9 @@ from torch.autograd import Function
 from torch.nn import functional as F
 
 import dreamplace.ops.density_potential.density_potential_cpp as density_potential_cpp
-try: 
+import dreamplace.configure as configure
+if configure.compile_configurations["CUDA_FOUND"] == "TRUE": 
     import dreamplace.ops.density_potential.density_potential_cuda as density_potential_cuda
-except:
-    pass 
 
 import pdb 
 import matplotlib

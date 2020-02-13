@@ -30,10 +30,9 @@ from dreamplace.ops.electric_potential.electric_overflow import ElectricDensityM
 from dreamplace.ops.electric_potential.electric_overflow import ElectricOverflow as ElectricOverflow
 
 import dreamplace.ops.electric_potential.electric_potential_cpp as electric_potential_cpp
-try:
+import dreamplace.configure as configure
+if configure.compile_configurations["CUDA_FOUND"] == "TRUE": 
     import dreamplace.ops.electric_potential.electric_potential_cuda as electric_potential_cuda
-except:
-    pass
 
 import pdb
 import matplotlib
