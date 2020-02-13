@@ -12,10 +12,9 @@ from torch.autograd import Function
 
 import dreamplace.ops.independent_set_matching.independent_set_matching_cpp as independent_set_matching_cpp
 import dreamplace.ops.independent_set_matching.independent_set_matching_sequential_cpp as independent_set_matching_sequential_cpp
-try: 
+import dreamplace.configure as configure
+if configure.compile_configurations["CUDA_FOUND"] == "TRUE": 
     import dreamplace.ops.independent_set_matching.independent_set_matching_cuda as independent_set_matching_cuda
-except:
-    pass 
 
 import pdb 
 

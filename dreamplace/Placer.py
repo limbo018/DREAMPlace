@@ -16,6 +16,7 @@ import logging
 root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if root_dir not in sys.path:
 	sys.path.append(root_dir)
+import dreamplace.configure as configure 
 import Params 
 import PlaceDB
 import NonLinearPlace 
@@ -26,6 +27,9 @@ def place(params):
     @brief Top API to run the entire placement flow. 
     @param params parameters 
     """
+
+    assert (not params.gpu) or configure.compile_configurations["CUDA_FOUND"] == 'TRUE', \
+            "CANNOT enable GPU without CUDA compiled"
 
     np.random.seed(params.random_seed)
     # read database 

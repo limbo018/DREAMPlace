@@ -12,11 +12,10 @@ import pdb
 
 import dreamplace.ops.hpwl.hpwl_cpp as hpwl_cpp
 import dreamplace.ops.hpwl.hpwl_cpp_atomic as hpwl_cpp_atomic
-try: 
+import dreamplace.configure as configure
+if configure.compile_configurations["CUDA_FOUND"] == "TRUE": 
     import dreamplace.ops.hpwl.hpwl_cuda as hpwl_cuda
     import dreamplace.ops.hpwl.hpwl_cuda_atomic as hpwl_cuda_atomic
-except:
-    pass 
 
 class HPWLFunction(Function):
     """compute half-perimeter wirelength.

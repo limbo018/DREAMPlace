@@ -10,10 +10,9 @@ from torch import nn
 from torch.autograd import Function
 
 import dreamplace.ops.move_boundary.move_boundary_cpp as move_boundary_cpp
-try: 
+import dreamplace.configure as configure
+if configure.compile_configurations["CUDA_FOUND"] == "TRUE": 
     import dreamplace.ops.move_boundary.move_boundary_cuda as move_boundary_cuda
-except:
-    pass 
 
 class MoveBoundaryFunction(Function):
     """ 

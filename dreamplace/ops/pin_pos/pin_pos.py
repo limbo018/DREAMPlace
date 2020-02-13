@@ -11,11 +11,10 @@ from torch import nn
 from torch.autograd import Function
 
 import dreamplace.ops.pin_pos.pin_pos_cpp as pin_pos_cpp
-try: 
+import dreamplace.configure as configure
+if configure.compile_configurations["CUDA_FOUND"] == "TRUE": 
     import dreamplace.ops.pin_pos.pin_pos_cuda as pin_pos_cuda
     import dreamplace.ops.pin_pos.pin_pos_cuda_segment as pin_pos_cuda_segment
-except:
-    pass 
 
 import pdb
 

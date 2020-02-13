@@ -11,11 +11,10 @@ from torch import nn
 from torch.autograd import Function
 
 import dreamplace.ops.density_overflow.density_overflow_cpp as density_overflow_cpp
-try: 
+import dreamplace.configure as configure
+if configure.compile_configurations["CUDA_FOUND"] == "TRUE": 
     import dreamplace.ops.density_overflow.density_overflow_cuda_thread_map as density_overflow_cuda_thread_map
     import dreamplace.ops.density_overflow.density_overflow_cuda_by_node as density_overflow_cuda_by_node
-except:
-    pass 
 
 import numpy as np 
 import matplotlib

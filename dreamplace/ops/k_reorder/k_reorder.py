@@ -11,10 +11,9 @@ from torch import nn
 from torch.autograd import Function
 
 import dreamplace.ops.k_reorder.k_reorder_cpp as k_reorder_cpp
-try: 
+import dreamplace.configure as configure
+if configure.compile_configurations["CUDA_FOUND"] == "TRUE": 
     import dreamplace.ops.k_reorder.k_reorder_cuda as k_reorder_cuda
-except:
-    pass 
 
 import pdb 
 

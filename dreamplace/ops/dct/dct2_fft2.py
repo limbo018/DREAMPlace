@@ -13,10 +13,9 @@ from torch import nn
 from dreamplace.ops.dct.discrete_spectral_transform import get_exact_expk as precompute_expk
 
 import dreamplace.ops.dct.dct2_fft2_cpp as dct2_fft2_cpp
-try:
+import dreamplace.configure as configure
+if configure.compile_configurations["CUDA_FOUND"] == "TRUE": 
     import dreamplace.ops.dct.dct2_fft2_cuda as dct2_fft2_cuda
-except:
-    pass
 
 
 class DCT2Function(Function):

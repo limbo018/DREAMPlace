@@ -15,6 +15,7 @@ import copy
 
 os.environ["CC"] = "${CMAKE_C_COMPILER}"
 os.environ["CXX"] = "${CMAKE_CXX_COMPILER}"
+os.environ["CUDA_HOME"] = "${CUDA_TOOLKIT_ROOT_DIR}"
 
 utility_dir = "${UTILITY_LIBRARY_DIRS}"
 ops_dir = "${OPS_DIR}"
