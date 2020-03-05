@@ -89,6 +89,32 @@ struct coordinate_traits<unsigned int>
     typedef unsigned int index_type; ///< index (id) 
     typedef double weight_type; ///< type for net or node weights 
 };
+/// specialization for float
+template <>
+struct coordinate_traits<float>
+{
+	typedef float coordinate_type;
+	typedef double euclidean_distance_type;
+    typedef double manhattan_distance_type;
+	typedef double area_type;
+	typedef unsigned int site_index_type; ///< site index in a row structure 
+	typedef double site_area_type; ///< number of sites for a region 
+    typedef unsigned int index_type; ///< index (id) 
+    typedef float weight_type; ///< type for net or node weights 
+};
+/// specialization for double
+template <>
+struct coordinate_traits<double>
+{
+	typedef double coordinate_type;
+	typedef long double euclidean_distance_type;
+    typedef long double manhattan_distance_type;
+	typedef long double area_type;
+	typedef unsigned long site_index_type; ///< site index in a row structure 
+	typedef long double site_area_type; ///< number of sites for a region 
+    typedef unsigned long index_type; ///< index (id) 
+    typedef double weight_type; ///< type for net or node weights 
+};
 
 /// type helper for non-const/const  
 template <typename T, int B> struct ConstTypeHelper;

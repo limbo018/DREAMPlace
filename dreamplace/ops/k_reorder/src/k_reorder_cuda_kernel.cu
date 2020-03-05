@@ -1090,21 +1090,29 @@ int kreorderCUDALauncher(DetailedPlaceDB<T> db, int K, int max_iters, int num_th
         allocateCopyCPU(cpu_db.node_size_y, db.node_size_y, db.num_nodes, T); 
 
         make_row2node_map(cpu_db, cpu_db.x, cpu_db.y, host_row2node_map, num_threads);
-        host_node_space_x.resize(cpu_db.num_nodes);
+        host_node_space_x.resize(cpu_db.num_movable_nodes);
         for (int i = 0; i < cpu_db.num_sites_y; ++i)
         {
             for (unsigned int j = 0; j < host_row2node_map.at(i).size(); ++j)
             {
                 int node_id = host_row2node_map[i][j];
-                auto& space = host_node_space_x[node_id];
-                T space_xl = cpu_db.x[node_id]; 
-                T space_xh = cpu_db.xh; 
-                if (j+1 < host_row2node_map[i].size())
+                if (node_id < db.num_movable_nodes)
                 {
-                    int right_node_id = host_row2node_map[i][j+1];
-                    space_xh = min(space_xh, cpu_db.x[right_node_id]);
+                    auto& space = host_node_space_x[node_id];
+                    T space_xl = cpu_db.x[node_id]; 
+                    T space_xh = cpu_db.xh; 
+                    if (j+1 < host_row2node_map[i].size())
+                    {
+                        int right_node_id = host_row2node_map[i][j+1];
+                        space_xh = min(space_xh, cpu_db.x[right_node_id]);
+                    }
+                    space = space_xh-space_xl;
+                    // align space to sites, as I assume space_xl aligns to sites 
+                    // I also assume node width should be integral numbers of sites 
+                    space = floor(space / db.site_width) * db.site_width; 
+                    T node_size_x = cpu_db.node_size_x[node_id]; 
+                    dreamplaceAssertMsg(space >= node_size_x, "space %g, node_size_x[%d] %g, original space (%g, %g), site_width %g", space, node_id, node_size_x, space_xl, space_xh, db.site_width); 
                 }
-                space = space_xh-space_xl;
 #ifdef DEBUG
                 if (node_id < cpu_db.num_movable_nodes)
                 {

@@ -85,8 +85,9 @@ class PlaceDB (object):
 
         self.num_movable_pins = None 
 
-        self.total_movable_node_area = None
-        self.total_fixed_node_area = None
+        self.total_movable_node_area = None # total movable cell area 
+        self.total_fixed_node_area = None # total fixed cell area 
+        self.total_space_area = None # total placeable space area excluding fixed cells 
 
         # enable filler cells 
         # the Idea from e-place and RePlace 
@@ -135,6 +136,7 @@ class PlaceDB (object):
         self.row_height *= scale_factor
         self.site_width *= scale_factor
         self.rows *= scale_factor 
+        self.total_space_area *= scale_factor * scale_factor # this is area 
         self.flat_region_boxes *= scale_factor
         # may have performance issue 
         # I assume there are not many boxes 
@@ -522,6 +524,7 @@ class PlaceDB (object):
         self.row_height = float(pydb.row_height)
         self.site_width = float(pydb.site_width)
         self.num_movable_pins = pydb.num_movable_pins
+        self.total_space_area = float(pydb.total_space_area)
 
         self.routing_grid_xl = float(pydb.routing_grid_xl) 
         self.routing_grid_yl = float(pydb.routing_grid_yl) 
@@ -622,11 +625,11 @@ row height = %g, site width = %g
                         - np.maximum(self.node_y[self.num_movable_nodes:self.num_physical_nodes - self.num_terminal_NIs], self.yl), 
                         0.0)
                 ))
-        content += "total_movable_node_area = %g, total_fixed_node_area = %g\n" % (self.total_movable_node_area, self.total_fixed_node_area)
+        content += "total_movable_node_area = %g, total_fixed_node_area = %g, total_space_area = %g\n" % (self.total_movable_node_area, self.total_fixed_node_area, self.total_space_area)
 
         # insert filler nodes 
         if params.enable_fillers: 
-            self.total_filler_node_area = max((self.area-self.total_fixed_node_area)*params.target_density-self.total_movable_node_area, 0.0)
+            self.total_filler_node_area = max(self.total_space_area*params.target_density-self.total_movable_node_area, 0.0)
             node_size_order = np.argsort(self.node_size_x[:self.num_movable_nodes])
             filler_size_x = np.mean(self.node_size_x[node_size_order[int(self.num_movable_nodes*0.05):int(self.num_movable_nodes*0.95)]])
             filler_size_y = self.row_height
@@ -636,7 +639,7 @@ row height = %g, site width = %g
         else:
             self.total_filler_node_area = 0 
             self.num_filler_nodes = 0
-        content += "total_filler_node_area = %g, #fillers = %g, filler sizes = %gx%g\n" % (self.total_filler_node_area, self.num_filler_nodes, filler_size_x, filler_size_y)
+        content += "total_filler_node_area = %g, #fillers = %d, filler sizes = %gx%g\n" % (self.total_filler_node_area, self.num_filler_nodes, filler_size_x, filler_size_y)
         if params.routability_opt_flag: 
             content += "================================== routing information =================================\n"
             content += "routing grids (%d, %d)\n" % (self.num_routing_grids_x, self.num_routing_grids_y)

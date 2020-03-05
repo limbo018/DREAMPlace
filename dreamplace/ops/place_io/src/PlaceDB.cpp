@@ -5,6 +5,7 @@
     > Created Time: Wed Jun 17 22:29:55 2015
  ************************************************************************/
 
+#include <numeric>
 #include "PlaceDB.h"
 #include "RowMap.h"
 #include "Iterators.h"
@@ -1348,6 +1349,22 @@ FixedNodeConstIterator PlaceDB::fixedNodeBegin() const
 FixedNodeConstIterator PlaceDB::fixedNodeEnd() const
 {
     return FixedNodeConstIterator (m_numFixed, 0, m_numFixed, this);
+}
+PlaceBlockageIterator PlaceDB::placeBlockageBegin()
+{
+    return PlaceBlockageIterator (0, 0, m_numPlaceBlockages, this);
+}
+PlaceBlockageIterator PlaceDB::placeBlockageEnd()
+{
+    return PlaceBlockageIterator (m_numPlaceBlockages, 0, m_numPlaceBlockages, this);
+}
+PlaceBlockageConstIterator PlaceDB::placeBlockageBegin() const
+{
+    return PlaceBlockageConstIterator (0, 0, m_numPlaceBlockages, this);
+}
+PlaceBlockageConstIterator PlaceDB::placeBlockageEnd() const
+{
+    return PlaceBlockageConstIterator (m_numPlaceBlockages, 0, m_numPlaceBlockages, this);
 }
 IOPinNodeIterator PlaceDB::iopinNodeBegin()
 {

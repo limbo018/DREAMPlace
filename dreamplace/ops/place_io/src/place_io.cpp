@@ -316,6 +316,8 @@ struct PyPlaceDB
 
     int row_height;
     int site_width;
+    double total_space_area; ///< total placeable space area excluding fixed cells. 
+                            ///< This is not the exact area, because we cannot exclude the overlapping fixed cells within a bin. 
 
     int num_movable_pins; 
 
@@ -331,13 +333,45 @@ struct PyPlaceDB
     void set(PlaceDB const& db)
     {
         num_terminal_NIs = db.numIOPin(); // IO pins 
+        // use a rough number of bins for computing total_space_area
+        PlaceDB::index_type num_bins_x = std::sqrt(db.numMovable()); 
+        PlaceDB::index_type num_bins_y = num_bins_x; 
+        double bin_size_x = db.rowBbox().width() / num_bins_x; 
+        double bin_size_y = db.rowBbox().height() / num_bins_y; 
+        double total_fixed_node_area = 0; // compute total area of fixed cells, which is an upper bound  
+        std::vector<double> fixed_density_map (num_bins_x * num_bins_y, 0);
         // record original node to new node mapping 
         std::vector<std::vector<PlaceDB::index_type> > mNode2NewNodes (db.nodes().size()); 
 
+        // add a node to a bin 
+        auto addNode2Bin = [&](Box<PlaceDB::coordinate_type> const& box) {
+            Box<double> intersect_box (box.xl(), box.yl(), box.xh(), box.yh()); 
+            PlaceDB::index_type bxl = std::max(PlaceDB::index_type((intersect_box.xl() - db.rowXL()) / bin_size_x), (PlaceDB::index_type)0); 
+            PlaceDB::index_type bxh = std::min(PlaceDB::index_type(std::ceil((intersect_box.xh() - db.rowXL()) / bin_size_x)), num_bins_x); 
+            PlaceDB::index_type byl = std::max(PlaceDB::index_type((intersect_box.yl() - db.rowYL()) / bin_size_y), (PlaceDB::index_type)0); 
+            PlaceDB::index_type byh = std::min(PlaceDB::index_type(std::ceil((intersect_box.yh() - db.rowYL()) / bin_size_y)), num_bins_y); 
+            for (PlaceDB::index_type ix = bxl; ix < bxh; ++ix)
+            {
+                for (PlaceDB::index_type iy = byl; iy < byh; ++iy)
+                {
+                    Box<double> bin_box (
+                            db.rowXL() + ix * bin_size_x, 
+                            db.rowYL() + iy * bin_size_y, 
+                            db.rowXL() + (ix + 1) * bin_size_x, 
+                            db.rowYL() + (iy + 1) * bin_size_y 
+                            ); 
+                    auto area = intersectArea(bin_box, intersect_box);
+                    //dreamplacePrint(kDEBUG, "(%g, %g, %g, %g) with bin (%u, %u) @ (%g, %g, %g, %g) area %g\n", 
+                    //        intersect_box.xl(), intersect_box.yl(), intersect_box.xh(), intersect_box.yh(), 
+                    //        ix, iy, bin_box.xl(), bin_box.yl(), bin_box.xh(), bin_box.yh(), (double)area);
+                    fixed_density_map[ix * num_bins_y + iy] += area; 
+                }
+            }
+        };
         // general add a node 
         auto addNode = [&](Node const& node, 
                 std::string const& name, Orient orient, 
-                Box<PlaceDB::coordinate_type> const& box) {
+                Box<PlaceDB::coordinate_type> const& box, bool dist2map) {
             // this id may be different from node id 
             int id = node_names.size(); 
             node_name2id_map[pybind11::str(name)] = id; 
@@ -351,12 +385,18 @@ struct PyPlaceDB
             node2orig_node_map.append(node.id()); 
             // record original node to new node mapping 
             mNode2NewNodes.at(node.id()).push_back(id); 
+            if (dist2map)
+            {
+                //dreamplacePrint(kDEBUG, "node %s\n", db.nodeName(node).c_str());
+                addNode2Bin(box);
+            }
         };
         // add obstruction boxes for fixed nodes 
         // initialize node shapes from obstruction 
         // I do not differentiate obstruction boxes at different layers
         // At least, this is true for DAC/ICCAD 2012 benchmarks 
-        auto addObsBoxes = [&](Node const& node, std::vector<Box<PlaceDB::coordinate_type> > const& vBox){
+        auto addObsBoxes = [&](Node const& node, std::vector<Box<PlaceDB::coordinate_type> > const& vBox, bool dist2map){
+            Box<PlaceDB::coordinate_type> bbox; 
             for (PlaceDB::index_type i = 0; i < vBox.size(); ++i)
             {
                 auto box = vBox[i]; 
@@ -367,19 +407,25 @@ struct PyPlaceDB
                        );
                 char buf[128]; 
                 dreamplaceSPrint(kNONE, buf, "%s.DREAMPlace.Shape%u", db.nodeName(node).c_str(), i); 
-                addNode(node, std::string(buf), Orient(node.orient()), box);
+                addNode(node, std::string(buf), Orient(node.orient()), box, dist2map);
+                bbox.encompass(box); 
+            }
+            // compute the upper bound of fixed cell area 
+            if (dist2map)
+            {
+                total_fixed_node_area += bbox.area();
             }
         };
 
-        num_terminals = 0; // regard both fixed macros and placement blockages as macros 
+        num_terminals = 0; // regard only fixed macros as macros, placement blockages are ignored  
         for (unsigned int i = 0; i < db.nodes().size(); ++i)
         {
             Node const& node = db.node(i); 
             if (node.status() != PlaceStatusEnum::FIXED || i >= db.nodes().size() - num_terminal_NIs)
             {
-                addNode(node, db.nodeName(node), Orient(node.orient()), node); 
+                addNode(node, db.nodeName(node), Orient(node.orient()), node, false); 
             }
-            else // fixed cells are special cases 
+            else if (db.nodeName(node).size() < 23 || db.nodeName(node).substr(0, 23) != "DREAMPlacePlaceBlockage") // fixed cells are special cases, skip placement blockages (looks like ISPD2015 benchmarks do not process placement blockages) 
             {
                 Macro const& macro = db.macro(db.macroId(node));
 
@@ -388,29 +434,42 @@ struct PyPlaceDB
                     MacroObs::ObsConstIterator foundObs = macro.obs().obsMap().find("Bookshelf.Shape"); 
                     if (foundObs != macro.obs().end()) // for BOOKSHELF
                     {
-                        addObsBoxes(node, foundObs->second); 
+                        addObsBoxes(node, foundObs->second, true); 
                         num_terminals += foundObs->second.size(); 
                     }
                     else 
                     {
                         for (auto it = macro.obs().begin(), ite = macro.obs().end(); it != ite; ++it)
                         {
-                            addObsBoxes(node, it->second); 
+                            addObsBoxes(node, it->second, true); 
                             num_terminals += it->second.size(); 
                         }
                     }
                 }
                 else 
                 {
-                    addNode(node, db.nodeName(node), Orient(node.orient()), node); 
+                    addNode(node, db.nodeName(node), Orient(node.orient()), node, true); 
                     num_terminals += 1; 
+                    // compute upper bound of total fixed cell area 
+                    total_fixed_node_area += node.area();
                 }
             }
         }
-        dreamplacePrint(kINFO, "convert %u fixed cells into %u ones due to some non-rectangular cells\n", db.numFixed(), num_terminals); 
         // we only know num_nodes when all fixed cells with shapes are expanded 
-        num_nodes = db.nodes().size() + num_terminals - db.numFixed(); 
+        num_nodes = db.nodes().size() + num_terminals - db.numFixed() - db.numPlaceBlockages(); 
         dreamplaceAssertMsg(num_nodes == node_x.size(), "%u != %lu", num_nodes, node_x.size());
+
+        // this is different from simply summing up the area of all fixed nodes 
+        double total_fixed_node_overlap_area = 0;
+        double bin_area = bin_size_x * bin_size_y;
+        for (auto density : fixed_density_map)
+        {
+            total_fixed_node_overlap_area += std::min(density, bin_area); 
+        }
+        // the total overlap area should not exceed the upper bound; 
+        // current estimation may exceed if there are many overlapping fixed cells or boxes 
+        total_space_area = db.rowBbox().area() - std::min(total_fixed_node_overlap_area, total_fixed_node_area); 
+        dreamplacePrint(kDEBUG, "fixed area overlap: %g total: %g, space area = %g\n", total_fixed_node_overlap_area, total_fixed_node_area, total_space_area);
 
         // construct node2pin_map and flat_node2pin_map
         int count = 0; 
@@ -1193,6 +1252,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         .def_readwrite("yh", &DREAMPLACE_NAMESPACE::PyPlaceDB::yh)
         .def_readwrite("row_height", &DREAMPLACE_NAMESPACE::PyPlaceDB::row_height)
         .def_readwrite("site_width", &DREAMPLACE_NAMESPACE::PyPlaceDB::site_width)
+        .def_readwrite("total_space_area", &DREAMPLACE_NAMESPACE::PyPlaceDB::total_space_area)
         .def_readwrite("num_movable_pins", &DREAMPLACE_NAMESPACE::PyPlaceDB::num_movable_pins)
         .def_readwrite("num_routing_grids_x", &DREAMPLACE_NAMESPACE::PyPlaceDB::num_routing_grids_x)
         .def_readwrite("num_routing_grids_y", &DREAMPLACE_NAMESPACE::PyPlaceDB::num_routing_grids_y)
