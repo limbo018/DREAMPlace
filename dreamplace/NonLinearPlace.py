@@ -132,7 +132,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                         if len(metrics) > 1: 
                             cur_metric = metrics[-1][-1][-1]
                             prev_metric = metrics[-2][-1][-1]
-                            if Lgamma_step > 100 and ((cur_metric.overflow < params.stop_overflow and cur_metric.hpwl > prev_metric.hpwl) or cur_metric.max_density < 1.0):
+                            if Lgamma_step > 100 and ((cur_metric.overflow < params.stop_overflow and cur_metric.hpwl > prev_metric.hpwl) or cur_metric.max_density < params.target_density):
                                 logging.debug("Lgamma stopping criteria: %d > 100 and (( %g < 0.1 and %g > %g ) or %g < 1.0)" % (Lgamma_step, cur_metric.overflow, cur_metric.hpwl, prev_metric.hpwl, cur_metric.max_density))
                                 return True
                         return False 

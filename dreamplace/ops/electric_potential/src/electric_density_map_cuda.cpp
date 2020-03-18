@@ -197,6 +197,10 @@ at::Tensor fixed_density_map(
                         DREAMPLACE_TENSOR_DATA_PTR(density_map, scalar_t)
                         );
                 });
+
+        // Fixed cells may have overlaps. We should not over-compute the density map. 
+        // This is just an approximate fix. It does not guarantee the exact value in each bin. 
+        density_map.clamp_max_(bin_size_x*bin_size_y);
     }
 
     return density_map;

@@ -31,6 +31,7 @@ DREAMPLACE_BEGIN_NAMESPACE
 /// different tags for data traversal 
 struct MovableNodeIteratorTag;
 struct FixedNodeIteratorTag;
+struct PlaceBlockageIteratorTag;
 struct IOPinNodeIteratorTag;
 struct CellMacroIteratorTag;
 struct IOPinMacroIteratorTag;
@@ -45,12 +46,14 @@ class PlaceDB;
 /// iterator 
 typedef DBIterator<PlaceDB, MovableNodeIteratorTag> MovableNodeIterator;
 typedef DBIterator<PlaceDB, FixedNodeIteratorTag> FixedNodeIterator;
+typedef DBIterator<PlaceDB, PlaceBlockageIteratorTag> PlaceBlockageIterator;
 typedef DBIterator<PlaceDB, IOPinNodeIteratorTag> IOPinNodeIterator;
 typedef DBIterator<PlaceDB, CellMacroIteratorTag> CellMacroIterator;
 typedef DBIterator<PlaceDB, IOPinMacroIteratorTag> IOPinMacroIterator;
 /// const iterator 
 typedef DBIterator<const PlaceDB, MovableNodeIteratorTag> MovableNodeConstIterator;
 typedef DBIterator<const PlaceDB, FixedNodeIteratorTag> FixedNodeConstIterator;
+typedef DBIterator<const PlaceDB, PlaceBlockageIteratorTag> PlaceBlockageConstIterator;
 typedef DBIterator<const PlaceDB, IOPinNodeIteratorTag> IOPinNodeConstIterator;
 typedef DBIterator<const PlaceDB, CellMacroIteratorTag> CellMacroConstIterator;
 typedef DBIterator<const PlaceDB, IOPinMacroIteratorTag> IOPinMacroConstIterator;
@@ -215,6 +218,11 @@ class PlaceDB : public DefParser::DefDataBase
         FixedNodeIterator fixedNodeEnd();
         FixedNodeConstIterator fixedNodeBegin() const;
         FixedNodeConstIterator fixedNodeEnd() const;
+        /// traverse placement blockage 
+        PlaceBlockageIterator placeBlockageBegin();
+        PlaceBlockageIterator placeBlockageEnd();
+        PlaceBlockageConstIterator placeBlockageBegin() const;
+        PlaceBlockageConstIterator placeBlockageEnd() const;
         /// traverse io pin virtual node 
         IOPinNodeIterator iopinNodeBegin();
         IOPinNodeIterator iopinNodeEnd();
