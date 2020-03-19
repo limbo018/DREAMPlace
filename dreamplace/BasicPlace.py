@@ -666,3 +666,41 @@ class BasicPlace (nn.Module):
                 placedb.num_filler_nodes, 
                 pos 
                 ), f)
+
+    def load(self, params, placedb, filename):
+        """
+        @brief dump intermediate solution as compressed pickle file (.pklz)
+        @param params parameters 
+        @param placedb placement database 
+        @param iteration optimization step 
+        @param pos locations of cells 
+        @param filename output file name 
+        """
+        with gzip.open(filename, "rb") as f:
+            data = pickle.load(f)
+            self.data_collections.node_size_x.data = data[0].data.to(self.device)
+            self.data_collections.node_size_y.data = data[1].data.to(self.device) 
+            self.data_collections.flat_net2pin_map.data = data[2].data.to(self.device)
+            self.data_collections.flat_net2pin_start_map.data = data[3].data.to(self.device)
+            self.data_collections.pin2net_map.data = data[4].data.to(self.device)
+            self.data_collections.flat_node2pin_map.data = data[5].data.to(self.device)
+            self.data_collections.flat_node2pin_start_map.data = data[6].data.to(self.device)
+            self.data_collections.pin2node_map.data = data[7].data.to(self.device)
+            self.data_collections.pin_offset_x.data = data[8].data.to(self.device) 
+            self.data_collections.pin_offset_y.data = data[9].data.to(self.device) 
+            self.data_collections.net_mask_ignore_large_degrees.data = data[10].data.to(self.device) 
+            placedb.xl = data[11] 
+            placedb.yl = data[12] 
+            placedb.xh = data[13] 
+            placedb.yh = data[14] 
+            placedb.site_width = data[15] 
+            placedb.row_height = data[16] 
+            placedb.num_bins_x = data[17] 
+            placedb.num_bins_y = data[18] 
+            num_movable_nodes = data[19] 
+            num_nodes = data[0].numel()
+            placedb.num_terminal_NIs = data[20] 
+            placedb.num_filler_nodes = data[21] 
+            placedb.num_physical_nodes = num_nodes - placedb.num_filler_nodes
+            placedb.num_terminals = placedb.num_physical_nodes - placedb.num_terminal_NIs - num_movable_nodes
+            self.data_collections.pos[0].data = data[22].data.to(self.device)
