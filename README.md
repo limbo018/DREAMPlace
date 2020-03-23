@@ -119,10 +119,18 @@ You can use the Docker container to avoid building all the dependencies yourself
 Run with GPU. 
 ```
 docker run --gpus 1 -it -v $(pwd):/DREAMPlace limbo018/dreamplace:cuda bash
+
+Run with GPU on windows
+
+docker run --gpus 1 -it -v /dreamplace limbo018/dreamplace:cuda bash
 ```
 Run without GPU. 
 ```
 docker run -it -v $(pwd):/DREAMPlace limbo018/dreamplace:cuda bash
+
+Run without GPU on windows
+
+docker run -it -v /dreamplace limbo018/dreamplace:cuda bash
 ```
 6. ```cd /DREAMPlace```. 
 7. Go to next section to complete building. 
