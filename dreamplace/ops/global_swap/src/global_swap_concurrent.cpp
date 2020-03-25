@@ -114,10 +114,7 @@ Space<T> get_space(const DetailedPlaceDB<T>& db, const SwapState<T>& state, int 
         space.xh = std::min(space.xh, db.x[right_node_id]);
     }
     // align space to sites 
-    T space_xl = db.align2site(space.xl);
-    space.xl = (space_xl < space.xl)? space_xl+db.site_width : space.xl;
-    space.xh = db.align2site(space.xh);
-    return space; 
+    return db.align2site(space); 
 }
 
 template <typename T>

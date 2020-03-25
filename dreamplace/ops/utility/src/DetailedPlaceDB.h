@@ -158,6 +158,14 @@ struct DetailedPlaceDB
     {
         return floor((xx-xl)/site_width)*site_width+xl; 
     }
+    /// @brief align x coordinate to site for a space;
+    /// make sure the space is shrinked. 
+    inline Space<T> align2site(Space<T> space) const 
+    {
+        space.xl = ceil((space.xl - xl) / site_width) * site_width + xl;
+        space.xh = floor((space.xh - xl) / site_width) * site_width + xl;
+        return space; 
+    }
     /// @brief compute optimal region for a cell 
     /// The method to compute optimal region ignores the pin offsets of the target cell. 
     /// If we want to consider the pin offsets, there may not be feasible box for the optimal region. 
