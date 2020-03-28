@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include "assert.h"
 #include "cuda_runtime.h"
-#include "utility/src/csrmv.h"
 #include "utility/src/print.h"
 #include "utility/src/Msg.h"
 
