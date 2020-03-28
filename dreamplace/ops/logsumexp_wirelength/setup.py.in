@@ -58,7 +58,7 @@ if "${CUDA_FOUND}".upper() == 'TRUE':
                 ], 
             include_dirs=copy.deepcopy(include_dirs), 
             library_dirs=copy.deepcopy(lib_dirs),
-            libraries=copy.deepcopy(libs),
+            libraries=['cusparse', 'culibos'] + copy.deepcopy(libs),
             extra_compile_args={
                 'cxx': ['-O2', torch_major_version, torch_minor_version], 
                 'nvcc': copy.deepcopy(cuda_flags)

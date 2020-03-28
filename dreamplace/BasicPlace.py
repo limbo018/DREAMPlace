@@ -250,6 +250,7 @@ class BasicPlace (nn.Module):
         tt = time.time()
         self.data_collections = PlaceDataCollection(self.pos, params, placedb, self.device)
         logging.debug("build data_collections takes %.2f seconds" % (time.time()-tt))
+
         # similarly I wrap all ops 
         tt = time.time()
         self.op_collections = PlaceOpCollection()
