@@ -28,6 +28,7 @@ set(CMAKE_CXX_STANDARD 11)
 
 find_program(PYTHON "python" REQUIRED)
 find_package(ZLIB REQUIRED)
+set(Boost_NO_BOOST_CMAKE TRUE)
 find_package(Boost 1.55.0 REQUIRED)
 get_filename_component(Boost_DIR ${Boost_INCLUDE_DIRS}/../ ABSOLUTE)
 find_package(CUDA 9.0)
