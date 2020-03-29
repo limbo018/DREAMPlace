@@ -52,6 +52,7 @@ class PlaceObj(nn.Module):
         self.data_collections = data_collections
         self.op_collections = op_collections
         self.density_weight = torch.tensor([density_weight], dtype=self.data_collections.pos[0].dtype, device=self.data_collections.pos[0].device)
+        self.density_square_weight = params.density_square_weight
         self.gamma = torch.tensor(10*self.base_gamma(params, placedb), dtype=self.data_collections.pos[0].dtype, device=self.data_collections.pos[0].device)
 
         # compute weighted average wirelength from position
@@ -99,7 +100,7 @@ class PlaceObj(nn.Module):
         """
         wirelength = self.op_collections.wirelength_op(pos)
         density = self.op_collections.density_op(pos)
-        return wirelength + self.density_weight*density
+        return wirelength + self.density_weight * density + 0.5 * self.density_square_weight * (density ** 2)
 
     def obj_and_grad_fn(self, pos):
         """
@@ -392,8 +393,13 @@ class PlaceObj(nn.Module):
                 else:
                     mu = UPPER_PCOF*torch.pow(UPPER_PCOF, -delta_hpwl/ref_hpwl).clamp(min=LOWER_PCOF, max=UPPER_PCOF)
                 self.density_weight *= mu
-
         return update_density_weight_op
+
+    # def build_update_density_weight(self, params, placedb):
+    #     def update_density_weight_op(pos):
+    #         with torch.no_grad():
+    #             self.density_weight += self.density_square_weight * self.op_collections.density_op(pos)
+    #     return update_density_weight_op
 
     def base_gamma(self, params, placedb):
         """

@@ -243,6 +243,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                         # update density weight 
                         if Llambda_flat_iteration > 1: 
                             model.op_collections.update_density_weight_op(Llambda_metrics[-1][-1], Llambda_metrics[-2][-1] if len(Llambda_metrics) > 1 else Lgamma_metrics[-2][-1][-1], Llambda_flat_iteration)
+                            # model.op_collections.update_density_weight_op(model.data_collections.pos[0])
                         #logging.debug("update density weight %.3f ms" % ((time.time()-t2)*1000))
                         if Llambda_stop_criterion(Lgamma_step, Llambda_density_weight_step, Llambda_metrics):
                             break 

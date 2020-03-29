@@ -44,6 +44,10 @@
     "descripton" : "initial weight of density cost", 
     "default" : 8e-5
     },
+"density_square_weight" : {
+    "descripton" : "initial weight of density square cost", 
+    "default" : 1e-15
+    },
 "random_seed" : {
     "descripton" : "random seed", 
     "default" : 1000
