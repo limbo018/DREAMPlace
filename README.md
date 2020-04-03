@@ -116,20 +116,20 @@ You can use the Docker container to avoid building all the dependencies yourself
     ```
 5. Enter bash environment of the container. Replace ```limbo018``` with your name if option 2 is chosen in the previous step. 
 
-Run with GPU. 
+Run with GPU on Linux. 
 ```
 docker run --gpus 1 -it -v $(pwd):/DREAMPlace limbo018/dreamplace:cuda bash
-
-Run with GPU on windows
-
+```
+Run with GPU on Windows.
+```
 docker run --gpus 1 -it -v /dreamplace limbo018/dreamplace:cuda bash
 ```
-Run without GPU. 
+Run without GPU on Linux. 
 ```
 docker run -it -v $(pwd):/DREAMPlace limbo018/dreamplace:cuda bash
-
-Run without GPU on windows
-
+```
+Run without GPU on Windows.
+```
 docker run -it -v /dreamplace limbo018/dreamplace:cuda bash
 ```
 6. ```cd /DREAMPlace```. 
