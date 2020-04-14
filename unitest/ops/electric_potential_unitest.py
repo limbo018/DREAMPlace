@@ -215,6 +215,8 @@ class ElectricPotentialOpTest(unittest.TestCase):
 
             np.testing.assert_allclose(result.detach().numpy(),
                                        result_cuda.data.cpu().detach().numpy())
+            np.testing.assert_allclose(grad.detach().numpy(),
+                                       grad_cuda.data.cpu().detach().numpy())
 
 
 def plot(plot_count, density_map, padding, name):
