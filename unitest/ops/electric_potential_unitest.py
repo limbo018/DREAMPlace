@@ -83,7 +83,8 @@ class ElectricPotentialOpTest(unittest.TestCase):
         #node_size_x = np.array([1.0]).astype(dtype)
         #node_size_y = np.array([1.0]).astype(dtype)
         num_nodes = len(xx)
-        num_terminals = len(xx) - 1
+        num_movable_nodes = 1
+        num_terminals = len(xx) - num_movable_nodes
 
         scale_factor = 1.0
 
@@ -139,7 +140,7 @@ class ElectricPotentialOpTest(unittest.TestCase):
             dtype = torch.float64
         elif dtype == np.float32:
             dtype = torch.float32
-        movable_size_x = node_size_x[:num_nodes]
+        movable_size_x = node_size_x[:num_movable_nodes]
         _, sorted_node_map = torch.sort(
             torch.tensor(movable_size_x, requires_grad=False, dtype=dtype))
         sorted_node_map = sorted_node_map.to(torch.int32).contiguous()
@@ -158,7 +159,7 @@ class ElectricPotentialOpTest(unittest.TestCase):
             yh=yh,
             bin_size_x=bin_size_x,
             bin_size_y=bin_size_y,
-            num_movable_nodes=num_nodes - num_terminals,
+            num_movable_nodes=num_movable_nodes,
             num_terminals=num_terminals,
             num_filler_nodes=0,
             padding=0,
@@ -195,7 +196,7 @@ class ElectricPotentialOpTest(unittest.TestCase):
                 yh=yh,
                 bin_size_x=bin_size_x,
                 bin_size_y=bin_size_y,
-                num_movable_nodes=num_nodes - num_terminals,
+                num_movable_nodes=num_movable_nodes,
                 num_terminals=num_terminals,
                 num_filler_nodes=0,
                 padding=0,
@@ -215,6 +216,8 @@ class ElectricPotentialOpTest(unittest.TestCase):
 
             np.testing.assert_allclose(result.detach().numpy(),
                                        result_cuda.data.cpu().detach().numpy())
+            np.testing.assert_allclose(grad.detach().numpy(),
+                                       grad_cuda.data.cpu().detach().numpy())
 
 
 def plot(plot_count, density_map, padding, name):
