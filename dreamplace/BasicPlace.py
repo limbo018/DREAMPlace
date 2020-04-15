@@ -53,6 +53,7 @@ class PlaceDataCollection (object):
         # other tensors required to build ops 
         self.node_size_x = torch.from_numpy(placedb.node_size_x).to(device)
         self.node_size_y = torch.from_numpy(placedb.node_size_y).to(device)
+        self.node_areas = self.node_size_x * self.node_size_y 
 
         self.pin_offset_x = torch.tensor(placedb.pin_offset_x, dtype=self.pos[0].dtype, device=device)
         self.pin_offset_y = torch.tensor(placedb.pin_offset_y, dtype=self.pos[0].dtype, device=device)

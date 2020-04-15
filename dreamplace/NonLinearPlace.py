@@ -132,6 +132,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                     if len(metrics) > 1:
                         model.op_collections.update_density_weight_op(metrics)
                         model.op_collections.update_gamma_op(step, cur_metric.overflow)
+                        model.op_collections.precondition_op.set_overflow(cur_metric.overflow)
                     cur_metric.density_weight = model.density_weight.data
                     cur_metric.gamma = model.gamma.data
                     #logging.debug("update density weight %.3f ms" % ((time.time()-t2)*1000))

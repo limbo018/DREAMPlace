@@ -527,7 +527,7 @@ class PlaceDB (object):
 
         # scale 
         # adjust scale_factor if not set 
-        if params.scale_factor == 0:
+        if params.scale_factor == 0.0 or self.site_width != 1.0:
             params.scale_factor = 1.0 / self.site_width
             logging.info("set scale_factor = %g, as site_width = %g" % (params.scale_factor, self.site_width))
         self.scale(params.scale_factor)
