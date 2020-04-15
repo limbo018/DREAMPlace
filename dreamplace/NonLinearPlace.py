@@ -316,6 +316,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
 
                     # gradually reduce gamma to tradeoff smoothness and accuracy 
                     model.op_collections.update_gamma_op(Lgamma_step, Llambda_metrics[-1][-1].overflow)
+                    model.op_collections.precondition_op.set_overflow(Llambda_metrics[-1][-1].overflow)
                     if Lgamma_stop_criterion(Lgamma_step, Lgamma_metrics):
                         break 
 

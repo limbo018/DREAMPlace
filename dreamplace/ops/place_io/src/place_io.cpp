@@ -444,6 +444,12 @@ struct PyPlaceDB
                             addObsBoxes(node, it->second, true); 
                             num_terminals += it->second.size(); 
                         }
+
+                        // I do not know whether we should add the bounding box of this fixed cell as well 
+                        addNode(node, db.nodeName(node), Orient(node.orient()), node, true); 
+                        num_terminals += 1; 
+                        // compute upper bound of total fixed cell area 
+                        total_fixed_node_area += node.area();
                     }
                 }
                 else 

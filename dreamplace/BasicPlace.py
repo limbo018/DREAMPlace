@@ -73,11 +73,11 @@ class PlaceDataCollection (object):
 
             # detect movable macros and scale down the density to avoid halos 
             # I use a heuristic that cells whose areas are 10x of the mean area will be regarded movable macros in global placement 
-            node_areas = self.node_size_x * self.node_size_y
+            self.node_areas = self.node_size_x * self.node_size_y
             if self.target_density < 1: 
-                mean_area = node_areas[:placedb.num_movable_nodes].mean().mul_(10)
+                mean_area = self.node_areas[:placedb.num_movable_nodes].mean().mul_(10)
                 row_height = self.node_size_y[:placedb.num_movable_nodes].min().mul_(2)
-                self.movable_macro_mask = (node_areas[:placedb.num_movable_nodes] > mean_area) & (self.node_size_y[:placedb.num_movable_nodes] > row_height)
+                self.movable_macro_mask = (self.node_areas[:placedb.num_movable_nodes] > mean_area) & (self.node_size_y[:placedb.num_movable_nodes] > row_height)
             else: # no movable macros 
                 self.movable_macro_mask = None
 
@@ -90,7 +90,7 @@ class PlaceDataCollection (object):
             self.unit_pin_capacity = torch.empty(1, dtype=self.pos[0].dtype, device=device)
             self.unit_pin_capacity.data.fill_(params.unit_pin_capacity)
             if params.routability_opt_flag:
-                unit_pin_capacity = self.pin_weights[:placedb.num_movable_nodes] / node_areas[:placedb.num_movable_nodes]
+                unit_pin_capacity = self.pin_weights[:placedb.num_movable_nodes] / self.node_areas[:placedb.num_movable_nodes]
                 avg_pin_capacity = unit_pin_capacity.mean() * self.target_density
                 # min(computed, params.unit_pin_capacity)
                 self.unit_pin_capacity = avg_pin_capacity.clamp_(max=params.unit_pin_capacity)

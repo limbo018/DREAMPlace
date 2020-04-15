@@ -30,6 +30,44 @@ import dreamplace.ops.pin_utilization.pin_utilization as pin_utilization
 import dreamplace.ops.nctugr_binary.nctugr_binary as nctugr_binary
 import dreamplace.ops.adjust_node_area.adjust_node_area as adjust_node_area
 
+class PreconditionOp:
+    """Preconditioning engine is critical for convergence. 
+    Need to be carefully designed. 
+    """
+    def __init__(self, placedb, data_collections):
+        self.placedb = placedb
+        self.data_collections = data_collections
+        self.iteration = 0
+        self.alpha = 1.0
+        self.best_overflow = None  
+        self.overflows = []
+
+    def set_overflow(self, overflow):
+        self.overflows.append(overflow)
+        if self.best_overflow is None:
+            self.best_overflow = overflow
+        else:
+            self.best_overflow = min(self.best_overflow, overflow)
+
+    def __call__(self, grad, density_weight):
+        """Introduce alpha parameter to avoid divergence. 
+        It is tricky for this parameter to increase. 
+        """
+        with torch.no_grad(): 
+            precond = self.data_collections.num_pins_in_nodes + self.alpha * density_weight * self.data_collections.node_areas
+            precond.clamp_(min=1.0)
+            grad[0:self.placedb.num_nodes].div_(precond)
+            grad[self.placedb.num_nodes:self.placedb.num_nodes*2].div_(precond)
+            self.iteration += 1
+
+            # assume overflow has been updated 
+            if self.overflows and self.overflows[-1] < 0.3: 
+                if (self.iteration % 20) == 0:
+                    self.alpha *= 2 
+                    logging.info("preconditioning alpha = %g, best_overflow %g, overflow %g" % (self.alpha, self.best_overflow, self.overflows[-1]))
+            
+        return grad 
+
 class PlaceObj(nn.Module):
     """
     @brief Define placement objective:
@@ -116,7 +154,7 @@ class PlaceObj(nn.Module):
 
         obj.backward()
 
-        self.op_collections.precondition_op(pos.grad)
+        self.op_collections.precondition_op(pos.grad, self.density_weight)
 
         return obj, pos.grad
 
@@ -441,25 +479,27 @@ class PlaceObj(nn.Module):
         @param data_collections a collection of data and variables required for constructing ops
         """
 
-        def precondition_op(grad):
-            with torch.no_grad(): 
-                # preconditioning 
-                node_areas = data_collections.node_size_x * data_collections.node_size_y
-                precond = self.density_weight * node_areas
-                precond[:placedb.num_physical_nodes].add_(data_collections.pin_weights)
-                precond.clamp_(min=1.0)
-                grad[0:placedb.num_nodes].div_(precond)
-                grad[placedb.num_nodes:placedb.num_nodes*2].div_(precond)
-                #for p in pos:
-                #    grad_norm = p.grad.norm(p=2)
-                #    logging.debug("grad_norm = %g" % (grad_norm.data))
-                #    p.grad.div_(grad_norm.data)
-                #    logging.debug("grad_norm = %g" % (p.grad.norm(p=2).data))
-                #grad.data[0:placedb.num_movable_nodes].div_(grad[0:placedb.num_movable_nodes].norm(p=2))
-                #grad.data[placedb.num_nodes:placedb.num_nodes+placedb.num_movable_nodes].div_(grad[placedb.num_nodes:placedb.num_nodes+placedb.num_movable_nodes].norm(p=2))
-            return grad
+        #def precondition_op(grad):
+        #    with torch.no_grad(): 
+        #        # preconditioning 
+        #        node_areas = data_collections.node_size_x * data_collections.node_size_y
+        #        precond = self.density_weight * node_areas
+        #        precond[:placedb.num_physical_nodes].add_(data_collections.pin_weights)
+        #        precond.clamp_(min=1.0)
+        #        grad[0:placedb.num_nodes].div_(precond)
+        #        grad[placedb.num_nodes:placedb.num_nodes*2].div_(precond)
+        #        #for p in pos:
+        #        #    grad_norm = p.grad.norm(p=2)
+        #        #    logging.debug("grad_norm = %g" % (grad_norm.data))
+        #        #    p.grad.div_(grad_norm.data)
+        #        #    logging.debug("grad_norm = %g" % (p.grad.norm(p=2).data))
+        #        #grad.data[0:placedb.num_movable_nodes].div_(grad[0:placedb.num_movable_nodes].norm(p=2))
+        #        #grad.data[placedb.num_nodes:placedb.num_nodes+placedb.num_movable_nodes].div_(grad[placedb.num_nodes:placedb.num_nodes+placedb.num_movable_nodes].norm(p=2))
+        #    return grad
 
-        return precondition_op
+        #return precondition_op
+
+        return PreconditionOp(placedb, data_collections)
 
     def build_route_utilization_map(self, params, placedb, data_collections):
         """

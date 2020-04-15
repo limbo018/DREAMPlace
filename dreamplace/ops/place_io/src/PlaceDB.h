@@ -118,7 +118,7 @@ class PlaceDB : public DefParser::DefDataBase
         Row const& row(index_type id) const {return m_vRow.at(id);}
         Row& row(index_type id) {return m_vRow.at(id);}
 
-        Site const& site() const {return m_site;}
+        Site const& site() const {return m_vSite[m_coreSiteId];}
         area_type siteArea() const {return siteWidth()*rowHeight();}
         
         /// be careful to use die area because it is larger than the actual rowBbox() which is the placement area 
@@ -266,7 +266,7 @@ class PlaceDB : public DefParser::DefDataBase
         Interval<index_type> getRowIndexRange(coordinate_type yl, coordinate_type yh) const {return Interval<index_type>(getRowIndex(yl+1), getRowIndex(yh-1));}
 
         /// \return height of a row, assume to be the same as site height 
-        coordinate_type rowHeight() const {return m_site.height();}
+        coordinate_type rowHeight() const {return m_vSite[m_coreSiteId].height();}
         /// \return the region of rows, it may be different from die area 
         Box<coordinate_type> const& rowBbox() const {return m_rowBbox;}
         coordinate_type rowXL() const {return (m_vRow.empty())? xl() : m_rowBbox.xl();}
@@ -287,9 +287,9 @@ class PlaceDB : public DefParser::DefDataBase
         void sortNodeByPlaceStatus();
 
         /// \return site width 
-        coordinate_type siteWidth() const {return m_site.width();}
+        coordinate_type siteWidth() const {return m_vSite[m_coreSiteId].width();}
         /// \return site height 
-        coordinate_type siteHeight() const {return m_site.height();}
+        coordinate_type siteHeight() const {return m_vSite[m_coreSiteId].height();}
         /// \return max displacement in database unit 
         coordinate_type maxDisplace() const {return m_maxDisplace;}
         /// \return minimum width of movable nodes 
@@ -329,8 +329,8 @@ class PlaceDB : public DefParser::DefDataBase
         virtual void lef_dividerchar_cbk(std::string const& ); 
         virtual void lef_units_cbk(LefParser::lefiUnits const& v);
         virtual void lef_manufacturing_cbk(double );
-		virtual void lef_useminspacing_cbk(LefParser::lefiUseMinSpacing const&);
-		virtual void lef_clearancemeasure_cbk(std::string const&);
+        virtual void lef_useminspacing_cbk(LefParser::lefiUseMinSpacing const&);
+        virtual void lef_clearancemeasure_cbk(std::string const&);
         virtual void lef_busbitchars_cbk(std::string const& );
         virtual void lef_layer_cbk(LefParser::lefiLayer const& );
         virtual void lef_via_cbk(LefParser::lefiVia const& );
@@ -341,8 +341,8 @@ class PlaceDB : public DefParser::DefDataBase
         virtual void lef_macro_cbk(LefParser::lefiMacro const& m);
         virtual void lef_pin_cbk(LefParser::lefiPin const& p);
         virtual void lef_obstruction_cbk(LefParser::lefiObstruction const& o);
-		virtual void lef_prop_cbk(LefParser::lefiProp const&);
-		virtual void lef_maxstackvia_cbk(LefParser::lefiMaxStackVia const&);
+        virtual void lef_prop_cbk(LefParser::lefiProp const&);
+        virtual void lef_maxstackvia_cbk(LefParser::lefiMaxStackVia const&);
         ///==== DEF Callbacks ====
         virtual void set_def_busbitchars(std::string const&);
         virtual void set_def_dividerchar(std::string const&);
@@ -447,7 +447,8 @@ class PlaceDB : public DefParser::DefDataBase
         std::vector<Pin> m_vPin; ///< pins for instances and nets, the offset of a pin must be adjusted when a node is moved 
         std::vector<Macro> m_vMacro; ///< macros for standard cells, for io pins, virtual macros are appended  
         std::vector<Row> m_vRow; ///< placement rows 
-        Site m_site; ///< placement site 
+        std::vector<Site> m_vSite; ///< all sites defined 
+        index_type m_coreSiteId; ///< id of core placement site 
         diearea_type m_dieArea; ///< die area, it can be larger than actual placement area 
         std::vector<bool> m_vNetIgnoreFlag; ///< whether the net should be ignored due to pins belonging to the same cell 
         std::vector<std::string> m_vDuplicateNet; ///< name of duplicate nets found in verilog file 
@@ -457,6 +458,7 @@ class PlaceDB : public DefParser::DefDataBase
         string2index_map_type m_mNetName2Index; ///< map net name to index of m_vNet 
         string2index_map_type m_mLayerName2Index; ///< map layer name to layer 
         std::vector<std::string> m_vLayerName; ///< layer to layer name 
+        string2index_map_type m_mSiteName2Index; ///< map site name to index of m_vSite 
 
         Box<coordinate_type> m_rowBbox; ///< bounding box of row regions, it may be different from die area  
                                         ///< different rows may have different width, this is the largest box 

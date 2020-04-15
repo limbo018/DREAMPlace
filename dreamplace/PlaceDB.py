@@ -577,7 +577,7 @@ class PlaceDB (object):
 
         # scale 
         # adjust scale_factor if not set 
-        if params.scale_factor == 0:
+        if params.scale_factor == 0.0 or self.site_width != 1.0:
             params.scale_factor = 1.0 / self.site_width
             logging.info("set scale_factor = %g, as site_width = %g" % (params.scale_factor, self.site_width))
         self.scale(params.scale_factor)
@@ -635,7 +635,11 @@ row height = %g, site width = %g
 
         # insert filler nodes 
         if params.enable_fillers: 
-            self.total_filler_node_area = max((self.area - self.total_fixed_node_area)*params.target_density-self.total_movable_node_area, 0.0)
+            # the way to compute this is still tricky; we need to consider place_io together on how to 
+            # summarize the area of fixed cells, which may overlap with each other. 
+            placeable_area = max(self.area - self.total_fixed_node_area, self.total_space_area)
+            content += "use placeable_area = %g to compute fillers\n" % (placeable_area)
+            self.total_filler_node_area = max(placeable_area*params.target_density-self.total_movable_node_area, 0.0)
             node_size_order = np.argsort(self.node_size_x[:self.num_movable_nodes])
             filler_size_x = np.mean(self.node_size_x[node_size_order[int(self.num_movable_nodes*0.05):int(self.num_movable_nodes*0.95)]])
             filler_size_y = self.row_height
