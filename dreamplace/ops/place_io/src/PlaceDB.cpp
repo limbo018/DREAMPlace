@@ -19,6 +19,7 @@ DREAMPLACE_BEGIN_NAMESPACE
 /// default constructor
 PlaceDB::PlaceDB()
 {
+    m_coreSiteId = 0;
     m_numMovable = 0;
     m_numFixed = 0;
     m_numMacro = 0;
@@ -81,12 +82,25 @@ void PlaceDB::lef_spacing_cbk(LefParser::lefiSpacing const& )
 }
 void PlaceDB::lef_site_cbk(LefParser::lefiSite const& s)
 {
-    m_site.setName(s.name());
-    if (s.hasClass()) m_site.setClassName(s.siteClass());
+    m_vSite.push_back(Site()); 
+    Site& site = m_vSite.back(); 
+    site.setId(m_vSite.size() - 1);
+    site.setName(s.name());
+    if (s.hasClass()) site.setClassName(s.siteClass());
     if (s.hasSize())
     {
-        m_site.setSize(kX, round(s.sizeX()*m_lefUnit));
-        m_site.setSize(kY, round(s.sizeY()*m_lefUnit));
+        site.setSize(kX, round(s.sizeX()*m_lefUnit));
+        site.setSize(kY, round(s.sizeY()*m_lefUnit));
+    }
+    dreamplaceAssertMsg(m_mSiteName2Index.find(site.name()) == m_mSiteName2Index.end(), 
+        "Site %s has already been defined", site.name().c_str());
+    m_mSiteName2Index[site.name()] = site.id();
+
+    if (limbo::iequals(site.className(), "CORE"))
+    {
+        dreamplacePrint(kINFO, "set CORE site to %s, %d x %d\n", 
+            site.name().c_str(), site.width(), site.height());
+        m_coreSiteId = site.id();
     }
 }
 void PlaceDB::lef_macrobegin_cbk(std::string const& n)
@@ -200,15 +214,17 @@ void PlaceDB::add_def_row(DefParser::Row const& r)
     row.setName(r.row_name);
     row.setMacroName(r.macro_name);
     row.setOrient(r.orient);
+    index_type siteId = m_mSiteName2Index.at(row.macroName()); 
+    Site const& site = m_vSite.at(siteId); 
     // only support N and FS, because I'm not sure what the format should be for other orient
     if (r.orient == "N" || r.orient == "FS")
     {
-        row.set(r.origin[0], r.origin[1], r.origin[0]+r.repeat[0]*r.step[0], r.origin[1]+m_site.size(kY));
+        row.set(r.origin[0], r.origin[1], r.origin[0]+r.repeat[0]*r.step[0], r.origin[1]+site.size(kY));
     }
     else
     {
         dreamplacePrint(kWARN, "unsupported row orientation %s\n", r.orient.c_str());
-        row.set(r.origin[0], r.origin[1], r.origin[0]+r.repeat[0]*r.step[0], r.origin[1]+m_site.size(kY));
+        row.set(r.origin[0], r.origin[1], r.origin[0]+r.repeat[0]*r.step[0], r.origin[1]+site.size(kY));
     }
 
     row.setStep(r.step[0], r.step[1]);
@@ -650,6 +666,16 @@ void PlaceDB::resize_bookshelf_pin(int n)
 void PlaceDB::resize_bookshelf_row(int n)
 {
     m_vRow.reserve(n);
+
+    // create site 
+    dreamplaceAssert(m_vSite.empty()); 
+    m_vSite.push_back(Site()); 
+    Site& site = m_vSite.back(); 
+    site.setId(m_vSite.size() - 1); 
+    site.setName("CoreSite"); 
+    site.setClassName("CORE"); 
+    m_mSiteName2Index[site.name()] = site.id();
+    m_coreSiteId = site.id(); 
 }
 void PlaceDB::add_bookshelf_terminal(std::string& name, int w, int h)
 {
@@ -805,8 +831,9 @@ void PlaceDB::add_bookshelf_row(BookshelfParser::Row const& r)
     m_rowBbox.encompass(row);
 
     // set site
-    m_site.setSize(kX, r.site_width);
-    m_site.setSize(kY, r.height);
+    Site& site = m_vSite.at(m_coreSiteId);
+    site.setSize(kX, r.site_width);
+    site.setSize(kY, r.height);
 }
 void PlaceDB::set_bookshelf_node_position(std::string const& name, double x, double y, std::string const& orient, std::string const& status, bool plFlag)
 {
