@@ -267,6 +267,66 @@ __global__ void computeTriangleDensityMapUnroll(
 }
 
 template <typename T, typename AtomicOp>
+__global__ void computeTriangleDensityMapSimpleLikeCPU(
+        const T* x_tensor, const T* y_tensor,
+        const T* node_size_x_clamped_tensor, const T* node_size_y_clamped_tensor,
+        const T *offset_x_tensor, const T *offset_y_tensor,
+        const T* ratio_tensor,
+        const T* bin_center_x_tensor, const T* bin_center_y_tensor,
+        const int num_nodes,
+        const int num_bins_x, const int num_bins_y,
+        const T xl, const T yl, const T xh, const T yh,
+        const T bin_size_x, const T bin_size_y,
+        //T* density_map_tensor
+    AtomicOp atomicAddOp, 
+    typename AtomicOp::type *density_map_tensor 
+        )
+{
+    // density_map_tensor should be initialized outside
+
+    T inv_bin_size_x = 1.0 / bin_size_x; 
+    T inv_bin_size_y = 1.0 / bin_size_y; 
+    int num_bins = num_bins_x * num_bins_y;
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_nodes)
+    {
+        // use stretched node size 
+        T node_size_x = node_size_x_clamped_tensor[i];
+        T node_size_y = node_size_y_clamped_tensor[i];
+        T node_x = x_tensor[i] + offset_x_tensor[i];
+        T node_y = y_tensor[i] + offset_y_tensor[i];
+        T ratio = ratio_tensor[i];
+
+        int bin_index_xl = int((node_x - xl) * inv_bin_size_x);
+        int bin_index_xh = int(((node_x + node_size_x - xl) * inv_bin_size_x)) + 1; // exclusive
+        bin_index_xl = DREAMPLACE_STD_NAMESPACE::max(bin_index_xl, 0);
+        bin_index_xh = DREAMPLACE_STD_NAMESPACE::min(bin_index_xh, num_bins_x);
+
+        int bin_index_yl = int((node_y - yl) * inv_bin_size_y);
+        int bin_index_yh = int(((node_y + node_size_y - yl) * inv_bin_size_y)) + 1; // exclusive
+        bin_index_yl = DREAMPLACE_STD_NAMESPACE::max(bin_index_yl, 0);
+        bin_index_yh = DREAMPLACE_STD_NAMESPACE::min(bin_index_yh, num_bins_y);
+
+        // update density potential map
+        for (int k = bin_index_xl; k < bin_index_xh; ++k)
+        {
+            T px = triangle_density_function(node_x, node_size_x, xl, k, bin_size_x);
+            T px_by_ratio = px * ratio;
+
+            for (int h = bin_index_yl; h < bin_index_yh; ++h)
+            {
+                T py = triangle_density_function(node_y, node_size_y, yl, h, bin_size_y);
+                T area = px_by_ratio * py;
+
+                //atomicAdd(&density_map_tensor[k * num_bins_y + h], area);
+                atomicAddOp(&density_map_tensor[k * num_bins_y + h], area);
+            }
+        }
+    }
+}
+
+
+template <typename T, typename AtomicOp>
 __global__ void computeExactDensityMap(
     const T *x_tensor, const T *y_tensor,
     const T *node_size_x_tensor, const T *node_size_y_tensor,
@@ -391,6 +451,7 @@ int computeTriangleDensityMapCallKernel(
     dim3 blockSize(2, 2, thread_count);
 
     int block_count = (num_nodes - 1 + thread_count) / thread_count;
+#if 0 
     computeTriangleDensityMap<<<block_count, blockSize>>>(
         x_tensor, y_tensor,
         node_size_x_clamped_tensor, node_size_y_clamped_tensor,
@@ -407,6 +468,21 @@ int computeTriangleDensityMapCallKernel(
         density_map_tensor,
         sorted_node_map
         );
+#endif
+
+    computeTriangleDensityMapSimpleLikeCPU<<<block_count, thread_count>>>(
+        x_tensor, y_tensor,
+        node_size_x_clamped_tensor, node_size_y_clamped_tensor,
+        offset_x_tensor, offset_y_tensor,
+        ratio_tensor,
+        bin_center_x_tensor, bin_center_y_tensor,
+        num_nodes,
+        num_bins_x, num_bins_y,
+        xl, yl, xh, yh,
+        bin_size_x, bin_size_y,
+        atomicAddOp, 
+        density_map_tensor
+        ); 
 
     return 0; 
 }
