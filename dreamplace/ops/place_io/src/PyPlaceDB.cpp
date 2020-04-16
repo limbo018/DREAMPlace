@@ -6,6 +6,7 @@
  */
 
 #include "PyPlaceDB.h"
+#include <boost/polygon/polygon.hpp>
 
 DREAMPLACE_BEGIN_NAMESPACE
 
@@ -155,41 +156,20 @@ bool readBookshelf(PlaceDB& db)
 
 void PyPlaceDB::set(PlaceDB const& db) 
 {
+    namespace gtl = boost::polygon; 
+    using namespace gtl::operators;
+    typedef gtl::polygon_90_set_data<PlaceDB::coordinate_type> PolygonSet; 
+
     num_terminal_NIs = db.numIOPin(); // IO pins 
-    // use a rough number of bins for computing total_space_area
-    PlaceDB::index_type num_bins_x = std::sqrt(db.numMovable()); 
-    PlaceDB::index_type num_bins_y = num_bins_x; 
-    double bin_size_x = db.rowBbox().width() / num_bins_x; 
-    double bin_size_y = db.rowBbox().height() / num_bins_y; 
     double total_fixed_node_area = 0; // compute total area of fixed cells, which is an upper bound  
-    std::vector<double> fixed_density_map (num_bins_x * num_bins_y, 0);
+    // collect boxes for fixed cells and put in a polygon set to remove overlap later 
+    std::vector<gtl::rectangle_data<PlaceDB::coordinate_type>> fixed_boxes; 
     // record original node to new node mapping 
     std::vector<std::vector<PlaceDB::index_type> > mNode2NewNodes (db.nodes().size()); 
 
     // add a node to a bin 
     auto addNode2Bin = [&](Box<PlaceDB::coordinate_type> const& box) {
-        Box<double> intersect_box (box.xl(), box.yl(), box.xh(), box.yh()); 
-        PlaceDB::index_type bxl = std::max(PlaceDB::index_type((intersect_box.xl() - db.rowXL()) / bin_size_x), (PlaceDB::index_type)0); 
-        PlaceDB::index_type bxh = std::min(PlaceDB::index_type(std::ceil((intersect_box.xh() - db.rowXL()) / bin_size_x)), num_bins_x); 
-        PlaceDB::index_type byl = std::max(PlaceDB::index_type((intersect_box.yl() - db.rowYL()) / bin_size_y), (PlaceDB::index_type)0); 
-        PlaceDB::index_type byh = std::min(PlaceDB::index_type(std::ceil((intersect_box.yh() - db.rowYL()) / bin_size_y)), num_bins_y); 
-        for (PlaceDB::index_type ix = bxl; ix < bxh; ++ix)
-        {
-            for (PlaceDB::index_type iy = byl; iy < byh; ++iy)
-            {
-                Box<double> bin_box (
-                        db.rowXL() + ix * bin_size_x, 
-                        db.rowYL() + iy * bin_size_y, 
-                        db.rowXL() + (ix + 1) * bin_size_x, 
-                        db.rowYL() + (iy + 1) * bin_size_y 
-                        ); 
-                auto area = intersectArea(bin_box, intersect_box);
-                //dreamplacePrint(kDEBUG, "(%g, %g, %g, %g) with bin (%u, %u) @ (%g, %g, %g, %g) area %g\n", 
-                //        intersect_box.xl(), intersect_box.yl(), intersect_box.xh(), intersect_box.yh(), 
-                //        ix, iy, bin_box.xl(), bin_box.yl(), bin_box.xh(), bin_box.yh(), (double)area);
-                fixed_density_map[ix * num_bins_y + iy] += area; 
-            }
-        }
+        fixed_boxes.emplace_back(box.xl(), box.yl(), box.xh(), box.yh());
     };
     // general add a node 
     auto addNode = [&](Node const& node, 
@@ -255,25 +235,48 @@ void PyPlaceDB::set(PlaceDB const& db)
             if (!macro.obs().empty())
             {
                 MacroObs::ObsConstIterator foundObs = macro.obs().obsMap().find("Bookshelf.Shape"); 
+                // add obstruction boxes for fixed nodes 
+                // initialize node shapes from obstruction 
+                // I do not differentiate obstruction boxes at different layers
+                // At least, this is true for DAC/ICCAD 2012 benchmarks 
+
+                // put all boxes into a polygon set to remove overlaps 
+                // this can make the placement engine more robust 
+                PolygonSet ps; 
                 if (foundObs != macro.obs().end()) // for BOOKSHELF
                 {
-                    addObsBoxes(node, foundObs->second, true); 
-                    num_terminals += foundObs->second.size(); 
+                    for (auto const& box : foundObs->second)
+                    {
+                        ps.insert(gtl::rectangle_data<PlaceDB::coordinate_type>(box.xl(), box.yl(), box.xh(), box.yh())); 
+                    }
                 }
                 else 
                 {
                     for (auto it = macro.obs().begin(), ite = macro.obs().end(); it != ite; ++it)
                     {
-                        addObsBoxes(node, it->second, true); 
-                        num_terminals += it->second.size(); 
+                        for (auto const& box : it->second)
+                        {
+                            ps.insert(gtl::rectangle_data<PlaceDB::coordinate_type>(box.xl(), box.yl(), box.xh(), box.yh())); 
+                        }
                     }
 
                     // I do not know whether we should add the bounding box of this fixed cell as well 
-                    addNode(node, db.nodeName(node), Orient(node.orient()), node, true); 
-                    num_terminals += 1; 
-                    // compute upper bound of total fixed cell area 
-                    total_fixed_node_area += node.area();
+                    ps.insert(gtl::rectangle_data<PlaceDB::coordinate_type>(0, 0, node.width(), node.height()));
                 }
+
+                // Get unique boxes without overlap for each fixed cell
+                // However, there may still be overlapping between fixed cells. 
+                // We cannot eliminate these because we want to keep the mapping from boxes to cells. 
+                std::vector<gtl::rectangle_data<PlaceDB::coordinate_type>> vRect; 
+                ps.get_rectangles(vRect); 
+                std::vector<Box<PlaceDB::coordinate_type>> vBox; 
+                vBox.reserve(vRect.size()); 
+                for (auto const& rect : vRect) 
+                {
+                    vBox.emplace_back(gtl::xl(rect), gtl::yl(rect), gtl::xh(rect), gtl::yh(rect));
+                }
+                addObsBoxes(node, vBox, true); 
+                num_terminals += vBox.size(); 
             }
             else 
             {
@@ -290,10 +293,12 @@ void PyPlaceDB::set(PlaceDB const& db)
 
     // this is different from simply summing up the area of all fixed nodes 
     double total_fixed_node_overlap_area = 0;
-    double bin_area = bin_size_x * bin_size_y;
-    for (auto density : fixed_density_map)
+    // compute total area uniquely 
     {
-        total_fixed_node_overlap_area += std::min(density, bin_area); 
+        PolygonSet ps (gtl::HORIZONTAL, fixed_boxes.begin(), fixed_boxes.end());
+        // critical to make sure only overlap with the die area is computed 
+        ps &= gtl::rectangle_data<PlaceDB::coordinate_type>(db.rowXL(), db.rowYL(), db.rowXH(), db.rowYH());
+        total_fixed_node_overlap_area = gtl::area(ps);
     }
     // the total overlap area should not exceed the upper bound; 
     // current estimation may exceed if there are many overlapping fixed cells or boxes 

@@ -349,10 +349,7 @@ void PlaceDB::add_def_pin(DefParser::Pin const& p)
     NodeProperty& property = m_vNodeProperty.at(node.id());
 
     property.setMacroId(macro.id());
-    if (p.status.empty())
-        node.setStatus(PlaceStatusEnum::FIXED); // io pin should always be fixed
-    else
-        node.setStatus(p.status);
+    node.setStatus(PlaceStatusEnum::FIXED); // io pin should always be fixed
     if (p.orient.empty())
         node.setOrient(OrientEnum::N);
     else
@@ -1501,6 +1498,7 @@ void PlaceDB::adjustParams()
         updateNodePinOffset(node, OrientEnum::N, node.orient());
     }
 
+    dreamplacePrint(kINFO, "group cells for fence regions\n"); 
     // set node indices in groups 
     // according to node names 
     WildcardMatch matcher; 
@@ -1528,6 +1526,7 @@ void PlaceDB::adjustParams()
             }
         }
     }
+    dreamplacePrint(kINFO, "fence region done\n");
 #ifdef DEBUG
     for (index_type i = 0; i < m_vRegion.size(); ++i)
     {
