@@ -11,7 +11,7 @@ import time
 import numpy as np
 import itertools
 import logging
-import torch 
+import torch
 import torch.autograd as autograd
 import torch.nn as nn
 import torch.nn.functional as F
@@ -25,21 +25,21 @@ import dreamplace.ops.weighted_average_wirelength.weighted_average_wirelength as
 import dreamplace.ops.logsumexp_wirelength.logsumexp_wirelength as logsumexp_wirelength
 import dreamplace.ops.electric_potential.electric_potential as electric_potential
 import dreamplace.ops.density_potential.density_potential as density_potential
-import dreamplace.ops.rudy.rudy as rudy 
-import dreamplace.ops.pin_utilization.pin_utilization as pin_utilization 
+import dreamplace.ops.rudy.rudy as rudy
+import dreamplace.ops.pin_utilization.pin_utilization as pin_utilization
 import dreamplace.ops.nctugr_binary.nctugr_binary as nctugr_binary
 import dreamplace.ops.adjust_node_area.adjust_node_area as adjust_node_area
 
 class PreconditionOp:
-    """Preconditioning engine is critical for convergence. 
-    Need to be carefully designed. 
+    """Preconditioning engine is critical for convergence.
+    Need to be carefully designed.
     """
     def __init__(self, placedb, data_collections):
         self.placedb = placedb
         self.data_collections = data_collections
         self.iteration = 0
         self.alpha = 1.0
-        self.best_overflow = None  
+        self.best_overflow = None
         self.overflows = []
 
     def set_overflow(self, overflow):
@@ -50,23 +50,23 @@ class PreconditionOp:
             self.best_overflow = min(self.best_overflow, overflow)
 
     def __call__(self, grad, density_weight):
-        """Introduce alpha parameter to avoid divergence. 
-        It is tricky for this parameter to increase. 
+        """Introduce alpha parameter to avoid divergence.
+        It is tricky for this parameter to increase.
         """
-        with torch.no_grad(): 
+        with torch.no_grad():
             precond = self.data_collections.num_pins_in_nodes + self.alpha * density_weight * self.data_collections.node_areas
             precond.clamp_(min=1.0)
             grad[0:self.placedb.num_nodes].div_(precond)
             grad[self.placedb.num_nodes:self.placedb.num_nodes*2].div_(precond)
             self.iteration += 1
 
-            # assume overflow has been updated 
-            if self.overflows and self.overflows[-1] < 0.3: 
+            # assume overflow has been updated
+            if self.overflows and self.overflows[-1] < 0.3:
                 if (self.iteration % 20) == 0:
-                    self.alpha *= 2 
+                    self.alpha *= 2
                     logging.info("preconditioning alpha = %g, best_overflow %g, overflow %g" % (self.alpha, self.best_overflow, self.overflows[-1]))
-            
-        return grad 
+
+        return grad
 
 class PlaceObj(nn.Module):
     """
@@ -105,17 +105,19 @@ class PlaceObj(nn.Module):
         self.op_collections.update_density_weight_op = self.build_update_density_weight(params, placedb)
         self.op_collections.precondition_op = self.build_precondition(params, placedb, self.data_collections)
         self.op_collections.noise_op = self.build_noise(params, placedb, self.data_collections)
-        if params.routability_opt_flag: 
-            # compute congestion map, RISA/RUDY congestion map  
+        if params.routability_opt_flag:
+            # compute congestion map, RISA/RUDY congestion map
             self.op_collections.route_utilization_map_op = self.build_route_utilization_map(params, placedb, self.data_collections)
             self.op_collections.pin_utilization_map_op = self.build_pin_utilization_map(params, placedb, self.data_collections)
             self.op_collections.nctugr_congestion_map_op = self.build_nctugr_congestion_map(params, placedb, self.data_collections)
             # adjust instance area with congestion map
             self.op_collections.adjust_node_area_op = self.build_adjust_node_area(params, placedb, self.data_collections)
+        # build alignment and overflow loss op
+        self.op_collections.align_and_overflow_op = self.build_align_and_overflow(params, placedb)
 
 
         self.Lgamma_iteration = global_place_params["iteration"]
-        if 'Llambda_density_weight_iteration' in global_place_params: 
+        if 'Llambda_density_weight_iteration' in global_place_params:
             self.Llambda_density_weight_iteration = global_place_params['Llambda_density_weight_iteration']
         else:
             self.Llambda_density_weight_iteration = 1
@@ -158,6 +160,22 @@ class PlaceObj(nn.Module):
 
         return obj, pos.grad
 
+    def legalize_obj_fn(self, pos):
+        wirelength = self.op_collections.wirelength_op(pos)
+        density = self.op_collections.density_op(pos)
+        gl_obj = wirelength + self.density_weight * density
+        align_and_overflow_loss = self.op_collections.align_and_overflow_op(pos)
+        return align_and_overflow_loss + 1e-3 * gl_obj
+
+    def switch_to_legaliza_obj_fn(self, pos):
+        """
+        @brief Compute objective.
+            alignment loss + overflow loss + weight * (wirelength + density_weight * density penalty)
+        @param pos locations of cells
+        @return objective value
+        """
+        self.obj_fn = legalize_obj_fn
+
     def forward(self):
         """
         @brief Compute objective with current locations of cells.
@@ -190,10 +208,10 @@ class PlaceObj(nn.Module):
 
     def estimate_initial_learning_rate(self, x_k, lr):
         """
-        @brief Estimate initial learning rate by moving a small step. 
-        Computed as | x_k - x_k_1 |_2 / | g_k - g_k_1 |_2. 
-        @param x_k current solution 
-        @param lr small step 
+        @brief Estimate initial learning rate by moving a small step.
+        Computed as | x_k - x_k_1 |_2 / | g_k - g_k_1 |_2.
+        @param x_k current solution
+        @param lr small step
         """
         obj_k, g_k = self.obj_and_grad_fn(x_k)
         x_k_1 = torch.autograd.Variable(x_k - lr * g_k, requires_grad=True)
@@ -214,12 +232,12 @@ class PlaceObj(nn.Module):
         wirelength_for_pin_op = weighted_average_wirelength.WeightedAverageWirelength(
                 flat_netpin=data_collections.flat_net2pin_map,
                 netpin_start=data_collections.flat_net2pin_start_map,
-                pin2net_map=data_collections.pin2net_map, 
-                net_weights=data_collections.net_weights, 
-                net_mask=data_collections.net_mask_ignore_large_degrees, 
+                pin2net_map=data_collections.pin2net_map,
+                net_weights=data_collections.net_weights,
+                net_mask=data_collections.net_mask_ignore_large_degrees,
                 pin_mask=data_collections.pin_mask_ignore_fixed_macros,
-                gamma=self.gamma, 
-                algorithm='merged', 
+                gamma=self.gamma,
+                algorithm='merged',
                 num_threads=params.num_threads
                 )
 
@@ -247,12 +265,12 @@ class PlaceObj(nn.Module):
         wirelength_for_pin_op = logsumexp_wirelength.LogSumExpWirelength(
                 flat_netpin=data_collections.flat_net2pin_map,
                 netpin_start=data_collections.flat_net2pin_start_map,
-                pin2net_map=data_collections.pin2net_map, 
-                net_weights=data_collections.net_weights, 
-                net_mask=data_collections.net_mask_ignore_large_degrees, 
+                pin2net_map=data_collections.pin2net_map,
+                net_weights=data_collections.net_weights,
+                net_mask=data_collections.net_mask_ignore_large_degrees,
                 pin_mask=data_collections.pin_mask_ignore_fixed_macros,
-                gamma=self.gamma, 
-                algorithm='merged', 
+                gamma=self.gamma,
+                algorithm='merged',
                 num_threads=params.num_threads
                 )
 
@@ -339,8 +357,8 @@ class PlaceObj(nn.Module):
                 xh=xh, yh=yh,
                 bin_size_x=bin_size_x, bin_size_y=bin_size_y,
                 padding=padding,
-                sigma=(1.0/16)*placedb.width/bin_size_x, 
-                delta=2.0, 
+                sigma=(1.0/16)*placedb.width/bin_size_x,
+                delta=2.0,
                 num_threads=params.num_threads
                 )
 
@@ -383,10 +401,10 @@ class PlaceObj(nn.Module):
                 num_terminals=placedb.num_terminals,
                 num_filler_nodes=placedb.num_filler_nodes,
                 padding=padding,
-                deterministic_flag=params.deterministic_flag, 
+                deterministic_flag=params.deterministic_flag,
                 sorted_node_map=data_collections.sorted_node_map,
-                movable_macro_mask=data_collections.movable_macro_mask, 
-                fast_mode=params.RePlAce_skip_energy_flag, 
+                movable_macro_mask=data_collections.movable_macro_mask,
+                fast_mode=params.RePlAce_skip_energy_flag,
                 num_threads=params.num_threads
                 )
 
@@ -480,8 +498,8 @@ class PlaceObj(nn.Module):
         """
 
         #def precondition_op(grad):
-        #    with torch.no_grad(): 
-        #        # preconditioning 
+        #    with torch.no_grad():
+        #        # preconditioning
         #        node_areas = data_collections.node_size_x * data_collections.node_size_y
         #        precond = self.density_weight * node_areas
         #        precond[:placedb.num_physical_nodes].add_(data_collections.pin_weights)
@@ -503,10 +521,10 @@ class PlaceObj(nn.Module):
 
     def build_route_utilization_map(self, params, placedb, data_collections):
         """
-        @brief routing congestion map based on current cell locations 
-        @param params parameters 
-        @param placedb placement database 
-        @param data_collections a collection of all data and variables required for constructing the ops 
+        @brief routing congestion map based on current cell locations
+        @param params parameters
+        @param placedb placement database
+        @param data_collections a collection of all data and variables required for constructing the ops
         """
         congestion_op = rudy.Rudy(
                 netpin_start=data_collections.flat_net2pin_start_map, flat_netpin=data_collections.flat_net2pin_map, net_weights=data_collections.net_weights,
@@ -514,72 +532,72 @@ class PlaceObj(nn.Module):
                 num_bins_x=placedb.num_routing_grids_x, num_bins_y=placedb.num_routing_grids_y,
                 unit_horizontal_capacity=placedb.unit_horizontal_capacity,
                 unit_vertical_capacity=placedb.unit_vertical_capacity,
-                initial_horizontal_utilization_map=data_collections.initial_horizontal_utilization_map, 
-                initial_vertical_utilization_map=data_collections.initial_vertical_utilization_map, 
+                initial_horizontal_utilization_map=data_collections.initial_horizontal_utilization_map,
+                initial_vertical_utilization_map=data_collections.initial_vertical_utilization_map,
                 num_threads=params.num_threads
                 )
-        def route_utilization_map_op(pos): 
+        def route_utilization_map_op(pos):
             pin_pos = self.op_collections.pin_pos_op(pos)
             return congestion_op(pin_pos)
         return route_utilization_map_op
 
     def build_pin_utilization_map(self, params, placedb, data_collections):
         """
-        @brief pin density map based on current cell locations 
-        @param params parameters 
-        @param placedb placement database 
-        @param data_collections a collection of all data and variables required for constructing the ops 
+        @brief pin density map based on current cell locations
+        @param params parameters
+        @param placedb placement database
+        @param data_collections a collection of all data and variables required for constructing the ops
         """
         return pin_utilization.PinUtilization(
-                pin_weights=data_collections.pin_weights, 
+                pin_weights=data_collections.pin_weights,
                 flat_node2pin_start_map=data_collections.flat_node2pin_start_map,
                 node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y,
                 xl=placedb.routing_grid_xl, yl=placedb.routing_grid_yl, xh=placedb.routing_grid_xh, yh=placedb.routing_grid_yh,
-                num_movable_nodes=placedb.num_movable_nodes, num_filler_nodes=placedb.num_filler_nodes, 
+                num_movable_nodes=placedb.num_movable_nodes, num_filler_nodes=placedb.num_filler_nodes,
                 num_bins_x=placedb.num_routing_grids_x, num_bins_y=placedb.num_routing_grids_y,
                 unit_pin_capacity=data_collections.unit_pin_capacity,
                 pin_stretch_ratio=params.pin_stretch_ratio,
                 num_threads=params.num_threads
                 )
-    
+
     def build_nctugr_congestion_map(self, params, placedb, data_collections):
         """
-        @brief call NCTUgr for congestion estimation 
+        @brief call NCTUgr for congestion estimation
         """
         path = "%s/%s" % (params.result_dir, params.design_name())
         return nctugr_binary.NCTUgr(
-                aux_input_file=os.path.realpath(params.aux_input), 
-                param_setting_file="%s/../thirdparty/NCTUgr.ICCAD2012/DAC12.set" % (os.path.dirname(os.path.realpath(__file__))), 
-                tmp_pl_file="%s/%s.NCTUgr.pl" % (os.path.realpath(path), params.design_name()), 
-                tmp_output_file="%s/%s.NCTUgr" % (os.path.realpath(path), params.design_name()), 
-                horizontal_routing_capacities=torch.from_numpy(placedb.unit_horizontal_capacities * placedb.routing_grid_size_y), 
-                vertical_routing_capacities=torch.from_numpy(placedb.unit_vertical_capacities * placedb.routing_grid_size_x), 
-                params=params, 
+                aux_input_file=os.path.realpath(params.aux_input),
+                param_setting_file="%s/../thirdparty/NCTUgr.ICCAD2012/DAC12.set" % (os.path.dirname(os.path.realpath(__file__))),
+                tmp_pl_file="%s/%s.NCTUgr.pl" % (os.path.realpath(path), params.design_name()),
+                tmp_output_file="%s/%s.NCTUgr" % (os.path.realpath(path), params.design_name()),
+                horizontal_routing_capacities=torch.from_numpy(placedb.unit_horizontal_capacities * placedb.routing_grid_size_y),
+                vertical_routing_capacities=torch.from_numpy(placedb.unit_vertical_capacities * placedb.routing_grid_size_x),
+                params=params,
                 placedb=placedb
                 )
 
     def build_adjust_node_area(self, params, placedb, data_collections):
         """
-        @brief adjust cell area according to routing congestion and pin utilization map 
+        @brief adjust cell area according to routing congestion and pin utilization map
         """
         total_movable_area = (data_collections.node_size_x[:placedb.num_movable_nodes] * data_collections.node_size_y[:placedb.num_movable_nodes]).sum()
-        total_filler_area = (data_collections.node_size_x[-placedb.num_filler_nodes:] * data_collections.node_size_y[-placedb.num_filler_nodes:]).sum() 
+        total_filler_area = (data_collections.node_size_x[-placedb.num_filler_nodes:] * data_collections.node_size_y[-placedb.num_filler_nodes:]).sum()
         total_place_area = (total_movable_area + total_filler_area) / data_collections.target_density
         adjust_node_area_op = adjust_node_area.AdjustNodeArea(
                 flat_node2pin_map=data_collections.flat_node2pin_map,
-                flat_node2pin_start_map=data_collections.flat_node2pin_start_map, 
-                pin_weights=data_collections.pin_weights, 
+                flat_node2pin_start_map=data_collections.flat_node2pin_start_map,
+                pin_weights=data_collections.pin_weights,
                 xl=placedb.routing_grid_xl, yl=placedb.routing_grid_yl, xh=placedb.routing_grid_xh, yh=placedb.routing_grid_yh,
-                num_movable_nodes=placedb.num_movable_nodes, 
-                num_filler_nodes=placedb.num_filler_nodes, 
+                num_movable_nodes=placedb.num_movable_nodes,
+                num_filler_nodes=placedb.num_filler_nodes,
                 route_num_bins_x=placedb.num_routing_grids_x,
                 route_num_bins_y=placedb.num_routing_grids_y,
                 pin_num_bins_x=placedb.num_routing_grids_x,
                 pin_num_bins_y=placedb.num_routing_grids_y,
-                total_place_area=total_place_area, 
-                total_whitespace_area=total_place_area - total_movable_area, 
+                total_place_area=total_place_area,
+                total_whitespace_area=total_place_area - total_movable_area,
                 max_route_opt_adjust_rate=params.max_route_opt_adjust_rate,
-                route_opt_adjust_exponent=params.route_opt_adjust_exponent, 
+                route_opt_adjust_exponent=params.route_opt_adjust_exponent,
                 max_pin_opt_adjust_rate=params.max_pin_opt_adjust_rate,
                 area_adjust_stop_ratio=params.area_adjust_stop_ratio,
                 route_area_adjust_stop_ratio=params.route_area_adjust_stop_ratio,
@@ -589,11 +607,59 @@ class PlaceObj(nn.Module):
             )
         def build_adjust_node_area_op(pos, route_utilization_map, pin_utilization_map):
             return adjust_node_area_op(
-                    pos, 
-                    data_collections.node_size_x, data_collections.node_size_y, 
-                    data_collections.pin_offset_x, data_collections.pin_offset_y, 
-                    data_collections.target_density, 
-                    route_utilization_map, 
+                    pos,
+                    data_collections.node_size_x, data_collections.node_size_y,
+                    data_collections.pin_offset_x, data_collections.pin_offset_y,
+                    data_collections.target_density,
+                    route_utilization_map,
                     pin_utilization_map
                     )
         return build_adjust_node_area_op
+
+    def build_align_and_overflow(self, params, placedb):
+        def broadcast(src: torch.Tensor, other: torch.Tensor, dim: int):
+            if dim < 0:
+                dim = other.dim() + dim
+            if src.dim() == 1:
+                for _ in range(0, dim):
+                    src = src.unsqueeze(0)
+            for _ in range(src.dim(), other.dim()):
+                src = src.unsqueeze(-1)
+            src = src.expand_as(other)
+            return src
+
+        def scatter_sum(src, index, dim, dim_size, out = None, ) -> torch.Tensor:
+            index = broadcast(index, src, dim)
+            if out is None:
+                out = torch.zeros(dim_size, dtype=src.dtype, device=src.device)
+                return out.scatter_add(dim, index, src)
+            else:
+                return out.scatter_add_(dim, index, src)
+
+        def align_and_overflow(pos):
+            num_nodes = placedb.num_nodes
+            num_movable_nodes = placedb.num_movable_nodes
+            yl, yh = placedb.yl, placedb.yh
+            xl, xh = placedb.xl, placedb.xh
+            row_height = placedb.row_height
+            pos_x, pos_y = pos[0:num_movable_nodes], pos[num_nodes:num_nodes+num_movable_nodes]
+            node_size_x, node_size_y = placedb.node_size_x, placedb.node_size_y
+            center_y = pos_y + node_size_y / 2
+            aligned_rows_index = torch.round((center_y - yl) / row_height)
+            aligned_rows_y = aligned_rows_index * row_height + yl
+            aligned_rows_index = aligned_rows_index.long()
+
+            num_rows = int(round((yh - yl)/row_height))
+            row_capacity = xh - xl
+
+            overflow = scatter_sum(node_size_x, aligned_rows_index, dim=0, dim_size=num_rows)
+            overflow = overflow / row_capacity
+            overflow_mask = overflow > 1
+            overflow_mask_n = ~overflow_mask
+            overflow[overflow_mask] *= -1
+            overflow[overflow_mask_n] = 1
+
+            factor = overflow[aligned_rows_index]
+            loss = (factor * (pos_y - aligned_rows_y)**2).mean()
+
+        return loss
