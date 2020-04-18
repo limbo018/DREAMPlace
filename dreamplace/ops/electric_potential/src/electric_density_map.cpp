@@ -8,7 +8,7 @@
 #include "utility/src/Msg.h"
 #include "utility/src/utils.h"
 #include "electric_potential/src/density_function.h"
-#include <omp.h>
+#include "electric_potential/src/atomic_ops.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
 
@@ -21,7 +21,7 @@ DEFINE_EXACT_DENSITY_FUNCTION(T);
 
 /// @brief The triangular density model from e-place.
 /// The impact of a cell to bins is extended to two neighboring bins
-template <typename T>
+template <typename T, typename AtomicOp>
 int computeTriangleDensityMapLauncher(
         const T* x_tensor, const T* y_tensor,
         const T* node_size_x_tensor, const T* node_size_y_tensor,
@@ -33,13 +33,13 @@ int computeTriangleDensityMapLauncher(
         const T xl, const T yl, const T xh, const T yh,
         const T bin_size_x, const T bin_size_y,
         const int num_threads,
-        T* buf, ///< a buffer for deterministic density map computation 
-        T* density_map_tensor
+        AtomicOp atomic_add_op, 
+        typename AtomicOp::type *buf_map
         );
 
 /// @brief The exact density model.
 /// Compute the exact overlap area for density
-template <typename T>
+template <typename T, typename AtomicOp>
 int computeExactDensityMapLauncher(
         const T* x_tensor, const T* y_tensor,
         const T* node_size_x_tensor, const T* node_size_y_tensor,
@@ -50,13 +50,54 @@ int computeExactDensityMapLauncher(
         const T bin_size_x, const T bin_size_y,
         bool fixed_node_flag,
         const int num_threads,
-        T* buf, ///< a buffer for deterministic density map computation 
-        T* density_map_tensor
+        AtomicOp atomic_add_op, 
+        typename AtomicOp::type *buf_map
         );
 
+/// @brief Perform a += b * scale_factor
+template <typename T, typename V, typename W>
+void scaleAdd(T* dst, const V* src, W scale_factor, int n, int num_threads)
+{
+    #pragma omp parallel for num_threads(num_threads)
+    for (int i = 0; i < n; ++i)
+    {
+        dst[i] += src[i] * scale_factor; 
+    }
+}
 #define CHECK_FLAT(x) AT_ASSERTM(!x.is_cuda() && x.ndimension() == 1, #x "must be a flat tensor on CPU")
 #define CHECK_EVEN(x) AT_ASSERTM((x.numel()&1) == 0, #x "must have even number of elements")
 #define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x "must be contiguous")
+
+#define CALL_TRIANGLE_LAUNCHER(begin, end, atomic_add_op, map_ptr) \
+  computeTriangleDensityMapLauncher<scalar_t, decltype(atomic_add_op)>( \
+      DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + begin, DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + num_nodes + begin, \
+      DREAMPLACE_TENSOR_DATA_PTR(node_size_x_clamped, scalar_t) + begin, DREAMPLACE_TENSOR_DATA_PTR(node_size_y_clamped, scalar_t) + begin, \
+      DREAMPLACE_TENSOR_DATA_PTR(offset_x, scalar_t) + begin, DREAMPLACE_TENSOR_DATA_PTR(offset_y, scalar_t) + begin, \
+      DREAMPLACE_TENSOR_DATA_PTR(ratio, scalar_t) + begin, \
+      DREAMPLACE_TENSOR_DATA_PTR(bin_center_x, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(bin_center_y, scalar_t), \
+      end - (begin), \
+      num_bins_x, num_bins_y, \
+      xl, yl, xh, yh, \
+      bin_size_x, bin_size_y, \
+      num_threads, \
+      atomic_add_op, \
+      map_ptr \
+      )
+
+#define CALL_EXACT_LAUNCHER(begin, end, atomic_add_op, map_ptr) \
+    computeExactDensityMapLauncher<scalar_t, decltype(atomic_add_op)>( \
+        DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + begin, DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + num_nodes + begin, \
+        DREAMPLACE_TENSOR_DATA_PTR(node_size_x, scalar_t) + begin, DREAMPLACE_TENSOR_DATA_PTR(node_size_y, scalar_t) + begin, \
+        DREAMPLACE_TENSOR_DATA_PTR(bin_center_x, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(bin_center_y, scalar_t), \
+        end - (begin), \
+        num_bins_x, num_bins_y, \
+        xl, yl, xh, yh, \
+        bin_size_x, bin_size_y, \
+        true, \
+        num_threads, \
+        atomic_add_op, \
+        map_ptr \
+        )
 
 /// @brief compute density map for movable and filler cells
 /// @param pos cell locations. The array consists of all x locations and then y locations.
@@ -65,7 +106,6 @@ int computeExactDensityMapLauncher(
 /// @param bin_center_x bin center x locations
 /// @param bin_center_y bin center y locations
 /// @param initial_density_map initial density map for fixed cells
-/// @param buf buffer for deterministic density map computation 
 /// @param target_density target density
 /// @param xl left boundary
 /// @param yl bottom boundary
@@ -90,7 +130,6 @@ at::Tensor density_map(
         at::Tensor bin_center_x,
         at::Tensor bin_center_y,
         at::Tensor initial_density_map,
-        at::Tensor buf, 
         double target_density,
         double xl,
         double yl,
@@ -104,6 +143,7 @@ at::Tensor density_map(
         int num_bins_x, int num_bins_y,
         int num_movable_impacted_bins_x, int num_movable_impacted_bins_y,
         int num_filler_impacted_bins_x, int num_filler_impacted_bins_y,
+        int deterministic_flag, 
         int num_threads
         )
 {
@@ -114,53 +154,37 @@ at::Tensor density_map(
     at::Tensor density_map = initial_density_map.clone();
     int num_nodes = pos.numel()/2;
 
-    if (buf.numel() < num_threads * density_map.numel())
-    {
-        buf = at::empty(num_threads * density_map.numel(), density_map.options());
-    }
+    // total die area 
+    double diearea = (xh-xl)*(yh-yl); 
+    int integer_bits = DREAMPLACE_STD_NAMESPACE::max((int)ceil(log2(diearea))+1, 32);
+    int fraction_bits = DREAMPLACE_STD_NAMESPACE::max(64 - integer_bits, 0); 
+    long scale_factor = (1L << fraction_bits); 
+    int num_bins = num_bins_x*num_bins_y;
 
     // Call the cuda kernel launcher
-    buf.zero_(); 
     DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeTriangleDensityMapLauncher", [&] {
-            computeTriangleDensityMapLauncher<scalar_t>(
-                    DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t)+num_nodes,
-                    DREAMPLACE_TENSOR_DATA_PTR(node_size_x_clamped, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(node_size_y_clamped, scalar_t),
-                    DREAMPLACE_TENSOR_DATA_PTR(offset_x, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(offset_y, scalar_t),
-                    DREAMPLACE_TENSOR_DATA_PTR(ratio, scalar_t),
-                    DREAMPLACE_TENSOR_DATA_PTR(bin_center_x, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(bin_center_y, scalar_t),
-                    num_movable_nodes,
-                    num_bins_x, num_bins_y,
-                    xl, yl, xh, yh,
-                    bin_size_x, bin_size_y,
-                    //false,
-                    num_threads,
-                    DREAMPLACE_TENSOR_DATA_PTR(buf, scalar_t), 
-                    DREAMPLACE_TENSOR_DATA_PTR(density_map, scalar_t)
-                    );
+            if (deterministic_flag) 
+            {
+                std::vector<long> buf (num_bins, 0); 
+                AtomicAdd<long> atomic_add_op (scale_factor);
+                CALL_TRIANGLE_LAUNCHER(0, num_movable_nodes, atomic_add_op, buf.data()); 
+                if (num_filler_nodes)
+                {
+                    CALL_TRIANGLE_LAUNCHER(num_nodes - num_filler_nodes, num_nodes, atomic_add_op, buf.data()); 
+                }
+                scaleAdd(DREAMPLACE_TENSOR_DATA_PTR(density_map, scalar_t), buf.data(), 1.0 / scale_factor, num_bins, num_threads);
+            }
+            else 
+            {
+                auto buf = DREAMPLACE_TENSOR_DATA_PTR(density_map, scalar_t);
+                AtomicAdd<scalar_t> atomic_add_op;
+                CALL_TRIANGLE_LAUNCHER(0, num_movable_nodes, atomic_add_op, buf); 
+                if (num_filler_nodes)
+                {
+                    CALL_TRIANGLE_LAUNCHER(num_nodes - num_filler_nodes, num_nodes, atomic_add_op, buf); 
+                }
+            }
             });
-
-    if (num_filler_nodes)
-    {
-        int num_physical_nodes = num_nodes - num_filler_nodes;
-        buf.zero_(); 
-        DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeTriangleDensityMapLauncher", [&] {
-                computeTriangleDensityMapLauncher<scalar_t>(
-                        DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t)+num_physical_nodes, DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t)+num_nodes+num_physical_nodes,
-                        DREAMPLACE_TENSOR_DATA_PTR(node_size_x_clamped, scalar_t)+num_physical_nodes, DREAMPLACE_TENSOR_DATA_PTR(node_size_y_clamped, scalar_t)+num_physical_nodes,
-                        DREAMPLACE_TENSOR_DATA_PTR(offset_x, scalar_t)+num_physical_nodes, DREAMPLACE_TENSOR_DATA_PTR(offset_y, scalar_t)+num_physical_nodes,
-                        DREAMPLACE_TENSOR_DATA_PTR(ratio, scalar_t)+num_physical_nodes,
-                        DREAMPLACE_TENSOR_DATA_PTR(bin_center_x, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(bin_center_y, scalar_t),
-                        num_filler_nodes,
-                        num_bins_x, num_bins_y,
-                        xl, yl, xh, yh,
-                        bin_size_x, bin_size_y,
-                        //false,
-                        num_threads,
-                        DREAMPLACE_TENSOR_DATA_PTR(buf, scalar_t), 
-                        DREAMPLACE_TENSOR_DATA_PTR(density_map, scalar_t)
-                        );
-                });
-    }
 
     return density_map;
 }
@@ -171,7 +195,6 @@ at::Tensor fixed_density_map(
         at::Tensor node_size_x, at::Tensor node_size_y,
         at::Tensor bin_center_x,
         at::Tensor bin_center_y,
-        at::Tensor buf, 
         double xl,
         double yl,
         double xh,
@@ -182,6 +205,7 @@ at::Tensor fixed_density_map(
         int num_terminals, 
         int num_bins_x, int num_bins_y,
         int num_fixed_impacted_bins_x, int num_fixed_impacted_bins_y,
+        int deterministic_flag, 
         int num_threads
         )
 {
@@ -191,31 +215,33 @@ at::Tensor fixed_density_map(
 
     at::Tensor density_map = at::zeros({num_bins_x, num_bins_y}, pos.options());
 
-    if (buf.numel() < num_threads * density_map.numel())
-    {
-        buf = at::empty(num_threads * density_map.numel(), density_map.options());
-    }
-
     int num_nodes = pos.numel() / 2; 
+
+    // total die area 
+    double diearea = (xh-xl)*(yh-yl); 
+    int integer_bits = DREAMPLACE_STD_NAMESPACE::max((int)ceil(log2(diearea))+1, 32);
+    int fraction_bits = DREAMPLACE_STD_NAMESPACE::max(64 - integer_bits, 0); 
+    long scale_factor = (1L << fraction_bits); 
+    int num_bins = num_bins_x*num_bins_y;
 
     // Call the cuda kernel launcher
     if (num_terminals)
     {
-        buf.zero_(); 
         DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeExactDensityMapLauncher", [&] {
-                computeExactDensityMapLauncher<scalar_t>(
-                        DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + num_movable_nodes, DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + num_nodes + num_movable_nodes,
-                        DREAMPLACE_TENSOR_DATA_PTR(node_size_x, scalar_t) + num_movable_nodes, DREAMPLACE_TENSOR_DATA_PTR(node_size_y, scalar_t) + num_movable_nodes,
-                        DREAMPLACE_TENSOR_DATA_PTR(bin_center_x, scalar_t), DREAMPLACE_TENSOR_DATA_PTR(bin_center_y, scalar_t),
-                        num_terminals,
-                        num_bins_x, num_bins_y,
-                        xl, yl, xh, yh,
-                        bin_size_x, bin_size_y,
-                        true,
-                        num_threads,
-                        DREAMPLACE_TENSOR_DATA_PTR(buf, scalar_t), 
-                        DREAMPLACE_TENSOR_DATA_PTR(density_map, scalar_t)
-                        );
+                if (deterministic_flag)
+                {
+                    dreamplacePrint(kDEBUG, "deterministic mode: integer %d bits, fraction %d bits, scale factor %ld\n", integer_bits, fraction_bits, scale_factor);
+                    std::vector<long> buf (num_bins, 0); 
+                    AtomicAdd<long> atomic_add_op (scale_factor); 
+                    CALL_EXACT_LAUNCHER(num_movable_nodes, num_movable_nodes + num_terminals, atomic_add_op, buf.data()); 
+                    scaleAdd(DREAMPLACE_TENSOR_DATA_PTR(density_map, scalar_t), buf.data(), 1.0 / scale_factor, num_bins, num_threads);
+                }
+                else 
+                {
+                    auto buf = DREAMPLACE_TENSOR_DATA_PTR(density_map, scalar_t);
+                    AtomicAdd<scalar_t> atomic_add_op; 
+                    CALL_EXACT_LAUNCHER(num_movable_nodes, num_movable_nodes + num_terminals, atomic_add_op, buf); 
+                }
                 });
 
         // Fixed cells may have overlaps. We should not over-compute the density map. 
@@ -267,7 +293,7 @@ at::Tensor electric_force(
         int num_threads
         );
 
-template <typename T>
+template <typename T, typename AtomicOp>
 int computeTriangleDensityMapLauncher(
         const T* x_tensor, const T* y_tensor,
         const T* node_size_x_clamped_tensor, const T* node_size_y_clamped_tensor,
@@ -279,15 +305,14 @@ int computeTriangleDensityMapLauncher(
         const T xl, const T yl, const T xh, const T yh,
         const T bin_size_x, const T bin_size_y,
         const int num_threads,
-        T* buf, 
-        T* density_map_tensor
+        AtomicOp atomic_add_op, 
+        typename AtomicOp::type *buf_map
         )
 {
     // density_map_tensor should be initialized outside
 
     T inv_bin_size_x = 1.0 / bin_size_x; 
     T inv_bin_size_y = 1.0 / bin_size_y; 
-    int num_bins = num_bins_x * num_bins_y;
     // do not use dynamic scheduling for determinism 
     //int chunk_size = DREAMPLACE_STD_NAMESPACE::max(int(num_nodes/num_threads/16), 1);
 #pragma omp parallel for num_threads(num_threads) //schedule(dynamic, chunk_size)
@@ -299,8 +324,6 @@ int computeTriangleDensityMapLauncher(
         T node_x = x_tensor[i] + offset_x_tensor[i];
         T node_y = y_tensor[i] + offset_y_tensor[i];
         T ratio = ratio_tensor[i];
-        int tid = omp_get_thread_num();
-        T* buf_map = buf + tid * num_bins;
 
         int bin_index_xl = int((node_x - xl) * inv_bin_size_x);
         int bin_index_xh = int(((node_x + node_size_x - xl) * inv_bin_size_x)) + 1; // exclusive
@@ -323,25 +346,15 @@ int computeTriangleDensityMapLauncher(
                 T py = triangle_density_function(node_y, node_size_y, yl, h, bin_size_y);
                 T area = px_by_ratio * py;
 
-                buf_map[k * num_bins_y + h] += area;
+                atomic_add_op(&buf_map[k * num_bins_y + h], area);
             }
-        }
-    }
-
-#pragma omp parallel for num_threads(num_threads) 
-    for (int i = 0; i < num_bins; ++i)
-    {
-        T& density = density_map_tensor[i]; 
-        for (int j = 0; j < num_threads; ++j)
-        {
-            density += buf[j * num_bins + i];
         }
     }
 
     return 0;
 }
 
-template <typename T>
+template <typename T, typename AtomicOp>
 int computeExactDensityMapLauncher(
         const T* x_tensor, const T* y_tensor,
         const T* node_size_x_tensor, const T* node_size_y_tensor,
@@ -352,15 +365,13 @@ int computeExactDensityMapLauncher(
         const T bin_size_x, const T bin_size_y,
         bool fixed_node_flag,
         const int num_threads,
-        T* buf, ///< a buffer for deterministic density map computation 
-        T* density_map_tensor
+        AtomicOp atomic_add_op, 
+        typename AtomicOp::type *buf_map
         )
 {
     // density_map_tensor should be initialized outside
 
-    int num_bins = num_bins_x * num_bins_y; 
-
-    auto box2bin = [&](T bxl, T byl, T bxh, T byh, T* buf_map){
+    auto box2bin = [&](T bxl, T byl, T bxh, T byh){
         // x direction
         int bin_index_xl = int((bxl-xl)/bin_size_x);
         int bin_index_xh = int(ceil((bxh-xl)/bin_size_x))+1; // exclusive
@@ -379,9 +390,9 @@ int computeExactDensityMapLauncher(
             for (int h = bin_index_yl; h < bin_index_yh; ++h)
             {
                 T py = exact_density_function(byl, byh-byl, bin_center_y_tensor[h], bin_size_y, yl, yh, fixed_node_flag);
+                auto area = px * py; 
 
-                // still area
-                buf_map[k*num_bins_y+h] += px * py;
+                atomic_add_op(&buf_map[k * num_bins_y + h], area);
             }
         }
     };
@@ -389,27 +400,18 @@ int computeExactDensityMapLauncher(
 #pragma omp parallel for num_threads(num_threads)
     for (int i = 0; i < num_nodes; ++i)
     {
-        int tid = omp_get_thread_num();
-        T* buf_map = buf + tid * num_bins;
         T bxl = x_tensor[i];
         T byl = y_tensor[i];
         T bxh = bxl + node_size_x_tensor[i]; 
         T byh = byl + node_size_y_tensor[i];
-        box2bin(bxl, byl, bxh, byh, buf_map);
-    }
-
-#pragma omp parallel for num_threads(num_threads) 
-    for (int i = 0; i < num_bins; ++i)
-    {
-        T& density = density_map_tensor[i]; 
-        for (int j = 0; j < num_threads; ++j)
-        {
-            density += buf[j * num_bins + i];
-        }
+        box2bin(bxl, byl, bxh, byh);
     }
 
     return 0;
 }
+
+#undef CALL_TRIANGLE_LAUNCHER
+#undef CALL_EXACT_LAUNCHER
 
 DREAMPLACE_END_NAMESPACE
 

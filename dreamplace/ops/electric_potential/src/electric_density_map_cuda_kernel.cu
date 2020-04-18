@@ -286,7 +286,7 @@ __global__ void computeTriangleDensityMapSimpleLikeCPU(
 
     T inv_bin_size_x = 1.0 / bin_size_x; 
     T inv_bin_size_y = 1.0 / bin_size_y; 
-    int num_bins = num_bins_x * num_bins_y;
+    //int num_bins = num_bins_x * num_bins_y;
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < num_nodes)
     {
@@ -447,11 +447,9 @@ int computeTriangleDensityMapCallKernel(
     )
 {
     int thread_count = 64;
-    // dim3 blockSize(4, thread_count, 1);
     dim3 blockSize(2, 2, thread_count);
 
     int block_count = (num_nodes - 1 + thread_count) / thread_count;
-#if 0 
     computeTriangleDensityMap<<<block_count, blockSize>>>(
         x_tensor, y_tensor,
         node_size_x_clamped_tensor, node_size_y_clamped_tensor,
@@ -468,21 +466,20 @@ int computeTriangleDensityMapCallKernel(
         density_map_tensor,
         sorted_node_map
         );
-#endif
 
-    computeTriangleDensityMapSimpleLikeCPU<<<block_count, thread_count>>>(
-        x_tensor, y_tensor,
-        node_size_x_clamped_tensor, node_size_y_clamped_tensor,
-        offset_x_tensor, offset_y_tensor,
-        ratio_tensor,
-        bin_center_x_tensor, bin_center_y_tensor,
-        num_nodes,
-        num_bins_x, num_bins_y,
-        xl, yl, xh, yh,
-        bin_size_x, bin_size_y,
-        atomicAddOp, 
-        density_map_tensor
-        ); 
+    //computeTriangleDensityMapSimpleLikeCPU<<<block_count, thread_count>>>(
+    //    x_tensor, y_tensor,
+    //    node_size_x_clamped_tensor, node_size_y_clamped_tensor,
+    //    offset_x_tensor, offset_y_tensor,
+    //    ratio_tensor,
+    //    bin_center_x_tensor, bin_center_y_tensor,
+    //    num_nodes,
+    //    num_bins_x, num_bins_y,
+    //    xl, yl, xh, yh,
+    //    bin_size_x, bin_size_y,
+    //    atomicAddOp, 
+    //    density_map_tensor
+    //    ); 
 
     return 0; 
 }
