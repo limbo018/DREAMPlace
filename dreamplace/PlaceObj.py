@@ -147,12 +147,13 @@ class PlaceObj(nn.Module):
 
         # align_and_overflow_loss = self.op_collections.align_and_overflow_op(pos)
         # return wirelength + self.density_weight*density + 1e-10*align_and_overflow_loss
-        return wirelength + self.density_weight*density
+        # return wirelength + self.density_weight*density
         print("peek density:", density.data.item())
         #7.23e9 -> 1311
         if(self.init_density is None):
             self.init_density = 1000/density.data.item()
-        # return wirelength + self.density_weight*(density + self.init_density*density**2)*0.8
+        factor = (density / (self.init_density * density ** 2 + density)).data
+        return wirelength + self.density_weight*(density + self.init_density * density ** 2) * factor
 
 
     def obj_and_grad_fn(self, pos, indices=None):
