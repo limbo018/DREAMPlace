@@ -95,6 +95,7 @@ class PlaceObj(nn.Module):
         self.num_nodes = placedb.num_nodes
         self.num_movable_nodes = placedb.num_movable_nodes
 
+
         # compute weighted average wirelength from position
         name = "%dx%d bins" % (global_place_params["num_bins_x"], global_place_params["num_bins_y"])
         if global_place_params["wirelength"] == "weighted_average":
@@ -105,6 +106,7 @@ class PlaceObj(nn.Module):
             assert 0, "unknown wirelength model %s" % (global_place_params["wirelength"])
         #self.op_collections.density_op = self.build_density_potential(params, placedb, self.data_collections, global_place_params["num_bins_x"], global_place_params["num_bins_y"], padding=1, name)
         self.op_collections.density_op = self.build_electric_potential(params, placedb, self.data_collections, global_place_params["num_bins_x"], global_place_params["num_bins_y"], padding=0, name=name)
+        self.init_density = None
         self.op_collections.update_density_weight_op = self.build_update_density_weight(params, placedb)
         self.op_collections.precondition_op = self.build_precondition(params, placedb, self.data_collections)
         self.op_collections.noise_op = self.build_noise(params, placedb, self.data_collections)
@@ -142,8 +144,15 @@ class PlaceObj(nn.Module):
         """
         wirelength = self.op_collections.wirelength_op(pos)
         density = self.op_collections.density_op(pos)
-        align_and_overflow_loss = self.op_collections.align_and_overflow_op(pos)
-        return wirelength + self.density_weight*density + 1e-10*align_and_overflow_loss
+
+        # align_and_overflow_loss = self.op_collections.align_and_overflow_op(pos)
+        # return wirelength + self.density_weight*density + 1e-10*align_and_overflow_loss
+        return wirelength + self.density_weight*density
+        print("peek density:", density.data.item())
+        #7.23e9 -> 1311
+        if(self.init_density is None):
+            self.init_density = 1000/density.data.item()
+        # return wirelength + self.density_weight*(density + self.init_density*density**2)*0.8
 
 
     def obj_and_grad_fn(self, pos, indices=None):
