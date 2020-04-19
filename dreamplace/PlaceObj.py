@@ -92,6 +92,9 @@ class PlaceObj(nn.Module):
         self.density_weight = torch.tensor([density_weight], dtype=self.data_collections.pos[0].dtype, device=self.data_collections.pos[0].device)
         self.gamma = torch.tensor(10*self.base_gamma(params, placedb), dtype=self.data_collections.pos[0].dtype, device=self.data_collections.pos[0].device)
 
+        self.num_nodes = placedb.num_nodes
+        self.num_movable_nodes = placedb.num_movable_nodes
+
         # compute weighted average wirelength from position
         name = "%dx%d bins" % (global_place_params["num_bins_x"], global_place_params["num_bins_y"])
         if global_place_params["wirelength"] == "weighted_average":
@@ -140,9 +143,10 @@ class PlaceObj(nn.Module):
         wirelength = self.op_collections.wirelength_op(pos)
         density = self.op_collections.density_op(pos)
         align_and_overflow_loss = self.op_collections.align_and_overflow_op(pos)
-        return wirelength + self.density_weight*density + 1e-3*align_and_overflow_loss
+        return wirelength + self.density_weight*density + 1e-10*align_and_overflow_loss
 
-    def obj_and_grad_fn(self, pos):
+
+    def obj_and_grad_fn(self, pos, indices=None):
         """
         @brief compute objective and gradient.
             wirelength + density_weight * density penalty
@@ -158,6 +162,12 @@ class PlaceObj(nn.Module):
         obj.backward()
 
         self.op_collections.precondition_op(pos.grad, self.density_weight)
+        if(indices is not None):
+            pos.grad[:self.num_nodes][indices] = 0
+            pos.grad[self.num_nodes:][indices] = 0
+
+        # pos.grad[:self.num_nodes] -= 0.001*pos.grad[:self.num_nodes].mean()
+        # pos.grad[self.num_nodes:] -= 0.001*pos.grad[self.num_nodes:].mean()
 
         return obj, pos.grad
 
@@ -646,18 +656,20 @@ class PlaceObj(nn.Module):
             pos_x, pos_y = pos[0:num_movable_nodes], pos[num_nodes:num_nodes+num_movable_nodes]
             node_size_x, node_size_y = torch.from_numpy(placedb.node_size_x[:num_movable_nodes]).to(pos_x.device), torch.from_numpy(placedb.node_size_y[:num_movable_nodes]).to(pos_x.device)
 
-            center_y = pos_y + node_size_y / 2
-            aligned_rows_index = torch.round((center_y - yl) / row_height)
-            aligned_rows_y = aligned_rows_index * row_height + yl
-            aligned_rows_index = aligned_rows_index.long()
-
             num_rows = int(round((yh - yl)/row_height))
             row_capacity = xh - xl
 
+            center_y = pos_y + node_size_y / 2
+            aligned_rows_index = torch.round((center_y - yl) / row_height).clamp_(0, num_rows-1)
+            aligned_rows_y = aligned_rows_index * row_height + yl
+            aligned_rows_index = aligned_rows_index.long()
+
+
+
             overflow = scatter_sum(node_size_x, aligned_rows_index, dim=0, dim_size=num_rows)
-            torch.cuda.synchronize()
+
             overflow = overflow / row_capacity
-            overflow_mask = overflow > 1
+            overflow_mask = overflow > 0.5
 
             overflow_mask_n = ~overflow_mask
             overflow[overflow_mask] *= -1
