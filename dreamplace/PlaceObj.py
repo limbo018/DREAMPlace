@@ -139,7 +139,8 @@ class PlaceObj(nn.Module):
         """
         wirelength = self.op_collections.wirelength_op(pos)
         density = self.op_collections.density_op(pos)
-        return wirelength + self.density_weight*density
+        align_and_overflow_loss = self.op_collections.align_and_overflow_op(pos)
+        return wirelength + self.density_weight*density + 1e-3*align_and_overflow_loss
 
     def obj_and_grad_fn(self, pos):
         """
@@ -628,10 +629,10 @@ class PlaceObj(nn.Module):
             src = src.expand_as(other)
             return src
 
-        def scatter_sum(src, index, dim, dim_size, out = None, ) -> torch.Tensor:
+        def scatter_sum(src, index, dim, dim_size, out = None) -> torch.Tensor:
             index = broadcast(index, src, dim)
             if out is None:
-                out = torch.zeros(dim_size, dtype=src.dtype, device=src.device)
+                out = torch.zeros(dim_size+1, dtype=src.dtype, device=src.device)
                 return out.scatter_add(dim, index, src)
             else:
                 return out.scatter_add_(dim, index, src)
@@ -643,7 +644,8 @@ class PlaceObj(nn.Module):
             xl, xh = placedb.xl, placedb.xh
             row_height = placedb.row_height
             pos_x, pos_y = pos[0:num_movable_nodes], pos[num_nodes:num_nodes+num_movable_nodes]
-            node_size_x, node_size_y = placedb.node_size_x, placedb.node_size_y
+            node_size_x, node_size_y = torch.from_numpy(placedb.node_size_x[:num_movable_nodes]).to(pos_x.device), torch.from_numpy(placedb.node_size_y[:num_movable_nodes]).to(pos_x.device)
+
             center_y = pos_y + node_size_y / 2
             aligned_rows_index = torch.round((center_y - yl) / row_height)
             aligned_rows_y = aligned_rows_index * row_height + yl
@@ -653,8 +655,10 @@ class PlaceObj(nn.Module):
             row_capacity = xh - xl
 
             overflow = scatter_sum(node_size_x, aligned_rows_index, dim=0, dim_size=num_rows)
+            torch.cuda.synchronize()
             overflow = overflow / row_capacity
             overflow_mask = overflow > 1
+
             overflow_mask_n = ~overflow_mask
             overflow[overflow_mask] *= -1
             overflow[overflow_mask_n] = 1
@@ -662,4 +666,5 @@ class PlaceObj(nn.Module):
             factor = overflow[aligned_rows_index]
             loss = (factor * (pos_y - aligned_rows_y)**2).mean()
 
-        return loss
+            return loss
+        return align_and_overflow
