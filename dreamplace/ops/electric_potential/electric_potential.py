@@ -31,7 +31,7 @@ from dreamplace.ops.electric_potential.electric_overflow import ElectricOverflow
 
 import dreamplace.ops.electric_potential.electric_potential_cpp as electric_potential_cpp
 import dreamplace.configure as configure
-if configure.compile_configurations["CUDA_FOUND"] == "TRUE": 
+if configure.compile_configurations["CUDA_FOUND"] == "TRUE":
     import dreamplace.ops.electric_potential.electric_potential_cuda as electric_potential_cuda
 
 import pdb
@@ -40,7 +40,7 @@ matplotlib.use('Agg')
 
 logger = logging.getLogger(__name__)
 
-# global variable for plot 
+# global variable for plot
 plot_count = 0
 
 
@@ -48,19 +48,25 @@ class ElectricPotentialFunction(Function):
     """
     @brief compute electric potential according to e-place.
     """
-
     @staticmethod
     def forward(
         ctx,
         pos,
-        node_size_x_clamped, node_size_y_clamped,
-        offset_x, offset_y,
+        node_size_x_clamped,
+        node_size_y_clamped,
+        offset_x,
+        offset_y,
         ratio,
-        bin_center_x, bin_center_y,
+        bin_center_x,
+        bin_center_y,
         initial_density_map,
         target_density,
-        xl, yl, xh, yh,
-        bin_size_x, bin_size_y,
+        xl,
+        yl,
+        xh,
+        yh,
+        bin_size_x,
+        bin_size_y,
         num_movable_nodes,
         num_filler_nodes,
         padding,
@@ -71,7 +77,7 @@ class ElectricPotentialFunction(Function):
         num_movable_impacted_bins_y,
         num_filler_impacted_bins_x,
         num_filler_impacted_bins_y,
-        deterministic_flag, 
+        deterministic_flag,
         sorted_node_map,
         exact_expkM=None,  # exp(-j*pi*k/M)
         exact_expkN=None,  # exp(-j*pi*k/N)
@@ -82,35 +88,18 @@ class ElectricPotentialFunction(Function):
         idct2=None,
         idct_idxst=None,
         idxst_idct=None,
-        fast_mode=True,  # fast mode will discard some computation
-        num_threads=8
+        fast_mode=True  # fast mode will discard some computation
     ):
 
         tt = time.time()
         density_map = ElectricDensityMapFunction.forward(
-                pos,
-                node_size_x_clamped, node_size_y_clamped,
-                offset_x, offset_y,
-                ratio,
-                bin_center_x, bin_center_y,
-                initial_density_map,
-                target_density,
-                xl, yl, xh, yh,
-                bin_size_x, bin_size_y,
-                num_movable_nodes,
-                num_filler_nodes,
-                padding,
-                padding_mask,
-                num_bins_x,
-                num_bins_y,
-                num_movable_impacted_bins_x,
-                num_movable_impacted_bins_y,
-                num_filler_impacted_bins_x,
-                num_filler_impacted_bins_y,
-                deterministic_flag, 
-                sorted_node_map,
-                num_threads
-                )
+            pos, node_size_x_clamped, node_size_y_clamped, offset_x, offset_y,
+            ratio, bin_center_x, bin_center_y, initial_density_map,
+            target_density, xl, yl, xh, yh, bin_size_x, bin_size_y,
+            num_movable_nodes, num_filler_nodes, padding, padding_mask,
+            num_bins_x, num_bins_y, num_movable_impacted_bins_x,
+            num_movable_impacted_bins_y, num_filler_impacted_bins_x,
+            num_filler_impacted_bins_y, deterministic_flag, sorted_node_map)
 
         # output consists of (density_cost, density_map, max_density)
         ctx.node_size_x_clamped = node_size_x_clamped
@@ -138,7 +127,6 @@ class ElectricPotentialFunction(Function):
         ctx.num_filler_impacted_bins_y = num_filler_impacted_bins_y
         ctx.pos = pos
         ctx.sorted_node_map = sorted_node_map
-        ctx.num_threads = num_threads
         #density_map = torch.ones([ctx.num_bins_x, ctx.num_bins_y], dtype=pos.dtype, device=pos.device)
         #ctx.field_map_x = torch.ones([ctx.num_bins_x, ctx.num_bins_y], dtype=pos.dtype, device=pos.device)
         #ctx.field_map_y = torch.ones([ctx.num_bins_x, ctx.num_bins_y], dtype=pos.dtype, device=pos.device)
@@ -150,14 +138,21 @@ class ElectricPotentialFunction(Function):
 
         # wu and wv
         if inv_wu2_plus_wv2 is None:
-            wu = torch.arange(M, dtype=density_map.dtype, device=density_map.device).mul(2 * np.pi / M).view([M, 1])
-            wv = torch.arange(N, dtype=density_map.dtype, device=density_map.device).mul(2 * np.pi / N).view([1, N])
+            wu = torch.arange(M,
+                              dtype=density_map.dtype,
+                              device=density_map.device).mul(2 * np.pi /
+                                                             M).view([M, 1])
+            wv = torch.arange(N,
+                              dtype=density_map.dtype,
+                              device=density_map.device).mul(2 * np.pi /
+                                                             N).view([1, N])
             wu2_plus_wv2 = wu.pow(2) + wv.pow(2)
-            wu2_plus_wv2[0, 0] = 1.0  # avoid zero-division, it will be zeroed out
+            wu2_plus_wv2[0,
+                         0] = 1.0  # avoid zero-division, it will be zeroed out
             inv_wu2_plus_wv2 = 1.0 / wu2_plus_wv2
             inv_wu2_plus_wv2[0, 0] = 0.0
-            wu_by_wu2_plus_wv2_half = wu.mul(inv_wu2_plus_wv2).mul_(1./ 2)
-            wv_by_wu2_plus_wv2_half = wv.mul(inv_wu2_plus_wv2).mul_(1./ 2)
+            wu_by_wu2_plus_wv2_half = wu.mul(inv_wu2_plus_wv2).mul_(1. / 2)
+            wv_by_wu2_plus_wv2_half = wv.mul(inv_wu2_plus_wv2).mul_(1. / 2)
 
         # compute auv
         density_map.mul_(1.0 / (ctx.bin_size_x * ctx.bin_size_y))
@@ -216,48 +211,36 @@ class ElectricPotentialFunction(Function):
 
         if pos.is_cuda:
             torch.cuda.synchronize()
-        logger.debug("density forward %.3f ms" % ((time.time()-tt)*1000))
-        return energy 
+        logger.debug("density forward %.3f ms" % ((time.time() - tt) * 1000))
+        return energy
 
     @staticmethod
     def backward(ctx, grad_pos):
         tt = time.time()
         if grad_pos.is_cuda:
             output = -electric_potential_cuda.electric_force(
-                grad_pos,
-                ctx.num_bins_x, ctx.num_bins_y,
-                ctx.num_movable_impacted_bins_x, ctx.num_movable_impacted_bins_y,
+                grad_pos, ctx.num_bins_x, ctx.num_bins_y,
+                ctx.num_movable_impacted_bins_x,
+                ctx.num_movable_impacted_bins_y,
                 ctx.num_filler_impacted_bins_x, ctx.num_filler_impacted_bins_y,
-                ctx.field_map_x.view([-1]), ctx.field_map_y.view([-1]),
-                ctx.pos,
-                ctx.node_size_x_clamped, ctx.node_size_y_clamped,
-                ctx.offset_x, ctx.offset_y,
-                ctx.ratio,
-                ctx.bin_center_x, ctx.bin_center_y,
-                ctx.xl, ctx.yl, ctx.xh, ctx.yh,
-                ctx.bin_size_x, ctx.bin_size_y,
-                ctx.num_movable_nodes,
-                ctx.num_filler_nodes,
-                ctx.sorted_node_map
-            )
+                ctx.field_map_x.view([-1]), ctx.field_map_y.view(
+                    [-1]), ctx.pos, ctx.node_size_x_clamped,
+                ctx.node_size_y_clamped, ctx.offset_x, ctx.offset_y, ctx.ratio,
+                ctx.bin_center_x, ctx.bin_center_y, ctx.xl, ctx.yl, ctx.xh,
+                ctx.yh, ctx.bin_size_x, ctx.bin_size_y, ctx.num_movable_nodes,
+                ctx.num_filler_nodes, ctx.sorted_node_map)
         else:
             output = -electric_potential_cpp.electric_force(
-                grad_pos,
-                ctx.num_bins_x, ctx.num_bins_y,
-                ctx.num_movable_impacted_bins_x, ctx.num_movable_impacted_bins_y,
+                grad_pos, ctx.num_bins_x, ctx.num_bins_y,
+                ctx.num_movable_impacted_bins_x,
+                ctx.num_movable_impacted_bins_y,
                 ctx.num_filler_impacted_bins_x, ctx.num_filler_impacted_bins_y,
-                ctx.field_map_x.view([-1]), ctx.field_map_y.view([-1]),
-                ctx.pos,
-                ctx.node_size_x_clamped, ctx.node_size_y_clamped,
-                ctx.offset_x, ctx.offset_y,
-                ctx.ratio,
-                ctx.bin_center_x, ctx.bin_center_y,
-                ctx.xl, ctx.yl, ctx.xh, ctx.yh,
-                ctx.bin_size_x, ctx.bin_size_y,
-                ctx.num_movable_nodes,
-                ctx.num_filler_nodes,
-                ctx.num_threads
-            )
+                ctx.field_map_x.view([-1]), ctx.field_map_y.view(
+                    [-1]), ctx.pos, ctx.node_size_x_clamped,
+                ctx.node_size_y_clamped, ctx.offset_x, ctx.offset_y, ctx.ratio,
+                ctx.bin_center_x, ctx.bin_center_y, ctx.xl, ctx.yl, ctx.xh,
+                ctx.yh, ctx.bin_size_x, ctx.bin_size_y, ctx.num_movable_nodes,
+                ctx.num_filler_nodes)
 
         #global plot_count
         # if plot_count >= 300:
@@ -276,7 +259,7 @@ class ElectricPotentialFunction(Function):
         #output = torch.empty_like(ctx.pos).uniform_(0.0, 0.1)
         if grad_pos.is_cuda:
             torch.cuda.synchronize()
-        logger.debug("density backward %.3f ms" % ((time.time()-tt)*1000))
+        logger.debug("density backward %.3f ms" % ((time.time() - tt) * 1000))
         return output, \
             None, None, None, None, \
             None, None, None, None, \
@@ -287,29 +270,34 @@ class ElectricPotentialFunction(Function):
             None, None, None, None, \
             None, None, None, None, \
             None, None, None, None, \
-            None, None, None
+            None
+
 
 class ElectricPotential(ElectricOverflow):
     """
     @brief Compute electric potential according to e-place
     """
-
-    def __init__(self,
-                 node_size_x, node_size_y,
-                 bin_center_x, bin_center_y,
-                 target_density,
-                 xl, yl, xh, yh,
-                 bin_size_x, bin_size_y,
-                 num_movable_nodes,
-                 num_terminals,
-                 num_filler_nodes,
-                 padding,
-                 deterministic_flag, # control whether to use deterministic routine 
-                 sorted_node_map,
-                 movable_macro_mask=None, 
-                 fast_mode=False,
-                 num_threads=8
-                 ):
+    def __init__(
+        self,
+        node_size_x,
+        node_size_y,
+        bin_center_x,
+        bin_center_y,
+        target_density,
+        xl,
+        yl,
+        xh,
+        yh,
+        bin_size_x,
+        bin_size_y,
+        num_movable_nodes,
+        num_terminals,
+        num_filler_nodes,
+        padding,
+        deterministic_flag,  # control whether to use deterministic routine 
+        sorted_node_map,
+        movable_macro_mask=None,
+        fast_mode=False):
         """
         @brief initialization
         Be aware that all scalars must be python type instead of tensors.
@@ -332,30 +320,34 @@ class ElectricPotential(ElectricOverflow):
         @param padding bin padding to boundary of placement region
         @param deterministic_flag control whether to use deterministic routine 
         @param fast_mode if true, only gradient is computed, while objective computation is skipped
-        @param num_threads number of threads
         """
-        super(ElectricPotential, self).__init__(
-                node_size_x=node_size_x, node_size_y=node_size_y,
-                bin_center_x=bin_center_x, bin_center_y=bin_center_y,
-                target_density=target_density,
-                xl=xl, yl=yl, xh=xh, yh=yh,
-                bin_size_x=bin_size_x, bin_size_y=bin_size_y,
-                num_movable_nodes=num_movable_nodes,
-                num_terminals=num_terminals,
-                num_filler_nodes=num_filler_nodes,
-                padding=padding,
-                deterministic_flag=deterministic_flag, 
-                sorted_node_map=sorted_node_map,
-                movable_macro_mask=movable_macro_mask, 
-                num_threads=num_threads
-                )
+        super(ElectricPotential,
+              self).__init__(node_size_x=node_size_x,
+                             node_size_y=node_size_y,
+                             bin_center_x=bin_center_x,
+                             bin_center_y=bin_center_y,
+                             target_density=target_density,
+                             xl=xl,
+                             yl=yl,
+                             xh=xh,
+                             yh=yh,
+                             bin_size_x=bin_size_x,
+                             bin_size_y=bin_size_y,
+                             num_movable_nodes=num_movable_nodes,
+                             num_terminals=num_terminals,
+                             num_filler_nodes=num_filler_nodes,
+                             padding=padding,
+                             deterministic_flag=deterministic_flag,
+                             sorted_node_map=sorted_node_map,
+                             movable_macro_mask=movable_macro_mask)
         self.fast_mode = fast_mode
 
-    def reset(self): 
+    def reset(self):
         """ Compute members derived from input 
         """
         super(ElectricPotential, self).reset()
-        logger.info("regard %d cells as movable macros in global placement" % (self.num_movable_macros))
+        logger.info("regard %d cells as movable macros in global placement" %
+                    (self.num_movable_macros))
 
         self.exact_expkM = None
         self.exact_expkN = None
@@ -373,57 +365,59 @@ class ElectricPotential(ElectricOverflow):
         if self.initial_density_map is None:
             self.compute_initial_density_map(pos)
             # plot(0, self.initial_density_map.clone().div(self.bin_size_x*self.bin_size_y).cpu().numpy(), self.padding, 'summary/initial_potential_map')
-            logger.info("fixed density map: average %g, max %g, bin area %g" % (self.initial_density_map.mean(), self.initial_density_map.max(), self.bin_size_x*self.bin_size_y))
+            logger.info("fixed density map: average %g, max %g, bin area %g" %
+                        (self.initial_density_map.mean(),
+                         self.initial_density_map.max(),
+                         self.bin_size_x * self.bin_size_y))
 
             # expk
             M = self.num_bins_x
             N = self.num_bins_y
-            self.exact_expkM = precompute_expk(M, dtype=pos.dtype, device=pos.device)
-            self.exact_expkN = precompute_expk(N, dtype=pos.dtype, device=pos.device)
+            self.exact_expkM = precompute_expk(M,
+                                               dtype=pos.dtype,
+                                               device=pos.device)
+            self.exact_expkN = precompute_expk(N,
+                                               dtype=pos.dtype,
+                                               device=pos.device)
 
             # init dct2, idct2, idct_idxst, idxst_idct with expkM and expkN
             self.dct2 = dct.DCT2(self.exact_expkM, self.exact_expkN)
             if not self.fast_mode:
                 self.idct2 = dct.IDCT2(self.exact_expkM, self.exact_expkN)
-            self.idct_idxst = dct.IDCT_IDXST(self.exact_expkM, self.exact_expkN)
-            self.idxst_idct = dct.IDXST_IDCT(self.exact_expkM, self.exact_expkN)
+            self.idct_idxst = dct.IDCT_IDXST(self.exact_expkM,
+                                             self.exact_expkN)
+            self.idxst_idct = dct.IDXST_IDCT(self.exact_expkM,
+                                             self.exact_expkN)
 
             # wu and wv
-            wu = torch.arange(M, dtype=pos.dtype, device=pos.device).mul(2 * np.pi / M).view([M, 1])
+            wu = torch.arange(M, dtype=pos.dtype, device=pos.device).mul(
+                2 * np.pi / M).view([M, 1])
             # scale wv because the aspect ratio of a bin may not be 1
-            wv = torch.arange(N, dtype=pos.dtype, device=pos.device).mul(2 * np.pi / N).view([1, N]).mul_(self.bin_size_x / self.bin_size_y)
+            wv = torch.arange(N, dtype=pos.dtype,
+                              device=pos.device).mul(2 * np.pi / N).view(
+                                  [1,
+                                   N]).mul_(self.bin_size_x / self.bin_size_y)
             wu2_plus_wv2 = wu.pow(2) + wv.pow(2)
-            wu2_plus_wv2[0, 0] = 1.0  # avoid zero-division, it will be zeroed out
+            wu2_plus_wv2[0,
+                         0] = 1.0  # avoid zero-division, it will be zeroed out
             self.inv_wu2_plus_wv2 = 1.0 / wu2_plus_wv2
             self.inv_wu2_plus_wv2[0, 0] = 0.0
-            self.wu_by_wu2_plus_wv2_half = wu.mul(self.inv_wu2_plus_wv2).mul_(1./ 2)
-            self.wv_by_wu2_plus_wv2_half = wv.mul(self.inv_wu2_plus_wv2).mul_(1./ 2)
+            self.wu_by_wu2_plus_wv2_half = wu.mul(self.inv_wu2_plus_wv2).mul_(
+                1. / 2)
+            self.wv_by_wu2_plus_wv2_half = wv.mul(self.inv_wu2_plus_wv2).mul_(
+                1. / 2)
 
         return ElectricPotentialFunction.apply(
-            pos,
-            self.node_size_x_clamped, self.node_size_y_clamped,
-            self.offset_x, self.offset_y,
-            self.ratio,
-            self.bin_center_x, self.bin_center_y,
-            self.initial_density_map,
-            self.target_density,
-            self.xl, self.yl, self.xh, self.yh,
-            self.bin_size_x, self.bin_size_y,
-            self.num_movable_nodes, self.num_filler_nodes,
-            self.padding,
-            self.padding_mask,
-            self.num_bins_x,
-            self.num_bins_y,
-            self.num_movable_impacted_bins_x,
-            self.num_movable_impacted_bins_y,
-            self.num_filler_impacted_bins_x,
-            self.num_filler_impacted_bins_y,
-            self.deterministic_flag, 
-            self.sorted_node_map,
-            self.exact_expkM, self.exact_expkN,
-            self.inv_wu2_plus_wv2,
+            pos, self.node_size_x_clamped, self.node_size_y_clamped,
+            self.offset_x, self.offset_y, self.ratio, self.bin_center_x,
+            self.bin_center_y, self.initial_density_map, self.target_density,
+            self.xl, self.yl, self.xh, self.yh, self.bin_size_x,
+            self.bin_size_y, self.num_movable_nodes, self.num_filler_nodes,
+            self.padding, self.padding_mask, self.num_bins_x, self.num_bins_y,
+            self.num_movable_impacted_bins_x, self.num_movable_impacted_bins_y,
+            self.num_filler_impacted_bins_x, self.num_filler_impacted_bins_y,
+            self.deterministic_flag, self.sorted_node_map, self.exact_expkM,
+            self.exact_expkN, self.inv_wu2_plus_wv2,
             self.wu_by_wu2_plus_wv2_half, self.wv_by_wu2_plus_wv2_half,
             self.dct2, self.idct2, self.idct_idxst, self.idxst_idct,
-            self.fast_mode,
-            self.num_threads
-        )
+            self.fast_mode)

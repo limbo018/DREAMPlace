@@ -2,8 +2,7 @@
 #include <stdio.h>
 #include "assert.h"
 #include "cuda_runtime.h"
-#include "utility/src/print.h"
-#include "utility/src/Msg.h"
+#include "utility/src/utils.cuh"
 
 DREAMPLACE_BEGIN_NAMESPACE
 

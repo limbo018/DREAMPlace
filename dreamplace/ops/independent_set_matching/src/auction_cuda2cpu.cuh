@@ -102,7 +102,7 @@ void linear_assignment_auction_cuda2cpu(
         //dreamplacePrint(kDEBUG, "graph %d, cost %g -> %g, delta %g\n", i, (double)orig_cost, (double)target_cost, (double)target_cost-orig_cost);
     }
 
-    set_stop_flags_kernel<<<CPUCeilDiv(num_graphs, 256), 256>>>(stop_flags, num_graphs, 1);
+    set_stop_flags_kernel<<<cpuCeilDiv(num_graphs, 256), 256>>>(stop_flags, num_graphs, 1);
     checkCUDA(cudaMemcpy(solutions, solutions_host.data(), sizeof(int)*num_graphs*num_nodes, cudaMemcpyHostToDevice));
 }
 

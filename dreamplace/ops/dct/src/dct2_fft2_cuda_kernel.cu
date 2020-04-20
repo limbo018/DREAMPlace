@@ -12,8 +12,7 @@
 #include <math.h>
 #include <float.h>
 #include "cuda_runtime.h"
-#include "utility/src/Msg.h"
-#include "utility/src/ComplexNumber.cuh"
+#include "utility/src/utils.cuh"
 
 #define TPB (16)
 

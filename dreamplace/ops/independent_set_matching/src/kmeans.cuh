@@ -172,7 +172,7 @@ __global__ void init_kmeans_seeds_kernel(DetailedPlaceDBType db, IndependentSetM
 template <typename DetailedPlaceDBType, typename IndependentSetMatchingStateType>
 void init_kmeans_seeds(const DetailedPlaceDBType& db, IndependentSetMatchingStateType& state, KMeansState<typename DetailedPlaceDBType::type>& kmeans_state)
 {
-    init_kmeans_seeds_kernel<<<CPUCeilDiv(kmeans_state.num_seeds, 256), 256>>>(db, state, kmeans_state);
+    init_kmeans_seeds_kernel<<<cpuCeilDiv(kmeans_state.num_seeds, 256), 256>>>(db, state, kmeans_state);
 }
 
 template <typename DetailedPlaceDBType, typename IndependentSetMatchingStateType>
@@ -246,15 +246,15 @@ template <typename DetailedPlaceDBType, typename IndependentSetMatchingStateType
 void kmeans_update_centers(const DetailedPlaceDBType& db, IndependentSetMatchingStateType& state, KMeansState<typename DetailedPlaceDBType::type>& kmeans_state)
 {
     // reset partition_sizes to 0 
-    reset_kmeans_partition_sizes_kernel<<<CPUCeilDiv(kmeans_state.num_seeds, 256), 256>>>(db, state, kmeans_state);
+    reset_kmeans_partition_sizes_kernel<<<cpuCeilDiv(kmeans_state.num_seeds, 256), 256>>>(db, state, kmeans_state);
     // compute partition sizes 
-    compute_kmeans_partition_sizes_kernel<<<CPUCeilDiv(state.num_selected, 256), 256>>>(db, state, kmeans_state);
+    compute_kmeans_partition_sizes_kernel<<<cpuCeilDiv(state.num_selected, 256), 256>>>(db, state, kmeans_state);
     // reset kmeans centers to 0 
-    reset_kmeans_centers_kernel<<<CPUCeilDiv(kmeans_state.num_seeds, 256), 256>>>(db, state, kmeans_state);
+    reset_kmeans_centers_kernel<<<cpuCeilDiv(kmeans_state.num_seeds, 256), 256>>>(db, state, kmeans_state);
     // compute kmeans centers sum 
-    compute_kmeans_centers_sum_kernel<<<CPUCeilDiv(state.num_selected, 256), 256>>>(db, state, kmeans_state);
+    compute_kmeans_centers_sum_kernel<<<cpuCeilDiv(state.num_selected, 256), 256>>>(db, state, kmeans_state);
     // compute kmeans centers div 
-    compute_kmeans_centers_div_kernel<<<CPUCeilDiv(kmeans_state.num_seeds, 256), 256>>>(db, state, kmeans_state);
+    compute_kmeans_centers_div_kernel<<<cpuCeilDiv(kmeans_state.num_seeds, 256), 256>>>(db, state, kmeans_state);
 }
 
 template <typename DetailedPlaceDBType, typename IndependentSetMatchingStateType>
@@ -280,7 +280,7 @@ __global__ void compute_kmeans_weights_kernel(DetailedPlaceDBType db, Independen
 template <typename DetailedPlaceDBType, typename IndependentSetMatchingStateType>
 void kmeans_update_weights(const DetailedPlaceDBType& db, IndependentSetMatchingStateType& state, KMeansState<typename DetailedPlaceDBType::type>& kmeans_state)
 {
-    compute_kmeans_weights_kernel<<<CPUCeilDiv(kmeans_state.num_seeds, 256), 256>>>(db, state, kmeans_state);
+    compute_kmeans_weights_kernel<<<cpuCeilDiv(kmeans_state.num_seeds, 256), 256>>>(db, state, kmeans_state);
 }
 
 template <typename DetailedPlaceDBType, typename IndependentSetMatchingStateType>

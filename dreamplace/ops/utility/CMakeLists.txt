@@ -1,4 +1,4 @@
-project(utility)
+set(OP_NAME utility)
 
 file(GLOB SOURCES 
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
@@ -7,4 +7,4 @@ file(GLOB SOURCES
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/..")
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-add_library(${PROJECT_NAME} STATIC ${SOURCES})
+add_library(${OP_NAME} STATIC ${SOURCES})

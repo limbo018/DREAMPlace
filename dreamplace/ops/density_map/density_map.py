@@ -2,85 +2,46 @@
 # @file   density_map.py
 # @author Yibo Lin
 # @date   Jun 2018
-# @brief  Compute density map 
+# @brief  Compute density map
 #
 
-import math 
+import math
 import torch
 from torch import nn
 from torch.autograd import Function
 
 import dreamplace.ops.density_map.density_map_cpp as density_map_cpp
-try: 
+import dreamplace.configure as configure
+if configure.compile_configurations["CUDA_FOUND"] == "TRUE":
     import dreamplace.ops.density_map.density_map_cuda as density_map_cuda
-except:
-    pass 
 
-import numpy as np 
+import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 from mpl_toolkits.mplot3d import Axes3D
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
 
-import pdb 
+import pdb
+
 
 class DensityMapFunction(Function):
     """
     @brief compute density map.
     """
     @staticmethod
-    def forward(
-          pos,
-          node_size_x,
-          node_size_y,
-          bin_center_x, 
-          bin_center_y, 
-          initial_density_map, 
-          xl, 
-          yl, 
-          xh, 
-          yh, 
-          bin_size_x, 
-          bin_size_y, 
-          num_movable_nodes, 
-          num_filler_nodes, 
-          num_threads
-          ):
+    def forward(pos, node_size_x, node_size_y, bin_center_x, bin_center_y,
+                initial_density_map, xl, yl, xh, yh, bin_size_x, bin_size_y,
+                num_movable_nodes, num_filler_nodes):
         if pos.is_cuda:
-            output = density_map_cuda.forward(
-                    pos.view(pos.numel()), 
-                    node_size_x,
-                    node_size_y,
-                    bin_center_x, 
-                    bin_center_y, 
-                    initial_density_map, 
-                    xl, 
-                    yl, 
-                    xh, 
-                    yh, 
-                    bin_size_x, 
-                    bin_size_y,
-                    num_movable_nodes, 
-                    num_filler_nodes)
+            func = density_map_cuda.forward
         else:
-            output = density_map_cpp.forward(
-                    pos.view(pos.numel()), 
-                    node_size_x,
-                    node_size_y,
-                    bin_center_x, 
-                    bin_center_y, 
-                    initial_density_map, 
-                    xl, 
-                    yl, 
-                    xh, 
-                    yh, 
-                    bin_size_x, 
-                    bin_size_y, 
-                    num_movable_nodes, 
-                    num_filler_nodes, 
-                    num_threads
-                    )
+            func = density_map_cpp.forward
+        output = func(pos.view(pos.numel()), node_size_x, node_size_y,
+                      bin_center_x, bin_center_y, initial_density_map, xl, yl,
+                      xh, yh, bin_size_x, bin_size_y, num_movable_nodes,
+                      num_filler_nodes)
         return output
+
 
 class DensityMap(object):
     """
@@ -88,7 +49,9 @@ class DensityMap(object):
     The density map for fixed cells is pre-computed. 
     Each call will only compute the density map for movable cells. 
     """
-    def __init__(self, node_size_x, node_size_y, bin_center_x, bin_center_y, xl, yl, xh, yh, bin_size_x, bin_size_y, num_movable_nodes, num_terminals, num_filler_nodes, num_threads=8):
+    def __init__(self, node_size_x, node_size_y, bin_center_x, bin_center_y,
+                 xl, yl, xh, yh, bin_size_x, bin_size_y, num_movable_nodes,
+                 num_terminals, num_filler_nodes):
         """
         @brief initialization 
         @param node_size_x cell width array consisting of movable cells, fixed cells, and filler cells in order  
@@ -110,77 +73,52 @@ class DensityMap(object):
         self.node_size_y = node_size_y
         self.bin_center_x = bin_center_x
         self.bin_center_y = bin_center_y
-        self.xl = xl 
+        self.xl = xl
         self.yl = yl
-        self.xh = xh 
-        self.yh = yh 
+        self.xh = xh
+        self.yh = yh
         self.bin_size_x = bin_size_x
         self.bin_size_y = bin_size_y
         self.num_movable_nodes = num_movable_nodes
         self.num_terminals = num_terminals
         self.num_filler_nodes = num_filler_nodes
         self.initial_density_map = None
-        self.num_threads = num_threads
-    def forward(self, pos): 
+
+    def forward(self, pos):
         """
         @brief API 
         @param pos cell locations. The array consists of x locations of movable cells, fixed cells, and filler cells, then y locations of them 
         """
         if self.initial_density_map is None:
             if pos.is_cuda:
-                self.initial_density_map = density_map_cuda.fixed_density_map(
-                        pos, 
-                        self.node_size_x, 
-                        self.node_size_y, 
-                        self.bin_center_x, 
-                        self.bin_center_y, 
-                        self.xl, 
-                        self.yl, 
-                        self.xh, 
-                        self.yh, 
-                        self.bin_size_x, 
-                        self.bin_size_y, 
-                        self.num_movable_nodes, 
-                        self.num_terminals
-                        )
+                func = density_map_cuda.fixed_density_map
             else:
-                self.initial_density_map = density_map_cpp.fixed_density_map(
-                        pos, 
-                        self.node_size_x, 
-                        self.node_size_y, 
-                        self.bin_center_x, 
-                        self.bin_center_y, 
-                        self.xl, 
-                        self.yl, 
-                        self.xh, 
-                        self.yh, 
-                        self.bin_size_x, 
-                        self.bin_size_y, 
-                        self.num_movable_nodes, 
-                        self.num_terminals, 
-                        self.num_threads
-                        )
+                func = density_map_cpp.fixed_density_map
+            self.initial_density_map = func(
+                pos, self.node_size_x, self.node_size_y, self.bin_center_x,
+                self.bin_center_y, self.xl, self.yl, self.xh, self.yh,
+                self.bin_size_x, self.bin_size_y, self.num_movable_nodes,
+                self.num_terminals)
             #plot(self.initial_density_map.clone().div(self.bin_size_x*self.bin_size_y).cpu().numpy(), 'initial_density_map')
 
         density_map = DensityMapFunction.forward(
-                pos=pos,
-                node_size_x=self.node_size_x,
-                node_size_y=self.node_size_y,
-                bin_center_x=self.bin_center_x, 
-                bin_center_y=self.bin_center_y, 
-                initial_density_map=self.initial_density_map, 
-                xl=self.xl, 
-                yl=self.yl, 
-                xh=self.xh, 
-                yh=self.yh, 
-                bin_size_x=self.bin_size_x, 
-                bin_size_y=self.bin_size_y, 
-                num_movable_nodes=self.num_movable_nodes, 
-                num_filler_nodes=self.num_filler_nodes, 
-                num_threads=self.num_threads
-                )
+            pos=pos,
+            node_size_x=self.node_size_x,
+            node_size_y=self.node_size_y,
+            bin_center_x=self.bin_center_x,
+            bin_center_y=self.bin_center_y,
+            initial_density_map=self.initial_density_map,
+            xl=self.xl,
+            yl=self.yl,
+            xh=self.xh,
+            yh=self.yh,
+            bin_size_x=self.bin_size_x,
+            bin_size_y=self.bin_size_y,
+            num_movable_nodes=self.num_movable_nodes,
+            num_filler_nodes=self.num_filler_nodes)
 
         return density_map
+
 
 def plot(density_map, name):
     """
@@ -202,7 +140,7 @@ def plot(density_map, name):
     ax.set_zlabel('density')
 
     #plt.tight_layout()
-    plt.savefig(name+".3d.png")
+    plt.savefig(name + ".3d.png")
 
     plt.clf()
 
@@ -216,4 +154,4 @@ def plot(density_map, name):
     #        text = ax.text(j, i, density_map[i, j],
     #                ha="center", va="center", color="w")
     fig.tight_layout()
-    plt.savefig(name+".2d.png")
+    plt.savefig(name + ".2d.png")

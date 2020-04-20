@@ -8,8 +8,6 @@
 #include <math.h>
 #include <float.h>
 #include "cuda_runtime.h"
-#include "utility/src/print.h"
-#include "utility/src/Msg.h"
 #include "utility/src/utils.cuh"
 
 DREAMPLACE_BEGIN_NAMESPACE
@@ -113,7 +111,7 @@ int computeDensityMapCudaLauncher(
         )
 {
     int thread_count = 256; 
-    int block_count = CPUCeilDiv(num_nodes, thread_count);
+    int block_count = cpuCeilDiv(num_nodes, thread_count);
 
     computeDensityMap<<<block_count, thread_count>>>(
             x_tensor, y_tensor, 

@@ -7,8 +7,7 @@
 #define _DREAMPLACE_INDEPENDENT_SET_MATCHING_APPLY_SOLUTION_CUH
 
 #include <cub/cub.cuh>
-#include "utility/src/limits.cuh"
-#include "utility/src/Box.cuh"
+#include "utility/src/utils.cuh"
 
 //#define DEBUG
 

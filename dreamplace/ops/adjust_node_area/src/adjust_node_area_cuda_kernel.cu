@@ -6,6 +6,7 @@
  */
 
 #include "utility/src/utils.cuh"
+// local dependency
 #include "adjust_node_area/src/scaling_function.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
@@ -73,7 +74,7 @@ int computeInstanceRoutabilityOptimizationMapCudaLauncher(
     T *instance_route_area)
 {
     int thread_count = 512;
-    int block_count = CPUCeilDiv(num_movable_nodes, thread_count);
+    int block_count = cpuCeilDiv(num_movable_nodes, thread_count);
     computeInstanceRoutabilityOptimizationMap<<<block_count, thread_count>>>(
         pos_x, pos_y,
         node_size_x, node_size_y,
