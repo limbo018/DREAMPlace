@@ -215,7 +215,8 @@ class ElectricOverflow(nn.Module):
         else:
             self.padding_mask = torch.zeros(self.num_bins_x, self.num_bins_y, dtype=torch.uint8, device=node_size_x.device)
 
-        self.num_threads = num_threads
+        # A hotfix for poor scalability of more threads 
+        self.num_threads = min(num_threads, 8)
 
         self.deterministic_flag = deterministic_flag
         # initial density_map due to fixed cells

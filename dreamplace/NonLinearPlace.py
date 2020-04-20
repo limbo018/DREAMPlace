@@ -51,6 +51,10 @@ class NonLinearPlace (BasicPlace.BasicPlace):
         if params.global_place_flag: 
             # global placement may run in multiple stages according to user specification 
             for global_place_params in params.global_place_stages:
+                # As global placement may easily diverge, we record the position of best overflow
+                best_metric = [None]
+                best_pos = [None]
+
                 if params.gpu: 
                     torch.cuda.synchronize()
                 tt = time.time()
@@ -153,6 +157,14 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                         param_group['lr'] = learning_rate
 
                     logging.info(cur_metric)
+                    # record the best overflow
+                    if best_metric[0] is None or best_metric[
+                            0].overflow > cur_metric.overflow:
+                        best_metric[0] = cur_metric
+                        if best_pos[0] is None:
+                            best_pos[0] = self.pos[0].data.clone()
+                        else:
+                            best_pos[0].data.copy_(self.pos[0].data)
                     # plot placement 
                     if params.plot_flag and iteration % 100 == 0: 
                         cur_pos = self.pos[0].data.clone().cpu().numpy()
@@ -165,6 +177,18 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                     iteration += 1
 
                     logging.info("full step %.3f ms" % ((time.time()-t0)*1000))
+
+                # in case of divergence, stop and call for debug 
+                last_metric = metrics[-1]
+                if last_metric.overflow > max(
+                        params.stop_overflow, best_metric[0].overflow
+                ) and last_metric.hpwl > best_metric[0].hpwl:
+                    self.pos[0].data.copy_(best_pos[0].data)
+                    logging.error(
+                        "possible DIVERGENCE detected, roll back to the best position recorded"
+                    )
+                    logging.info(best_metric[0])
+                    assert 0, "possible DIVERGENCE detected, call for DEBUG"
 
                 logging.info("optimizer %s takes %.3f seconds" % (optimizer_name, time.time()-tt))
         else: 
