@@ -68,7 +68,7 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
     - Code has been tested on GPUs with compute compatibility 6.0, 7.0, and 7.5. 
     - Please check the [compatibility](https://developer.nvidia.com/cuda-gpus) of the GPU devices. 
     - The default compilation target is compatibility 6.0. This is the minimum requirement and lower compatibility is not supported for the GPU feature. 
-    For compatibility 7.0, it is necessary to set the CMAKE_CUDA_FLAGS to -gencode=arch=compute_70,code=sm_70. 
+    - For compatibility 7.0, it is necessary to set the CMAKE_CUDA_FLAGS to -gencode=arch=compute_70,code=sm_70. 
 
 - [Cairo](https://github.com/freedesktop/cairo) (Optional)
     - If installed and found, the plotting functions will be faster by using C/C++ implementation. 
