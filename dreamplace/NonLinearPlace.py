@@ -228,8 +228,16 @@ class NonLinearPlace (BasicPlace.BasicPlace):
 
                 Llambda_flat_iteration = 0
                 noise_number = 0
-                noise_list = [(0.5, 0.995, 2), (0.4, 0.995, 1)] # b1
-                noise_list = [(0.45, 0.995, 4)] # b2, only 0.45
+                noise_list = {"adaptec1":[(0.55, 0.995, 30)],
+                              "adaptec2":[(0.4, 0.995, 30)],
+                              "adaptec3":[(0.5, 0.995, 30)],
+                              "adaptec4":[(0.5, 0.994, 20),(0.4, 0.995, 10)],
+                              "bigblue1": [(0.5, 0.995, 20), (0.4, 0.995, 10)], # b1
+                              "bigblue2": [(0.45, 0.995, 40)], # b2, only 0.45
+                            #   "bigblue4": [(0.65, 0.995, 30), (0.55, 0.997, 20)]
+                              "bigblue4": [(0.35, 0.995, 30)]
+                             }[params.design_name()]
+
 
                 for Lgamma_step in range(model.Lgamma_iteration):
                     Lgamma_metrics.append([])
@@ -250,20 +258,22 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                                 print(iteration)
                                 print("Adjust")
                                 pos = model.data_collections.pos[0]
-                                print(pos[:placedb.num_movable_nodes].mean())
-                                xc = pos[:placedb.num_movable_nodes].data.mean()
-                                yc = pos.data[placedb.num_nodes:placedb.num_nodes+placedb.num_movable_nodes].mean()
-                                num_movable_nodes = placedb.num_movable_nodes
-                                num_nodes = placedb.num_nodes
-                                num_filler_nodes = placedb.num_filler_nodes
-                                num_fixed_nodes = num_nodes - num_movable_nodes - num_filler_nodes
-                                fixed_pos_x = pos.data[num_movable_nodes:num_movable_nodes+num_fixed_nodes].clone()
-                                fixed_pos_y = pos.data[num_nodes+ num_movable_nodes:num_nodes+num_movable_nodes+num_fixed_nodes].clone()
-                                pos.data[:num_nodes] = (pos[:num_nodes].data - xc)*shrink_factor + xc + noise_intensity*torch.randn(num_nodes).to(pos.device)*torch.from_numpy(placedb.node_size_x).to(pos.device)
-                                pos.data[num_movable_nodes:num_movable_nodes+num_fixed_nodes] = fixed_pos_x
-                                pos.data[num_nodes:] = (pos[num_nodes:].data - yc)*shrink_factor + yc + noise_intensity*torch.randn(num_nodes).to(pos.device)*torch.from_numpy(placedb.node_size_y).to(pos.device)
-                                pos.data[num_nodes+ num_movable_nodes:num_nodes+num_movable_nodes+num_fixed_nodes] = fixed_pos_y
-                                print(pos[:placedb.num_movable_nodes].mean())
+                                pos_n = self.op_collections.legalize_op(pos.data)
+                                pos.data.add_(0.01*(pos_n-pos))
+                                # print(pos[:placedb.num_movable_nodes].mean())
+                                # xc = pos[:placedb.num_movable_nodes].data.mean()
+                                # yc = pos.data[placedb.num_nodes:placedb.num_nodes+placedb.num_movable_nodes].mean()
+                                # num_movable_nodes = placedb.num_movable_nodes
+                                # num_nodes = placedb.num_nodes
+                                # num_filler_nodes = placedb.num_filler_nodes
+                                # num_fixed_nodes = num_nodes - num_movable_nodes - num_filler_nodes
+                                # fixed_pos_x = pos.data[num_movable_nodes:num_movable_nodes+num_fixed_nodes].clone()
+                                # fixed_pos_y = pos.data[num_nodes+ num_movable_nodes:num_nodes+num_movable_nodes+num_fixed_nodes].clone()
+                                # pos.data[:num_nodes] = (pos[:num_nodes].data - xc)*shrink_factor + xc + noise_intensity*torch.randn(num_nodes).to(pos.device)#*torch.from_numpy(placedb.node_size_x).to(pos.device)
+                                # pos.data[num_movable_nodes:num_movable_nodes+num_fixed_nodes] = fixed_pos_x
+                                # pos.data[num_nodes:] = (pos[num_nodes:].data - yc)*shrink_factor + yc + noise_intensity*torch.randn(num_nodes).to(pos.device)#*torch.from_numpy(placedb.node_size_y).to(pos.device)
+                                # pos.data[num_nodes+ num_movable_nodes:num_nodes+num_movable_nodes+num_fixed_nodes] = fixed_pos_y
+                                # print(pos[:placedb.num_movable_nodes].mean())
                                 self.plot(params, placedb, iteration+1, self.pos[0].data.clone().cpu().numpy())
                             # stopping criteria
                             if Lsub_stop_criterion(Lgamma_step, Llambda_density_weight_step, Lsub_step, Lsub_metrics):
