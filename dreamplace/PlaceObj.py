@@ -146,8 +146,10 @@ class PlaceObj(nn.Module):
         density = self.op_collections.density_op(pos)
 
         # align_and_overflow_loss = self.op_collections.align_and_overflow_op(pos)
-        # return wirelength + self.density_weight*density + 1e-10*align_and_overflow_loss
-        # return wirelength + self.density_weight*density
+        # print("Overflow loss:", 1e1*align_and_overflow_loss)
+        # # return wirelength + self.density_weight*(density + 1e1*align_and_overflow_loss)
+        # return wirelength + 1e3*align_and_overflow_loss
+        return wirelength + self.density_weight*density
         print("peek density:", density.data.item())
         #7.23e9 -> 1311
         if(self.init_density is None):
@@ -657,6 +659,24 @@ class PlaceObj(nn.Module):
             else:
                 return out.scatter_add_(dim, index, src)
 
+        num_nodes = placedb.num_nodes
+        num_movable_nodes = placedb.num_movable_nodes
+        num_filler_nodes = placedb.num_filler_nodes
+        num_fixed_nodes = num_nodes - num_movable_nodes - num_filler_nodes
+        # print(num_nodes, num_movable_nodes, num_filler_nodes, num_fixed_nodes)
+        yl, yh = placedb.yl, placedb.yh
+        xl, xh = placedb.xl, placedb.xh
+        row_height = placedb.row_height
+        num_rows = int(round((yh - yl)/row_height))
+        pos_y = self.data_collections.pos[0][num_nodes+num_movable_nodes:-num_filler_nodes]
+        node_size_x, node_size_y = torch.from_numpy(placedb.node_size_x[num_movable_nodes:num_movable_nodes+num_fixed_nodes]).to(pos_y.device), torch.from_numpy(placedb.node_size_y[num_movable_nodes:num_movable_nodes+num_fixed_nodes]).to(pos_y.device)
+        # print(pos_y.size(), node_size_y.size())
+
+        row_capacity = torch.zeros(num_rows+1).cuda().fill_(xh-xl)
+        for i in range(num_fixed_nodes):
+            row_l, row_h = int((pos_y[i] - yl) / row_height), int((pos_y[i] + node_size_y[i] - yl) / row_height)
+            row_capacity[row_l:row_h+1] -= node_size_x[i]
+
         def align_and_overflow(pos):
             num_nodes = placedb.num_nodes
             num_movable_nodes = placedb.num_movable_nodes
@@ -667,26 +687,30 @@ class PlaceObj(nn.Module):
             node_size_x, node_size_y = torch.from_numpy(placedb.node_size_x[:num_movable_nodes]).to(pos_x.device), torch.from_numpy(placedb.node_size_y[:num_movable_nodes]).to(pos_x.device)
 
             num_rows = int(round((yh - yl)/row_height))
-            row_capacity = xh - xl
+            # row_capacity = xh - xl
 
             center_y = pos_y + node_size_y / 2
             aligned_rows_index = torch.round((center_y - yl) / row_height).clamp_(0, num_rows-1)
             aligned_rows_y = aligned_rows_index * row_height + yl
             aligned_rows_index = aligned_rows_index.long()
 
-
-
             overflow = scatter_sum(node_size_x, aligned_rows_index, dim=0, dim_size=num_rows)
 
             overflow = overflow / row_capacity
-            overflow_mask = overflow > 0.5
+            thres = 1
+            overflow_mask = overflow > thres
+
 
             overflow_mask_n = ~overflow_mask
-            overflow[overflow_mask] *= -1
-            overflow[overflow_mask_n] = 1
+            overflow2 = overflow.clone()
+            overflow[overflow_mask_n] = 0
+            overflow2[overflow_mask] = 0
+            overflow2[overflow_mask_n] = 1
 
             factor = overflow[aligned_rows_index]
-            loss = (factor * (pos_y - aligned_rows_y)**2).mean()
+            factor2 = overflow2[aligned_rows_index]
+            loss = -1e-3*(factor * (center_y - center_y.mean().data)**2).mean()
+            loss = (factor2 * (center_y - aligned_rows_y.data)**2).mean()
 
             return loss
         return align_and_overflow
