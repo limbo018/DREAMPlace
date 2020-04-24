@@ -91,6 +91,7 @@ class PlaceObj(nn.Module):
         self.op_collections = op_collections
         self.density_weight = torch.tensor([density_weight], dtype=self.data_collections.pos[0].dtype, device=self.data_collections.pos[0].device)
         self.gamma = torch.tensor(10*self.base_gamma(params, placedb), dtype=self.data_collections.pos[0].dtype, device=self.data_collections.pos[0].device)
+        self.placedb = placedb
 
         # compute weighted average wirelength from position
         name = "%dx%d bins" % (global_place_params["num_bins_x"], global_place_params["num_bins_y"])
@@ -139,24 +140,70 @@ class PlaceObj(nn.Module):
         density = self.op_collections.density_op(pos)
         return wirelength + self.density_weight*density
 
-    def obj_and_grad_fn(self, pos):
+    def obj_and_grad_fn(self, pos, joint_opt=False):
         """
         @brief compute objective and gradient.
             wirelength + density_weight * density penalty
         @param pos locations of cells
         @return objective value
         """
-        #self.check_gradient(pos)
-        obj = self.obj_fn(pos)
+        if joint_opt:            
+            num_moveable_nodes = self.placedb.num_movable_nodes
+            num_filler_nodes = self.placedb.num_filler_nodes
+            num_nodes = self.placedb.num_nodes
+            with torch.no_grad():
+                # p1 = self.op_collections.legalize_op(pos)
+                # p1 = self.op_collections.detailed_place_op(p1)
+                
+                # noise = torch.randn_like(pos, device=pos.device)
+                # noise[num_moveable_nodes:num_nodes-num_filler_nodes].zero_()
+                # noise[num_nodes + num_moveable_nodes:2 * num_nodes-num_filler_nodes].zero_()
+                # p1 = pos + 1e-1 * noise
 
-        if pos.grad is not None:
-            pos.grad.zero_()
+                p1 = pos.data.clone()
+                p1[num_moveable_nodes:num_nodes-num_filler_nodes] *= 0.9
+                p1[num_nodes + num_moveable_nodes:2 * num_nodes-num_filler_nodes] *= 0.9
+            
+            p1.requires_grad = True
+            p1_obj = self.obj_fn(p1)
+            p1_obj.backward()
+                        
+            # trainable_pos_mean = torch.cat([pos.data[:num_moveable_nodes], pos.data[num_nodes-num_filler_nodes:num_nodes], pos.data[num_nodes:num_nodes+num_moveable_nodes], pos.data[2 * num_nodes-num_filler_nodes:]]).mean()
+            # p1_grad_mean = torch.cat([p1.grad[:num_moveable_nodes], p1.grad[num_nodes-num_filler_nodes:num_nodes], p1.grad[num_nodes:num_nodes+num_moveable_nodes], p1.grad[2 * num_nodes-num_filler_nodes:]]).mean()
+            # multiplier = trainable_pos_mean / p1_grad_mean
+            multiplier = 1e-3
+            p2 = pos + multiplier * p1.grad
+            
+            with torch.no_grad():
+                # p3 = self.op_collections.legalize_op(p2)
+                # p3 = self.op_collections.detailed_place_op(p3)
+                
+                # noise = torch.randn_like(pos, device=pos.device)
+                # noise[num_moveable_nodes:num_nodes-num_filler_nodes].zero_()
+                # noise[num_nodes + num_moveable_nodes:2 * num_nodes-num_filler_nodes].zero_()
+                # p3 = p2 + 1e-1 * noise
 
-        obj.backward()
+                p3 = p2.data.clone()
+                p3[num_moveable_nodes:num_nodes-num_filler_nodes] *= 0.9
+                p3[num_nodes + num_moveable_nodes:2 * num_nodes-num_filler_nodes] *= 0.9
+            
+            grad_result = (p3 - p1) / multiplier
+            # grad_result = self.op_collections.precondition_op(grad_result, self.density_weight)
 
-        self.op_collections.precondition_op(pos.grad, self.density_weight)
+            return p1_obj, grad_result 
+            
+        else:
+            #self.check_gradient(pos)
+            obj = self.obj_fn(pos)
 
-        return obj, pos.grad
+            if pos.grad is not None:
+                pos.grad.zero_()
+
+            obj.backward()
+
+            self.op_collections.precondition_op(pos.grad, self.density_weight)
+
+            return obj, pos.grad
 
     def forward(self):
         """

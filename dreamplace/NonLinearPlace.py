@@ -206,7 +206,11 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                         self.plot(params, placedb, iteration, cur_pos)
 
                     t3 = time.time()
-                    optimizer.step()
+                    if cur_metric.overflow < 0.10:
+                        optimizer.step(joint_opt=True)
+                        self.plot(params, placedb, iteration, self.pos[0].data.clone().cpu().numpy())
+                    else:
+                        optimizer.step(joint_opt=False)
                     logging.info("optimizer step %.3f ms" % ((time.time()-t3)*1000))
 
                     # nesterov has already computed the objective of the next step 
