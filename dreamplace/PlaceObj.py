@@ -11,7 +11,7 @@ import time
 import numpy as np
 import itertools
 import logging
-import torch 
+import torch
 import torch.autograd as autograd
 import torch.nn as nn
 import torch.nn.functional as F
@@ -25,21 +25,21 @@ import dreamplace.ops.weighted_average_wirelength.weighted_average_wirelength as
 import dreamplace.ops.logsumexp_wirelength.logsumexp_wirelength as logsumexp_wirelength
 import dreamplace.ops.electric_potential.electric_potential as electric_potential
 import dreamplace.ops.density_potential.density_potential as density_potential
-import dreamplace.ops.rudy.rudy as rudy 
-import dreamplace.ops.pin_utilization.pin_utilization as pin_utilization 
+import dreamplace.ops.rudy.rudy as rudy
+import dreamplace.ops.pin_utilization.pin_utilization as pin_utilization
 import dreamplace.ops.nctugr_binary.nctugr_binary as nctugr_binary
 import dreamplace.ops.adjust_node_area.adjust_node_area as adjust_node_area
 
 class PreconditionOp:
-    """Preconditioning engine is critical for convergence. 
-    Need to be carefully designed. 
+    """Preconditioning engine is critical for convergence.
+    Need to be carefully designed.
     """
     def __init__(self, placedb, data_collections):
         self.placedb = placedb
         self.data_collections = data_collections
         self.iteration = 0
         self.alpha = 1.0
-        self.best_overflow = None  
+        self.best_overflow = None
         self.overflows = []
 
     def set_overflow(self, overflow):
@@ -50,23 +50,23 @@ class PreconditionOp:
             self.best_overflow = min(self.best_overflow, overflow)
 
     def __call__(self, grad, density_weight):
-        """Introduce alpha parameter to avoid divergence. 
-        It is tricky for this parameter to increase. 
+        """Introduce alpha parameter to avoid divergence.
+        It is tricky for this parameter to increase.
         """
-        with torch.no_grad(): 
+        with torch.no_grad():
             precond = self.data_collections.num_pins_in_nodes + self.alpha * density_weight * self.data_collections.node_areas
             precond.clamp_(min=1.0)
             grad[0:self.placedb.num_nodes].div_(precond)
             grad[self.placedb.num_nodes:self.placedb.num_nodes*2].div_(precond)
             self.iteration += 1
 
-            # assume overflow has been updated 
-            if self.overflows and self.overflows[-1] < 0.3: 
+            # assume overflow has been updated
+            if self.overflows and self.overflows[-1] < 0.3:
                 if (self.iteration % 20) == 0:
-                    self.alpha *= 2 
+                    self.alpha *= 2
                     logging.info("preconditioning alpha = %g, best_overflow %g, overflow %g" % (self.alpha, self.best_overflow, self.overflows[-1]))
-            
-        return grad 
+
+        return grad
 
 class PlaceObj(nn.Module):
     """
@@ -106,8 +106,8 @@ class PlaceObj(nn.Module):
         self.op_collections.update_density_weight_op = self.build_update_density_weight(params, placedb)
         self.op_collections.precondition_op = self.build_precondition(params, placedb, self.data_collections)
         self.op_collections.noise_op = self.build_noise(params, placedb, self.data_collections)
-        if params.routability_opt_flag: 
-            # compute congestion map, RISA/RUDY congestion map  
+        if params.routability_opt_flag:
+            # compute congestion map, RISA/RUDY congestion map
             self.op_collections.route_utilization_map_op = self.build_route_utilization_map(params, placedb, self.data_collections)
             self.op_collections.pin_utilization_map_op = self.build_pin_utilization_map(params, placedb, self.data_collections)
             self.op_collections.nctugr_congestion_map_op = self.build_nctugr_congestion_map(params, placedb, self.data_collections)
@@ -116,7 +116,7 @@ class PlaceObj(nn.Module):
 
 
         self.Lgamma_iteration = global_place_params["iteration"]
-        if 'Llambda_density_weight_iteration' in global_place_params: 
+        if 'Llambda_density_weight_iteration' in global_place_params:
             self.Llambda_density_weight_iteration = global_place_params['Llambda_density_weight_iteration']
         else:
             self.Llambda_density_weight_iteration = 1
@@ -147,51 +147,66 @@ class PlaceObj(nn.Module):
         @param pos locations of cells
         @return objective value
         """
-        if joint_opt:            
+        if joint_opt:
+            def blackbox(pos):
+                # p1 = pos.data.clone()
+                # p1[num_moveable_nodes:num_nodes-num_filler_nodes] *= 0.95
+                # p1[num_nodes + num_moveable_nodes:2 * num_nodes-num_filler_nodes] *= 0.95
+
+                p1 = self.op_collections.legalize_op(pos) * 0.01 + 0.99 * pos.data
+
+                return p1
+
             num_moveable_nodes = self.placedb.num_movable_nodes
             num_filler_nodes = self.placedb.num_filler_nodes
             num_nodes = self.placedb.num_nodes
             with torch.no_grad():
                 # p1 = self.op_collections.legalize_op(pos)
                 # p1 = self.op_collections.detailed_place_op(p1)
-                
+
                 # noise = torch.randn_like(pos, device=pos.device)
                 # noise[num_moveable_nodes:num_nodes-num_filler_nodes].zero_()
                 # noise[num_nodes + num_moveable_nodes:2 * num_nodes-num_filler_nodes].zero_()
                 # p1 = pos + 1e-1 * noise
 
-                p1 = pos.data.clone()
-                p1[num_moveable_nodes:num_nodes-num_filler_nodes] *= 0.9
-                p1[num_nodes + num_moveable_nodes:2 * num_nodes-num_filler_nodes] *= 0.9
-            
+                p1 = blackbox(pos)
+
             p1.requires_grad = True
             p1_obj = self.obj_fn(p1)
             p1_obj.backward()
-                        
+            # p1_grad = self.op_collections.precondition_op(p1.grad, self.density_weight)
+            # return p1_obj, grad_result
+
             # trainable_pos_mean = torch.cat([pos.data[:num_moveable_nodes], pos.data[num_nodes-num_filler_nodes:num_nodes], pos.data[num_nodes:num_nodes+num_moveable_nodes], pos.data[2 * num_nodes-num_filler_nodes:]]).mean()
             # p1_grad_mean = torch.cat([p1.grad[:num_moveable_nodes], p1.grad[num_nodes-num_filler_nodes:num_nodes], p1.grad[num_nodes:num_nodes+num_moveable_nodes], p1.grad[2 * num_nodes-num_filler_nodes:]]).mean()
             # multiplier = trainable_pos_mean / p1_grad_mean
-            multiplier = 1e-3
-            p2 = pos + multiplier * p1.grad
-            
+            multiplier = 1e-2
+            p1_grad = p1.grad.clamp(-1, 1)
+            print(p1_grad.mean(), p1_grad.min(), p1_grad.max())
+            p2 = pos + multiplier * p1_grad
+            p22 = pos - multiplier * p1_grad
+
+
             with torch.no_grad():
                 # p3 = self.op_collections.legalize_op(p2)
                 # p3 = self.op_collections.detailed_place_op(p3)
-                
+
                 # noise = torch.randn_like(pos, device=pos.device)
                 # noise[num_moveable_nodes:num_nodes-num_filler_nodes].zero_()
                 # noise[num_nodes + num_moveable_nodes:2 * num_nodes-num_filler_nodes].zero_()
                 # p3 = p2 + 1e-1 * noise
 
-                p3 = p2.data.clone()
-                p3[num_moveable_nodes:num_nodes-num_filler_nodes] *= 0.9
-                p3[num_nodes + num_moveable_nodes:2 * num_nodes-num_filler_nodes] *= 0.9
-            
-            grad_result = (p3 - p1) / multiplier
-            # grad_result = self.op_collections.precondition_op(grad_result, self.density_weight)
+                p3 = blackbox(p2)
+                p32 = blackbox(p22)
 
-            return p1_obj, grad_result 
-            
+            # grad_result = (p3 - p1) / multiplier
+            # grad_result2 = (p32 - p1) / (-multiplier)
+            # grad_result = (grad_result + grad_result2) / 2
+            grad_result = (p3 - p32) / (2*multiplier)
+            grad_result = self.op_collections.precondition_op(grad_result, self.density_weight)
+
+            return p1_obj, grad_result
+
         else:
             #self.check_gradient(pos)
             obj = self.obj_fn(pos)
@@ -237,10 +252,10 @@ class PlaceObj(nn.Module):
 
     def estimate_initial_learning_rate(self, x_k, lr):
         """
-        @brief Estimate initial learning rate by moving a small step. 
-        Computed as | x_k - x_k_1 |_2 / | g_k - g_k_1 |_2. 
-        @param x_k current solution 
-        @param lr small step 
+        @brief Estimate initial learning rate by moving a small step.
+        Computed as | x_k - x_k_1 |_2 / | g_k - g_k_1 |_2.
+        @param x_k current solution
+        @param lr small step
         """
         obj_k, g_k = self.obj_and_grad_fn(x_k)
         x_k_1 = torch.autograd.Variable(x_k - lr * g_k, requires_grad=True)
@@ -261,12 +276,12 @@ class PlaceObj(nn.Module):
         wirelength_for_pin_op = weighted_average_wirelength.WeightedAverageWirelength(
                 flat_netpin=data_collections.flat_net2pin_map,
                 netpin_start=data_collections.flat_net2pin_start_map,
-                pin2net_map=data_collections.pin2net_map, 
-                net_weights=data_collections.net_weights, 
-                net_mask=data_collections.net_mask_ignore_large_degrees, 
+                pin2net_map=data_collections.pin2net_map,
+                net_weights=data_collections.net_weights,
+                net_mask=data_collections.net_mask_ignore_large_degrees,
                 pin_mask=data_collections.pin_mask_ignore_fixed_macros,
-                gamma=self.gamma, 
-                algorithm='merged', 
+                gamma=self.gamma,
+                algorithm='merged',
                 num_threads=params.num_threads
                 )
 
@@ -294,12 +309,12 @@ class PlaceObj(nn.Module):
         wirelength_for_pin_op = logsumexp_wirelength.LogSumExpWirelength(
                 flat_netpin=data_collections.flat_net2pin_map,
                 netpin_start=data_collections.flat_net2pin_start_map,
-                pin2net_map=data_collections.pin2net_map, 
-                net_weights=data_collections.net_weights, 
-                net_mask=data_collections.net_mask_ignore_large_degrees, 
+                pin2net_map=data_collections.pin2net_map,
+                net_weights=data_collections.net_weights,
+                net_mask=data_collections.net_mask_ignore_large_degrees,
                 pin_mask=data_collections.pin_mask_ignore_fixed_macros,
-                gamma=self.gamma, 
-                algorithm='merged', 
+                gamma=self.gamma,
+                algorithm='merged',
                 num_threads=params.num_threads
                 )
 
@@ -386,8 +401,8 @@ class PlaceObj(nn.Module):
                 xh=xh, yh=yh,
                 bin_size_x=bin_size_x, bin_size_y=bin_size_y,
                 padding=padding,
-                sigma=(1.0/16)*placedb.width/bin_size_x, 
-                delta=2.0, 
+                sigma=(1.0/16)*placedb.width/bin_size_x,
+                delta=2.0,
                 num_threads=params.num_threads
                 )
 
@@ -430,10 +445,10 @@ class PlaceObj(nn.Module):
                 num_terminals=placedb.num_terminals,
                 num_filler_nodes=placedb.num_filler_nodes,
                 padding=padding,
-                deterministic_flag=params.deterministic_flag, 
+                deterministic_flag=params.deterministic_flag,
                 sorted_node_map=data_collections.sorted_node_map,
-                movable_macro_mask=data_collections.movable_macro_mask, 
-                fast_mode=params.RePlAce_skip_energy_flag, 
+                movable_macro_mask=data_collections.movable_macro_mask,
+                fast_mode=params.RePlAce_skip_energy_flag,
                 num_threads=params.num_threads
                 )
 
@@ -527,8 +542,8 @@ class PlaceObj(nn.Module):
         """
 
         #def precondition_op(grad):
-        #    with torch.no_grad(): 
-        #        # preconditioning 
+        #    with torch.no_grad():
+        #        # preconditioning
         #        node_areas = data_collections.node_size_x * data_collections.node_size_y
         #        precond = self.density_weight * node_areas
         #        precond[:placedb.num_physical_nodes].add_(data_collections.pin_weights)
@@ -550,10 +565,10 @@ class PlaceObj(nn.Module):
 
     def build_route_utilization_map(self, params, placedb, data_collections):
         """
-        @brief routing congestion map based on current cell locations 
-        @param params parameters 
-        @param placedb placement database 
-        @param data_collections a collection of all data and variables required for constructing the ops 
+        @brief routing congestion map based on current cell locations
+        @param params parameters
+        @param placedb placement database
+        @param data_collections a collection of all data and variables required for constructing the ops
         """
         congestion_op = rudy.Rudy(
                 netpin_start=data_collections.flat_net2pin_start_map, flat_netpin=data_collections.flat_net2pin_map, net_weights=data_collections.net_weights,
@@ -561,72 +576,72 @@ class PlaceObj(nn.Module):
                 num_bins_x=placedb.num_routing_grids_x, num_bins_y=placedb.num_routing_grids_y,
                 unit_horizontal_capacity=placedb.unit_horizontal_capacity,
                 unit_vertical_capacity=placedb.unit_vertical_capacity,
-                initial_horizontal_utilization_map=data_collections.initial_horizontal_utilization_map, 
-                initial_vertical_utilization_map=data_collections.initial_vertical_utilization_map, 
+                initial_horizontal_utilization_map=data_collections.initial_horizontal_utilization_map,
+                initial_vertical_utilization_map=data_collections.initial_vertical_utilization_map,
                 num_threads=params.num_threads
                 )
-        def route_utilization_map_op(pos): 
+        def route_utilization_map_op(pos):
             pin_pos = self.op_collections.pin_pos_op(pos)
             return congestion_op(pin_pos)
         return route_utilization_map_op
 
     def build_pin_utilization_map(self, params, placedb, data_collections):
         """
-        @brief pin density map based on current cell locations 
-        @param params parameters 
-        @param placedb placement database 
-        @param data_collections a collection of all data and variables required for constructing the ops 
+        @brief pin density map based on current cell locations
+        @param params parameters
+        @param placedb placement database
+        @param data_collections a collection of all data and variables required for constructing the ops
         """
         return pin_utilization.PinUtilization(
-                pin_weights=data_collections.pin_weights, 
+                pin_weights=data_collections.pin_weights,
                 flat_node2pin_start_map=data_collections.flat_node2pin_start_map,
                 node_size_x=data_collections.node_size_x, node_size_y=data_collections.node_size_y,
                 xl=placedb.routing_grid_xl, yl=placedb.routing_grid_yl, xh=placedb.routing_grid_xh, yh=placedb.routing_grid_yh,
-                num_movable_nodes=placedb.num_movable_nodes, num_filler_nodes=placedb.num_filler_nodes, 
+                num_movable_nodes=placedb.num_movable_nodes, num_filler_nodes=placedb.num_filler_nodes,
                 num_bins_x=placedb.num_routing_grids_x, num_bins_y=placedb.num_routing_grids_y,
                 unit_pin_capacity=data_collections.unit_pin_capacity,
                 pin_stretch_ratio=params.pin_stretch_ratio,
                 num_threads=params.num_threads
                 )
-    
+
     def build_nctugr_congestion_map(self, params, placedb, data_collections):
         """
-        @brief call NCTUgr for congestion estimation 
+        @brief call NCTUgr for congestion estimation
         """
         path = "%s/%s" % (params.result_dir, params.design_name())
         return nctugr_binary.NCTUgr(
-                aux_input_file=os.path.realpath(params.aux_input), 
-                param_setting_file="%s/../thirdparty/NCTUgr.ICCAD2012/DAC12.set" % (os.path.dirname(os.path.realpath(__file__))), 
-                tmp_pl_file="%s/%s.NCTUgr.pl" % (os.path.realpath(path), params.design_name()), 
-                tmp_output_file="%s/%s.NCTUgr" % (os.path.realpath(path), params.design_name()), 
-                horizontal_routing_capacities=torch.from_numpy(placedb.unit_horizontal_capacities * placedb.routing_grid_size_y), 
-                vertical_routing_capacities=torch.from_numpy(placedb.unit_vertical_capacities * placedb.routing_grid_size_x), 
-                params=params, 
+                aux_input_file=os.path.realpath(params.aux_input),
+                param_setting_file="%s/../thirdparty/NCTUgr.ICCAD2012/DAC12.set" % (os.path.dirname(os.path.realpath(__file__))),
+                tmp_pl_file="%s/%s.NCTUgr.pl" % (os.path.realpath(path), params.design_name()),
+                tmp_output_file="%s/%s.NCTUgr" % (os.path.realpath(path), params.design_name()),
+                horizontal_routing_capacities=torch.from_numpy(placedb.unit_horizontal_capacities * placedb.routing_grid_size_y),
+                vertical_routing_capacities=torch.from_numpy(placedb.unit_vertical_capacities * placedb.routing_grid_size_x),
+                params=params,
                 placedb=placedb
                 )
 
     def build_adjust_node_area(self, params, placedb, data_collections):
         """
-        @brief adjust cell area according to routing congestion and pin utilization map 
+        @brief adjust cell area according to routing congestion and pin utilization map
         """
         total_movable_area = (data_collections.node_size_x[:placedb.num_movable_nodes] * data_collections.node_size_y[:placedb.num_movable_nodes]).sum()
-        total_filler_area = (data_collections.node_size_x[-placedb.num_filler_nodes:] * data_collections.node_size_y[-placedb.num_filler_nodes:]).sum() 
+        total_filler_area = (data_collections.node_size_x[-placedb.num_filler_nodes:] * data_collections.node_size_y[-placedb.num_filler_nodes:]).sum()
         total_place_area = (total_movable_area + total_filler_area) / data_collections.target_density
         adjust_node_area_op = adjust_node_area.AdjustNodeArea(
                 flat_node2pin_map=data_collections.flat_node2pin_map,
-                flat_node2pin_start_map=data_collections.flat_node2pin_start_map, 
-                pin_weights=data_collections.pin_weights, 
+                flat_node2pin_start_map=data_collections.flat_node2pin_start_map,
+                pin_weights=data_collections.pin_weights,
                 xl=placedb.routing_grid_xl, yl=placedb.routing_grid_yl, xh=placedb.routing_grid_xh, yh=placedb.routing_grid_yh,
-                num_movable_nodes=placedb.num_movable_nodes, 
-                num_filler_nodes=placedb.num_filler_nodes, 
+                num_movable_nodes=placedb.num_movable_nodes,
+                num_filler_nodes=placedb.num_filler_nodes,
                 route_num_bins_x=placedb.num_routing_grids_x,
                 route_num_bins_y=placedb.num_routing_grids_y,
                 pin_num_bins_x=placedb.num_routing_grids_x,
                 pin_num_bins_y=placedb.num_routing_grids_y,
-                total_place_area=total_place_area, 
-                total_whitespace_area=total_place_area - total_movable_area, 
+                total_place_area=total_place_area,
+                total_whitespace_area=total_place_area - total_movable_area,
                 max_route_opt_adjust_rate=params.max_route_opt_adjust_rate,
-                route_opt_adjust_exponent=params.route_opt_adjust_exponent, 
+                route_opt_adjust_exponent=params.route_opt_adjust_exponent,
                 max_pin_opt_adjust_rate=params.max_pin_opt_adjust_rate,
                 area_adjust_stop_ratio=params.area_adjust_stop_ratio,
                 route_area_adjust_stop_ratio=params.route_area_adjust_stop_ratio,
@@ -636,11 +651,11 @@ class PlaceObj(nn.Module):
             )
         def build_adjust_node_area_op(pos, route_utilization_map, pin_utilization_map):
             return adjust_node_area_op(
-                    pos, 
-                    data_collections.node_size_x, data_collections.node_size_y, 
-                    data_collections.pin_offset_x, data_collections.pin_offset_y, 
-                    data_collections.target_density, 
-                    route_utilization_map, 
+                    pos,
+                    data_collections.node_size_x, data_collections.node_size_y,
+                    data_collections.pin_offset_x, data_collections.pin_offset_y,
+                    data_collections.target_density,
+                    route_utilization_map,
                     pin_utilization_map
                     )
         return build_adjust_node_area_op
