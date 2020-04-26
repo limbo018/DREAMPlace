@@ -152,10 +152,21 @@ class PlaceObj(nn.Module):
                 # p1 = pos.data.clone()
                 # p1[num_moveable_nodes:num_nodes-num_filler_nodes] *= 0.95
                 # p1[num_nodes + num_moveable_nodes:2 * num_nodes-num_filler_nodes] *= 0.95
+                pos_lg = self.op_collections.legalize_op(pos)
+                # pos_lg = self.op_collections.detailed_place_op(self.op_collections.legalize_op(pos))
+                diff = pos_lg - pos.data
+                diff_abs = diff.abs()
+                diff_abs2 = diff_abs[(diff_abs > 0.1) & (diff_abs < 60)]
+                avg, std = diff_abs2.mean(), diff_abs2.std()
+                print(avg, std)
+                # mask = diff_abs > 3
+                mask = (diff_abs > avg + 0.1 * std) | (diff_abs < avg - 0.1 * std)
+                n_cell = (~mask).float().sum().data.item()
+                print(f"{n_cell} cells are moved")
+                # pos.data[mask] += diff[mask]
+                pos_lg[mask] = pos.data[mask]
 
-                p1 = self.op_collections.legalize_op(pos) * 0.01 + 0.99 * pos.data
-
-                return p1
+                return pos_lg
 
             num_moveable_nodes = self.placedb.num_movable_nodes
             num_filler_nodes = self.placedb.num_filler_nodes
@@ -181,10 +192,10 @@ class PlaceObj(nn.Module):
             # p1_grad_mean = torch.cat([p1.grad[:num_moveable_nodes], p1.grad[num_nodes-num_filler_nodes:num_nodes], p1.grad[num_nodes:num_nodes+num_moveable_nodes], p1.grad[2 * num_nodes-num_filler_nodes:]]).mean()
             # multiplier = trainable_pos_mean / p1_grad_mean
             multiplier = 1e-2
-            p1_grad = p1.grad.clamp(-1, 1)
+            p1_grad = p1.grad#.clamp(-1, 1)
             print(p1_grad.mean(), p1_grad.min(), p1_grad.max())
             p2 = pos + multiplier * p1_grad
-            p22 = pos - multiplier * p1_grad
+            # p22 = pos - multiplier * p1_grad
 
 
             with torch.no_grad():
@@ -197,15 +208,24 @@ class PlaceObj(nn.Module):
                 # p3 = p2 + 1e-1 * noise
 
                 p3 = blackbox(p2)
-                p32 = blackbox(p22)
+                # p32 = blackbox(p22)
 
-            # grad_result = (p3 - p1) / multiplier
+            grad_result = (p3 - p1) / multiplier
             # grad_result2 = (p32 - p1) / (-multiplier)
             # grad_result = (grad_result + grad_result2) / 2
-            grad_result = (p3 - p32) / (2*multiplier)
-            grad_result = self.op_collections.precondition_op(grad_result, self.density_weight)
+            # grad_result = (p3 - p32) / (2*multiplier)
 
-            return p1_obj, grad_result
+            obj = self.obj_fn(pos)
+            if pos.grad is not None:
+                pos.grad.zero_()
+            obj.backward()
+            pos_grad = 0.98 * pos.grad + 0.02 * grad_result
+            # obj = 0.95 * obj + 0.05 * p1_obj
+
+
+            grad_result = self.op_collections.precondition_op(pos_grad, self.density_weight)
+
+            return obj, grad_result
 
         else:
             #self.check_gradient(pos)
