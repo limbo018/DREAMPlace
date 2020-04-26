@@ -146,8 +146,8 @@ class PlaceObj(nn.Module):
         density = self.op_collections.density_op(pos)
 
         # align_and_overflow_loss = self.op_collections.align_and_overflow_op(pos)
-        # print("Overflow loss:", 1e1*align_and_overflow_loss)
-        # # return wirelength + self.density_weight*(density + 1e1*align_and_overflow_loss)
+        # print("Overflow loss:", 1e5*align_and_overflow_loss)
+        # return wirelength + self.density_weight*(density + 1e5*align_and_overflow_loss)
         # return wirelength + 1e3*align_and_overflow_loss
         return wirelength + self.density_weight*density
         print("peek density:", density.data.item())
@@ -689,9 +689,11 @@ class PlaceObj(nn.Module):
             num_rows = int(round((yh - yl)/row_height))
             # row_capacity = xh - xl
 
-            center_y = pos_y + node_size_y / 2
-            aligned_rows_index = torch.round((center_y - yl) / row_height).clamp_(0, num_rows-1)
+            # center_y = pos_y + node_size_y / 2
+            aligned_rows_index = torch.round((pos_y - yl) / row_height).clamp_(0, num_rows-1)
+
             aligned_rows_y = aligned_rows_index * row_height + yl
+            print(aligned_rows_index[:5], pos_y[:5], aligned_rows_y[:5])
             aligned_rows_index = aligned_rows_index.long()
 
             overflow = scatter_sum(node_size_x, aligned_rows_index, dim=0, dim_size=num_rows)
@@ -709,8 +711,9 @@ class PlaceObj(nn.Module):
 
             factor = overflow[aligned_rows_index]
             factor2 = overflow2[aligned_rows_index]
-            loss = -1e-3*(factor * (center_y - center_y.mean().data)**2).mean()
-            loss = (factor2 * (center_y - aligned_rows_y.data)**2).mean()
+            # loss = -1e-3*(factor * (center_y - center_y.mean().data)**2).mean()
+            # loss = (factor2 * (center_y - aligned_rows_y.data)**2).mean()
+            loss = ((pos_y - aligned_rows_y.data)**2).mean()
 
             return loss
         return align_and_overflow

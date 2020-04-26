@@ -168,26 +168,41 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                                 return True
                     return False
 
-                def inject_perturbation(pos, placedb, shrink_factor=1, noise_intensity=1):
-                    print(pos[:placedb.num_movable_nodes].mean())
-                    xc = pos[:placedb.num_movable_nodes].data.mean()
-                    yc = pos.data[placedb.num_nodes:placedb.num_nodes+placedb.num_movable_nodes].mean()
-                    num_movable_nodes = placedb.num_movable_nodes
-                    num_nodes = placedb.num_nodes
-                    num_filler_nodes = placedb.num_filler_nodes
-                    num_fixed_nodes = num_nodes - num_movable_nodes - num_filler_nodes
+                def inject_perturbation(pos, placedb, shrink_factor=1, noise_intensity=1, mode="random"):
+                    if(mode == "lg_dp"):
+                        pos_lg = self.op_collections.detailed_place_op(self.op_collections.legalize_op(pos))
+                        diff = pos_lg - pos.data
+                        diff_abs = diff.abs()
+                        diff_abs2 = diff_abs[(diff_abs > 0.1) & (diff_abs < 60)]
+                        avg, std = diff_abs2.mean(), diff_abs2.std()
+                        print(avg, std)
+                        mask = (diff_abs < avg + noise_intensity * std) & (diff_abs > avg - noise_intensity * std)
+                        n_cell = mask.float().sum().data.item()
+                        print(f"{n_cell} cells are moved")
+                        pos.data[mask] += diff[mask]
+                        # model.density_weight *= 0.9
+                        # pos.data[mask] = pos_lg[mask]
+                        return
+                    elif(mode == "random"):
+                        print(pos[:placedb.num_movable_nodes].mean())
+                        xc = pos[:placedb.num_movable_nodes].data.mean()
+                        yc = pos.data[placedb.num_nodes:placedb.num_nodes+placedb.num_movable_nodes].mean()
+                        num_movable_nodes = placedb.num_movable_nodes
+                        num_nodes = placedb.num_nodes
+                        num_filler_nodes = placedb.num_filler_nodes
+                        num_fixed_nodes = num_nodes - num_movable_nodes - num_filler_nodes
 
-                    fixed_pos_x = pos.data[num_movable_nodes:num_movable_nodes+num_fixed_nodes].clone()
-                    fixed_pos_y = pos.data[num_nodes+ num_movable_nodes:num_nodes+num_movable_nodes+num_fixed_nodes].clone()
-                    if(shrink_factor != 1):
-                        pos.data[:num_nodes] = (pos.data[:num_nodes] - xc) * shrink_factor + xc
-                        pos.data[num_nodes:] = (pos.data[num_nodes:] - yc) * shrink_factor + yc
-                    if(noise_intensity>0.01):
-                        pos.data.add_(noise_intensity * torch.randn(num_nodes*2, device=pos.device))
+                        fixed_pos_x = pos.data[num_movable_nodes:num_movable_nodes+num_fixed_nodes].clone()
+                        fixed_pos_y = pos.data[num_nodes+ num_movable_nodes:num_nodes+num_movable_nodes+num_fixed_nodes].clone()
+                        if(shrink_factor != 1):
+                            pos.data[:num_nodes] = (pos.data[:num_nodes] - xc) * shrink_factor + xc
+                            pos.data[num_nodes:] = (pos.data[num_nodes:] - yc) * shrink_factor + yc
+                        if(noise_intensity>0.01):
+                            pos.data.add_(noise_intensity * torch.randn(num_nodes*2, device=pos.device))
 
-                    pos.data[num_movable_nodes:num_movable_nodes+num_fixed_nodes] = fixed_pos_x
-                    pos.data[num_nodes+ num_movable_nodes:num_nodes+num_movable_nodes+num_fixed_nodes] = fixed_pos_y
-                    print(pos[:placedb.num_movable_nodes].mean())
+                        pos.data[num_movable_nodes:num_movable_nodes+num_fixed_nodes] = fixed_pos_x
+                        pos.data[num_nodes+ num_movable_nodes:num_nodes+num_movable_nodes+num_fixed_nodes] = fixed_pos_y
+                        print(pos[:placedb.num_movable_nodes].mean())
 
 
                 def one_descent_step(Lgamma_step, Llambda_density_weight_step, Lsub_step, iteration, metrics):
@@ -250,11 +265,11 @@ class NonLinearPlace (BasicPlace.BasicPlace):
 
                 Llambda_flat_iteration = 0
                 noise_number = 0
-                noise_list = {"adaptec1":[(0.85, 0.996, 200),(0.75, 0.996, 120)],
-                              "adaptec2":[(0.70, 0.996, 90)],
+                noise_list = {"adaptec1":[(0.85, 0.996, 200, "random"),(0.75, 0.996, 120, "random"),(0.3, 0.996,0.5, "lg_dp")],
+                              "adaptec2":[(0.70, 0.996, 90, "random"),(0.3, 0.996, 0.5, "lg_dp")],
                               "adaptec3":[(0.85, 0.996, 200),(0.75, 0.996, 120)],
                               "adaptec4":[(0.9, 0.996, 200),(0.75, 0.996, 150)],
-                              "bigblue1": [(0.70, 0.995, 60)], # b1
+                              "bigblue1": [(0.70, 0.995, 60, "random"),(0.5, 0.996,0.5, "lg_dp")], # b1
                               "bigblue2": [(0.4, 1, 10)], # b2, only 0.45
                             #   "bigblue4": [(0.65, 0.995, 30), (0.55, 0.997, 20)]
                               "bigblue4": [(0.35, 0.995, 30)]
@@ -270,15 +285,27 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                         for Lsub_step in range(model.Lsub_iteration):
                             one_descent_step(Lgamma_step, Llambda_density_weight_step, Lsub_step, iteration, Lsub_metrics)
                             iteration += 1
+                            # if(Llambda_metrics[-1][-1].overflow < 0.08):
+                            #     pos = self.pos[0]
+                            #     self.pos[0].data.copy_(self.op_collections.legalize_op(self.pos[0]))
+                            #     num_movable_nodes = placedb.num_movable_nodes
+                            #     num_nodes = placedb.num_nodes
+                            #     num_filler_nodes = placedb.num_filler_nodes
+                            #     num_fixed_nodes = num_nodes - num_movable_nodes - num_filler_nodes
+
+                            #     print((pos.data[num_nodes:num_nodes+5] - placedb.yl) / placedb.row_height)
+                            # if(Llambda_metrics[-1][-1].overflow < 0.2):
+                            #     self.plot(params, placedb, iteration+1, self.pos[0].data.clone().cpu().numpy())
                             if(noise_number < len(noise_list) and Llambda_metrics[-1][-1].overflow < noise_list[noise_number][0]):
                                 self.plot(params, placedb, iteration, self.pos[0].data.clone().cpu().numpy())
                                 shrink_factor = noise_list[noise_number][1]
                                 noise_intensity = noise_list[noise_number][2]
+                                mode =  noise_list[noise_number][3]
                                 noise_number += 1
                                 print(iteration)
                                 print("Adjust")
                                 pos = model.data_collections.pos[0]
-                                inject_perturbation(pos, placedb, shrink_factor=shrink_factor, noise_intensity=noise_intensity)
+                                inject_perturbation(pos, placedb, shrink_factor=shrink_factor, noise_intensity=noise_intensity, mode=mode)
                                 self.plot(params, placedb, iteration+1, self.pos[0].data.clone().cpu().numpy())
                             # stopping criteria
                             if Lsub_stop_criterion(Lgamma_step, Llambda_density_weight_step, Lsub_step, Lsub_metrics):
