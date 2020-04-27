@@ -291,16 +291,16 @@ class NonLinearPlace (BasicPlace.BasicPlace):
 
                 Llambda_flat_iteration = 0
                 noise_number = 0
-                noise_list = {"adaptec1":[#(0.85, 0.996, 200, "random"),(0.75, 0.996, 120, "random"),
-                (0.6, 0.996,0.5, "search"),(0.5, 0.996,0.5, "search"),(0.4, 0.996,0.5, "search"),(0.3, 0.996,0.5, "search"),(0.2, 0.996,0.5, "search"),(0.12, 0.996,0.5, "search")],
-                              "adaptec2":[(0.70, 0.996, 90, "random"),(0.3, 0.996, 0.5, "lg_dp")],
-                              "adaptec3":[(0.85, 0.996, 200),(0.75, 0.996, 120)],
-                              "adaptec4":[(0.9, 0.996, 200),(0.75, 0.996, 150)],
-                              "bigblue1": [(0.70, 0.995, 60, "random"),(0.5, 0.996,0.5, "lg_dp")], # b1
-                              "bigblue2": [(0.4, 1, 10)], # b2, only 0.45
-                            #   "bigblue4": [(0.65, 0.995, 30), (0.55, 0.997, 20)]
-                              "bigblue4": [(0.35, 0.995, 30)]
-                             }[params.design_name()]
+                # noise_list = {"adaptec1":[#(0.85, 0.996, 200, "random"),(0.75, 0.996, 120, "random"),
+                # (0.6, 0.996,0.5, "search"),(0.5, 0.996,0.5, "search"),(0.4, 0.996,0.5, "search"),(0.3, 0.996,0.5, "search"),(0.2, 0.996,0.5, "search"),(0.12, 0.996,0.5, "search")],
+                #               "adaptec2":[(0.70, 0.996, 90, "random"),(0.3, 0.996, 0.5, "lg_dp")],
+                #               "adaptec3":[(0.85, 0.996, 200),(0.75, 0.996, 120)],
+                #               "adaptec4":[(0.9, 0.996, 200),(0.75, 0.996, 150)],
+                #               "bigblue1": [(0.70, 0.995, 60, "random"),(0.5, 0.996,0.5, "lg_dp")], # b1
+                #               "bigblue2": [(0.4, 1, 10)], # b2, only 0.45
+                #             #   "bigblue4": [(0.65, 0.995, 30), (0.55, 0.997, 20)]
+                #               "bigblue4": [(0.35, 0.995, 30)]
+                #              }[params.design_name()]
 
 
                 for Lgamma_step in range(model.Lgamma_iteration):
@@ -335,9 +335,9 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                             #     inject_perturbation(pos, placedb, shrink_factor=shrink_factor, noise_intensity=noise_intensity, mode=mode)
                                 # self.plot(params, placedb, iteration+1, self.pos[0].data.clone().cpu().numpy())
                             # stopping criteria
-                            if(iteration > 400):
-                                print("Adjust")
-                                inject_perturbation(self.pos[0], placedb, mode="search")
+                            # if(iteration > 400):
+                            #     print("Adjust")
+                            #     inject_perturbation(self.pos[0], placedb, mode="search")
                             if Lsub_stop_criterion(Lgamma_step, Llambda_density_weight_step, Lsub_step, Lsub_metrics):
                                 break
                         Llambda_flat_iteration += 1
