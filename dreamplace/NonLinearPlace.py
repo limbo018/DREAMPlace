@@ -168,7 +168,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                                 return True
                     return False
 
-                def inject_perturbation(pos, placedb, shrink_factor=1, noise_intensity=1, mode="random"):
+                def inject_perturbation(pos, placedb, shrink_factor=1, noise_intensity=1, mode="random", iteration=1):
                     if(mode == "lg_dp"):
                         pos_lg = self.op_collections.detailed_place_op(self.op_collections.legalize_op(pos))
                         diff = pos_lg - pos.data
@@ -203,6 +203,32 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                         pos.data[num_movable_nodes:num_movable_nodes+num_fixed_nodes] = fixed_pos_x
                         pos.data[num_nodes+ num_movable_nodes:num_nodes+num_movable_nodes+num_fixed_nodes] = fixed_pos_y
                         print(pos[:placedb.num_movable_nodes].mean())
+                    elif(mode == "search"):
+                        R, r = 16, 8
+                        K = int(np.log2(R/r)) + 1
+                        num_movable_nodes = placedb.num_movable_nodes
+                        num_nodes = placedb.num_nodes
+                        num_filler_nodes = placedb.num_filler_nodes
+                        num_fixed_nodes = num_nodes - num_movable_nodes - num_filler_nodes
+                        obj_min = model.obj_fn(pos.data)
+                        pos_min = pos.data
+                        print(obj_min)
+                        for k in range(K):
+                            r_k = 2**(-k) * R
+                            for i in range(10):
+                                v_k = torch.randn_like(pos.data)
+                                v_k[num_movable_nodes:num_nodes] = 0
+                                v_k[num_nodes+num_movable_nodes:] = 0
+                                v_k = v_k / v_k.norm(p=2) * r_k
+                                p1 = pos.data + v_k
+                                obj_k = model.obj_fn(p1)
+                                print(r_k, obj_k)
+                                if(obj_k < obj_min):
+                                    print("obj reduce:", obj_min, " to ", obj_k)
+                                    obj_min = obj_k
+                                    pos_min = p1.clone()
+
+                        pos.data.copy_(pos_min)
 
 
                 def one_descent_step(Lgamma_step, Llambda_density_weight_step, Lsub_step, iteration, metrics):
@@ -265,7 +291,8 @@ class NonLinearPlace (BasicPlace.BasicPlace):
 
                 Llambda_flat_iteration = 0
                 noise_number = 0
-                noise_list = {"adaptec1":[(0.85, 0.996, 200, "random"),(0.75, 0.996, 120, "random"),(0.3, 0.996,0.5, "lg_dp")],
+                noise_list = {"adaptec1":[#(0.85, 0.996, 200, "random"),(0.75, 0.996, 120, "random"),
+                (0.6, 0.996,0.5, "search"),(0.5, 0.996,0.5, "search"),(0.4, 0.996,0.5, "search"),(0.3, 0.996,0.5, "search"),(0.2, 0.996,0.5, "search"),(0.12, 0.996,0.5, "search")],
                               "adaptec2":[(0.70, 0.996, 90, "random"),(0.3, 0.996, 0.5, "lg_dp")],
                               "adaptec3":[(0.85, 0.996, 200),(0.75, 0.996, 120)],
                               "adaptec4":[(0.9, 0.996, 200),(0.75, 0.996, 150)],
@@ -296,18 +323,21 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                             #     print((pos.data[num_nodes:num_nodes+5] - placedb.yl) / placedb.row_height)
                             # if(Llambda_metrics[-1][-1].overflow < 0.2):
                             #     self.plot(params, placedb, iteration+1, self.pos[0].data.clone().cpu().numpy())
-                            if(noise_number < len(noise_list) and Llambda_metrics[-1][-1].overflow < noise_list[noise_number][0]):
-                                self.plot(params, placedb, iteration, self.pos[0].data.clone().cpu().numpy())
-                                shrink_factor = noise_list[noise_number][1]
-                                noise_intensity = noise_list[noise_number][2]
-                                mode =  noise_list[noise_number][3]
-                                noise_number += 1
-                                print(iteration)
-                                print("Adjust")
-                                pos = model.data_collections.pos[0]
-                                inject_perturbation(pos, placedb, shrink_factor=shrink_factor, noise_intensity=noise_intensity, mode=mode)
-                                self.plot(params, placedb, iteration+1, self.pos[0].data.clone().cpu().numpy())
+                            # if(noise_number < len(noise_list) and Llambda_metrics[-1][-1].overflow < noise_list[noise_number][0]):
+                            #     # self.plot(params, placedb, iteration, self.pos[0].data.clone().cpu().numpy())
+                            #     shrink_factor = noise_list[noise_number][1]
+                            #     noise_intensity = noise_list[noise_number][2]
+                            #     mode =  noise_list[noise_number][3]
+                            #     noise_number += 1
+                            #     print(iteration)
+                            #     print("Adjust")
+                            #     pos = model.data_collections.pos[0]
+                            #     inject_perturbation(pos, placedb, shrink_factor=shrink_factor, noise_intensity=noise_intensity, mode=mode)
+                                # self.plot(params, placedb, iteration+1, self.pos[0].data.clone().cpu().numpy())
                             # stopping criteria
+                            if(iteration > 400):
+                                print("Adjust")
+                                inject_perturbation(self.pos[0], placedb, mode="search")
                             if Lsub_stop_criterion(Lgamma_step, Llambda_density_weight_step, Lsub_step, Lsub_metrics):
                                 break
                         Llambda_flat_iteration += 1
