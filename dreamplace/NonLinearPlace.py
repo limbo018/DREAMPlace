@@ -204,7 +204,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                         pos.data[num_nodes+ num_movable_nodes:num_nodes+num_movable_nodes+num_fixed_nodes] = fixed_pos_y
                         print(pos[:placedb.num_movable_nodes].mean())
                     elif(mode == "search"):
-                        R, r = 16, 8
+                        R, r = 16, 4
                         K = int(np.log2(R/r)) + 1
                         num_movable_nodes = placedb.num_movable_nodes
                         num_nodes = placedb.num_nodes
@@ -291,16 +291,27 @@ class NonLinearPlace (BasicPlace.BasicPlace):
 
                 Llambda_flat_iteration = 0
                 noise_number = 0
-                # noise_list = {"adaptec1":[#(0.85, 0.996, 200, "random"),(0.75, 0.996, 120, "random"),
-                # (0.6, 0.996,0.5, "search"),(0.5, 0.996,0.5, "search"),(0.4, 0.996,0.5, "search"),(0.3, 0.996,0.5, "search"),(0.2, 0.996,0.5, "search"),(0.12, 0.996,0.5, "search")],
-                #               "adaptec2":[(0.70, 0.996, 90, "random"),(0.3, 0.996, 0.5, "lg_dp")],
-                #               "adaptec3":[(0.85, 0.996, 200),(0.75, 0.996, 120)],
-                #               "adaptec4":[(0.9, 0.996, 200),(0.75, 0.996, 150)],
-                #               "bigblue1": [(0.70, 0.995, 60, "random"),(0.5, 0.996,0.5, "lg_dp")], # b1
-                #               "bigblue2": [(0.4, 1, 10)], # b2, only 0.45
-                #             #   "bigblue4": [(0.65, 0.995, 30), (0.55, 0.997, 20)]
-                #               "bigblue4": [(0.35, 0.995, 30)]
-                #              }[params.design_name()]
+                noise_list = {"adaptec1":[#(0.85, 0.996, 200, "random"),(0.75, 0.996, 120, "random"),
+                (0.6, 0.996,0.5, "search"),(0.5, 0.996,0.5, "search"),(0.4, 0.996,0.5, "search"),(0.3, 0.996,0.5, "search"),(0.2, 0.996,0.5, "search"),(0.12, 0.996,0.5, "search")],
+                              "adaptec2":[(0.70, 0.996, 90, "random"),(0.3, 0.996, 0.5, "lg_dp")],
+                              "adaptec3":[(0.85, 0.996, 200),(0.75, 0.996, 120)],
+                              "adaptec4":[(0.9, 0.996, 200),(0.75, 0.996, 150)],
+                              "bigblue1": [(0.70, 0.995, 60, "random"),(0.5, 0.996,0.5, "lg_dp")], # b1
+                              "bigblue2": [(0.4, 1, 10)], # b2, only 0.45
+                            #   "bigblue4": [(0.65, 0.995, 30), (0.55, 0.997, 20)]
+                              "bigblue4": [(0.35, 0.995, 30)],
+                              "ispd19_test1.input": [
+                                  (0.98, 0.996, 100, "random"),
+                                #   (0.2, 0.996,100,"search"),(0.15, 0.996,100,"search")
+                                  ],
+                              "ispd19_test2.input": [
+                                #   (0.85, 0.996, 100, "random"),(0.75, 0.996, 80, "random"),
+                              (0.2, 0.996,100,"search"), (0.15, 0.996,100,"search")],
+                              "ispd19_test10.input": [
+                                  (0.99, 0.996, 300, "random"),
+                                  (0.75, 0.996, 120, "random"),
+                              (0.5, 0.996,100,"search"), (0.3, 0.996,100,"search")]
+                             }[params.design_name()]
 
 
                 for Lgamma_step in range(model.Lgamma_iteration):
@@ -323,17 +334,17 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                             #     print((pos.data[num_nodes:num_nodes+5] - placedb.yl) / placedb.row_height)
                             # if(Llambda_metrics[-1][-1].overflow < 0.2):
                             #     self.plot(params, placedb, iteration+1, self.pos[0].data.clone().cpu().numpy())
-                            # if(noise_number < len(noise_list) and Llambda_metrics[-1][-1].overflow < noise_list[noise_number][0]):
-                            #     # self.plot(params, placedb, iteration, self.pos[0].data.clone().cpu().numpy())
-                            #     shrink_factor = noise_list[noise_number][1]
-                            #     noise_intensity = noise_list[noise_number][2]
-                            #     mode =  noise_list[noise_number][3]
-                            #     noise_number += 1
-                            #     print(iteration)
-                            #     print("Adjust")
-                            #     pos = model.data_collections.pos[0]
-                            #     inject_perturbation(pos, placedb, shrink_factor=shrink_factor, noise_intensity=noise_intensity, mode=mode)
-                                # self.plot(params, placedb, iteration+1, self.pos[0].data.clone().cpu().numpy())
+                            if(noise_number < len(noise_list) and Llambda_metrics[-1][-1].overflow < noise_list[noise_number][0]):
+                                self.plot(params, placedb, iteration, self.pos[0].data.clone().cpu().numpy())
+                                shrink_factor = noise_list[noise_number][1]
+                                noise_intensity = noise_list[noise_number][2]
+                                mode =  noise_list[noise_number][3]
+                                noise_number += 1
+                                print(iteration)
+                                print("Adjust")
+                                pos = model.data_collections.pos[0]
+                                inject_perturbation(pos, placedb, shrink_factor=shrink_factor, noise_intensity=noise_intensity, mode=mode)
+                                self.plot(params, placedb, iteration+1, self.pos[0].data.clone().cpu().numpy())
                             # stopping criteria
                             # if(iteration > 400):
                             #     print("Adjust")
