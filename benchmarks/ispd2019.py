@@ -1,6 +1,5 @@
 import os
 import sys
-import shutil
 from pyunpack import Archive
 if sys.version_info[0] < 3:
     import urllib2 as urllib
@@ -11,7 +10,7 @@ else:
 
 baseURL = "http://www.ispd.cc/contests/19/benchmarks/"
 target_dir = os.path.dirname(os.path.abspath(__file__))
-filenames = [f"ispd19_test{i}.tgz" for i in range(1,11)]
+filenames = [f"ispd19_test{i}.tgz" for i in range(1, 11)]
 ispd19_dir = os.path.join(target_dir, "ispd2019")
 try:
     os.mkdir(ispd19_dir)
@@ -28,12 +27,8 @@ for filename in filenames:
     with open(path_to_file, 'wb') as f:
         f.write(content)
 
-    print("Uncompress %s to %s" % (path_to_file, target_dir))
-    Archive(path_to_file).extractall(target_dir)
+    print("Uncompress %s to %s" % (path_to_file, ispd19_dir))
+    Archive(path_to_file).extractall(ispd19_dir)
 
     print("remove downloaded file %s" % (path_to_file))
     os.remove(path_to_file)
-    shutil.move(path_to_file[-4], ispd19_dir)
-
-
-
