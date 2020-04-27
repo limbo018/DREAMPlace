@@ -11,7 +11,7 @@ else:
 baseURL = "http://cad_contest.ee.ncu.edu.tw/CAD-Contest-at-ICCAD2014/problem_b/benchmarks/"
 target_dir = os.path.dirname(os.path.abspath(__file__))
 filenames = [f"{i}.tar.bz2" for i in ["b19", "vga_lcd", "leon2", "leon3mp", "netcard", "mgc_edit_dist", "mgc_matrix_mult"]]
-fold_dir = os.path.join(target_dir, "ispd2019")
+fold_dir = os.path.join(target_dir, "iccad2014")
 try:
     os.mkdir(fold_dir)
 except:
