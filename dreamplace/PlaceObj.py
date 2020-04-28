@@ -94,6 +94,7 @@ class PlaceObj(nn.Module):
 
         self.num_nodes = placedb.num_nodes
         self.num_movable_nodes = placedb.num_movable_nodes
+        self.gradient_ma = 0
 
 
         # compute weighted average wirelength from position
@@ -142,6 +143,7 @@ class PlaceObj(nn.Module):
         @param pos locations of cells
         @return objective value
         """
+
         wirelength = self.op_collections.wirelength_op(pos)
         density = self.op_collections.density_op(pos)
 
@@ -157,7 +159,6 @@ class PlaceObj(nn.Module):
         factor = (density / (self.init_density * density ** 2 + density)).data
         return wirelength + self.density_weight*(density + self.init_density * density ** 2) * factor
 
-
     def obj_and_grad_fn(self, pos, indices=None):
         """
         @brief compute objective and gradient.
@@ -166,20 +167,38 @@ class PlaceObj(nn.Module):
         @return objective value
         """
         #self.check_gradient(pos)
-        obj = self.obj_fn(pos)
+        # obj = self.obj_fn(pos)
 
+        # if pos.grad is not None:
+        #     pos.grad.zero_()
+
+        # obj.backward()
+        wirelength = self.op_collections.wirelength_op(pos)
         if pos.grad is not None:
             pos.grad.zero_()
+        wirelength.backward()
+        wirelength_grad = pos.grad.clone()
 
-        obj.backward()
+        density = self.op_collections.density_op(pos)
+        pos.grad.zero_()
+        density.backward()
+        density_grad = pos.grad.clone()
+        sim = F.cosine_similarity(wirelength_grad, density_grad, dim=0).item()
+
+        factor = 1#2 ** (1-abs(sim))
+        obj = wirelength.data + self.density_weight * density.data * factor
+        pos.grad = wirelength_grad + self.density_weight * density_grad * factor
+        self.gradient_ma = 0.5 * self.gradient_ma + 0.5 * pos.grad.norm(p=2) / (pos.numel()**0.5)
+
+        print("wl grad l2 norm", wirelength_grad.norm(p=2).item(),
+              "density grad l2 norm", density_grad.norm(p=2).item(),
+              "pos.grad", pos.grad.norm(p=2) / (pos.numel()**0.5),
+              "cosine theta", sim)
 
         self.op_collections.precondition_op(pos.grad, self.density_weight)
         if(indices is not None):
             pos.grad[:self.num_nodes][indices] = 0
             pos.grad[self.num_nodes:][indices] = 0
-
-        # pos.grad[:self.num_nodes] -= 0.001*pos.grad[:self.num_nodes].mean()
-        # pos.grad[self.num_nodes:] -= 0.001*pos.grad[self.num_nodes:].mean()
 
         return obj, pos.grad
 
@@ -505,6 +524,8 @@ class PlaceObj(nn.Module):
             with torch.no_grad():
                 noise = torch.rand_like(pos)
                 noise.sub_(0.5).mul_(node_size).mul_(noise_ratio)
+                # noise[:placedb.num_nodes] = (noise[:placedb.num_nodes] - 0.5) * (placedb.xh - placedb.xl) / 10
+                # noise[placedb.num_nodes:] = (noise[placedb.num_nodes:] - 0.5) * (placedb.yh - placedb.yl) / 10
                 # no noise to fixed cells
                 noise[placedb.num_movable_nodes:placedb.num_nodes-placedb.num_filler_nodes].zero_()
                 noise[placedb.num_nodes+placedb.num_movable_nodes:2*placedb.num_nodes-placedb.num_filler_nodes].zero_()
