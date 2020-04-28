@@ -204,39 +204,47 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                         pos.data[num_nodes+ num_movable_nodes:num_nodes+num_movable_nodes+num_fixed_nodes] = fixed_pos_y
                         print(pos[:placedb.num_movable_nodes].mean())
                     elif(mode == "search"):
+                        # when overflow meets plateau, show search the descent direction of density, not WL
+                        obj_fn = model.op_collections.density_op
                         R, r = 16, 2
                         R /= 2**(iteration//300)
                         K = int(np.log2(R/r)) + 1
-                        T = 4
+                        T = 16
                         num_movable_nodes = placedb.num_movable_nodes
                         num_nodes = placedb.num_nodes
                         num_filler_nodes = placedb.num_filler_nodes
                         num_fixed_nodes = num_nodes - num_movable_nodes - num_filler_nodes
-                        obj_min = model.obj_fn(pos.data).data.item()
+                        obj_min = obj_fn(pos.data).data.item()
                         pos_min = pos.data
                         v_min = 0
                         # print(obj_min)
                         for t in range(T):
+                            obj_fn = [model.op_collections.density_op, model.op_collections.wirelength_op][t > (T//2)]
+                            obj_min = obj_fn(pos.data).data.item()
                             obj_start = obj_min
                             for k in range(K):
                                 r_k = 2**(-k) * R
-                                for i in range(10):
+                                for i in range(1):
                                     v_k = torch.randn_like(pos.data)
                                     v_k[num_movable_nodes:num_nodes-num_filler_nodes] = 0
                                     v_k[num_nodes+num_movable_nodes:-num_filler_nodes] = 0
                                     v_k = v_k / v_k.norm(p=2) * r_k
                                     p1 = pos.data + v_k
-                                    obj_k = model.obj_fn(p1).data.item()
+                                    obj_k = obj_fn(p1).data.item()
                                     # print(r_k, obj_k)
                                     if(obj_k < obj_min):
-                                        print(t, "obj reduce:", obj_min, " to ", obj_k)
+                                        print("Search step:", t, "Obj reduce from ", obj_min, " to ", obj_k)
                                         obj_min = obj_k
                                         v_min = v_k.clone()
+                                        r_min = r_k
                                         pos_min = p1.clone()
-                            # pos.data.copy_(pos_min)
-                            step_size = 5 * np.log10(num_movable_nodes) * 0.9 ** t
-                            pos.data.copy_(pos.data + v_min * step_size)
-                            R /= 1.5
+                            # zeroth-order optimization with decaying step size
+                            diff = obj_start - obj_min
+                            if(diff > 0.001):
+                                step_size = diff / (10**(int(np.log10(diff))-1.5)) / r_min * 0.9 ** t
+                                print("stepsize: ", step_size)
+                                pos.data.copy_(pos.data + v_min * step_size)
+                                R /= 1.5 # decaying search region
 
                     elif(mode == "search_fast"):
                         R, Q = 8, 4
@@ -389,9 +397,9 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                             iteration += 1
                             overflow_list.append(Llambda_metrics[-1][-1].overflow.data.item())
                             if(check_plateau(overflow_list, window=20, threshold=0.001)):
-                                # inject_perturbation(self.pos[0], placedb, shrink_factor=1.2, noise_intensity=0, mode="random")
-                                inject_perturbation(self.pos[0], placedb, shrink_factor=0.996, noise_intensity=100*0.98**iteration, mode="search")
-                                # model.density_weight *= max(1, 1.5*overflow_list[-1])
+                                # inject_perturbation(self.pos[0], placedb, shrink_factor=0.996, noise_intensity=5, mode="random")
+                                inject_perturbation(self.pos[0], placedb, shrink_factor=0.996, noise_intensity=0, mode="search")
+                                model.density_weight *= max(1, 1.3*overflow_list[-1])
                                 print("Adjust")
 
                             flag = 0
