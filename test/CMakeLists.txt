@@ -18,3 +18,7 @@ install(
     DIRECTORY ispd2019 DESTINATION ${PROJECT_NAME}
     )
 
+install(
+    DIRECTORY iccad2014 DESTINATION ${PROJECT_NAME}
+    )
+
