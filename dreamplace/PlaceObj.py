@@ -146,13 +146,23 @@ class PlaceObj(nn.Module):
         @param pos locations of cells
         @return objective value
         """
-        #self.check_gradient(pos)
-        obj = self.obj_fn(pos)
-
+        wirelength = self.op_collections.wirelength_op(pos)
         if pos.grad is not None:
             pos.grad.zero_()
+        wirelength.backward()
+        wirelength_grad = pos.grad.clone()
 
-        obj.backward()
+        density = self.op_collections.density_op(pos)
+        pos.grad.zero_()
+        density.backward()
+        density_grad = pos.grad.clone()
+
+        obj = wirelength.data + self.density_weight * density.data
+        pos.grad = wirelength_grad + self.density_weight * density_grad
+
+        print("wl grad l1 norm", wirelength_grad.norm(p=1).item(),
+              "density grad l1 norm", density_grad.norm(p=1).item(),
+              "cosine theta", F.cosine_similarity(wirelength_grad, density_grad, dim=0).item())
 
         self.op_collections.precondition_op(pos.grad, self.density_weight)
 
