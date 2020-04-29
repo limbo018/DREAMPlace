@@ -267,6 +267,13 @@ void PlaceDB::add_def_component(DefParser::Component const& c)
     Macro const& macro = m_vMacro.at(property.macroId());
     node.set(c.origin[0], c.origin[1], c.origin[0]+macro.width(), c.origin[1]+macro.height()); // must update width and height
     node.setStatus(c.status); // update status
+    if (macro.className() != "CORE") 
+    {
+        // always fix cells whose macro class is not CORE
+        dreamplaceAssertMsg(node.status() == PlaceStatusEnum::FIXED || node.status() == PlaceStatusEnum::PLACED,
+            "non-CORE class cells must be FIXED or PLACED: %s %s", c.comp_name.c_str(), macro.className().c_str());
+        node.setStatus(PlaceStatusEnum::FIXED);
+    }
     if (node.status() != PlaceStatusEnum::UNPLACED)
     {
         node.setOrient(c.orient); // update orient
@@ -312,6 +319,8 @@ void PlaceDB::add_def_pin(DefParser::Pin const& p)
     std::pair<index_type, bool> insertMacroRet = addMacro(p.pin_name);
     dreamplaceAssertMsg(insertMacroRet.second, "failed to create virtual macro for io pin: %s", p.pin_name.c_str());
     Macro& macro = m_vMacro.at(insertMacroRet.first);
+    // indicate this is an IO pin
+    macro.setClassName("DREAMPlace.IOPin");
 
     // only read the first layer of pins
     std::string const& layerName = p.vLayer.front();
@@ -453,6 +462,8 @@ void PlaceDB::add_def_placement_blockage(std::vector<std::vector<int> > const& v
         std::pair<index_type, bool> insertMacroRet = addMacro(name);
         dreamplaceAssertMsg(insertMacroRet.second, "failed to create virtual macro for placement blockage: %s", name.c_str());
         Macro& macro = m_vMacro.at(insertMacroRet.first);
+        // indicate this is placement blockage
+        macro.setClassName("DREAMPlace.PlaceBlockage");
 
         macro.setInitOrigin(bbox[0], bbox[1]);
         macro.set(0, 0, bbox[2]-bbox[0], bbox[3]-bbox[1]); // adjust to origin (0, 0)
@@ -695,6 +706,10 @@ void PlaceDB::add_bookshelf_terminal_NI(std::string& name, int w, int h)
 {
     // it seems no difference
     add_bookshelf_node(name, w, h);
+    // regard terminal_NI as IO pins 
+    Macro& macro = m_vMacro.back(); 
+    macro.setClassName("DREAMPlace.IOPin"); 
+
     // bookshelf use terminal_NI and FIXED_NI to denotes IO pins 
     // I assume IO pins are appended to the list 
     m_numIOPin += 1;
@@ -717,6 +732,9 @@ void PlaceDB::add_bookshelf_node(std::string& name, int w, int h)
     std::pair<index_type, bool> insertMacroRet = addMacro("DREAMPlace." + name); 
     // check duplicate 
     dreamplaceAssert(insertMacroRet.second);
+    Macro& macro = m_vMacro.at(insertMacroRet.first);
+    // only CORE class is considered as the target diearea to optimize
+    macro.setClassName("CORE");
 
     NodeProperty& property = m_vNodeProperty.at(node.id());
     property.setMacroId(insertMacroRet.first); 
@@ -1092,7 +1110,7 @@ void PlaceDB::reportStatsKernel()
         m_benchMetrics.initPlaceDBFlag = true;
 
         dreamplaceAssertMsg(numMovable() == m_vMovableNodeIndex.size(), "inconsistent number of movable cells: %lu != %lu\n", numMovable(), m_vMovableNodeIndex.size());
-        dreamplaceAssertMsg(numFixed() == m_vFixedNodeIndex.size(), "inconsistent number of fixed cells: %lu != %lu\n", numMovable(), m_vFixedNodeIndex.size());
+        dreamplaceAssertMsg(numFixed() == m_vFixedNodeIndex.size(), "inconsistent number of fixed cells: %lu != %lu\n", numFixed(), m_vFixedNodeIndex.size());
         std::size_t countNum = std::count(m_vNetIgnoreFlag.begin(), m_vNetIgnoreFlag.end(), true);
         dreamplaceAssertMsg(numIgnoredNet() == countNum, "inconsistent number of ignored nets: %lu != %lu\n", numIgnoredNet(), countNum);
     }
@@ -1113,10 +1131,18 @@ bool PlaceDB::write(std::string const& filename, SolutionFileFormat ff, PlaceDB:
     switch (ff)
     {
         case DEF:
-            flag = DefWriter(*this).write(filename, userParam().defInput, nodes().begin(), nodes().begin()+m_numMovable+m_numFixed, x, y);
+            {
+                std::vector<index_type> vNodeIndex = m_vMovableNodeIndex; 
+                vNodeIndex.insert(vNodeIndex.end(), m_vFixedNodeIndex.begin(), m_vFixedNodeIndex.end()); 
+                flag = DefWriter(*this).write(filename, userParam().defInput, m_vNode, vNodeIndex, x, y);
+            }
             break;
         case DEFSIMPLE:
-            flag = DefWriter(*this).writeSimple(filename, defVersion(), designName(), nodes().begin(), nodes().begin()+m_numMovable+m_numFixed, x, y);
+            {
+                std::vector<index_type> vNodeIndex = m_vMovableNodeIndex; 
+                vNodeIndex.insert(vNodeIndex.end(), m_vFixedNodeIndex.begin(), m_vFixedNodeIndex.end()); 
+                flag = DefWriter(*this).writeSimple(filename, defVersion(), designName(), m_vNode, vNodeIndex, x, y);
+            }
             break;
         case BOOKSHELF:
             flag = BookShelfWriter(*this).write(filename, x, y);
@@ -1824,6 +1850,7 @@ void PlaceDB::sortNodeByPlaceStatus()
     for (std::vector<Node>::const_iterator it = m_vNode.begin(), ite = m_vNode.begin() + numMovable() + numFixed(); it != ite; ++it)
     {
         Node const& node = *it;
+        //Macro const& macro = m_vMacro.at(macroId(node));
         if (node.status() == PlaceStatusEnum::FIXED)
         {
             m_vFixedNodeIndex.push_back(node.id());
@@ -1839,24 +1866,32 @@ void PlaceDB::sortNodeByPlaceStatus()
     // sort m_vNode, m_vNodeProperty, m_mNodeName2Index
     // map order to node id
     // only work on movable and fixed cells, excluding IO pins 
-    std::vector<index_type> vNodeOrder (numMovable() + numFixed());
+    std::vector<index_type> vNodeOrder(m_vNode.size());
     for (index_type i = 0, ie = vNodeOrder.size(); i != ie; ++i)
         vNodeOrder[i] = i;
 
     // so far the data layout in m_vNode
     // mixed UNPLACED/PLACED, DUMMY_FIXED, and FIXED, IO pins, placement blockages
-    // target order is 
-    // UNPLACED, PLACED, DUMMY_FIXED, FIXED, placement blockages, IO pins 
+    // Target order is UNPLACED, PLACED, DUMMY_FIXED, FIXED,
+    // placement blockages, IO pins
     
     // 1. we first work on movable and fixed cells 
     dreamplaceAssert(vNodeOrder.size() <= m_vNode.size());
     auto statusOrder = [&](index_type i){
-        PlaceStatusEnum::PlaceStatusType status = m_vNode[i].status();
-        index_type order = (status == PlaceStatusEnum::FIXED)*512
-            + (status == PlaceStatusEnum::DUMMY_FIXED)*64
-            + (status == PlaceStatusEnum::PLACED)*8
-            + (status == PlaceStatusEnum::UNPLACED)
-            ;
+        auto const& node = m_vNode.at(i);
+        auto const& macro = m_vMacro.at(nodeProperty(i).macroId());
+        PlaceStatusEnum::PlaceStatusType status = node.status();
+        index_type order = (status == PlaceStatusEnum::FIXED) * 512 +
+                           (status == PlaceStatusEnum::DUMMY_FIXED) * 64 +
+                           (status == PlaceStatusEnum::PLACED) * 8 +
+                           (status == PlaceStatusEnum::UNPLACED);
+        if (macro.className() == "DREAMPlace.IOPin") 
+        {
+            order += 2048;
+        } else if (macro.className() == "DREAMPlace.PlaceBlockage") 
+        {
+            order += 1024;
+        } 
         return order; 
     };
     std::sort(vNodeOrder.begin(), vNodeOrder.end(), 
@@ -1897,6 +1932,8 @@ void PlaceDB::sortNodeByPlaceStatus()
     for (index_type i = 1, ie = vNodeOrder.size(); i != ie; ++i)
     {
         dreamplaceAssert(m_vNode[i].id() == vNodeOrder[i]);
+        // careful, node.id() has not been changed yet; use i as node id 
+        // all the functions called here need to consider this 
         dreamplaceAssertMsg(statusOrder(i-1) <= statusOrder(i), "permuting nodes error: i = %u, order %u (%s, %d) vs %u (%s, %d)", 
                 i, 
                 statusOrder(i-1), nodeName(i-1).c_str(), int(m_vNode[i-1].status()), 
@@ -1919,19 +1956,28 @@ void PlaceDB::sortNodeByPlaceStatus()
 
     m_vMovableNodeIndex.clear();
     m_vFixedNodeIndex.clear();
-    for (std::vector<Node>::const_iterator it = m_vNode.begin(), ite = m_vNode.begin() + numMovable() + numFixed(); it != ite; ++it)
+    for (std::vector<Node>::const_iterator it = m_vNode.begin(), ite = m_vNode.begin() + numMovable() + numFixed() + numPlaceBlockages(); it != ite; ++it)
     {
         Node const& node = *it;
-        if (node.status() == PlaceStatusEnum::FIXED)
+        Macro const& macro = m_vMacro[macroId(node)];
+        if (macro.className() == "DREAMPlace.PlaceBlockage") 
         {
-            m_vFixedNodeIndex.push_back(node.id());
-        }
-        else
+            m_vPlaceBlockageIndex.push_back(node.id());
+        } 
+        else 
         {
-            m_vMovableNodeIndex.push_back(node.id());
+            if (node.status() == PlaceStatusEnum::FIXED)
+            {
+                m_vFixedNodeIndex.push_back(node.id());
+            }
+            else
+            {
+                m_vMovableNodeIndex.push_back(node.id());
+            }
         }
     }
 
+#if 0
     // 2. now we work on swapping IO pins and placement blockages 
     if (numPlaceBlockages())
     {
@@ -1977,6 +2023,7 @@ void PlaceDB::sortNodeByPlaceStatus()
             m_vPlaceBlockageIndex.push_back(node.id());
         }
     }
+#endif
 
 #ifdef DEBUG
     // check pins, nodes, and nets
@@ -2005,6 +2052,10 @@ void PlaceDB::sortNodeByPlaceStatus()
     for (unsigned int i = 1; i < m_vFixedNodeIndex.size(); ++i)
     {
         dreamplaceAssert(m_vFixedNodeIndex[i-1]+1 == m_vFixedNodeIndex[i]);
+    }
+    for (unsigned int i = 1; i < m_vPlaceBlockageIndex.size(); ++i) 
+    {
+        dreamplaceAssert(m_vPlaceBlockageIndex[i - 1] + 1 == m_vPlaceBlockageIndex[i]);
     }
 #endif
 }

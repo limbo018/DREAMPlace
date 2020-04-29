@@ -253,6 +253,7 @@ typename DB2DIterator<DBType, IteratorTagType>::iterator_dimension_type DB2DIter
 struct MovableNodeIteratorTag {};
 struct FixedNodeIteratorTag {};
 struct PlaceBlockageIteratorTag {};
+struct NonCoreNodeIteratorTag {};
 struct IOPinNodeIteratorTag {};
 struct CellMacroIteratorTag {};
 struct IOPinMacroIteratorTag {};
@@ -261,6 +262,7 @@ struct SubRowMap2DIteratorTag {};
 typedef DBIterator<PlaceDB, MovableNodeIteratorTag> MovableNodeIterator;
 typedef DBIterator<PlaceDB, FixedNodeIteratorTag> FixedNodeIterator;
 typedef DBIterator<PlaceDB, PlaceBlockageIteratorTag> PlaceBlockageIterator;
+typedef DBIterator<PlaceDB, NonCoreNodeIteratorTag> NonCoreNodeIterator;
 typedef DBIterator<PlaceDB, IOPinNodeIteratorTag> IOPinNodeIterator;
 typedef DBIterator<PlaceDB, CellMacroIteratorTag> CellMacroIterator;
 typedef DBIterator<PlaceDB, IOPinMacroIteratorTag> IOPinMacroIterator;
@@ -269,6 +271,7 @@ typedef DB2DIterator<SubRowMap, SubRowMap2DIteratorTag> SubRowMap2DIterator;
 typedef DBIterator<const PlaceDB, MovableNodeIteratorTag> MovableNodeConstIterator;
 typedef DBIterator<const PlaceDB, FixedNodeIteratorTag> FixedNodeConstIterator;
 typedef DBIterator<const PlaceDB, PlaceBlockageIteratorTag> PlaceBlockageConstIterator;
+typedef DBIterator<const PlaceDB, NonCoreNodeIteratorTag> NonCoreNodeConstIterator;
 typedef DBIterator<const PlaceDB, IOPinNodeIteratorTag> IOPinNodeConstIterator;
 typedef DBIterator<const PlaceDB, CellMacroIteratorTag> CellMacroConstIterator;
 typedef DBIterator<const PlaceDB, IOPinMacroIteratorTag> IOPinMacroConstIterator;
@@ -312,6 +315,19 @@ struct IteratorDeref<PlaceDBType, PlaceBlockageIteratorTag>
     inline reference_type operator()(placedb_type& db, index_type index) const 
     {
         return db.nodes().at(db.placeBlockageIndices().at(index));
+    }
+};
+template <typename PlaceDBType>
+struct IteratorDeref<PlaceDBType, NonCoreNodeIteratorTag>
+{
+    typedef typename constant_helper<PlaceDBType, Node>::reference_type reference_type;
+    typedef typename constant_helper<PlaceDBType, Node>::pointer_type pointer_type;
+    typedef DBIterator<PlaceDBType, NonCoreNodeIteratorTag> iterator_type;
+    typedef typename iterator_type::placedb_type placedb_type; 
+    typedef typename iterator_type::index_type index_type;
+    inline reference_type operator()(placedb_type& db, index_type index) const 
+    {
+        return db.nodes().at(db.nonCoreNodeIndices().at(index));
     }
 };
 template <typename PlaceDBType>

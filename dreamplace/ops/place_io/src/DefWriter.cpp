@@ -11,7 +11,7 @@
 DREAMPLACE_BEGIN_NAMESPACE
 
 bool DefWriter::write(std::string const& outFile, std::string const& inFile, 
-        std::vector<Node>::const_iterator first, std::vector<Node>::const_iterator last, 
+        std::vector<Node> const& vNode, std::vector<PlaceDB::index_type> const& vNodeIndex, 
         PlaceDB::coordinate_type const* x, PlaceDB::coordinate_type const* y) const 
 {
     std::ifstream in (inFile.c_str());
@@ -45,7 +45,7 @@ bool DefWriter::write(std::string const& outFile, std::string const& inFile,
         {
             // found "END COMPONENTS"
             // dump positions here 
-            writeCompBlock(out, first, last, x, y);
+            writeCompBlock(out, vNode, vNodeIndex, x, y);
 
             flag = false;
             continue;
@@ -85,7 +85,7 @@ bool DefWriter::write(std::string const& outFile, std::string const& inFile,
     return true;
 }
 bool DefWriter::writeSimple(std::string const& outFile, std::string const& version, std::string const& designName, 
-        std::vector<Node>::const_iterator first, std::vector<Node>::const_iterator last, 
+        std::vector<Node> const& vNode, std::vector<PlaceDB::index_type> const& vNodeIndex, 
         PlaceDB::coordinate_type const* x, PlaceDB::coordinate_type const* y) const 
 {
     dreamplacePrint(kINFO, "writing placement to %s\n", outFile.c_str());
@@ -99,18 +99,20 @@ bool DefWriter::writeSimple(std::string const& outFile, std::string const& versi
 
     fprintf(out, "VERSION %s ;\n", version.c_str());
     fprintf(out, "DESIGN %s ;\n\n", designName.c_str());
-    writeCompBlock(out, first, last, x, y);
+    writeCompBlock(out, vNode, vNodeIndex, x, y);
     fprintf(out, "\nEND DESIGN");
 
     fclose(out);
     return true;
 }
-void DefWriter::writeCompBlock(FILE* os, std::vector<Node>::const_iterator first, std::vector<Node>::const_iterator last, 
+void DefWriter::writeCompBlock(FILE* os, std::vector<Node> const& vNode, std::vector<PlaceDB::index_type> const& vNodeIndex, 
                 PlaceDB::coordinate_type const* x, PlaceDB::coordinate_type const* y) const 
 {
-    fprintf(os, "COMPONENTS %lu ;\n", last-first);
-    for (; first != last; ++first)
-        writeComp(os, *first, x, y);
+    fprintf(os, "COMPONENTS %lu ;\n", vNodeIndex.size());
+    for (auto node_id : vNodeIndex)
+    {
+        writeComp(os, vNode.at(node_id), x, y);
+    }
     fprintf(os, "END COMPONENTS\n");
 }
 void DefWriter::writeComp(FILE* os, Node const& n, 

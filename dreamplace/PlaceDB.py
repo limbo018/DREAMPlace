@@ -8,6 +8,7 @@
 import sys
 import os
 import re
+import math
 import time 
 import numpy as np 
 import logging
@@ -594,8 +595,12 @@ row height = %g, site width = %g
                 )
 
         # set number of bins 
-        self.num_bins_x = params.num_bins_x #self.num_bins(self.xl, self.xh, self.bin_size_x)
-        self.num_bins_y = params.num_bins_y #self.num_bins(self.yl, self.yh, self.bin_size_y)
+        # derive bin dimensions by keeping the aspect ratio 
+        aspect_ratio = (self.yh - self.yl) / (self.xh - self.xl)
+        num_bins_x = int(math.pow(2, max(np.ceil(math.log2(math.sqrt(self.num_movable_nodes / aspect_ratio))), 0)))
+        num_bins_y = int(math.pow(2, max(np.ceil(math.log2(math.sqrt(self.num_movable_nodes * aspect_ratio))), 0)))
+        self.num_bins_x = max(params.num_bins_x, num_bins_x)
+        self.num_bins_y = max(params.num_bins_y, num_bins_y)
         # set bin size 
         self.bin_size_x = (self.xh-self.xl)/params.num_bins_x 
         self.bin_size_y = (self.yh-self.yl)/params.num_bins_y 
