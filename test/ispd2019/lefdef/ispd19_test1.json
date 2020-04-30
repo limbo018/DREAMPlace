@@ -19,7 +19,7 @@
 "detailed_place_flag" : 1,
 "detailed_place_engine" : "thirdparty/ntuplace_4dr", 
 "detailed_place_command" : "-nolegal -nodetail", 
-"stop_overflow" : 0.1, 
+"stop_overflow" : 0.15, 
 "dtype" : "float32", 
 "plot_flag" : 0, 
 "random_center_init_flag" : 1, 

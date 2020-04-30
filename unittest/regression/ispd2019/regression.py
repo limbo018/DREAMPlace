@@ -29,7 +29,8 @@ sys.path.pop()
 # So the tolerance of comparison is set to large, e.g., 1%.
 # Probably the difference comes from DP.
 designs = [
-    #'ispd19_test1', # not converged
+    'ispd19_test1',  # the stop overflow is larger than others, 
+    # because it does not converge if set as usual
     'ispd19_test2',
     'ispd19_test3',
     'ispd19_test4',
@@ -51,24 +52,24 @@ deterministics = ['deterministic', 'indeterministic']
 # Yibo: I assume the results of different modes should be small
 golden = {
     ('ispd19_test1', 'gpu', 'deterministic'): {
-        "GP": 4.304241E+05,
-        "LG": 4.481719E+05,
-        "DP": 4.163562E+05
+        "GP": 3.889903E+05,
+        "LG": 4.191218E+05,
+        "DP": 4.086339E+05
     },
     ('ispd19_test1', 'gpu', 'indeterministic'): {
-        "GP": 4.304241E+05,
-        "LG": 4.481719E+05,
-        "DP": 4.163562E+05
+        "GP": 3.889903E+05,
+        "LG": 4.191218E+05,
+        "DP": 4.086339E+05
     },
     ('ispd19_test1', 'cpu', 'deterministic'): {
-        "GP": 4.304241E+05,
-        "LG": 4.481719E+05,
-        "DP": 4.163562E+05
+        "GP": 3.889903E+05,
+        "LG": 4.191218E+05,
+        "DP": 4.086339E+05
     },
     ('ispd19_test1', 'cpu', 'indeterministic'): {
-        "GP": 4.304241E+05,
-        "LG": 4.481719E+05,
-        "DP": 4.163562E+05
+        "GP": 3.889903E+05,
+        "LG": 4.191218E+05,
+        "DP": 4.086339E+05
     },
     ('ispd19_test2', 'gpu', 'deterministic'): {
         "GP": 1.718549E+07,
