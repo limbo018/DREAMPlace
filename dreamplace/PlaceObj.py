@@ -104,8 +104,11 @@ class PlaceObj(nn.Module):
                                   device=self.data_collections.pos[0].device)
 
         # compute weighted average wirelength from position
-        name = "%dx%d bins" % (global_place_params["num_bins_x"],
-                               global_place_params["num_bins_y"])
+        num_bins_x = global_place_params["num_bins_x"] if global_place_params[
+            "num_bins_x"] else placedb.num_bins_x
+        num_bins_y = global_place_params["num_bins_y"] if global_place_params[
+            "num_bins_y"] else placedb.num_bins_y
+        name = "%dx%d bins" % (num_bins_x, num_bins_y)
         if global_place_params["wirelength"] == "weighted_average":
             self.op_collections.wirelength_op, self.op_collections.update_gamma_op = self.build_weighted_average_wl(
                 params, placedb, self.data_collections,
@@ -117,13 +120,13 @@ class PlaceObj(nn.Module):
         else:
             assert 0, "unknown wirelength model %s" % (
                 global_place_params["wirelength"])
-        #self.op_collections.density_op = self.build_density_potential(params, placedb, self.data_collections, global_place_params["num_bins_x"], global_place_params["num_bins_y"], padding=1, name)
+        #self.op_collections.density_op = self.build_density_potential(params, placedb, self.data_collections, num_bins_x, num_bins_y, padding=1, name)
         self.op_collections.density_op = self.build_electric_potential(
             params,
             placedb,
             self.data_collections,
-            global_place_params["num_bins_x"],
-            global_place_params["num_bins_y"],
+            num_bins_x,
+            num_bins_y,
             padding=0,
             name=name)
         self.op_collections.update_density_weight_op = self.build_update_density_weight(
