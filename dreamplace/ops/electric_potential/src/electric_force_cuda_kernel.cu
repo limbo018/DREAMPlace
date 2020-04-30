@@ -381,6 +381,77 @@ __global__ void computeElectricForceUnroll(
 }
 
 template <typename T>
+__global__ void computeElectricForceSimpleLikeCPU(
+        int num_bins_x, int num_bins_y,
+        int num_impacted_bins_x, int num_impacted_bins_y,
+        const T* field_map_x_tensor, const T* field_map_y_tensor,
+        const T* x_tensor, const T* y_tensor,
+        const T* node_size_x_clamped_tensor, const T* node_size_y_clamped_tensor,
+        const T* offset_x_tensor, const T* offset_y_tensor,
+        const T* ratio_tensor,
+        const T* bin_center_x_tensor, const T* bin_center_y_tensor,
+        T xl, T yl, T xh, T yh,
+        T bin_size_x, T bin_size_y,
+        int num_nodes,
+        T* grad_x_tensor, T* grad_y_tensor
+        )
+{
+    // density_map_tensor should be initialized outside
+
+    T inv_bin_size_x = 1.0 / bin_size_x; 
+    T inv_bin_size_y = 1.0 / bin_size_y;
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_nodes)
+    {
+        // use stretched node size 
+        T node_size_x = node_size_x_clamped_tensor[i];
+        T node_size_y = node_size_y_clamped_tensor[i];
+        T node_x = x_tensor[i] + offset_x_tensor[i];
+        T node_y = y_tensor[i] + offset_y_tensor[i];
+        T ratio = ratio_tensor[i];
+
+        // Yibo: looks very weird implementation, but this is how RePlAce implements it
+        // the common practice should be floor
+        // Zixuan and Jiaqi: use the common practice of floor
+        int bin_index_xl = int((node_x - xl) * inv_bin_size_x);
+        int bin_index_xh = int(((node_x + node_size_x - xl) * inv_bin_size_x)) + 1; // exclusive
+        bin_index_xl = DREAMPLACE_STD_NAMESPACE::max(bin_index_xl, 0);
+        bin_index_xh = DREAMPLACE_STD_NAMESPACE::min(bin_index_xh, num_bins_x);
+        //int bin_index_xh = bin_index_xl+num_impacted_bins_x;
+
+        // Yibo: looks very weird implementation, but this is how RePlAce implements it
+        // the common practice should be floor
+        // Zixuan and Jiaqi: use the common practice of floor
+        int bin_index_yl = int((node_y - yl) * inv_bin_size_y);
+        int bin_index_yh = int(((node_y + node_size_y - yl) * inv_bin_size_y)) + 1; // exclusive
+        bin_index_yl = DREAMPLACE_STD_NAMESPACE::max(bin_index_yl, 0);
+        bin_index_yh = DREAMPLACE_STD_NAMESPACE::min(bin_index_yh, num_bins_y);
+        //int bin_index_yh = bin_index_yl+num_impacted_bins_y;
+
+        T& gx = grad_x_tensor[i]; 
+        T& gy = grad_y_tensor[i]; 
+        gx = 0;
+        gy = 0;
+        // update density potential map
+        for (int k = bin_index_xl; k < bin_index_xh; ++k)
+        {
+            T px = triangle_density_function(node_x, node_size_x, xl, k, bin_size_x);
+            for (int h = bin_index_yl; h < bin_index_yh; ++h)
+            {
+                T py = triangle_density_function(node_y, node_size_y, yl, h, bin_size_y);
+                T area = px * py;
+
+                int idx = k * num_bins_y + h;
+                gx += area * field_map_x_tensor[idx];
+                gy += area * field_map_y_tensor[idx];
+            }
+        }
+        gx *= ratio; 
+        gy *= ratio;
+    }
+}
+
+template <typename T>
 int computeElectricForceCudaLauncher(
     int num_bins_x, int num_bins_y,
     int num_impacted_bins_x, int num_impacted_bins_y,
@@ -402,6 +473,7 @@ int computeElectricForceCudaLauncher(
     size_t shared_mem_size = sizeof(T) * thread_count * 2;
 
     int block_count_nodes = (num_nodes + thread_count - 1) / thread_count;
+#if 0
     computeElectricForce<<<block_count_nodes, blockSize, shared_mem_size>>>(
         num_bins_x, num_bins_y,
         field_map_x_tensor, field_map_y_tensor,
@@ -417,6 +489,22 @@ int computeElectricForceCudaLauncher(
         num_nodes,
         grad_x_tensor, grad_y_tensor,
         sorted_node_map);
+#endif
+
+    computeElectricForceSimpleLikeCPU<<<block_count_nodes, thread_count>>>(
+        num_bins_x, num_bins_y,
+        num_impacted_bins_x, num_impacted_bins_y,
+        field_map_x_tensor, field_map_y_tensor,
+        x_tensor, y_tensor,
+        node_size_x_clamped_tensor, node_size_y_clamped_tensor,
+        offset_x_tensor, offset_y_tensor,
+        ratio_tensor,
+        bin_center_x_tensor, bin_center_y_tensor,
+        xl, yl, xh, yh,
+        bin_size_x, bin_size_y,
+        num_nodes,
+        grad_x_tensor, grad_y_tensor
+        );
 
     return 0;
 }

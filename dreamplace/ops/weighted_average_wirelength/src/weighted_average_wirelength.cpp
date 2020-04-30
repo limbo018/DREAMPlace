@@ -6,6 +6,7 @@
  */
 #include "utility/src/torch.h"
 #include "utility/src/Msg.h"
+#include "weighted_average_wirelength/src/functional.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
 
@@ -26,17 +27,6 @@ int computeWeightedAverageWirelengthLauncher(
     const T *grad_tensor,
     int num_threads,
     T *grad_x_tensor, T *grad_y_tensor);
-
-/// @brief add net weights to gradient
-template <typename T>
-void integrateNetWeightsLauncher(
-    const int *flat_netpin,
-    const int *netpin_start,
-    const unsigned char *net_mask,
-    const T *net_weights,
-    T *grad_x_tensor, T *grad_y_tensor,
-    int num_nets,
-    int num_threads);
 
 #define CHECK_FLAT(x) AT_ASSERTM(!x.is_cuda() && x.ndimension() == 1, #x " must be a flat tensor on CPU")
 #define CHECK_EVEN(x) AT_ASSERTM((x.numel() & 1) == 0, #x " must have even number of elements")
@@ -100,7 +90,7 @@ std::vector<at::Tensor> weighted_average_wirelength_forward(
             num_threads,
             nullptr, nullptr);
     });
-    
+
     if (net_weights.numel())
     {
         wl.mul_(net_weights);
@@ -206,15 +196,13 @@ int computeWeightedAverageWirelengthLauncher(
             int net_id = pin2net_map[i];
             if (net_mask[net_id])
             {
-                grad_x_tensor[i] = (*grad_tensor) * 
-                                   (((1 + (*inv_gamma) * x[i]) * exp_xy_sum[net_id] - (*inv_gamma) * xyexp_xy_sum[net_id]) / (exp_xy_sum[net_id] * exp_xy_sum[net_id]) * exp_xy[i] 
-                                  - ((1 - (*inv_gamma) * x[i]) * exp_nxy_sum[net_id] + (*inv_gamma) * xyexp_nxy_sum[net_id]) / (exp_nxy_sum[net_id] * exp_nxy_sum[net_id]) * exp_nxy[i]);
+                grad_x_tensor[i] = (*grad_tensor) *
+                                   (((1 + (*inv_gamma) * x[i]) * exp_xy_sum[net_id] - (*inv_gamma) * xyexp_xy_sum[net_id]) / (exp_xy_sum[net_id] * exp_xy_sum[net_id]) * exp_xy[i] - ((1 - (*inv_gamma) * x[i]) * exp_nxy_sum[net_id] + (*inv_gamma) * xyexp_nxy_sum[net_id]) / (exp_nxy_sum[net_id] * exp_nxy_sum[net_id]) * exp_nxy[i]);
 
                 net_id += num_nets;
                 int pin_id = i + num_pins;
-                grad_y_tensor[i] = (*grad_tensor) * 
-                                   (((1 + (*inv_gamma) * y[i]) * exp_xy_sum[net_id] - (*inv_gamma) * xyexp_xy_sum[net_id]) / (exp_xy_sum[net_id] * exp_xy_sum[net_id]) * exp_xy[pin_id] 
-                                  - ((1 - (*inv_gamma) * y[i]) * exp_nxy_sum[net_id] + (*inv_gamma) * xyexp_nxy_sum[net_id]) / (exp_nxy_sum[net_id] * exp_nxy_sum[net_id]) * exp_nxy[pin_id]);
+                grad_y_tensor[i] = (*grad_tensor) *
+                                   (((1 + (*inv_gamma) * y[i]) * exp_xy_sum[net_id] - (*inv_gamma) * xyexp_xy_sum[net_id]) / (exp_xy_sum[net_id] * exp_xy_sum[net_id]) * exp_xy[pin_id] - ((1 - (*inv_gamma) * y[i]) * exp_nxy_sum[net_id] + (*inv_gamma) * xyexp_nxy_sum[net_id]) / (exp_nxy_sum[net_id] * exp_nxy_sum[net_id]) * exp_nxy[pin_id]);
             }
         }
     }
@@ -272,32 +260,6 @@ int computeWeightedAverageWirelengthLauncher(
     }
 
     return 0;
-}
-
-template <typename T>
-void integrateNetWeightsLauncher(
-    const int *flat_netpin,
-    const int *netpin_start,
-    const unsigned char *net_mask,
-    const T *net_weights,
-    T *grad_x_tensor, T *grad_y_tensor,
-    int num_nets,
-    int num_threads)
-{
-#pragma omp parallel for num_threads(num_threads)
-    for (int net_id = 0; net_id < num_nets; ++net_id)
-    {
-        if (net_mask[net_id])
-        {
-            T weight = net_weights[net_id];
-            for (int j = netpin_start[net_id]; j < netpin_start[net_id + 1]; ++j)
-            {
-                int pin_id = flat_netpin[j];
-                grad_x_tensor[pin_id] *= weight;
-                grad_y_tensor[pin_id] *= weight;
-            }
-        }
-    }
 }
 
 DREAMPLACE_END_NAMESPACE

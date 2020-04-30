@@ -18,7 +18,7 @@ if (PYTHON)
     add_custom_command(OUTPUT ${OUTPUT}
         COMMAND ${PYTHON} ${SETUP_PY} build --build-temp=${CMAKE_CURRENT_BINARY_DIR}/build --build-lib=${CMAKE_CURRENT_BINARY_DIR}/lib
         COMMAND ${CMAKE_COMMAND} -E touch ${OUTPUT}
-        DEPENDS ${SOURCES}
+        DEPENDS ${SOURCES} lefparseradapt defparseradapt verilogparser gdsparser bookshelfparser programoptions gzstream 
         )
 
     add_custom_target(clean_${PROJECT_NAME}

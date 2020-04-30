@@ -32,10 +32,10 @@ int computeTriangleDensityMapCudaLauncher(
 // Compute the exact overlap area for density 
 template <typename T>
 int computeExactDensityMapCudaLauncher(
-        const T* x_tensor, const T* y_tensor, 
-        const T* node_size_x_tensor, const T* node_size_y_tensor, 
-        const T* bin_center_x_tensor, const T* bin_center_y_tensor, 
-        const int num_nodes, 
+        const T* x_tensor, const T* y_tensor,
+        const T* node_size_x_tensor, const T* node_size_y_tensor,
+        const T* bin_center_x_tensor, const T* bin_center_y_tensor,
+        const int num_nodes,
         const int num_bins_x, const int num_bins_y, 
         const int num_impacted_bins_x, const int num_impacted_bins_y, 
         const T xl, const T yl, const T xh, const T yh, 
@@ -69,7 +69,6 @@ int computeExactDensityMapCudaLauncher(
 /// @param num_movable_nodes number of movable cells 
 /// @param num_filler_nodes number of filler cells 
 /// @param padding bin padding to boundary of placement region 
-/// @param padding_mask padding mask with 0 and 1 to indicate padding bins with padding regions to be 1  
 /// @param num_bins_x number of bins in horizontal bins 
 /// @param num_bins_y number of bins in vertical bins 
 /// @param num_movable_impacted_bins_x number of impacted bins for any movable cell in x direction 
@@ -95,7 +94,6 @@ at::Tensor density_map(
         int num_movable_nodes, 
         int num_filler_nodes, 
         int padding, 
-        at::Tensor padding_mask, 
         int num_bins_x, int num_bins_y, 
         int num_movable_impacted_bins_x, int num_movable_impacted_bins_y, 
         int num_filler_impacted_bins_x, int num_filler_impacted_bins_y,
@@ -151,12 +149,6 @@ at::Tensor density_map(
                 });
     }
 
-    // set padding density 
-    if (padding > 0)
-    {
-        density_map.masked_fill_(padding_mask, at::Scalar(target_density*bin_size_x*bin_size_y));
-    }
-
     return density_map;
 }
 
@@ -172,23 +164,23 @@ at::Tensor fixed_density_map(
         double yh, 
         double bin_size_x, 
         double bin_size_y, 
-        int num_movable_nodes, 
+        int num_movable_nodes,
         int num_terminals, 
         int num_bins_x, int num_bins_y,
         int num_fixed_impacted_bins_x, int num_fixed_impacted_bins_y,
         int deterministic_flag
         ) 
 {
-    CHECK_FLAT(pos); 
+    CHECK_FLAT(pos);
     CHECK_EVEN(pos);
     CHECK_CONTIGUOUS(pos);
 
     at::Tensor density_map = at::zeros({num_bins_x, num_bins_y}, pos.options());
 
-    int num_nodes = pos.numel()/2; 
+    int num_nodes = pos.numel() / 2; 
 
     // Call the cuda kernel launcher
-    if (num_terminals && num_fixed_impacted_bins_x && num_fixed_impacted_bins_y)
+    if (num_terminals)
     {
         DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeExactDensityMapCudaLauncher", [&] {
                 computeExactDensityMapCudaLauncher<scalar_t>(
@@ -205,6 +197,10 @@ at::Tensor fixed_density_map(
                         DREAMPLACE_TENSOR_DATA_PTR(density_map, scalar_t)
                         );
                 });
+
+        // Fixed cells may have overlaps. We should not over-compute the density map. 
+        // This is just an approximate fix. It does not guarantee the exact value in each bin. 
+        density_map.clamp_max_(bin_size_x*bin_size_y);
     }
 
     return density_map;

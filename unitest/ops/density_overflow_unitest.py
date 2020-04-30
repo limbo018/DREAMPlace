@@ -69,8 +69,8 @@ class DensityOverflowOpTest(unittest.TestCase):
         target_density = 0.1
         num_bins_x = int(np.ceil((xh-xl)/bin_size_x))
         num_bins_y = int(np.ceil((yh-yl)/bin_size_y))
-        num_movable_nodes = len(xx)
-        num_terminals = 0 
+        num_movable_nodes = len(xx) - 1
+        num_terminals = 1 
         num_filler_nodes = 0
 
         bin_center_x = np.zeros(num_bins_x, dtype=dtype)
@@ -93,7 +93,7 @@ class DensityOverflowOpTest(unittest.TestCase):
                     num_filler_nodes=num_filler_nodes)
 
         pos = Variable(torch.from_numpy(np.concatenate([xx, yy])))
-        result, max_density = custom(pos)
+        result, max_density = custom.forward(pos)
         print("custom_result = ", result)
         print("custom_max_density = ", max_density)
 
@@ -108,45 +108,22 @@ class DensityOverflowOpTest(unittest.TestCase):
                         num_movable_nodes=num_movable_nodes, 
                         num_terminals=num_terminals, 
                         num_filler_nodes=num_filler_nodes, 
-                        algorithm='by-node'
                         )
 
             pos = Variable(torch.from_numpy(np.concatenate([xx, yy]))).cuda()
-            result_cuda, max_density_cuda = custom_cuda(pos)
-            print("by-node custom_result = ", result_cuda.data.cpu())
-            print("by-node custom_max_density_cuda = ", max_density_cuda.data.cpu())
-
-            np.testing.assert_allclose(result, result_cuda.data.cpu())
-            np.testing.assert_allclose(max_density, max_density_cuda.data.cpu())
-
-        # test cuda 
-        if torch.cuda.device_count(): 
-            custom_cuda = density_overflow.DensityOverflow(
-                        torch.from_numpy(node_size_x).cuda(), torch.from_numpy(node_size_y).cuda(), 
-                        torch.from_numpy(bin_center_x).cuda(), torch.from_numpy(bin_center_y).cuda(), 
-                        target_density=target_density, 
-                        xl=xl, yl=yl, xh=xh, yh=yh, 
-                        bin_size_x=bin_size_x, bin_size_y=bin_size_y, 
-                        num_movable_nodes=num_movable_nodes, 
-                        num_terminals=num_terminals, 
-                        num_filler_nodes=num_filler_nodes, 
-                        algorithm='threadmap'
-                        )
-
-            pos = Variable(torch.from_numpy(np.concatenate([xx, yy]))).cuda()
-            result_cuda, max_density_cuda = custom_cuda(pos)
-            print("threadmap custom_result = ", result_cuda.data.cpu())
-            print("threadmap custom_max_density_cuda = ", max_density_cuda.data.cpu())
+            result_cuda, max_density_cuda = custom_cuda.forward(pos)
+            print("custom_result = ", result_cuda.data.cpu())
+            print("custom_max_density_cuda = ", max_density_cuda.data.cpu())
 
             np.testing.assert_allclose(result, result_cuda.data.cpu())
             np.testing.assert_allclose(max_density, max_density_cuda.data.cpu())
 
 def eval_runtime(design):
-    with gzip.open("../../../../benchmarks/ispd2005/density/%s_density.pklz" % (design), "rb") as f:
+    with gzip.open(design, "rb") as f:
         node_size_x, node_size_y, bin_center_x, bin_center_y, target_density, xl, yl, xh, yh, bin_size_x, bin_size_y, num_movable_nodes, num_terminals, num_filler_nodes = pickle.load(f)
 
     pos_var = Variable(torch.empty(len(node_size_x)*2, dtype=torch.float64).uniform_(xl, xh), requires_grad=True).cuda()
-    custom_cuda_by_node = density_overflow.DensityOverflow(
+    custom_cuda = density_overflow.DensityOverflow(
                 torch.from_numpy(node_size_x).cuda(), torch.from_numpy(node_size_y).cuda(), 
                 torch.from_numpy(bin_center_x).cuda(), torch.from_numpy(bin_center_y).cuda(), 
                 target_density=target_density, 
@@ -155,37 +132,20 @@ def eval_runtime(design):
                 num_movable_nodes=num_movable_nodes, 
                 num_terminals=num_terminals, 
                 num_filler_nodes=num_filler_nodes, 
-                algorithm='by-node'
-                )
-    custom_cuda_thread_map = density_overflow.DensityOverflow(
-                torch.from_numpy(node_size_x).cuda(), torch.from_numpy(node_size_y).cuda(), 
-                torch.from_numpy(bin_center_x).cuda(), torch.from_numpy(bin_center_y).cuda(), 
-                target_density=target_density, 
-                xl=xl, yl=yl, xh=xh, yh=yh, 
-                bin_size_x=bin_size_x, bin_size_y=bin_size_y, 
-                num_movable_nodes=num_movable_nodes, 
-                num_terminals=num_terminals, 
-                num_filler_nodes=num_filler_nodes, 
-                algorithm='threadmap'
                 )
 
     torch.cuda.synchronize()
     iters = 10 
     tt = time.time()
     for i in range(iters): 
-        result = custom_cuda_by_node(pos_var)
+        result = custom_cuda.forward(pos_var)
     torch.cuda.synchronize()
-    print("custom_cuda_by_node takes %.3f ms" % ((time.time()-tt)/iters*1000))
-
-    tt = time.time()
-    for i in range(iters): 
-        result = custom_cuda_thread_map(pos_var)
-    torch.cuda.synchronize()
-    print("custom_cuda_thread_map takes %.3f ms" % ((time.time()-tt)/iters*1000))
+    print("custom_cuda takes %.3f ms" % ((time.time()-tt)/iters*1000))
 
 if __name__ == '__main__':
-    unittest.main()
-    exit()
 
-    design = sys.argv[1]
-    eval_runtime(design)
+    if len(sys.argv) < 2: 
+        unittest.main()
+    else:
+        design = sys.argv[1]
+        eval_runtime(design)

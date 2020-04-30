@@ -152,7 +152,15 @@ struct DetailedPlaceDB
     /// @brief align x coordinate to site 
     inline __device__ T align2site(T xx) const 
     {
-        return (int)CUDADiv((xx-xl), site_width)*site_width+xl; 
+        return (int)CUDADiv((xx - xl), site_width) * site_width + xl; 
+    }
+    /// @brief align x coordinate to site for a space;
+    /// make sure the space is shrinked. 
+    inline __device__ Space<T> align2site(Space<T> space) const 
+    {
+        space.xl = (int)CUDACeilDiv((space.xl - xl), site_width) * site_width + xl;
+        space.xh = (int)CUDADiv((space.xh - xl), site_width) * site_width + xl;
+        return space; 
     }
     /// @brief compute optimal region for a cell 
     /// The method to compute optimal region ignores the pin offsets of the target cell. 

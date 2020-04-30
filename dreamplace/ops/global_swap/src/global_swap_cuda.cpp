@@ -27,12 +27,12 @@ int globalSwapCUDALauncher(DetailedPlaceDB<T> db, int batch_size, int max_iters,
 /// char does not compile for ATen either 
 #define DISPATCH_CUSTOM_TYPES(TYPE, NAME, ...)                           \
       [&] {                                                                       \
-          switch (TYPE.scalarType()) {                                          \
+          switch (TYPE) {                                          \
                 AT_PRIVATE_CASE_TYPE(at::ScalarType::Float, float, __VA_ARGS__)        \
                 AT_PRIVATE_CASE_TYPE(at::ScalarType::Double, double, __VA_ARGS__)         \
                 AT_PRIVATE_CASE_TYPE(at::ScalarType::Int, int, __VA_ARGS__)        \
                 default:                                                                \
-                  AT_ERROR(#NAME, " not implemented for '", TYPE.toString(), "'");  \
+                  AT_ERROR(#NAME, " not implemented for '", at::toString(TYPE), "'");  \
                   }                                                                         \
             }()
 
@@ -75,7 +75,7 @@ at::Tensor global_swap_cuda_forward(
     auto pos = init_pos.clone();
 
     // Call the cuda kernel launcher
-    DISPATCH_CUSTOM_TYPES(pos.type(), "globalSwapCUDALauncher", [&] {
+    DISPATCH_CUSTOM_TYPES(pos.scalar_type(), "globalSwapCUDALauncher", [&] {
             auto db = make_placedb<scalar_t>(
                     init_pos,
                     pos, 

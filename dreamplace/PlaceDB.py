@@ -8,6 +8,7 @@
 import sys
 import os
 import re
+import math
 import time 
 import numpy as np 
 import logging
@@ -42,6 +43,9 @@ class PlaceDB (object):
         self.node_orient = None # 1D array, cell orientation 
         self.node_size_x = None # 1D array, cell width  
         self.node_size_y = None # 1D array, cell height
+
+        self.node2orig_node_map = None # some fixed cells may have non-rectangular shapes; we flatten them and create new nodes 
+                                        # this map maps the current multiple node ids into the original one 
 
         self.pin_direct = None # 1D array, pin direction IO 
         self.pin_offset_x = None # 1D array, pin offset x to its node 
@@ -82,13 +86,28 @@ class PlaceDB (object):
 
         self.num_movable_pins = None 
 
-        self.total_movable_node_area = None
-        self.total_fixed_node_area = None
+        self.total_movable_node_area = None # total movable cell area 
+        self.total_fixed_node_area = None # total fixed cell area 
+        self.total_space_area = None # total placeable space area excluding fixed cells 
 
         # enable filler cells 
         # the Idea from e-place and RePlace 
         self.total_filler_node_area = None 
         self.num_filler_nodes = None
+
+        self.routing_grid_xl = None 
+        self.routing_grid_yl = None 
+        self.routing_grid_xh = None 
+        self.routing_grid_yh = None 
+        self.num_routing_grids_x = None
+        self.num_routing_grids_y = None
+        self.num_routing_layers = None
+        self.unit_horizontal_capacity = None # per unit distance, projected to one layer 
+        self.unit_vertical_capacity = None # per unit distance, projected to one layer 
+        self.unit_horizontal_capacities = None # per unit distance, layer by layer 
+        self.unit_vertical_capacities = None # per unit distance, layer by layer 
+        self.initial_horizontal_demand_map = None # routing demand map from fixed cells, indexed by (grid x, grid y), projected to one layer  
+        self.initial_vertical_demand_map = None # routing demand map from fixed cells, indexed by (grid x, grid y), projected to one layer  
 
         self.dtype = None 
 
@@ -118,6 +137,7 @@ class PlaceDB (object):
         self.row_height *= scale_factor
         self.site_width *= scale_factor
         self.rows *= scale_factor 
+        self.total_space_area *= scale_factor * scale_factor # this is area 
         self.flat_region_boxes *= scale_factor
         # may have performance issue 
         # I assume there are not many boxes 
@@ -297,6 +317,14 @@ class PlaceDB (object):
             centers[id_x] = (bin_l+bin_h)/2
         return centers 
 
+    @property
+    def routing_grid_size_x(self):
+        return (self.routing_grid_xh - self.routing_grid_xl) / self.num_routing_grids_x 
+
+    @property 
+    def routing_grid_size_y(self):
+        return (self.routing_grid_yh - self.routing_grid_yl) / self.num_routing_grids_y 
+
     def net_hpwl(self, x, y, net_id): 
         """
         @brief compute HPWL of a net 
@@ -468,6 +496,7 @@ class PlaceDB (object):
             self.node_orient = np.array(pydb.node_orient, dtype=np.string_)
         self.node_size_x = np.array(pydb.node_size_x, dtype=self.dtype)
         self.node_size_y = np.array(pydb.node_size_y, dtype=self.dtype)
+        self.node2orig_node_map = np.array(pydb.node2orig_node_map, dtype=np.int32)
         self.pin_direct = np.array(pydb.pin_direct, dtype=np.string_)
         self.pin_offset_x = np.array(pydb.pin_offset_x, dtype=self.dtype)
         self.pin_offset_y = np.array(pydb.pin_offset_y, dtype=self.dtype)
@@ -496,6 +525,28 @@ class PlaceDB (object):
         self.row_height = float(pydb.row_height)
         self.site_width = float(pydb.site_width)
         self.num_movable_pins = pydb.num_movable_pins
+        self.total_space_area = float(pydb.total_space_area)
+
+        self.routing_grid_xl = float(pydb.routing_grid_xl) 
+        self.routing_grid_yl = float(pydb.routing_grid_yl) 
+        self.routing_grid_xh = float(pydb.routing_grid_xh) 
+        self.routing_grid_yh = float(pydb.routing_grid_yh) 
+        if pydb.num_routing_grids_x: 
+            self.num_routing_grids_x = pydb.num_routing_grids_x 
+            self.num_routing_grids_y = pydb.num_routing_grids_y 
+            self.num_routing_layers = len(pydb.unit_horizontal_capacities)
+            self.unit_horizontal_capacity = np.array(pydb.unit_horizontal_capacities, dtype=self.dtype).sum()
+            self.unit_vertical_capacity = np.array(pydb.unit_vertical_capacities, dtype=self.dtype).sum()
+            self.unit_horizontal_capacities = np.array(pydb.unit_horizontal_capacities, dtype=self.dtype)
+            self.unit_vertical_capacities = np.array(pydb.unit_vertical_capacities, dtype=self.dtype)
+            self.initial_horizontal_demand_map = np.array(pydb.initial_horizontal_demand_map, dtype=self.dtype).reshape((-1, self.num_routing_grids_x, self.num_routing_grids_y)).sum(axis=0)
+            self.initial_vertical_demand_map = np.array(pydb.initial_vertical_demand_map, dtype=self.dtype).reshape((-1, self.num_routing_grids_x, self.num_routing_grids_y)).sum(axis=0)
+        else:
+            self.num_routing_grids_x = params.route_num_bins_x
+            self.num_routing_grids_y = params.route_num_bins_y
+            self.num_routing_layers = 1
+            self.unit_horizontal_capacity = params.unit_horizontal_capacity
+            self.unit_vertical_capacity = params.unit_vertical_capacity
 
         # convert node2pin_map to array of array 
         for i in range(len(self.node2pin_map)):
@@ -533,7 +584,7 @@ class PlaceDB (object):
         self.scale(params.scale_factor)
 
         content = """
-=============== Benchmark Statistics ===============
+================================= Benchmark Statistics =================================
 #nodes = %d, #terminals = %d, # terminal_NIs = %d, #movable = %d, #nets = %d
 die area = (%g, %g, %g, %g) %g
 row height = %g, site width = %g
@@ -544,8 +595,12 @@ row height = %g, site width = %g
                 )
 
         # set number of bins 
-        self.num_bins_x = params.num_bins_x #self.num_bins(self.xl, self.xh, self.bin_size_x)
-        self.num_bins_y = params.num_bins_y #self.num_bins(self.yl, self.yh, self.bin_size_y)
+        # derive bin dimensions by keeping the aspect ratio 
+        aspect_ratio = (self.yh - self.yl) / (self.xh - self.xl)
+        num_bins_x = int(math.pow(2, max(np.ceil(math.log2(math.sqrt(self.num_movable_nodes / aspect_ratio))), 0)))
+        num_bins_y = int(math.pow(2, max(np.ceil(math.log2(math.sqrt(self.num_movable_nodes * aspect_ratio))), 0)))
+        self.num_bins_x = max(params.num_bins_x, num_bins_x)
+        self.num_bins_y = max(params.num_bins_y, num_bins_y)
         # set bin size 
         self.bin_size_x = (self.xh-self.xl)/params.num_bins_x 
         self.bin_size_y = (self.yh-self.yl)/params.num_bins_y 
@@ -575,11 +630,21 @@ row height = %g, site width = %g
                         - np.maximum(self.node_y[self.num_movable_nodes:self.num_physical_nodes - self.num_terminal_NIs], self.yl), 
                         0.0)
                 ))
-        content += "total_movable_node_area = %g, total_fixed_node_area = %g\n" % (self.total_movable_node_area, self.total_fixed_node_area)
+        content += "total_movable_node_area = %g, total_fixed_node_area = %g, total_space_area = %g\n" % (self.total_movable_node_area, self.total_fixed_node_area, self.total_space_area)
+
+        target_density = min(self.total_movable_node_area / self.total_space_area, 1.0)
+        if target_density > params.target_density:
+            logging.warn("target_density %g is smaller than utilization %g, ignored" % (params.target_density, target_density))
+            params.target_density = target_density 
+        content += "target_density = %g\n" % (params.target_density)
 
         # insert filler nodes 
         if params.enable_fillers: 
-            self.total_filler_node_area = max((self.area-self.total_fixed_node_area)*params.target_density-self.total_movable_node_area, 0.0)
+            # the way to compute this is still tricky; we need to consider place_io together on how to 
+            # summarize the area of fixed cells, which may overlap with each other. 
+            placeable_area = max(self.area - self.total_fixed_node_area, self.total_space_area)
+            content += "use placeable_area = %g to compute fillers\n" % (placeable_area)
+            self.total_filler_node_area = max(placeable_area*params.target_density-self.total_movable_node_area, 0.0)
             node_size_order = np.argsort(self.node_size_x[:self.num_movable_nodes])
             filler_size_x = np.mean(self.node_size_x[node_size_order[int(self.num_movable_nodes*0.05):int(self.num_movable_nodes*0.95)]])
             filler_size_y = self.row_height
@@ -589,8 +654,13 @@ row height = %g, site width = %g
         else:
             self.total_filler_node_area = 0 
             self.num_filler_nodes = 0
-        content += "total_filler_node_area = %g, #fillers = %g, filler sizes = %gx%g\n" % (self.total_filler_node_area, self.num_filler_nodes, filler_size_x, filler_size_y)
-        content += "===================================================="
+        content += "total_filler_node_area = %g, #fillers = %d, filler sizes = %gx%g\n" % (self.total_filler_node_area, self.num_filler_nodes, filler_size_x, filler_size_y)
+        if params.routability_opt_flag: 
+            content += "================================== routing information =================================\n"
+            content += "routing grids (%d, %d)\n" % (self.num_routing_grids_x, self.num_routing_grids_y)
+            content += "routing grid sizes (%g, %g)\n" % (self.routing_grid_size_x, self.routing_grid_size_y)
+            content += "routing capacity H/V (%g, %g) per tile\n" % (self.unit_horizontal_capacity * self.routing_grid_size_y, self.unit_vertical_capacity * self.routing_grid_size_x)
+        content += "========================================================================================"
 
         logging.info(content)
 
@@ -661,17 +731,29 @@ row height = %g, site width = %g
         content = "UCLA pl 1.0\n"
         str_node_names = np.array(self.node_names).astype(np.str)
         str_node_orient = np.array(self.node_orient).astype(np.str)
-        for i in range(self.num_physical_nodes):
+        for i in range(self.num_movable_nodes):
             content += "\n%s %g %g : %s" % (
                     str_node_names[i],
                     node_x[i], 
                     node_y[i], 
                     str_node_orient[i]
                     )
-            if i >= self.num_movable_nodes:
-                content += " /FIXED"
-                if i >= self.num_movable_nodes + self.num_terminals:
-                    content += "_NI"
+        # use the original fixed cells, because they are expanded if they contain shapes 
+        fixed_node_indices = list(self.rawdb.fixedNodeIndices())
+        for i, node_id in enumerate(fixed_node_indices):
+            content += "\n%s %g %g : %s /FIXED" % (
+                    str(self.rawdb.nodeName(node_id)), 
+                    float(self.rawdb.node(node_id).xl()), 
+                    float(self.rawdb.node(node_id).yl()), 
+                    "N" # still hard-coded 
+                    )
+        for i in range(self.num_movable_nodes + self.num_terminals, self.num_movable_nodes + self.num_terminals + self.num_terminal_NIs):
+            content += "\n%s %g %g : %s /FIXED_NI" % (
+                    str_node_names[i],
+                    node_x[i], 
+                    node_y[i], 
+                    str_node_orient[i]
+                    )
         with open(pl_file, "w") as f:
             f.write(content)
         logging.info("write_pl takes %.3f seconds" % (time.time()-tt))

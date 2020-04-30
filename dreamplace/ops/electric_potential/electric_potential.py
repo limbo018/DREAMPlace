@@ -26,6 +26,9 @@ from dreamplace.ops.dct.discrete_spectral_transform import get_exact_expk as pre
 #import dreamplace.ops.dct.dct as dct
 #from dreamplace.ops.dct.discrete_spectral_transform import get_expk as precompute_expk
 
+from dreamplace.ops.electric_potential.electric_overflow import ElectricDensityMapFunction as ElectricDensityMapFunction
+from dreamplace.ops.electric_potential.electric_overflow import ElectricOverflow as ElectricOverflow
+
 import dreamplace.ops.electric_potential.electric_potential_cpp as electric_potential_cpp
 import dreamplace.configure as configure
 if configure.compile_configurations["CUDA_FOUND"] == "TRUE": 
@@ -85,34 +88,8 @@ class ElectricPotentialFunction(Function):
     ):
 
         tt = time.time()
-        if pos.is_cuda:
-            output = electric_potential_cuda.density_map(
-                pos.view(pos.numel()),
-                node_size_x_clamped, node_size_y_clamped,
-                offset_x, offset_y,
-                ratio,
-                bin_center_x, bin_center_y,
-                initial_density_map,
-                target_density,
-                xl, yl, xh, yh,
-                bin_size_x, bin_size_y,
-                num_movable_nodes,
-                num_filler_nodes,
-                padding,
-                padding_mask,
-                num_bins_x,
-                num_bins_y,
-                num_movable_impacted_bins_x,
-                num_movable_impacted_bins_y,
-                num_filler_impacted_bins_x,
-                num_filler_impacted_bins_y,
-                deterministic_flag, 
-                sorted_node_map
-            )
-
-        else:
-            output = electric_potential_cpp.density_map(
-                pos.view(pos.numel()),
+        density_map = ElectricDensityMapFunction.forward(
+                pos,
                 node_size_x_clamped, node_size_y_clamped,
                 offset_x, offset_y,
                 ratio,
@@ -132,8 +109,10 @@ class ElectricPotentialFunction(Function):
                 num_movable_impacted_bins_y,
                 num_filler_impacted_bins_x,
                 num_filler_impacted_bins_y,
+                deterministic_flag, 
+                sorted_node_map,
                 num_threads
-            )
+                )
 
         # output consists of (density_cost, density_map, max_density)
         ctx.node_size_x_clamped = node_size_x_clamped
@@ -162,7 +141,6 @@ class ElectricPotentialFunction(Function):
         ctx.pos = pos
         ctx.sorted_node_map = sorted_node_map
         ctx.num_threads = num_threads
-        density_map = output.view([ctx.num_bins_x, ctx.num_bins_y])
         #density_map = torch.ones([ctx.num_bins_x, ctx.num_bins_y], dtype=pos.dtype, device=pos.device)
         #ctx.field_map_x = torch.ones([ctx.num_bins_x, ctx.num_bins_y], dtype=pos.dtype, device=pos.device)
         #ctx.field_map_y = torch.ones([ctx.num_bins_x, ctx.num_bins_y], dtype=pos.dtype, device=pos.device)
@@ -313,7 +291,7 @@ class ElectricPotentialFunction(Function):
             None, None, None, None, \
             None, None, None
 
-class ElectricPotential(nn.Module):
+class ElectricPotential(ElectricOverflow):
     """
     @brief Compute electric potential according to e-place
     """
@@ -330,6 +308,7 @@ class ElectricPotential(nn.Module):
                  padding,
                  deterministic_flag, # control whether to use deterministic routine 
                  sorted_node_map,
+                 movable_macro_mask=None, 
                  fast_mode=False,
                  num_threads=8
                  ):
@@ -339,6 +318,7 @@ class ElectricPotential(nn.Module):
         Otherwise, GPU version can be weirdly slow.
         @param node_size_x cell width array consisting of movable cells, fixed cells, and filler cells in order
         @param node_size_y cell height array consisting of movable cells, fixed cells, and filler cells in order
+        @param movable_macro_mask some large movable macros need to be scaled to avoid halos
         @param bin_center_x bin center x locations
         @param bin_center_y bin center y locations
         @param target_density target density
@@ -356,74 +336,29 @@ class ElectricPotential(nn.Module):
         @param fast_mode if true, only gradient is computed, while objective computation is skipped
         @param num_threads number of threads
         """
-        super(ElectricPotential, self).__init__()
-        sqrt2 = math.sqrt(2)
-        self.node_size_x = node_size_x
-        self.node_size_x_clamped = node_size_x.clamp(min=bin_size_x*sqrt2)
-        self.offset_x = (node_size_x - self.node_size_x_clamped).mul(0.5)
-        self.node_size_y = node_size_y
-        self.node_size_y_clamped = node_size_y.clamp(min=bin_size_y*sqrt2)
-        self.offset_y = (node_size_y - self.node_size_y_clamped).mul(0.5)
-        node_area = node_size_x * node_size_y
-        self.ratio = node_area / (self.node_size_x_clamped * self.node_size_y_clamped)
+        super(ElectricPotential, self).__init__(
+                node_size_x=node_size_x, node_size_y=node_size_y,
+                bin_center_x=bin_center_x, bin_center_y=bin_center_y,
+                target_density=target_density,
+                xl=xl, yl=yl, xh=xh, yh=yh,
+                bin_size_x=bin_size_x, bin_size_y=bin_size_y,
+                num_movable_nodes=num_movable_nodes,
+                num_terminals=num_terminals,
+                num_filler_nodes=num_filler_nodes,
+                padding=padding,
+                deterministic_flag=deterministic_flag, 
+                sorted_node_map=sorted_node_map,
+                movable_macro_mask=movable_macro_mask, 
+                num_threads=num_threads
+                )
+        self.fast_mode = fast_mode
 
-        # detect movable macros and scale down the density to avoid halos 
-        # the definition of movable macros should be different according to algorithms 
-        # so I prefer to code it inside an operator 
-        # I use a heuristic that cells whose areas are 10x of the mean area will be regarded movable macros in global placement 
-        if target_density < 1: 
-            mean_area = node_area[:num_movable_nodes].mean().mul_(10)
-            row_height = node_size_y[:num_movable_nodes].min().mul_(2)
-            movable_macro_mask = (node_area[:num_movable_nodes] > mean_area) & (self.node_size_y[:num_movable_nodes] > row_height)
-            self.ratio[:num_movable_nodes][movable_macro_mask] = target_density
-            logger.info("regard %d cells as movable macros in global placement" % (movable_macro_mask.sum().data.cpu().item()))
+    def reset(self): 
+        """ Compute members derived from input 
+        """
+        super(ElectricPotential, self).reset()
+        logger.info("regard %d cells as movable macros in global placement" % (self.num_movable_macros))
 
-        self.bin_center_x = bin_center_x
-        self.bin_center_y = bin_center_y
-        self.target_density = target_density
-        self.xl = xl
-        self.yl = yl
-        self.xh = xh
-        self.yh = yh
-        self.bin_size_x = bin_size_x
-        self.bin_size_y = bin_size_y
-        self.num_movable_nodes = num_movable_nodes
-        self.num_terminals = num_terminals
-        self.num_filler_nodes = num_filler_nodes
-        self.padding = padding
-        self.deterministic_flag = deterministic_flag
-        self.sorted_node_map = sorted_node_map
-        # compute maximum impacted bins
-        self.num_bins_x = int(math.ceil((xh - xl) / bin_size_x))
-        self.num_bins_y = int(math.ceil((yh - yl) / bin_size_y))
-
-        if num_movable_nodes: 
-            self.num_movable_impacted_bins_x = int(
-                ((node_size_x[:num_movable_nodes].max() + 2 * sqrt2 * self.bin_size_x) / self.bin_size_x).ceil().clamp(max=self.num_bins_x))
-            self.num_movable_impacted_bins_y = int(
-                ((node_size_y[:num_movable_nodes].max() + 2 * sqrt2 * self.bin_size_y) / self.bin_size_y).ceil().clamp(max=self.num_bins_y))
-        else:
-            self.num_movable_impacted_bins_x = 0
-            self.num_movable_impacted_bins_y = 0
-        if num_filler_nodes:
-            self.num_filler_impacted_bins_x = int(
-                ((node_size_x[-num_filler_nodes:].max() + 2 * sqrt2 * self.bin_size_x) / self.bin_size_x).ceil().clamp(max=self.num_bins_x))
-            self.num_filler_impacted_bins_y = int(
-                ((node_size_y[-num_filler_nodes:].max() + 2 * sqrt2 * self.bin_size_y) / self.bin_size_y).ceil().clamp(max=self.num_bins_y))
-        else:
-            self.num_filler_impacted_bins_x = 0
-            self.num_filler_impacted_bins_y = 0
-        if self.padding > 0:
-            self.padding_mask = torch.ones(self.num_bins_x, self.num_bins_y,
-                                           dtype=torch.uint8, device=node_size_x.device)
-            self.padding_mask[self.padding:self.num_bins_x - self.padding,
-                              self.padding:self.num_bins_y - self.padding].fill_(0)
-        else:
-            self.padding_mask = torch.zeros(self.num_bins_x, self.num_bins_y,
-                                            dtype=torch.uint8, device=node_size_x.device)
-
-        # initial density_map due to fixed cells
-        self.initial_density_map = None
         self.exact_expkM = None
         self.exact_expkN = None
         self.inv_wu2_plus_wv2 = None
@@ -436,61 +371,12 @@ class ElectricPotential(nn.Module):
         self.idct_idxst = None
         self.idxst_idct = None
 
-        # whether really evaluate potential_map and energy or use dummy
-        self.fast_mode = fast_mode
-        self.num_threads = num_threads
-        # buffer for deterministic density map computation on CPU 
-        self.buf = torch.Tensor() 
-
     def forward(self, pos):
         if self.initial_density_map is None:
-            if self.num_terminals == 0:
-                num_fixed_impacted_bins_x = 0
-                num_fixed_impacted_bins_y = 0
-            else:
-                num_fixed_impacted_bins_x = int(((self.node_size_x[self.num_movable_nodes:self.num_movable_nodes + self.num_terminals].max(
-                ) + self.bin_size_x) / self.bin_size_x).ceil().clamp(max=self.num_bins_x))
-                num_fixed_impacted_bins_y = int(((self.node_size_y[self.num_movable_nodes:self.num_movable_nodes + self.num_terminals].max(
-                ) + self.bin_size_y) / self.bin_size_y).ceil().clamp(max=self.num_bins_y))
-
-            if pos.is_cuda:
-                self.initial_density_map = electric_potential_cuda.fixed_density_map(
-                    pos.view(pos.numel()),
-                    self.node_size_x, self.node_size_y,
-                    self.bin_center_x, self.bin_center_y,
-                    self.xl, self.yl, self.xh, self.yh,
-                    self.bin_size_x, self.bin_size_y,
-                    self.num_movable_nodes,
-                    self.num_terminals,
-                    self.num_bins_x,
-                    self.num_bins_y,
-                    num_fixed_impacted_bins_x,
-                    num_fixed_impacted_bins_y, 
-                    self.deterministic_flag
-                )
-            else:
-                self.buf = torch.empty(self.num_threads * self.num_bins_x * self.num_bins_y, dtype=pos.dtype, device=pos.device)
-                self.initial_density_map = electric_potential_cpp.fixed_density_map(
-                    pos.view(pos.numel()),
-                    self.node_size_x, self.node_size_y,
-                    self.bin_center_x, self.bin_center_y,
-                    self.buf, 
-                    self.xl, self.yl, self.xh, self.yh,
-                    self.bin_size_x, self.bin_size_y,
-                    self.num_movable_nodes,
-                    self.num_terminals,
-                    self.num_bins_x,
-                    self.num_bins_y,
-                    num_fixed_impacted_bins_x,
-                    num_fixed_impacted_bins_y,
-                    self.num_threads
-                )
-
+            self.compute_initial_density_map(pos)
             # plot(0, self.initial_density_map.clone().div(self.bin_size_x*self.bin_size_y).cpu().numpy(), self.padding, 'summary/initial_potential_map')
             logger.info("fixed density map: average %g, max %g, bin area %g" % (self.initial_density_map.mean(), self.initial_density_map.max(), self.bin_size_x*self.bin_size_y))
 
-            # scale density of fixed macros
-            self.initial_density_map.mul_(self.target_density)
             # expk
             M = self.num_bins_x
             N = self.num_bins_y
@@ -544,45 +430,3 @@ class ElectricPotential(nn.Module):
             self.fast_mode,
             self.num_threads
         )
-
-
-def plot(plot_count, density_map, padding, name):
-    """
-    density map contour and heat map
-    """
-    density_map = density_map[padding:density_map.shape[0] - padding, padding:density_map.shape[1] - padding]
-    print("max density = %g @ %s" % (np.amax(density_map), np.unravel_index(np.argmax(density_map), density_map.shape)))
-    print("mean density = %g" % (np.mean(density_map)))
-
-    fig = plt.figure()
-    ax = fig.gca(projection='3d')
-
-    x = np.arange(density_map.shape[0])
-    y = np.arange(density_map.shape[1])
-
-    x, y = np.meshgrid(x, y)
-    # looks like x and y should be swapped
-    ax.plot_surface(y, x, density_map, alpha=0.8)
-
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.set_zlabel('density')
-
-    # plt.tight_layout()
-    plt.savefig(name + ".3d.png")
-    plt.close()
-
-    # plt.clf()
-
-    #fig, ax = plt.subplots()
-
-    # ax.pcolor(density_map)
-
-    # Loop over data dimensions and create text annotations.
-    # for i in range(density_map.shape[0]):
-    # for j in range(density_map.shape[1]):
-    # text = ax.text(j, i, density_map[i, j],
-    # ha="center", va="center", color="w")
-    # fig.tight_layout()
-    #plt.savefig(name+".2d.%d.png" % (plot_count))
-    # plt.close()

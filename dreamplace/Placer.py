@@ -54,15 +54,15 @@ def place(params):
 
     # call external detailed placement
     # TODO: support more external placers, currently only support 
-    # 1. NTUplace3 with Bookshelf format 
+    # 1. NTUplace3/NTUplace4h with Bookshelf format 
     # 2. NTUplace_4dr with LEF/DEF format 
     if params.detailed_place_engine and os.path.exists(params.detailed_place_engine):
         logging.info("Use external detailed placement engine %s" % (params.detailed_place_engine))
-        if params.solution_file_suffix() == "pl" and 'ntuplace3' in params.detailed_place_engine: 
+        if params.solution_file_suffix() == "pl" and any(dp_engine in params.detailed_place_engine for dp_engine in ['ntuplace3', 'ntuplace4h']): 
             dp_out_file = gp_out_file.replace(".gp.pl", "")
             # add target density constraint if provided 
             target_density_cmd = ""
-            if params.target_density < 1.0:
+            if params.target_density < 1.0 and not params.routability_opt_flag:
                 target_density_cmd = " -util %f" % (params.target_density)
             cmd = "%s -aux %s -loadpl %s %s -out %s -noglobal %s" % (params.detailed_place_engine, params.aux_input, gp_out_file, target_density_cmd, dp_out_file, params.detailed_place_command)
             logging.info("%s" % (cmd))

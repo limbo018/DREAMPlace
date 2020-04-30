@@ -67,7 +67,6 @@ class DensityPotentialFunction(Function):
                     num_movable_nodes, 
                     num_filler_nodes, 
                     padding, 
-                    padding_mask, 
                     num_bins_x, 
                     num_bins_y, 
                     num_impacted_bins_x, 
@@ -87,7 +86,6 @@ class DensityPotentialFunction(Function):
                     num_movable_nodes, 
                     num_filler_nodes, 
                     padding, 
-                    padding_mask, 
                     num_bins_x, 
                     num_bins_y, 
                     num_impacted_bins_x, 
@@ -123,6 +121,10 @@ class DensityPotentialFunction(Function):
         ctx.pos = pos 
         ctx.num_threads = num_threads 
         ctx.density_map = output[1]
+
+        # set padding density 
+        if padding > 0: 
+            ctx.density_map.masked_fill_(padding_mask, target_density * bin_size_x * bin_size_y)
 
         #global plot_count 
         #if plot_count % 100 == 0: 

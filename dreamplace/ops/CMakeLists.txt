@@ -1,6 +1,7 @@
 add_subdirectory(utility)
 add_subdirectory(dct)
 add_subdirectory(pin_pos)
+add_subdirectory(density_map)
 add_subdirectory(density_overflow)
 add_subdirectory(density_potential)
 add_subdirectory(logsumexp_wirelength)
@@ -12,14 +13,19 @@ add_subdirectory(weighted_average_wirelength)
 add_subdirectory(rmst_wl)
 add_subdirectory(place_io)
 # legalization operators 
+add_subdirectory(legality_check)
 add_subdirectory(macro_legalize)
 add_subdirectory(greedy_legalize)
 add_subdirectory(abacus_legalize)
-add_subdirectory(legality_check)
 # detailed placement operators 
 add_subdirectory(global_swap)
 add_subdirectory(independent_set_matching)
 add_subdirectory(k_reorder)
+# routing congestion operator 
+add_subdirectory(pin_utilization)
+add_subdirectory(rudy)
+add_subdirectory(adjust_node_area)
+add_subdirectory(nctugr_binary)
 
 file(GLOB INSTALL_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/*.py")
 install(

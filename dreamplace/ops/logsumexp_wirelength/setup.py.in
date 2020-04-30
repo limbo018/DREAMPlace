@@ -36,9 +36,9 @@ def add_prefix(filename):
 
 modules = []
 
-modules.append(CppExtension('logsumexp_wirelength_cpp', 
+modules.append(CppExtension('logsumexp_wirelength_cpp_merged', 
                 [
-                    add_prefix('logsumexp_wirelength.cpp')
+                    add_prefix('logsumexp_wirelength_merged.cpp')
                     ], 
                 include_dirs=copy.deepcopy(include_dirs), 
                 library_dirs=copy.deepcopy(lib_dirs),
@@ -50,10 +50,10 @@ modules.append(CppExtension('logsumexp_wirelength_cpp',
 
 if "${CUDA_FOUND}".upper() == 'TRUE': 
     modules.extend([
-        CUDAExtension('logsumexp_wirelength_cuda', 
+        CUDAExtension('logsumexp_wirelength_cuda_merged', 
             [
-                add_prefix('logsumexp_wirelength_cuda.cpp'),
-                add_prefix('logsumexp_wirelength_cuda_kernel.cu'),
+                add_prefix('logsumexp_wirelength_cuda_merged.cpp'),
+                add_prefix('logsumexp_wirelength_cuda_merged_kernel.cu'),
                 add_prefix('integrate_net_weights_cuda_kernel.cu')
                 ], 
             include_dirs=copy.deepcopy(include_dirs), 
@@ -72,7 +72,7 @@ if "${CUDA_FOUND}".upper() == 'TRUE':
                 ],
             include_dirs=copy.deepcopy(include_dirs), 
             library_dirs=copy.deepcopy(lib_dirs),
-            libraries=copy.deepcopy(libs),
+            libraries=['cusparse', 'culibos'] + libs,
             extra_compile_args={
                 'cxx': ['-O2', torch_major_version, torch_minor_version], 
                 'nvcc': copy.deepcopy(cuda_flags)
