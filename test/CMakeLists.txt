@@ -18,4 +18,7 @@ install(
     DIRECTORY dac2012 DESTINATION ${PROJECT_NAME}
     )
 
+install(
+    DIRECTORY iccad2014 DESTINATION ${PROJECT_NAME}
+    )
 
