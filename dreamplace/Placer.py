@@ -110,6 +110,8 @@ def place(params):
     elif params.detailed_place_engine:
         logging.warning("External detailed placement engine %s or aux file NOT found" % (params.detailed_place_engine))
 
+    return metrics
+
 if __name__ == "__main__":
     """
     @brief main function to invoke the entire placement flow. 

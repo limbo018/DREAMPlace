@@ -160,7 +160,7 @@ void PyPlaceDB::set(PlaceDB const& db)
     using namespace gtl::operators;
     typedef gtl::polygon_90_set_data<PlaceDB::coordinate_type> PolygonSet; 
 
-    num_terminal_NIs = db.numIOPin(); // IO pins 
+    num_terminal_NIs = db.numIOPin();  // IO pins 
     double total_fixed_node_area = 0; // compute total area of fixed cells, which is an upper bound  
     // collect boxes for fixed cells and put in a polygon set to remove overlap later 
     std::vector<gtl::rectangle_data<PlaceDB::coordinate_type>> fixed_boxes; 
@@ -224,11 +224,12 @@ void PyPlaceDB::set(PlaceDB const& db)
     for (unsigned int i = 0; i < db.nodes().size(); ++i)
     {
         Node const& node = db.node(i); 
+        Macro const& macro = db.macro(db.macroId(node));
         if (node.status() != PlaceStatusEnum::FIXED || i >= db.nodes().size() - num_terminal_NIs)
         {
             addNode(node, db.nodeName(node), Orient(node.orient()), node, false); 
         }
-        else if (db.nodeName(node).size() < 23 || db.nodeName(node).substr(0, 23) != "DREAMPlacePlaceBlockage") // fixed cells are special cases, skip placement blockages (looks like ISPD2015 benchmarks do not process placement blockages) 
+        else if (macro.className() != "DREAMPlace.PlaceBlockage") // fixed cells are special cases, skip placement blockages (looks like ISPD2015 benchmarks do not process placement blockages) 
         {
             Macro const& macro = db.macro(db.macroId(node));
 
@@ -288,6 +289,7 @@ void PyPlaceDB::set(PlaceDB const& db)
         }
     }
     // we only know num_nodes when all fixed cells with shapes are expanded 
+    //dreamplacePrint(kDEBUG, "num_terminals %d, numFixed %u, numPlaceBlockages %u\n", num_terminals, db.numFixed(), db.numPlaceBlockages());
     num_nodes = db.nodes().size() + num_terminals - db.numFixed() - db.numPlaceBlockages(); 
     dreamplaceAssertMsg(num_nodes == node_x.size(), "%u != %lu", num_nodes, node_x.size());
 
