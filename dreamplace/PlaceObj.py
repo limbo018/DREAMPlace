@@ -94,7 +94,14 @@ class PlaceObj(nn.Module):
 
         self.num_nodes = placedb.num_nodes
         self.num_movable_nodes = placedb.num_movable_nodes
-        self.gradient_ma = 0
+        self.grad_ema = None
+        self.grad_cos_sim = None
+        self.pos_ema = None
+        self.row_quantizer = QuantizeRow(placedb)
+        self.density_quad_coeff = 2000
+        self.init_wl_factor = 1
+        self.wl_factor = 1
+        self.density_factor = 1
 
 
         # compute weighted average wirelength from position
@@ -108,6 +115,7 @@ class PlaceObj(nn.Module):
         #self.op_collections.density_op = self.build_density_potential(params, placedb, self.data_collections, global_place_params["num_bins_x"], global_place_params["num_bins_y"], padding=1, name)
         self.op_collections.density_op = self.build_electric_potential(params, placedb, self.data_collections, global_place_params["num_bins_x"], global_place_params["num_bins_y"], padding=0, name=name)
         self.init_density = None
+        self.quad_penalty = False
         self.op_collections.update_density_weight_op = self.build_update_density_weight(params, placedb)
         self.op_collections.precondition_op = self.build_precondition(params, placedb, self.data_collections)
         self.op_collections.noise_op = self.build_noise(params, placedb, self.data_collections)
@@ -136,28 +144,26 @@ class PlaceObj(nn.Module):
         else:
             self.routability_Lsub_iteration = self.Lsub_iteration
 
-    def obj_fn(self, pos):
+    def obj_fn(self, pos, mask=None):
         """
         @brief Compute objective.
             wirelength + density_weight * density penalty
         @param pos locations of cells
         @return objective value
         """
-
+        if(mask is not None):
+            pos = self.row_quantizer(pos, mask)
         wirelength = self.op_collections.wirelength_op(pos)
         density = self.op_collections.density_op(pos)
 
-        # align_and_overflow_loss = self.op_collections.align_and_overflow_op(pos)
-        # print("Overflow loss:", 1e5*align_and_overflow_loss)
-        # return wirelength + self.density_weight*(density + 1e5*align_and_overflow_loss)
-        # return wirelength + 1e3*align_and_overflow_loss
-        return wirelength + self.density_weight*density
-        print("peek density:", density.data.item())
-        #7.23e9 -> 1311
         if(self.init_density is None):
-            self.init_density = 1000/density.data.item()
-        factor = (density / (self.init_density * density ** 2 + density)).data
-        return wirelength + self.density_weight*(density + self.init_density * density ** 2) * factor
+            self.init_density = density.data.item()
+        if(self.quad_penalty):
+            print("wl_factor:", self.wl_factor, "quad density factor:", self.density_quad_coeff)
+            return wirelength**self.wl_factor + self.density_weight * (density + self.density_quad_coeff / 2 / self.init_density * density**2) * self.density_factor
+
+        else:
+            return wirelength + self.density_weight * density
 
     def obj_and_grad_fn(self, pos, indices=None):
         """
@@ -167,12 +173,13 @@ class PlaceObj(nn.Module):
         @return objective value
         """
         #self.check_gradient(pos)
-        # obj = self.obj_fn(pos)
+        obj = self.obj_fn(pos, indices)
 
-        # if pos.grad is not None:
-        #     pos.grad.zero_()
+        if pos.grad is not None:
+            pos.grad.zero_()
 
-        # obj.backward()
+        obj.backward()
+        '''
         wirelength = self.op_collections.wirelength_op(pos)
         if pos.grad is not None:
             pos.grad.zero_()
@@ -183,22 +190,45 @@ class PlaceObj(nn.Module):
         pos.grad.zero_()
         density.backward()
         density_grad = pos.grad.clone()
-        sim = F.cosine_similarity(wirelength_grad, density_grad, dim=0).item()
 
-        factor = 1#2 ** (1-abs(sim))
-        obj = wirelength.data + self.density_weight * density.data * factor
-        pos.grad = wirelength_grad + self.density_weight * density_grad * factor
-        self.gradient_ma = 0.5 * self.gradient_ma + 0.5 * pos.grad.norm(p=2) / (pos.numel()**0.5)
+        # if pos.grad is not None:
+        #     pos.grad.zero_()
+        # cvx_loss = F.mse_loss(self.pos_ema, pos)
+
+        # # print(cvx_loss)
+        # cvx_loss.backward()
+        # cvx_grad = pos.grad.clone()
+
+        # obj = wirelength.data + self.density_weight * density.data# + 20 * cvx_loss.data
+        # pos.grad = wirelength_grad + self.density_weight * density_grad# + 20 * cvx_grad
+        self.grad_cos_sim = F.cosine_similarity(wirelength_grad, density_grad, dim=0).item()
+        if(self.grad_cos_sim < -1):
+            density_weight = wirelength_grad.norm(p=2) / density_grad.norm(p=2)
+            obj = wirelength.data + self.density_weight/self.density_weight*density_weight * density.data# + 20 * cvx_loss.data
+            pos.grad = wirelength_grad + density_weight * density_grad# + 20 * cvx_grad
+        else:
+            obj = wirelength.data + self.density_weight * density.data# + 20 * cvx_loss.data
+            pos.grad = wirelength_grad + self.density_weight * density_grad# + 20 * cvx_grad
+
+
+
+        if(self.grad_ema is not None):
+            # self.grad_cos_sim = 0.5*self.grad_cos_sim + 0.5 * F.cosine_similarity(wirelength_grad, density_grad, dim=0).item()
+            self.grad_ema = 0.5 * self.grad_ema + 0.5 * pos.grad.norm(p=2) / (pos.numel()**0.5)
+        else:
+
+            self.grad_ema = pos.grad.norm(p=2) / (pos.numel()**0.5)
+
+
 
         print("wl grad l2 norm", wirelength_grad.norm(p=2).item(),
               "density grad l2 norm", density_grad.norm(p=2).item(),
+            #   "cvx grad l2 norm", cvx_grad.norm(p=2).item(),
               "pos.grad", pos.grad.norm(p=2) / (pos.numel()**0.5),
-              "cosine theta", sim)
-
+              "cosine theta", self.grad_cos_sim)
+        '''
         self.op_collections.precondition_op(pos.grad, self.density_weight)
-        if(indices is not None):
-            pos.grad[:self.num_nodes][indices] = 0
-            pos.grad[self.num_nodes:][indices] = 0
+
 
         return obj, pos.grad
 
@@ -464,6 +494,7 @@ class PlaceObj(nn.Module):
 
         self.data_collections.pos[0].grad.zero_()
         density = self.op_collections.density_op(self.data_collections.pos[0])
+
         density.backward()
         density_grad_norm = self.data_collections.pos[0].grad.norm(p=1)
 
@@ -481,6 +512,9 @@ class PlaceObj(nn.Module):
         ref_hpwl = params.RePlAce_ref_hpwl
         LOWER_PCOF = params.RePlAce_LOWER_PCOF
         UPPER_PCOF = params.RePlAce_UPPER_PCOF
+        alpha_h = 1.038
+        alpha_l = 1.028
+        self.density_step_size = alpha_h-1
         def update_density_weight_op(cur_metric, prev_metric, iteration):
             with torch.no_grad():
                 delta_hpwl = cur_metric.hpwl - prev_metric.hpwl
@@ -488,9 +522,21 @@ class PlaceObj(nn.Module):
                     mu = UPPER_PCOF*np.maximum(np.power(0.9999, float(iteration)), 0.98)
                     #mu = UPPER_PCOF*np.maximum(np.power(0.9999, float(iteration)), 1.03)
                 else:
-                    mu = UPPER_PCOF*torch.pow(UPPER_PCOF, -delta_hpwl/ref_hpwl).clamp(min=LOWER_PCOF, max=UPPER_PCOF)
+                    # mu = (UPPER_PCOF*torch.pow(UPPER_PCOF, -delta_hpwl/ref_hpwl)).clamp(min=LOWER_PCOF, max=UPPER_PCOF)
+                    if(self.quad_penalty):
+                        mu = (UPPER_PCOF*torch.pow(UPPER_PCOF, -delta_hpwl/ref_hpwl)).clamp(min=LOWER_PCOF*1.05, max=UPPER_PCOF*1.1)
+                    else:
+                        mu = (UPPER_PCOF*torch.pow(UPPER_PCOF, -delta_hpwl/ref_hpwl)).clamp(min=LOWER_PCOF, max=UPPER_PCOF)
                 self.density_weight *= mu
 
+        def update_density_weight_elfplace_op(cur_metric, prev_metric, iteration):
+            with torch.no_grad():
+                density_norm = cur_metric.density.data.item()/self.init_density
+                # density_weight_grad = density_norm + self.density_quad_coeff / 2 * density_norm**2
+                self.density_weight += self.density_step_size * 1e-12
+                self.density_step_size *= np.log(self.density_quad_coeff * density_norm + 1) / (1+np.log(self.density_quad_coeff * density_norm + 1)) * (alpha_h-alpha_l) + alpha_l
+
+        # return update_density_weight_elfplace_op
         return update_density_weight_op
 
     def base_gamma(self, params, placedb):
@@ -510,6 +556,7 @@ class PlaceObj(nn.Module):
         """
         coef = torch.pow(10, (overflow-0.1)*20/9-1)
         self.gamma.data.fill_(base_gamma*coef)
+        self.wl_factor = np.tanh(iteration/50) * (1 - self.init_wl_factor) + self.init_wl_factor
         return True
 
     def build_noise(self, params, placedb, data_collections):
@@ -524,8 +571,9 @@ class PlaceObj(nn.Module):
             with torch.no_grad():
                 noise = torch.rand_like(pos)
                 noise.sub_(0.5).mul_(node_size).mul_(noise_ratio)
-                # noise[:placedb.num_nodes] = (noise[:placedb.num_nodes] - 0.5) * (placedb.xh - placedb.xl) / 10
-                # noise[placedb.num_nodes:] = (noise[placedb.num_nodes:] - 0.5) * (placedb.yh - placedb.yl) / 10
+                # noise[:placedb.num_nodes] = (noise[:placedb.num_nodes] - 0.5) * (placedb.xh - placedb.xl) / 100
+                # noise[placedb.num_nodes:] = (noise[placedb.num_nodes:] - 0.5) * (placedb.yh - placedb.yl) / 100
+                # noise += torch.randn_like(noise, device=noise.device).mul_(node_size)
                 # no noise to fixed cells
                 noise[placedb.num_movable_nodes:placedb.num_nodes-placedb.num_filler_nodes].zero_()
                 noise[placedb.num_nodes+placedb.num_movable_nodes:2*placedb.num_nodes-placedb.num_filler_nodes].zero_()
@@ -738,3 +786,41 @@ class PlaceObj(nn.Module):
 
             return loss
         return align_and_overflow
+
+
+class QuantizeRow(nn.Module):
+    def __init__(self, placedb):
+        super().__init__()
+        self.placedb = placedb
+        self.quantizer = quantize_row(placedb)
+    def forward(self, pos, mask):
+        return self.quantizer(pos, mask)
+
+def quantize_row(placedb):
+    class QuantizeRowFunction(torch.autograd.Function):
+        @staticmethod
+        def forward(ctx, pos, mask):
+            ctx.mask = mask
+            num_nodes = placedb.num_nodes
+            num_movable_nodes = placedb.num_movable_nodes
+            yl, yh = placedb.yl, placedb.yh
+            xl, xh = placedb.xl, placedb.xh
+            row_height = placedb.row_height
+            pos_y = pos[num_nodes:num_nodes+num_movable_nodes][mask]
+            num_rows = int(round((yh - yl)/row_height))
+            aligned_rows_index = torch.round((pos_y - yl) / row_height).clamp_(0, num_rows-1)
+            aligned_rows_y = aligned_rows_index * row_height + yl
+            pos_q = pos.clone()
+            pos_q[num_nodes:num_nodes+num_movable_nodes][mask] = aligned_rows_y
+            # print(F.mse_loss(pos_q,pos))
+            return pos_q
+
+        @staticmethod
+        def backward(ctx, grad_output):
+            mask = ctx.mask
+            grad_input = grad_output.clone()
+            return grad_input, None
+
+    return QuantizeRowFunction().apply
+
+

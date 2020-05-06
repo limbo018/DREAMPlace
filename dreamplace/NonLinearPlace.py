@@ -81,6 +81,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                             lr=0,
                             obj_and_grad_fn=model.obj_and_grad_fn,
                             constraint_fn=self.op_collections.move_boundary_op,
+                            placedb=placedb
                             )
                 else:
                     assert 0, "unknown optimizer %s" % (optimizer_name)
@@ -90,7 +91,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                 # defining evaluation ops
                 eval_ops = {
                         #"wirelength" : self.op_collections.wirelength_op,
-                        #"density" : self.op_collections.density_op,
+                        "density" : self.op_collections.density_op,
                         #"objective" : model.obj_fn,
                         "hpwl" : self.op_collections.hpwl_op,
                         "overflow" : self.op_collections.density_overflow_op
@@ -198,6 +199,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                             pos.data[:num_nodes] = (pos.data[:num_nodes] - xc) * shrink_factor + xc
                             pos.data[num_nodes:] = (pos.data[num_nodes:] - yc) * shrink_factor + yc
                         if(noise_intensity>0.01):
+                            # pos.data.add_(noise_intensity * torch.rand(num_nodes*2, device=pos.device).sub_(0.5))
                             pos.data.add_(noise_intensity * torch.randn(num_nodes*2, device=pos.device))
 
                         pos.data[num_movable_nodes:num_movable_nodes+num_fixed_nodes] = fixed_pos_x
@@ -205,11 +207,16 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                         print(pos[:placedb.num_movable_nodes].mean())
                     elif(mode == "search"):
                         # when overflow meets plateau, show search the descent direction of density, not WL
-                        obj_fn = model.op_collections.density_op
+                        # obj_fn = model.op_collections.density_op
+                        def obj_fn(x):
+                            # return model.op_collections.hpwl_op(self.op_collections.detailed_place_op(self.op_collections.legalize_op(x)))
+                            # return model.op_collections.hpwl_op(self.op_collections.legalize_op(x))
+                            return model.obj_fn(x)
+
                         R, r = 16, 2
-                        R /= 2**(iteration//300)
+                        # R /= 2**(iteration//300)
                         K = int(np.log2(R/r)) + 1
-                        T = 16
+                        T = 4
                         num_movable_nodes = placedb.num_movable_nodes
                         num_nodes = placedb.num_nodes
                         num_filler_nodes = placedb.num_filler_nodes
@@ -219,12 +226,13 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                         v_min = 0
                         # print(obj_min)
                         for t in range(T):
-                            obj_fn = [model.op_collections.density_op, model.op_collections.wirelength_op][t > (T//2)]
+                            # obj_fn = [model.op_collections.density_op, model.op_collections.wirelength_op][t > (T//2)]
                             obj_min = obj_fn(pos.data).data.item()
                             obj_start = obj_min
+                            # print(f"start obj: {obj_start}")
                             for k in range(K):
                                 r_k = 2**(-k) * R
-                                for i in range(1):
+                                for i in range(10):
                                     v_k = torch.randn_like(pos.data)
                                     v_k[num_movable_nodes:num_nodes-num_filler_nodes] = 0
                                     v_k[num_nodes+num_movable_nodes:-num_filler_nodes] = 0
@@ -233,46 +241,23 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                                     obj_k = obj_fn(p1).data.item()
                                     # print(r_k, obj_k)
                                     if(obj_k < obj_min):
-                                        print("Search step:", t, "Obj reduce from ", obj_min, " to ", obj_k)
                                         obj_min = obj_k
                                         v_min = v_k.clone()
                                         r_min = r_k
                                         pos_min = p1.clone()
+                                        # print(v_min.sum(), pos_min.mean())
                             # zeroth-order optimization with decaying step size
                             diff = obj_start - obj_min
                             if(diff > 0.001):
-                                step_size = diff / (10**(int(np.log10(diff))-1.5)) / r_min * 0.9 ** t
-                                print("stepsize: ", step_size)
+                                step_size = diff / (10**(np.log10(diff)-1)) / r_min * 0.9 ** t
+                                print(f"Search step: {t} stepsize: {step_size:5.2f} r_min: {r_min} obj reduce from {obj_start} to {obj_min}")
                                 pos.data.copy_(pos.data + v_min * step_size)
-                                R /= 1.5 # decaying search region
+                                # pos_lg = self.op_collections.legalize_op(pos.data)
+                                # pos.data = pos.data * 0.995 + 0.005 * pos_lg
+                                # print(v_min.sum(), pos_min.mean())
+                                # pos.data.copy_(pos_min)
+                                # R *= 0.5 # decaying search region
 
-                    elif(mode == "search_fast"):
-                        R, Q = 8, 4
-                        # R /= 2**(iteration // 300)
-                        K = int(np.log2(4*Q**0.5))
-                        num_movable_nodes = placedb.num_movable_nodes
-                        num_nodes = placedb.num_nodes
-                        num_filler_nodes = placedb.num_filler_nodes
-                        num_fixed_nodes = num_nodes - num_movable_nodes - num_filler_nodes
-                        obj_min = model.obj_fn(pos.data)
-                        pos_min = pos.data
-                        print(obj_min)
-                        for k in range(-K, K+1):
-                            r_k = 2**(-k) * R
-                            for i in range(5):
-                                v_k = torch.randn_like(pos.data)
-                                v_k[num_movable_nodes:num_nodes] = 0
-                                v_k[num_nodes+num_movable_nodes:] = 0
-                                v_k = v_k / v_k.norm(p=2) * r_k
-                                p1 = pos.data + v_k
-                                obj_k = model.obj_fn(p1)
-                                # print(r_k, obj_k)
-                                if(obj_k < obj_min):
-                                    print("obj reduce:", obj_min, " to ", obj_k)
-                                    obj_min = obj_k
-                                    pos_min = p1.clone()
-
-                        pos.data.copy_(pos_min)
 
 
                 def one_descent_step(Lgamma_step, Llambda_density_weight_step, Lsub_step, iteration, metrics):
@@ -343,18 +328,23 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                     return (np.max(x) - np.min(x)) / np.mean(x) < threshold
 
                 try:
-                    noise_list = {"adaptec1":[#(0.85, 0.996, 200, "random"),(0.75, 0.996, 120, "random"),
-                (0.6, 0.996,0.5, "search"),(0.5, 0.996,0.5, "search"),(0.4, 0.996,0.5, "search"),(0.3, 0.996,0.5, "search"),(0.2, 0.996,0.5, "search"),(0.12, 0.996,0.5, "search")],
+                    noise_list = {"adaptec1":[
+                        (0.85, 0.996, 200, "random"),(0.75, 0.996, 120, "random")
+                                ],
                               "adaptec2":[(0.70, 0.996, 90, "random"),(0.3, 0.996, 0.5, "lg_dp")],
-                              "adaptec3":[(0.85, 0.996, 200),(0.75, 0.996, 120)],
-                              "adaptec4":[(0.9, 0.996, 200),(0.75, 0.996, 150)],
-                              "bigblue1": [(0.70, 0.995, 60, "random"),(0.5, 0.996,0.5, "lg_dp")], # b1
-                              "bigblue2": [(0.4, 1, 10)], # b2, only 0.45
+                              "adaptec3":[(0.85, 0.996, 200, "random"),(0.75, 0.996, 120, "random")],
+                              "adaptec4":[(0.9, 0.996, 200, "random"),(0.75, 0.996, 150, "random")],
+                              "bigblue1": [(0.70, 0.995, 60, "random"),
+                            #   (0.5, 0.996,0.5, "lg_dp")
+                              ], # b1
+                              "bigblue2": [(0.45, 1, 10, "random")], # b2, only 0.45
                             #   "bigblue4": [(0.65, 0.995, 30), (0.55, 0.997, 20)]
-                              "bigblue4": [(0.35, 0.995, 30)],
+                            "bigblue3": [(0.65, 0.995, 20, "random"),(0.55, 0.997, 20, "random"),(0.45, 0.999, 20, "random")],
+                              "bigblue4": [(0.95, 0.995, 30, "random")],
                               "ispd19_test1.input": [
-                                  (0.98, 0.996, 100, "random"),
-                                  (0.3, 0.996,100,"search"),(0.15, 0.996,100,"search")
+                                  (0.99, 0.996, 100, "random"),
+                                  (0.6, 0.999, 10, "random"),
+                                #   (0.3, 0.996,100,"search"),(0.15, 0.996,100,"search")
                                   ],
                               "ispd19_test2.input": [
                                 #   (0.85, 0.996, 100, "random"),(0.75, 0.996, 80, "random"),
@@ -386,6 +376,16 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                     noise_list = []
 
                 overflow_list = []
+                min_perturb_interval = 50
+                stop_counter = 0
+                stop_placement = 1
+                wait_for_restart = 0
+                last_perturb_iter = -min_perturb_interval
+                best_pos = None
+                best_obj = None
+                pos_trace = []
+                noise_injected_flag = 0
+                # model.quad_penalty = True
                 for Lgamma_step in range(model.Lgamma_iteration):
                     Lgamma_metrics.append([])
                     Llambda_metrics = Lgamma_metrics[-1]
@@ -395,26 +395,57 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                         for Lsub_step in range(model.Lsub_iteration):
                             one_descent_step(Lgamma_step, Llambda_density_weight_step, Lsub_step, iteration, Lsub_metrics)
                             iteration += 1
+
                             overflow_list.append(Llambda_metrics[-1][-1].overflow.data.item())
-                            if(check_plateau(overflow_list, window=20, threshold=0.001)):
-                                # inject_perturbation(self.pos[0], placedb, shrink_factor=0.996, noise_intensity=5, mode="random")
-                                inject_perturbation(self.pos[0], placedb, shrink_factor=0.996, noise_intensity=0, mode="search")
-                                model.density_weight *= max(1, 1.3*overflow_list[-1])
-                                print("Adjust")
+                            # stop_overflow_thres = (params.stop_overflow * 0.95 - 0.15)/3 * stop_counter + 0.15
+                            # start_overflow_thres = (params.stop_overflow * 1.1 - 0.15)/3 * stop_counter + 0.15
+                            # print("stop_overflow:", stop_overflow_thres, "start_overflow:", start_overflow_thres)
+                            # if(wait_for_restart == 0 and overflow_list[-1] < stop_overflow_thres):
+                            #     model.density_weight *= 0.8
+                            #     wait_for_restart = 1
+
+                            #     print(f"Stop density No.{stop_counter}")
+                            # if(wait_for_restart == 1 and overflow_list[-1] > start_overflow_thres):
+                            #     model.density_weight /= 0.8
+                            #     model.density_factor = 1
+                            #     wait_for_restart = 0
+                            #     stop_counter += 1
+                            #     if(stop_overflow_thres < params.stop_overflow):
+                            #         stop_placement = 1
+                            #     print(f"Restart density No.{stop_counter}")
+
+                            if(params.stop_overflow*0.95 < overflow_list[-1] < params.stop_overflow*1.2):
+                            # if(1):
+                                if(len(pos_trace)<20):
+                                    pos_trace.append(self.pos[0].data.clone())
+                                else:
+                                    pos_trace.pop(0)
+                                    pos_trace.append(self.pos[0].data.clone())
+
+                            if(check_plateau(overflow_list, window=20, threshold=0.001) and iteration - last_perturb_iter > min_perturb_interval):
+                                # model.density_weight *= max(1, 10*overflow_list[-1])
+                                if(overflow_list[-1] > 0.9):
+                                    # break
+                                    model.quad_penalty = True
+                                    # model.init_wl_factor *= 2
+                                    model.density_factor *= 2
+
+                                    inject_perturbation(self.pos[0], placedb, shrink_factor=0.996, noise_intensity=60*overflow_list[-1], mode="random")
+                                    print("Adjust Density")
+                                    last_perturb_iter = iteration
 
                             flag = 0
                             if(flag and noise_number < len(noise_list) and Llambda_metrics[-1][-1].overflow < noise_list[noise_number][0]):
-                                self.plot(params, placedb, iteration, self.pos[0].data.clone().cpu().numpy())
-                                noise_number += 1
+                                # self.plot(params, placedb, iteration, self.pos[0].data.clone().cpu().numpy())
                                 print(iteration)
                                 print("Adjust")
                                 inject_perturbation(self.pos[0], placedb, shrink_factor=noise_list[noise_number][1], noise_intensity=noise_list[noise_number][2], mode=noise_list[noise_number][3])
-                                self.plot(params, placedb, iteration+1, self.pos[0].data.clone().cpu().numpy())
+                                # self.plot(params, placedb, iteration+1, self.pos[0].data.clone().cpu().numpy())
+                                noise_number += 1
                             # stopping criteria
                             if Lsub_stop_criterion(Lgamma_step, Llambda_density_weight_step, Lsub_step, Lsub_metrics):
                                 break
                         Llambda_flat_iteration += 1
-                        # random perturb
 
                         # update density weight
                         if Llambda_flat_iteration > 1:
@@ -493,7 +524,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                     # gradually reduce gamma to tradeoff smoothness and accuracy
                     model.op_collections.update_gamma_op(Lgamma_step, Llambda_metrics[-1][-1].overflow)
                     model.op_collections.precondition_op.set_overflow(Llambda_metrics[-1][-1].overflow)
-                    if Lgamma_stop_criterion(Lgamma_step, Lgamma_metrics):
+                    if Lgamma_stop_criterion(Lgamma_step, Lgamma_metrics) and stop_placement == 1:
                         break
 
                     # update learning rate
@@ -523,6 +554,16 @@ class NonLinearPlace (BasicPlace.BasicPlace):
             cur_metric.evaluate(placedb, {"hpwl" : self.op_collections.hpwl_op}, self.pos[0])
             logging.info(cur_metric)
 
+        # pos_trace = torch.stack(pos_trace, dim=0)
+        # wl_trace = torch.tensor([self.op_collections.hpwl_op(self.op_collections.legalize_op(pos_trace[i,:])).data.item() for i in range(pos_trace.size(0))], device=pos_trace.device)
+        # top_5 = torch.argsort(wl_trace)[:1]
+        # top_5_wl, top_5_pos = wl_trace[top_5], pos_trace[top_5,:]
+        # # self.pos[0].data.copy_(pos_trace[np.argmin(wl_trace)])
+        # weighted_mean = (top_5_pos * top_5_wl.unsqueeze(1)/top_5_wl.sum()).sum(dim=0)
+        # self.pos[0].data.copy_(weighted_mean)
+        # del wl_trace
+        # del pos_trace
+        # inject_perturbation(self.pos[0], placedb, shrink_factor=0.996, noise_intensity=0, mode="search")
         # dump global placement solution for legalization
         if params.dump_global_place_solution_flag:
             self.dump(params, placedb, self.pos[0].cpu(), "%s.lg.pklz" %(params.design_name()))
@@ -560,7 +601,6 @@ class NonLinearPlace (BasicPlace.BasicPlace):
             cur_metric.evaluate(placedb, {"hpwl" : self.op_collections.hpwl_op}, self.pos[0])
             logging.info(cur_metric)
             iteration += 1
-
 
         # save results
         cur_pos = self.pos[0].data.clone().cpu().numpy()
