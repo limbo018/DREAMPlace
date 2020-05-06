@@ -10,13 +10,6 @@
 
 DREAMPLACE_BEGIN_NAMESPACE
 
-template <typename T>
-inline bool adjust_pos(T& x, T width, const Space<T>& space) {
-  x = std::max(x, space.xl);
-  x = std::min(x, space.xh - width);
-  return width <= space.xh - space.xl;
-}
-
 /// @brief generate array of spaces for each cell
 /// This is specifically designed for independent set, as we only consider the
 /// whitespace on the right side of a cell. It will make it much easier for

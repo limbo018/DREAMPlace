@@ -74,7 +74,7 @@ int computeInstanceRoutabilityOptimizationMapCudaLauncher(
     T *instance_route_area)
 {
     int thread_count = 512;
-    int block_count = cpuCeilDiv(num_movable_nodes, thread_count);
+    int block_count = ceilDiv(num_movable_nodes, thread_count);
     computeInstanceRoutabilityOptimizationMap<<<block_count, thread_count>>>(
         pos_x, pos_y,
         node_size_x, node_size_y,

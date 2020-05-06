@@ -561,6 +561,7 @@ class BasicPlace(nn.Module):
             yh=placedb.yh,
             site_width=placedb.site_width,
             row_height=placedb.row_height,
+            scale_factor=params.scale_factor, 
             num_terminals=placedb.num_terminals,
             num_movable_nodes=placedb.num_movable_nodes)
 
@@ -747,24 +748,56 @@ class BasicPlace(nn.Module):
         def build_detailed_placement_op(pos):
             logging.info("Start ABCDPlace for refinement")
             pos1 = pos
+            legal = self.op_collections.legality_check_op(pos1)
+            logging.info("ABCDPlace input legal flag = %d" %
+                         (legal))
+            if not legal:
+                return pos1
+
+            # integer factorization to prime numbers 
+            def prime_factorization(num):
+                lt = []
+                while num != 1:
+                    for i in range(2, int(num+1)):
+                        if num % i == 0:  # i is a prime factor 
+                            lt.append(i)
+                            num = num / i # get the quotient for further factorization 
+                            break
+                return lt 
+
+            # compute the scale factor for detailed placement 
+            # as the algorithms prefer integer coordinate systems 
+            scale_factor = params.scale_factor
+            if params.scale_factor != 1.0:
+                inv_scale_factor = int(round(1.0 / params.scale_factor))
+                prime_factors = prime_factorization(inv_scale_factor)
+                target_inv_scale_factor = 1
+                for factor in prime_factors:
+                    if factor != 2 and factor != 5:
+                        target_inv_scale_factor = inv_scale_factor
+                        break 
+                scale_factor = 1.0 / target_inv_scale_factor
+                logging.info("Deriving from system scale factor %g (1/%d)" % (params.scale_factor, inv_scale_factor))
+                logging.info("Use scale factor %g (1/%d) for detailed placement" % (scale_factor, target_inv_scale_factor))
+
             for i in range(1):
-                pos1 = kr(pos1)
+                pos1 = kr(pos1, scale_factor)
                 legal = self.op_collections.legality_check_op(pos1)
                 logging.info("K-Reorder legal flag = %d" % (legal))
                 if not legal:
                     return pos1
-                pos1 = ism(pos1)
+                pos1 = ism(pos1, scale_factor)
                 legal = self.op_collections.legality_check_op(pos1)
                 logging.info("Independent set matching legal flag = %d" %
                              (legal))
                 if not legal:
                     return pos1
-                pos1 = gs(pos1)
+                pos1 = gs(pos1, scale_factor)
                 legal = self.op_collections.legality_check_op(pos1)
                 logging.info("Global swap legal flag = %d" % (legal))
                 if not legal:
                     return pos1
-                pos1 = kr(pos1)
+                pos1 = kr(pos1, scale_factor)
                 legal = self.op_collections.legality_check_op(pos1)
                 logging.info("K-Reorder legal flag = %d" % (legal))
                 if not legal:

@@ -95,7 +95,7 @@ class PlaceDrawer {
       case PDF:
       case SVG:
       case PNG:
-        flag = writeFig(filename.c_str(), 800, 800, ff);
+        flag = writeFig(filename.c_str(), round(800 * (m_xh - m_xl) / (m_yh - m_yl)), 800, ff);
         break;
       case GDSII:
         flag = writeGdsii(filename);

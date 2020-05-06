@@ -44,7 +44,7 @@ void integrateNetWeightsCudaLauncher(
         int num_pins
         )
 {
-    integrateNetWeights<<<cpuCeilDiv(num_pins, 256), 256>>>(pin2net_map, net_mask, net_weights, grad_x_tensor, grad_y_tensor, num_pins); 
+    integrateNetWeights<<<ceilDiv(num_pins, 256), 256>>>(pin2net_map, net_mask, net_weights, grad_x_tensor, grad_y_tensor, num_pins); 
 }
 
 template <typename T>
@@ -78,7 +78,7 @@ void integrateNetWeightsforWLCudaLauncher(
         int num_pins
         )
 {
-    integrateNetWeightsforWL<<<cpuCeilDiv(num_pins, 256), 256>>>(pin2net_map, net_mask, net_weights, partial_wl, num_pins); 
+    integrateNetWeightsforWL<<<ceilDiv(num_pins, 256), 256>>>(pin2net_map, net_mask, net_weights, partial_wl, num_pins); 
 }
 
 #define REGISTER_KERNEL_LAUNCHER(T) \

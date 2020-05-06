@@ -81,7 +81,7 @@ void independentSetMatchingCPULauncher(DetailedPlaceDB<T> db, int batch_size,
   state.batch_size = batch_size;
   state.set_size = set_size;
   state.num_moved = 0;
-  state.large_number = (db.xh - db.xl + db.yh - db.yl) * 10;
+  state.large_number = (db.xh - db.xl + db.yh - db.yl) * set_size;
   state.skip_threshold = (db.xh - db.xl + db.yh - db.yl) * 0.01;
   state.num_threads = std::max(num_threads, 1);
 

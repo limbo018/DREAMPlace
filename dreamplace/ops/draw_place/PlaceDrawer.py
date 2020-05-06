@@ -72,7 +72,7 @@ class PlaceDrawer(object):
         pin2node_map = np.array(pin2node_map)
         try:
             tt = time.time()
-            width = 800
+            width = 800 * (xh - xl) / (yh - yl)
             height = 800
             line_width = 0.1
             padding = 0

@@ -51,13 +51,13 @@ void distributeFixedCells2BinsCPU(const LegalizationDB<T>& db, const T* x,
   for (int i = 0; i < num_nodes; i += 1) {
     if (db.is_dummy_fixed(i) || i >= num_movable_nodes) {
       int node_id = i;
-      int bin_id_xl = std::max((x[node_id] - xl) / bin_size_x, (T)0);
+      int bin_id_xl = std::max((int)floorDiv(x[node_id] - xl, bin_size_x), 0);
       int bin_id_xh = std::min(
-          (int)ceil((x[node_id] + node_size_x[node_id] - xl) / bin_size_x),
+          (int)ceilDiv((x[node_id] + node_size_x[node_id] - xl), bin_size_x),
           num_bins_x);
-      int bin_id_yl = std::max((y[node_id] - yl) / bin_size_y, (T)0);
+      int bin_id_yl = std::max((int)floorDiv(y[node_id] - yl, bin_size_y), 0);
       int bin_id_yh = std::min(
-          (int)ceil((y[node_id] + node_size_y[node_id] - yl) / bin_size_y),
+          (int)ceilDiv((y[node_id] + node_size_y[node_id] - yl), bin_size_y),
           num_bins_y);
 
       for (int bin_id_x = bin_id_xl; bin_id_x < bin_id_xh; ++bin_id_x) {
@@ -81,7 +81,7 @@ void distributeBlanks2BinsCPU(
   for (int i = 0; i < num_bins_x * num_bins_y; i += 1) {
     int bin_id_x = i / num_bins_y;
     int bin_id_y = i - bin_id_x * num_bins_y;
-    int blank_num_bins_per_bin = round(bin_size_y / blank_bin_size_y);
+    int blank_num_bins_per_bin = roundDiv(bin_size_y, blank_bin_size_y);
     int blank_bin_id_yl = bin_id_y * blank_num_bins_per_bin;
     int blank_bin_id_yh =
         std::min(blank_bin_id_yl + blank_num_bins_per_bin, blank_num_bins_y);
@@ -95,9 +95,9 @@ void distributeBlanks2BinsCPU(
 
       for (T by = bin_yl; by < bin_yh; by += row_height) {
         Blank<T> blank;
-        blank.xl = floor((bin_xl - xl) / site_width) * site_width +
+        blank.xl = floorDiv((bin_xl - xl), site_width) * site_width +
                    xl;  // align blanks to sites
-        blank.xh = floor((bin_xh - xl) / site_width) * site_width +
+        blank.xh = floorDiv((bin_xh - xl), site_width) * site_width +
                    xl;  // align blanks to sites
         blank.yl = by;
         blank.yh = by + row_height;
@@ -128,18 +128,18 @@ void distributeBlanks2BinsCPU(
               break;
             } else if (node_xl <= blank.xl)  // one blank
             {
-              blank.xl = ceil((node_xh - xl) / site_width) * site_width +
+              blank.xl = ceilDiv((node_xh - xl), site_width) * site_width +
                          xl;                 // align blanks to sites
             } else if (node_xh >= blank.xh)  // one blank
             {
-              blank.xh = floor((node_xl - xl) / site_width) * site_width +
+              blank.xh = floorDiv((node_xl - xl), site_width) * site_width +
                          xl;  // align blanks to sites
             } else            // two blanks
             {
               Blank<T> new_blank = blank;
-              blank.xh = floor((node_xl - xl) / site_width) * site_width +
+              blank.xh = floorDiv((node_xl - xl), site_width) * site_width +
                          xl;  // align blanks to sites
-              new_blank.xl = floor((node_xh - xl) / site_width) * site_width +
+              new_blank.xl = floorDiv((node_xh - xl), site_width) * site_width +
                              xl;  // align blanks to sites
               bin_blanks.at(blank_bin_id)
                   .insert(bin_blanks.at(blank_bin_id).begin() + bi + 1,
@@ -185,7 +185,7 @@ void computeBinCapacityCPU(
           std::max(std::min(bin_yh, node_yh) - std::max(bin_yl, node_yl), (T)0);
       capacity -= overlap;
     }
-    bin_capacities[i] = ceil(capacity / (site_width * row_height));
+    bin_capacities[i] = ceilDiv(capacity, (site_width * row_height));
   }
 }
 

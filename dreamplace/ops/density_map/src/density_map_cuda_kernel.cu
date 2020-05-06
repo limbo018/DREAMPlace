@@ -111,7 +111,7 @@ int computeDensityMapCudaLauncher(
         )
 {
     int thread_count = 256; 
-    int block_count = cpuCeilDiv(num_nodes, thread_count);
+    int block_count = ceilDiv(num_nodes, thread_count);
 
     computeDensityMap<<<block_count, thread_count>>>(
             x_tensor, y_tensor, 

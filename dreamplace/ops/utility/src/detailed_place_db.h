@@ -73,39 +73,39 @@ struct DetailedPlaceDB {
                     ///< flat_region_boxes_start
 
   inline int pos2site_x(T xx) const {
-    int sx = (xx - xl) / site_width;
+    int sx = floorDiv(xx - xl, site_width);
     sx = std::max(sx, 0);
     sx = std::min(sx, num_sites_x - 1);
     return sx;
   }
   inline int pos2site_y(T yy) const {
-    int sy = (yy - yl) / row_height;
+    int sy = floorDiv(yy - yl, row_height);
     sy = std::max(sy, 0);
     sy = std::min(sy, num_sites_y - 1);
     return sy;
   }
   /// @brief site index as an upper bound
   inline int pos2site_ub_x(T xx) const {
-    int sx = ceil((xx - xl) / site_width);
+    int sx = ceilDiv(xx - xl, site_width);
     sx = std::max(sx, 1);
     sx = std::min(sx, num_sites_x);
     return sx;
   }
   /// @brief site index as an upper bound
   inline int pos2site_ub_y(T yy) const {
-    int sy = ceil((yy - yl) / row_height);
+    int sy = ceilDiv(yy - yl, row_height);
     sy = std::max(sy, 1);
     sy = std::min(sy, num_sites_y);
     return sy;
   }
   inline int pos2bin_x(T xx) const {
-    int bx = (xx - xl) / bin_size_x;
+    int bx = floorDiv(xx - xl, bin_size_x);
     bx = std::max(bx, 0);
     bx = std::min(bx, num_bins_x - 1);
     return bx;
   }
   inline int pos2bin_y(T yy) const {
-    int by = (yy - yl) / bin_size_y;
+    int by = floorDiv(yy - yl, bin_size_y);
     by = std::max(by, 0);
     by = std::min(by, num_bins_y - 1);
     return by;
@@ -135,13 +135,13 @@ struct DetailedPlaceDB {
   }
   /// @brief align x coordinate to site
   inline T align2site(T xx) const {
-    return floor((xx - xl) / site_width) * site_width + xl;
+    return floorDiv(xx - xl, site_width) * site_width + xl;
   }
   /// @brief align x coordinate to site for a space;
   /// make sure the space is shrinked.
   inline Space<T> align2site(Space<T> space) const {
-    space.xl = ceil((space.xl - xl) / site_width) * site_width + xl;
-    space.xh = floor((space.xh - xl) / site_width) * site_width + xl;
+    space.xl = ceilDiv(space.xl - xl, site_width) * site_width + xl;
+    space.xh = floorDiv(space.xh - xl, site_width) * site_width + xl;
     return space;
   }
   /// @brief compute optimal region for a cell
@@ -220,8 +220,8 @@ struct DetailedPlaceDB {
       // T node_xh = node_xl+node_size_x[i];
       T node_yh = node_yl + node_size_y[i];
 
-      int row_idxl = (node_yl - yl) / row_height;
-      int row_idxh = ceil((node_yh - yl) / row_height) + 1;
+      int row_idxl = floorDiv(node_yl - yl, row_height);
+      int row_idxh = ceilDiv(node_yh - yl, row_height);
       row_idxl = std::max(row_idxl, 0);
       row_idxh = std::min(row_idxh, num_sites_y);
 
@@ -302,9 +302,9 @@ struct DetailedPlaceDB {
       T node_x = host_x[node_id] + host_node_size_x[node_id] / 2;
       T node_y = host_y[node_id] + host_node_size_y[node_id] / 2;
 
-      int bx = std::min(std::max((int)((node_x - xl) / bin_size_x), 0),
+      int bx = std::min(std::max((int)floorDiv(node_x - xl, bin_size_x), 0),
                         num_bins_x - 1);
-      int by = std::min(std::max((int)((node_y - yl) / bin_size_y), 0),
+      int by = std::min(std::max((int)floorDiv(node_y - yl, bin_size_y), 0),
                         num_bins_y - 1);
       int bin_id = bx * num_bins_y + by;
       // int sub_id = bin2node_map.at(bin_id).size();

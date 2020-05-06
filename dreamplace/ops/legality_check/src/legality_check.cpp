@@ -9,14 +9,12 @@
 DREAMPLACE_BEGIN_NAMESPACE
 
 /// @brief check legality
-bool legality_check_forward(at::Tensor pos, at::Tensor node_size_x,
-                            at::Tensor node_size_y,
-                            at::Tensor flat_region_boxes,
-                            at::Tensor flat_region_boxes_start,
-                            at::Tensor node2fence_region_map, double xl,
-                            double yl, double xh, double yh, double site_width,
-                            double row_height, const int num_fixed_nodes,
-                            const int num_movable_nodes) {
+bool legality_check_forward(
+    at::Tensor pos, at::Tensor node_size_x, at::Tensor node_size_y,
+    at::Tensor flat_region_boxes, at::Tensor flat_region_boxes_start,
+    at::Tensor node2fence_region_map, double xl, double yl, double xh,
+    double yh, double site_width, double row_height, double scale_factor,
+    const int num_fixed_nodes, const int num_movable_nodes) {
   CHECK_FLAT_CPU(pos);
   CHECK_EVEN(pos);
   CHECK_CONTIGUOUS(pos);
@@ -36,7 +34,7 @@ bool legality_check_forward(at::Tensor pos, at::Tensor node_size_x,
         DREAMPLACE_TENSOR_DATA_PTR(flat_region_boxes, scalar_t),
         DREAMPLACE_TENSOR_DATA_PTR(flat_region_boxes_start, int),
         DREAMPLACE_TENSOR_DATA_PTR(node2fence_region_map, int), xl, yl, xh, yh,
-        site_width, row_height,
+        site_width, row_height, scale_factor,
         num_movable_nodes + num_fixed_nodes,  ///< movable and fixed cells
         num_movable_nodes, flat_region_boxes_start.numel() - 1);
   });

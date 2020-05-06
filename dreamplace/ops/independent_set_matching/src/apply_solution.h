@@ -7,6 +7,7 @@
 #define _DREAMPLACE_INDEPENDENT_SET_MATCHING_APPLY_SOLUTION_H
 
 #include "utility/src/utils.h"
+#include "independent_set_matching/src/adjust_pos.h"
 
 //#define DEBUG
 
@@ -29,7 +30,6 @@ void apply_solution(DetailedPlaceDBType& db,
   auto& target_pos_x = state.target_pos_x.at(i);
   auto& target_pos_y = state.target_pos_y.at(i);
   auto& target_spaces = state.target_spaces.at(i);
-  solution.resize(independent_set.size());
   target_pos_x.resize(independent_set.size());
   target_pos_y.resize(independent_set.size());
   target_spaces.resize(independent_set.size());
@@ -108,39 +108,46 @@ void apply_solution(DetailedPlaceDBType& db,
         //#endif
         if (j != (unsigned int)sol_j) {
           count += 1;
-        }
+
 #ifdef DEBUG
-        // dreamplacePrint(kDEBUG, "move node %d(%d) pos %d(%d): (%g, %g) =>
-        // (%g, %g), displace (%g, %g)\n",
-        //        j, target_node_id, sol_j, target_pos_id,
-        //        db.x[target_node_id], db.y[target_node_id],
-        //        target_pos_x[sol_j], target_pos_y[sol_j],
-        //        target_pos_x[sol_j]-db.x[target_node_id],
-        //        target_pos_y[sol_j]-db.y[target_node_id]
-        //      );
-        dreamplaceAssert(target_node_id < db.num_movable_nodes);
+          // dreamplacePrint(kDEBUG, "move node %d(%d) pos %d(%d): (%g, %g) =>
+          // (%g, %g), displace (%g, %g)\n",
+          //        j, target_node_id, sol_j, target_pos_id,
+          //        db.x[target_node_id], db.y[target_node_id],
+          //        target_pos_x[sol_j], target_pos_y[sol_j],
+          //        target_pos_x[sol_j]-db.x[target_node_id],
+          //        target_pos_y[sol_j]-db.y[target_node_id]
+          //      );
+          dreamplaceAssert(target_node_id < db.num_movable_nodes);
 #endif
-        adjust_pos(target_pos_x[sol_j], db.node_size_x[target_node_id],
-                   target_spaces[sol_j]);
-        if (!(target_pos_x[sol_j] >= target_spaces[sol_j].xl &&
-              target_pos_x[sol_j] + db.node_size_x[target_node_id] <=
-                  target_spaces[sol_j].xh)) {
-          dreamplacePrint(kNONE,
-                          "node %d, %g, %g, pos %d, %g, %g, space %g, %g\n",
-                          target_node_id, db.x[target_node_id],
-                          db.x[target_node_id] + db.node_size_x[target_node_id],
-                          target_pos_id, target_pos_x[sol_j],
-                          target_pos_x[sol_j] + db.node_size_x[target_pos_id],
-                          target_spaces[sol_j].xl, target_spaces[sol_j].xh);
+          bool ret = adjust_pos(target_pos_x[sol_j], db.node_size_x[target_node_id], target_spaces[sol_j]);
+          dreamplaceAssertMsg(ret,
+                "set %d (%lu nodes), node %d, width %g, %g, %g, pos %d, %g, %g, space %g, %g, orig_cost %d, target_cost %d, cost %d\n",
+                i, independent_set.size(), target_node_id, db.node_size_x[target_node_id], 
+                db.x[target_node_id],
+                db.x[target_node_id] + db.node_size_x[target_node_id],
+                target_pos_id, target_pos_x[sol_j],
+                target_pos_x[sol_j] + db.node_size_x[target_pos_id],
+                target_spaces[sol_j].xl, target_spaces[sol_j].xh, 
+                state.orig_costs[i], state.target_costs[i], 
+                state.cost_matrices.at(i).at(j * independent_set.size() + sol_j));
+          // update position
+          db.x[target_node_id] = target_pos_x[sol_j];
+          db.y[target_node_id] = target_pos_y[sol_j];
+          state.spaces.at(target_node_id) = target_spaces[sol_j];
+          // error-prone when it comes to weird scaling factors 
+          // due to numerical precisions 
+          //dreamplaceAssertMsg(db.x[target_node_id] >= target_spaces[sol_j].xl &&
+          //    db.x[target_node_id] +
+          //    db.node_size_x[target_node_id] <=
+          //    target_spaces[sol_j].xh, 
+          //    "gap %g, %g", 
+          //    db.x[target_node_id] - target_spaces[sol_j].xl, 
+          //    db.x[target_node_id] +
+          //    db.node_size_x[target_node_id] -
+          //    target_spaces[sol_j].xh
+          //    );
         }
-        // update position
-        db.x[target_node_id] = target_pos_x[sol_j];
-        db.y[target_node_id] = target_pos_y[sol_j];
-        state.spaces.at(target_node_id) = target_spaces[sol_j];
-        dreamplaceAssert(db.x[target_node_id] >= target_spaces[sol_j].xl &&
-                         db.x[target_node_id] +
-                                 db.node_size_x[target_node_id] <=
-                             target_spaces[sol_j].xh);
       }
     }
 #ifdef DEBUG

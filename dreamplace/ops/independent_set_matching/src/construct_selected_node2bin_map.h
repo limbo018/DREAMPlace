@@ -30,8 +30,8 @@ void construct_selected_node2bin_map(const DetailedPlaceDBType& db, IndependentS
             typename DetailedPlaceDBType::type node_x = db.x[node_id] + width/2; 
             typename DetailedPlaceDBType::type node_y = db.y[node_id] + height/2;
 
-            int bx = std::min(std::max((int)((node_x-db.xl)/bin_size_x), 0), num_bins_x-1);
-            int by = std::min(std::max((int)((node_y-db.yl)/bin_size_y), 0), num_bins_y-1);
+            int bx = std::min(std::max((int)floorDiv((node_x-db.xl), bin_size_x), 0), num_bins_x-1);
+            int by = std::min(std::max((int)floorDiv((node_y-db.yl), bin_size_y), 0), num_bins_y-1);
             bm_idx.bin_id = bx*num_bins_y+by; 
 
             auto& bin2nodes = state.bin2node_map.at(bm_idx.bin_id);

@@ -107,8 +107,8 @@ DetailedPlaceDB<T> make_placedb(
   db.bin_size_y = (yh - yl) / num_bins_y;
   db.num_bins_x = num_bins_x;
   db.num_bins_y = num_bins_y;
-  db.num_sites_x = (xh - xl) / site_width;
-  db.num_sites_y = (yh - yl) / row_height;
+  db.num_sites_x = std::round((xh - xl) / site_width);
+  db.num_sites_y = std::round((yh - yl) / row_height);
   db.num_nodes = num_nodes - num_filler_nodes - num_terminal_NIs;
   db.num_movable_nodes = num_movable_nodes;
   db.num_nets = flat_net2pin_start_map.numel() - 1;
@@ -179,8 +179,8 @@ LegalizationDB<T> make_placedb(
   db.bin_size_y = (yh - yl) / num_bins_y;
   db.num_bins_x = num_bins_x;
   db.num_bins_y = num_bins_y;
-  db.num_sites_x = (xh - xl) / site_width;
-  db.num_sites_y = (yh - yl) / row_height;
+  db.num_sites_x = std::round((xh - xl) / site_width);
+  db.num_sites_y = std::round((yh - yl) / row_height);
   // ignore fillers and terminal_NIs
   db.num_nodes = num_nodes - num_filler_nodes - num_terminal_NIs;
   db.num_movable_nodes = num_movable_nodes;

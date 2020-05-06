@@ -105,7 +105,7 @@ int rudyCudaLauncher(const T *pin_pos_x,
                               T *vertical_utilization_map)
 {
     int thread_count = 512;
-    int block_count = cpuCeilDiv(num_nets, thread_count);
+    int block_count = ceilDiv(num_nets, thread_count);
     rudy<<<block_count, thread_count>>>(
             pin_pos_x,
             pin_pos_y,

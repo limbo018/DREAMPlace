@@ -63,13 +63,13 @@ struct LegalizationDB {
   /// @brief align cell to a row
   inline T align2row(T y, T height) const {
     T yy = std::max(std::min(y, yh - height), yl);
-    yy = floor((yy - yl) / row_height) * row_height + yl;
+    yy = floorDiv(yy - yl, row_height) * row_height + yl;
     return yy;
   }
   /// @brief align cell to a site
   inline T align2site(T x, T width) const {
     T xx = std::max(std::min(x, xh - width), xl);
-    xx = floor((xx - xl) / site_width) * site_width + xl;
+    xx = floorDiv(xx - xl, site_width) * site_width + xl;
     return xx;
   }
   /// @brief check whether placement is legal

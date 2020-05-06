@@ -34,8 +34,10 @@ struct CompareByNodeXCenter {
 
 template <typename T>
 bool boundaryCheck(const T* x, const T* y, const T* node_size_x,
-                   const T* node_size_y, T xl, T yl, T xh, T yh,
+                   const T* node_size_y, const T scale_factor, T xl, T yl, T xh, T yh,
                    const int num_movable_nodes) {
+  // use scale factor to control the precision
+  T precision = (scale_factor == 1.0) ? 1e-6 : scale_factor * 0.1;
   bool legal_flag = true;
   // check node within boundary
   for (int i = 0; i < num_movable_nodes; ++i) {
@@ -43,7 +45,7 @@ bool boundaryCheck(const T* x, const T* y, const T* node_size_x,
     T node_yl = y[i];
     T node_xh = node_xl + node_size_x[i];
     T node_yh = node_yl + node_size_y[i];
-    if (node_xl < xl || node_xh > xh || node_yl < yl || node_yh > yh) {
+    if (node_xl + precision < xl || node_xh > xh + precision || node_yl + precision < yl || node_yh > yh + precision) {
       dreamplacePrint(kDEBUG, "node %d (%g, %g, %g, %g) out of boundary\n", i,
                       node_xl, node_yl, node_xh, node_yh);
       legal_flag = false;
@@ -54,31 +56,36 @@ bool boundaryCheck(const T* x, const T* y, const T* node_size_x,
 
 template <typename T>
 bool siteAlignmentCheck(const T* x, const T* y, const T site_width,
-                        const T row_height, const T xl, const T yl,
-                        const int num_movable_nodes) {
+                        const T row_height, const T scale_factor, const T xl,
+                        const T yl, const int num_movable_nodes) {
+  // use scale factor to control the precision
+  T precision = (scale_factor == 1.0) ? 1e-6 : scale_factor * 0.1;
   bool legal_flag = true;
   // check row and site alignment
   for (int i = 0; i < num_movable_nodes; ++i) {
     T node_xl = x[i];
     T node_yl = y[i];
 
-    T row_id = (node_yl - yl) / row_height;
-    T row_yl = yl + row_height * (int)row_id;
+    T row_id_f = (node_yl - yl) / row_height;
+    int row_id = floorDiv(node_yl - yl, row_height);
+    T row_yl = yl + row_height * row_id;
     T row_yh = row_yl + row_height;
 
-    if (row_id != int(row_id)) {
-      dreamplacePrint(kERROR,
-                      "node %d (%g, %g) failed to align to row %d (%g, %g)\n",
-                      i, node_xl, node_yl, (int)row_id, row_yl, row_yh);
+    if (std::abs(row_id_f - row_id) > precision) {
+      dreamplacePrint(
+          kERROR,
+          "node %d (%g, %g) failed to align to row %d (%g, %g), gap %g\n", i,
+          node_xl, node_yl, row_id, row_yl, row_yh, std::abs(node_yl - row_yl));
       legal_flag = false;
     }
 
-    T site_id = (node_xl - xl) / site_width;
-    if (site_id != int(site_id)) {
+    T site_id_f = (node_xl - xl) / site_width;
+    int site_id = floorDiv(node_xl - xl, site_width);
+    if (std::abs(site_id_f - site_id) > precision) {
       dreamplacePrint(
           kERROR,
           "node %d (%g, %g) failed to align to row %d (%g, %g) and site\n", i,
-          node_xl, node_yl, (int)row_id, row_yl, row_yh);
+          node_xl, node_yl, row_id, row_yl, row_yh);
       legal_flag = false;
     }
   }
@@ -148,10 +155,10 @@ bool fenceRegionCheck(const T* node_size_x, const T* node_size_y,
 
 template <typename T>
 bool overlapCheck(const T* node_size_x, const T* node_size_y, const T* x,
-                  const T* y, T row_height, T xl, T yl, T xh, T yh,
-                  const int num_nodes, const int num_movable_nodes) {
+                  const T* y, T row_height, T scale_factor, T xl, T yl, T xh,
+                  T yh, const int num_nodes, const int num_movable_nodes) {
   bool legal_flag = true;
-  int num_rows = ceil((yh - yl) / row_height);
+  int num_rows = ceilDiv(yh - yl, row_height);
   dreamplaceAssert(num_rows > 0);
   std::vector<std::vector<int> > row_nodes(num_rows);
 
@@ -162,8 +169,8 @@ bool overlapCheck(const T* node_size_x, const T* node_size_y, const T* x,
   auto getYH = [&](int id) { return y[id] + node_size_y[id]; };
   // add a box to row
   auto addBox2Row = [&](int id, T bxl, T byl, T bxh, T byh) {
-    int row_idxl = (byl - yl) / row_height;
-    int row_idxh = ceil((byh - yl) / row_height) + 1;
+    int row_idxl = floorDiv(byl - yl, row_height);
+    int row_idxh = ceilDiv(byh - yl, row_height);
     row_idxl = std::max(row_idxl, 0);
     row_idxh = std::min(row_idxh, num_rows);
 
@@ -225,6 +232,10 @@ bool overlapCheck(const T* node_size_x, const T* node_size_y, const T* x,
   }
 
   // check overlap
+  // use scale factor to control the precision
+  auto scaleBack2Integer = [&](T value) {
+    return (scale_factor == 1.0)? value : std::round(value / scale_factor); 
+  };
   for (int i = 0; i < num_rows; ++i) {
     for (unsigned int j = 0; j < row_nodes.at(i).size(); ++j) {
       if (j > 0) {
@@ -242,13 +253,16 @@ bool overlapCheck(const T* node_size_x, const T* node_size_y, const T* x,
           T cur_yl = getYL(node_id);
           T cur_xh = getXH(node_id);
           T cur_yh = getYH(node_id);
-          if (prev_xh > cur_xl)  // detect overlap
-          {
-            dreamplacePrint(kERROR,
-                            "row %d, overlap node %d (%g, %g, %g, %g) with "
-                            "node %d (%g, %g, %g, %g)\n",
-                            i, prev_node_id, prev_xl, prev_yl, prev_xh, prev_yh,
-                            node_id, cur_xl, cur_yl, cur_xh, cur_yh);
+          // detect overlap
+          if (scaleBack2Integer(prev_xh) > scaleBack2Integer(cur_xl)) {
+            dreamplacePrint(
+                kERROR,
+                "row %d (%g, %g), overlap node %d (%g, %g, %g, %g) with "
+                "node %d (%g, %g, %g, %g), gap %g\n",
+                i, yl + i * row_height, yl + (i + 1) * row_height, prev_node_id,
+                prev_xl, prev_yl, prev_xh, prev_yh, node_id, cur_xl, cur_yl,
+                cur_xh, cur_yh, 
+                prev_xh - cur_xl);
             legal_flag = false;
           }
         }
@@ -264,7 +278,7 @@ bool legalityCheckKernelCPU(const T* x, const T* y, const T* node_size_x,
                             const T* node_size_y, const T* flat_region_boxes,
                             const int* flat_region_boxes_start,
                             const int* node2fence_region_map, T xl, T yl, T xh,
-                            T yh, T site_width, T row_height,
+                            T yh, T site_width, T row_height, T scale_factor,
                             const int num_nodes,  ///< movable and fixed cells
                             const int num_movable_nodes,
                             const int num_regions) {
@@ -275,19 +289,19 @@ bool legalityCheckKernelCPU(const T* x, const T* y, const T* node_size_x,
   std::vector<std::vector<int> > row_nodes(num_rows);
 
   // check node within boundary
-  if (!boundaryCheck(x, y, node_size_x, node_size_y, xl, yl, xh, yh,
+  if (!boundaryCheck(x, y, node_size_x, node_size_y, scale_factor, xl, yl, xh, yh,
                      num_movable_nodes)) {
     legal_flag = false;
   }
 
   // check row and site alignment
-  if (!siteAlignmentCheck(x, y, site_width, row_height, xl, yl,
+  if (!siteAlignmentCheck(x, y, site_width, row_height, scale_factor, xl, yl,
                           num_movable_nodes)) {
     legal_flag = false;
   }
 
-  if (!overlapCheck(node_size_x, node_size_y, x, y, row_height, xl, yl, xh, yh,
-                    num_nodes, num_movable_nodes)) {
+  if (!overlapCheck(node_size_x, node_size_y, x, y, row_height, scale_factor,
+                    xl, yl, xh, yh, num_nodes, num_movable_nodes)) {
     legal_flag = false;
   }
 
@@ -306,10 +320,10 @@ bool legalityCheckSiteMapKernelCPU(const T* init_x, const T* init_y,
                                    const T* node_size_x, const T* node_size_y,
                                    const T* x, const T* y, T xl, T yl, T xh,
                                    T yh, T site_width, T row_height,
-                                   const int num_nodes,
+                                   T scale_factor, const int num_nodes,
                                    const int num_movable_nodes) {
-  int num_rows = ceil((yh - yl)) / row_height;
-  int num_sites = ceil((xh - xl) / site_width);
+  int num_rows = ceilDiv(yh - yl, row_height);
+  int num_sites = ceilDiv(xh - xl, site_width);
   std::vector<std::vector<unsigned char> > site_map(
       num_rows, std::vector<unsigned char>(num_sites, 0));
 
@@ -320,10 +334,10 @@ bool legalityCheckSiteMapKernelCPU(const T* init_x, const T* init_y,
     T node_xh = node_xl + node_size_x[i];
     T node_yh = node_yl + node_size_y[i];
 
-    int idxl = (node_xl - xl) / site_width;
-    int idxh = ceil((node_xh - xl) / site_width) + 1;
-    int idyl = (node_yl - yl) / row_height;
-    int idyh = ceil((node_yh - yl) / row_height) + 1;
+    int idxl = floorDiv(node_xl - xl, site_width);
+    int idxh = ceilDiv(node_xh - xl, site_width);
+    int idyl = floorDiv(node_yl - yl, row_height);
+    int idyh = ceilDiv(node_yh - yl, row_height);
     idxl = std::max(idxl, 0);
     idxh = std::min(idxh, num_sites);
     idyl = std::max(idyl, 0);
@@ -353,10 +367,10 @@ bool legalityCheckSiteMapKernelCPU(const T* init_x, const T* init_y,
     T node_xh = node_xl + node_size_x[i];
     T node_yh = node_yl + node_size_y[i];
 
-    int idxl = (node_xl - xl) / site_width;
-    int idxh = ceil((node_xh - xl) / site_width) + 1;
-    int idyl = (node_yl - yl) / row_height;
-    int idyh = ceil((node_yh - yl) / row_height) + 1;
+    int idxl = floorDiv(node_xl - xl, site_width);
+    int idxh = ceilDiv(node_xh - xl, site_width);
+    int idyl = floorDiv(node_yl - yl, row_height);
+    int idyh = ceilDiv(node_yh - yl, row_height);
     idxl = std::max(idxl, 0);
     idxh = std::min(idxh, num_sites);
     idyl = std::max(idyl, 0);

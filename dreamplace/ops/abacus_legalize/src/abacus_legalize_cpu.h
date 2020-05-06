@@ -193,13 +193,13 @@ bool abacusPlaceRowCPU(const T* init_x, const T* node_size_x,
       range_xh = std::min(next_cluster.x, range_xh);
       break;
     } else {
-      dreamplaceAssert(node_size_y[row_nodes[j]] == row_height);
+      dreamplaceAssert(std::abs(node_size_y[row_nodes[j]] - row_height) < 1e-6);
     }
   }
   for (int i = 0; i < num_row_nodes; ++i) {
     const AbacusCluster<T>& cluster = clusters[i];
     if (cluster.e < M) {
-      dreamplaceAssert(node_size_y[row_nodes[i]] == row_height);
+      dreamplaceAssert(std::abs(node_size_y[row_nodes[i]] - row_height) < 1e-6);
       collapse(i, range_xl, range_xh);
     } else  // set range xl/xh according to fixed nodes
     {
@@ -223,7 +223,7 @@ bool abacusPlaceRowCPU(const T* init_x, const T* node_size_x,
       T xc = cluster.x;
       for (int j = cluster.bgn_row_node_id; j <= cluster.end_row_node_id; ++j) {
         int node_id = row_nodes[j];
-        if (node_id < num_movable_nodes && node_size_y[node_id] <= row_height) {
+        if (node_id < num_movable_nodes && std::abs(node_size_y[node_id] - row_height) < 1e-6) {
           x[node_id] = xc;
         } else if (xc != x[node_id]) {
           if (node_id < num_movable_nodes)

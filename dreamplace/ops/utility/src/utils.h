@@ -12,6 +12,8 @@
 #include "utility/src/defs.h"
 // print utilities
 #include "utility/src/msg.h"
+// math utilities
+#include "utility/src/math.h"
 // timer utilities
 #include "utility/src/timer.h"
 // numeric limits

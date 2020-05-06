@@ -243,7 +243,7 @@ int kreorderCPULauncher(DetailedPlaceDB<T>& db, int K, int max_iters,
         space = space_xh - space_xl;
         // align space to sites, as I assume space_xl aligns to sites
         // I also assume node width should be integral numbers of sites
-        space = floor(space / db.site_width) * db.site_width;
+        space = floorDiv(space, db.site_width) * db.site_width;
         dreamplaceAssertMsg(space >= db.node_size_x[node_id],
                             "space %g, node_size_x[%d] %g, original space (%g, "
                             "%g), site_width %g",

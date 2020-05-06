@@ -699,7 +699,7 @@ __global__ void __launch_bounds__(256, 4)
           (db.node_size_y[node_id] ==
            db.row_height);  // only consider single-row height cell
       step_size =
-          max(cudaDiv((float)num_nodes_in_bin, (float)max_num_candidates),
+          max(div((float)num_nodes_in_bin, (float)max_num_candidates),
               (float)1);
       iters = min(max_num_candidates, num_nodes_in_bin);
     }
@@ -1036,12 +1036,6 @@ __global__ void iota(int* ptr, int n) {
   }
 }
 
-#ifdef DYNAMIC
-#define CEILDIV cudaCeilDiv
-#else
-#define CEILDIV cpuCeilDiv
-#endif
-
 template <typename T>
 #ifdef DYNAMIC
 __global__ void global_swap(DetailedPlaceDB<T> db, SwapState<T> state)
@@ -1052,14 +1046,14 @@ void global_swap(DetailedPlaceDB<T>& db, SwapState<T>& state)
   CPUTimer::hr_clock_rep timer_start, timer_stop;
 
   // const int num_streams = 32;
-  // const int num_nodes_per_stream = CEILDIV(db.num_movable_nodes,
+  // const int num_nodes_per_stream = ceilDiv(db.num_movable_nodes,
   // num_streams);  cudaStream_t streams[num_streams];
 #ifdef DYNAMIC
   timer_start = CUDATimer::getGlobalTime();
 #else
   timer_start = CPUTimer::getGlobaltime();
 #endif
-  compute_search_bins<<<CEILDIV(db.num_movable_nodes, 512), 512>>>(
+  compute_search_bins<<<ceilDiv(db.num_movable_nodes, 512), 512>>>(
       db, state, 0, db.num_movable_nodes);
   checkCUDA(cudaDeviceSynchronize());
 #ifdef DYNAMIC
@@ -1089,7 +1083,7 @@ void global_swap(DetailedPlaceDB<T>& db, SwapState<T>& state)
 #ifdef TIMER
     timer_start = CPUTimer::getGlobaltime();
 #endif
-    reset_state<<<CEILDIV(db.num_movable_nodes, 512), 512>>>(db, state);
+    reset_state<<<ceilDiv(db.num_movable_nodes, 512), 512>>>(db, state);
     dim3 grid(5, (idx_end - idx_bgn), 1);
     collect_candidates<<<grid, 256>>>(db, state, idx_bgn, idx_end);
 #ifdef TIMER
@@ -1102,12 +1096,12 @@ void global_swap(DetailedPlaceDB<T>& db, SwapState<T>& state)
 #ifdef TIMER
     timer_start = CPUTimer::getGlobaltime();
 #endif
-    reset_candidate_costs<<<CEILDIV(state.max_num_candidates_all, 256), 256>>>(
+    reset_candidate_costs<<<ceilDiv(state.max_num_candidates_all, 256), 256>>>(
         db, state);
 
     // compute_candidate_position<<<(state.max_num_candidates_all/256),
     // 256>>>(db, state);
-    compute_candidate_cost<<<CEILDIV(state.max_num_candidates_all, 64), 64 * 4,
+    compute_candidate_cost<<<ceilDiv(state.max_num_candidates_all, 64), 64 * 4,
                              64 * 4 * sizeof(T)>>>(db, state);
 #ifdef TIMER
     checkCUDA(cudaDeviceSynchronize());
@@ -1116,8 +1110,8 @@ void global_swap(DetailedPlaceDB<T>& db, SwapState<T>& state)
     compute_candidate_cost_runs += 1;
 #endif
 #ifdef DEBUG
-    check_state<<<CEILDIV(db.num_movable_nodes, 512), 512>>>(db, state);
-    check_candidate_costs<<<CEILDIV(state.max_num_candidates_all, 256), 256>>>(
+    check_state<<<ceilDiv(db.num_movable_nodes, 512), 512>>>(db, state);
+    check_candidate_costs<<<ceilDiv(state.max_num_candidates_all, 256), 256>>>(
         db, state);
 #endif
     // reduce min and apply
@@ -1136,7 +1130,7 @@ void global_swap(DetailedPlaceDB<T>& db, SwapState<T>& state)
 #ifdef TIMER
     timer_start = CPUTimer::getGlobaltime();
 #endif
-    // check_candidate_costs<<<CEILDIV(state.max_num_candidates_all, 256),
+    // check_candidate_costs<<<ceilDiv(state.max_num_candidates_all, 256),
     // 256>>>(db, state);
     // must use single thread
     apply_candidates<<<1, 1>>>(db, state, idx_end - idx_bgn);
@@ -1207,7 +1201,7 @@ void initNode2NetMap(PitchNestedVector<int>& node2net_map,
   node2net_map.size1 = db.num_movable_nodes;
   node2net_map.size2 = MAX_NODE_DEGREE;
   // init on GPU
-  initNode2NetMap_kernel<T><<<cpuCeilDiv(db.num_movable_nodes, 512), 512>>>(
+  initNode2NetMap_kernel<T><<<ceilDiv(db.num_movable_nodes, 512), 512>>>(
       node2net_map, db, db.num_movable_nodes);
   checkCUDA(cudaDeviceSynchronize());
 }
@@ -1252,7 +1246,7 @@ void initNet2NodePinMap(PitchNestedVector<NodePinPair<T>>& net2nodepin_map,
   net2nodepin_map.size2 = MAX_NET_DEGREE;
   // init on GPU
   initNet2NodePinMap_kernel<T>
-      <<<cpuCeilDiv(db.num_nets, 512), 512>>>(net2nodepin_map, db, db.num_nets);
+      <<<ceilDiv(db.num_nets, 512), 512>>>(net2nodepin_map, db, db.num_nets);
   checkCUDA(cudaDeviceSynchronize());
 }
 
@@ -1275,7 +1269,7 @@ int compute_max_num_nodes_per_bin(const DetailedPlaceDB<T>& db) {
   allocateCUDA(node_count_map, num_bins, int);
 
   checkCUDA(cudaMemset(node_count_map, 0, sizeof(int) * num_bins));
-  compute_num_nodes_in_bins<<<cpuCeilDiv(db.num_movable_nodes, 256), 256>>>(
+  compute_num_nodes_in_bins<<<ceilDiv(db.num_movable_nodes, 256), 256>>>(
       db, node_count_map);
 
   int max_num_nodes_per_bin =
@@ -1397,7 +1391,7 @@ int globalSwapCUDALauncher(DetailedPlaceDB<T> db, int batch_size, int max_iters,
   allocateCopyCUDA(state.ordered_nodes, host_ordered_nodes.data(),
                    db.num_movable_nodes);
   // allocateCUDA(state.ordered_nodes, db.num_movable_nodes, int);
-  // iota<<<cpuCeilDiv(db.num_movable_nodes, 512), 512>>>(state.ordered_nodes,
+  // iota<<<ceilDiv(db.num_movable_nodes, 512), 512>>>(state.ordered_nodes,
   // db.num_movable_nodes);
 
   state.row2node_map.initialize(host_row2node_map);

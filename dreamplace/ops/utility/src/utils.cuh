@@ -15,6 +15,8 @@
 // print utilities
 #include "utility/src/msg.h"
 #include "utility/src/print.cuh"
+// math utilities
+#include "utility/src/math.h"
 // timer utilities
 #include "utility/src/timer.cuh"
 #include "utility/src/timer.h"
@@ -35,49 +37,6 @@
 DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T>
-inline __device__ T cudaDiv(T a, T b) {
-  return a / b;
-}
-
-template <>
-inline __device__ float cudaDiv(float a, float b) {
-  return fdividef(a, b);
-}
-
-/// @brief template specialization for non-integral types
-template <typename T>
-inline __device__ typename std::enable_if<!std::is_integral<T>::value, T>::type
-cudaCeilDiv(T a, T b) {
-  return ceil(cudaDiv(a, b));
-}
-
-/// @brief template specialization for integral types
-template <typename T>
-inline __device__ typename std::enable_if<std::is_integral<T>::value, T>::type
-cudaCeilDiv(T a, T b) {
-  return cudaDiv(a + b - 1, b);
-}
-
-template <typename T>
-inline __host__ T cpuDiv(T a, T b) {
-  return a / b;
-}
-
-/// @brief template specialization for non-integral types
-template <typename T>
-inline __host__ typename std::enable_if<!std::is_integral<T>::value, T>::type
-cpuCeilDiv(T a, T b) {
-  return ceil(cpuDiv(a, b));
-}
-
-/// @brief template specialization for integral types
-template <typename T>
-inline __host__ typename std::enable_if<std::is_integral<T>::value, T>::type
-cpuCeilDiv(T a, T b) {
-  return (a + b - 1) / b;
-}
-
-template <typename T>
 __global__ void iota(T* a, int n) {
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n;
        i += blockDim.x * gridDim.x) {
@@ -95,7 +54,7 @@ __global__ void fill_array_kernel(T* array, int n, T v) {
 
 template <typename T>
 inline void fill_array(T* array, int n, T v) {
-  fill_array_kernel<<<cpuCeilDiv(n, 512), 512>>>(array, n, v);
+  fill_array_kernel<<<ceilDiv(n, 512), 512>>>(array, n, v);
 }
 
 template <typename T>
@@ -155,12 +114,12 @@ inline __host__ void gather(int n, int num_sets, int max_set_size,
                             T* element_sets, int* element_set_sizes) {
   fill_array(element_sets, num_sets * max_set_size,
              std::numeric_limits<T>::max());
-  reset_element_set_sizes_kernel<<<cpuCeilDiv(num_sets, 512), 512>>>(
+  reset_element_set_sizes_kernel<<<ceilDiv(num_sets, 512), 512>>>(
       num_sets, element_set_sizes);
-  collect_element_sets_kernel<<<cpuCeilDiv(n, 512), 512>>>(
+  collect_element_sets_kernel<<<ceilDiv(n, 512), 512>>>(
       n, num_sets, max_set_size, elements, element2partition_map, element_sets,
       element_set_sizes);
-  correct_element_set_sizes_kernel<<<cpuCeilDiv(num_sets, 512), 512>>>(
+  correct_element_set_sizes_kernel<<<ceilDiv(num_sets, 512), 512>>>(
       num_sets, max_set_size, element_set_sizes);
 }
 

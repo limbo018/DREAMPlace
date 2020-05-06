@@ -27,8 +27,10 @@
 // database dependency
 #include "utility/src/detailed_place_db.cuh"
 #include "independent_set_matching/src/construct_spaces.cuh"
-//#include "independent_set_matching/src/auction.cuh"
-#include "independent_set_matching/src/auction_shared_memory.cuh"
+#include "independent_set_matching/src/auction.cuh"
+// This shared memory version is still buggy;
+// it gets very slow at ISPD 2018 test4/5/6 benchmarks and cannot cause illegal memory access 
+//#include "independent_set_matching/src/auction_shared_memory.cuh"
 //#include "independent_set_matching/src/auction_cuda2cpu.cuh"
 #include "independent_set_matching/src/maximal_independent_set.cuh"
 //#include "independent_set_matching/src/maximal_independent_set_cuda2cpu.cuh"
@@ -239,7 +241,7 @@ int independentSetMatchingCUDALauncher(DetailedPlaceDB<T> db,
     state.cost_matrix_size = state.set_size*state.set_size;
     state.num_bins = db.num_bins_x*db.num_bins_y;
     state.num_moved = 0; 
-    state.large_number = ((db.xh-db.xl) + (db.yh-db.yl))*10;
+    state.large_number = ((db.xh-db.xl) + (db.yh-db.yl))*set_size;
     state.skip_threshold = ((db.xh-db.xl) + (db.yh-db.yl))*0.01;
     state.auction_max_eps = 10.0; 
     state.auction_min_eps = 1.0;  
@@ -319,7 +321,7 @@ int independentSetMatchingCUDALauncher(DetailedPlaceDB<T> db,
         allocateCopyCUDA(state.spaces, host_spaces.data(), db.num_movable_nodes);
 
         allocateCUDA(state.ordered_nodes, db.num_movable_nodes, int);
-        iota<<<cpuCeilDiv(db.num_movable_nodes, 512), 512>>>(state.ordered_nodes, db.num_movable_nodes);
+        iota<<<ceilDiv(db.num_movable_nodes, 512), 512>>>(state.ordered_nodes, db.num_movable_nodes);
         allocateCUDA(state.independent_sets, state.batch_size*state.set_size, int);
         allocateCUDA(state.independent_set_sizes, state.batch_size, int);
         ////allocateCUDA(state.ordered_independent_sets, state.batch_size, int);

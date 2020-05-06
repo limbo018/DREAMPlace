@@ -872,10 +872,8 @@ __global__ void reset_state(DetailedPlaceDBType db, StateType state,
 }
 
 #ifdef DYNAMIC
-#define CEILDIV cudaCeilDiv
 #define TIMER CUDATimer
 #else
-#define CEILDIV cpuCeilDiv
 #define TIMER CPUTimer
 #endif
 
@@ -907,26 +905,26 @@ void k_reorder(
         timer_start = TIMER::getGlobaltime();
 #endif
         reset_state<<<64, 512>>>(db, state, group_id);
-        compute_node2inst_map<<<CEILDIV(group_size, 256), 256>>>(
+        compute_node2inst_map<<<ceilDiv(group_size, 256), 256>>>(
             db, state, group_id, offset);
-        compute_net_markers<<<CEILDIV(db.num_movable_nodes, 256), 256>>>(db,
+        compute_net_markers<<<ceilDiv(db.num_movable_nodes, 256), 256>>>(db,
                                                                          state);
         // print_net_markers<<<1, 1>>>(db, state);
 #ifdef DETERMINISTIC
-        compute_instance_nets<<<CEILDIV(group_size, 256), 256>>>(
+        compute_instance_nets<<<ceilDiv(group_size, 256), 256>>>(
             db, state, group_id, offset);
 #else
-        compute_instance_nets<<<CEILDIV(db.num_nets, 256), 256>>>(db, state);
+        compute_instance_nets<<<ceilDiv(db.num_nets, 256), 256>>>(db, state);
 #endif
         // print_instance_nets<<<1, 1>>>(state, group_id);
-        unique_instance_nets<<<CEILDIV(group_size, 256), 256>>>(db, state,
+        unique_instance_nets<<<ceilDiv(group_size, 256), 256>>>(db, state,
                                                                 group_id);
         // print_instance_nets<<<1, 1>>>(state, group_id, offset);
         // check_instance_nets<<<1, 1>>>(db, state, group_id);
-        compute_instance_net_boxes<<<CEILDIV(group_size, 256), 256>>>(
+        compute_instance_net_boxes<<<ceilDiv(group_size, 256), 256>>>(
             db, state, group_id, offset);
         // print_instance_net_bboxes<<<1, 1>>>(state, group_id, offset);
-        compute_reorder_hpwl<<<CEILDIV(group_size, 256), 256>>>(
+        compute_reorder_hpwl<<<ceilDiv(group_size, 256), 256>>>(
             db, state, group_id, offset);
 #ifdef TIMER
         checkCUDA(cudaDeviceSynchronize());
@@ -943,7 +941,7 @@ void k_reorder(
             <<<group_size, 32>>>(state.costs, state.best_permute_id, group_size,
                                  state.num_permutations);
         // print_best_permute_id<<<1, 1>>>(state, group_id, offset);
-        apply_reorder<<<CEILDIV(group_size, 256), 256>>>(db, state, group_id,
+        apply_reorder<<<ceilDiv(group_size, 256), 256>>>(db, state, group_id,
                                                          offset);
 #ifdef TIMER
         checkCUDA(cudaDeviceSynchronize());
@@ -1044,7 +1042,7 @@ int kreorderCUDALauncher(DetailedPlaceDB<T> db, int K, int max_iters,
           space = space_xh - space_xl;
           // align space to sites, as I assume space_xl aligns to sites
           // I also assume node width should be integral numbers of sites
-          space = floor(space / db.site_width) * db.site_width;
+          space = floorDiv(space, db.site_width) * db.site_width;
           T node_size_x = cpu_db.node_size_x[node_id];
           dreamplaceAssertMsg(space >= node_size_x,
                               "space %g, node_size_x[%d] %g, original space "

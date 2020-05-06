@@ -8,6 +8,7 @@
 
 #include <cub/cub.cuh>
 #include "utility/src/utils.cuh"
+#include "independent_set_matching/src/adjust_pos.h"
 
 //#define DEBUG
 
@@ -220,7 +221,8 @@ __global__ void move_nodes_kernel(DetailedPlaceDBType db, IndependentSetMatching
                         atomicAdd(state.device_num_moved, 1);
                         auto const& orig_space = orig_spaces[sol_k]; 
                         x = orig_x[sol_k]; 
-                        adjust_pos(x, node_width, orig_space);
+                        bool ret = adjust_pos(x, node_width, orig_space);
+                        assert(ret);
                         y = orig_y[sol_k]; 
                         space = orig_space; 
 #ifdef DEBUG
