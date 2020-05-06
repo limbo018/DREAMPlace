@@ -89,13 +89,21 @@ class PlaceDrawer {
     bool flag = false;
 
     // PlaceDB const& placeDB = m_db.placeDB();
+    int width, height; 
+    if (m_xh - m_xl < m_yh - m_yl) {
+      height = 800; 
+      width = round(height * (double)(m_xh - m_xl) / (m_yh - m_yl)); 
+    } else {
+      width = 800; 
+      height = round(width * (double)(m_yh - m_yl) / (m_xh - m_xl));
+    }
 
     switch (ff) {
       case EPS:
       case PDF:
       case SVG:
       case PNG:
-        flag = writeFig(filename.c_str(), round(800 * (m_xh - m_xl) / (m_yh - m_yl)), 800, ff);
+        flag = writeFig(filename.c_str(), width, height, ff);
         break;
       case GDSII:
         flag = writeGdsii(filename);

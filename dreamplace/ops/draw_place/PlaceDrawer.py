@@ -72,8 +72,12 @@ class PlaceDrawer(object):
         pin2node_map = np.array(pin2node_map)
         try:
             tt = time.time()
-            width = 800 * (xh - xl) / (yh - yl)
-            height = 800
+            if xh - xl < yh - yl:
+                height = 800 
+                width = round(height * (xh - xl) / (yh - yl))
+            else:
+                width = 800 
+                height = round(width * (yh - yl) / (xh -xl))
             line_width = 0.1
             padding = 0
             surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
