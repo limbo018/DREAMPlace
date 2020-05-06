@@ -81,7 +81,6 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                             lr=0,
                             obj_and_grad_fn=model.obj_and_grad_fn,
                             constraint_fn=self.op_collections.move_boundary_op,
-                            placedb=placedb
                             )
                 else:
                     assert 0, "unknown optimizer %s" % (optimizer_name)
