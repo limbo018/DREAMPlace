@@ -428,9 +428,9 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                                     model.quad_penalty = True
                                     # model.init_wl_factor *= 2
                                     model.density_factor *= 2
-
-                                    inject_perturbation(self.pos[0], placedb, shrink_factor=0.996, noise_intensity=60*overflow_list[-1], mode="random")
-                                    print("Adjust Density")
+                                    noise_intensity = min(max(40 + (120-40) * (overflow_list[-1]-0.9)*10, 40), 90)
+                                    inject_perturbation(self.pos[0], placedb, shrink_factor=0.996, noise_intensity=noise_intensity, mode="random")
+                                    print(f"Adjust Density, noise={noise_intensity}")
                                     last_perturb_iter = iteration
 
                             flag = 0
