@@ -425,10 +425,14 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                         Llambda_metrics.append([])
                         Lsub_metrics = Llambda_metrics[-1]
                         for Lsub_step in range(model.Lsub_iteration):
-                            if(overflow_list[-1] < 0.3 and search_step == 0 and check_divergence(divergence_list, window=50, threshold=0.001)):
+                            if(overflow_list[-1] < 0.3 and search_step == 0 and check_divergence(divergence_list, window=20, threshold=0.001)):
+                                # pass
                                 search_step += 1
-                                n_step = 1000//(global_place_params["iteration"] - iteration)
-                                optimizer = ZerothOrderSearch(self.parameters(), obj_fn=lambda x: self.op_collections.density_overflow_op(x)[0], placedb=placedb, r_max=8, r_min=1, n_step=n_step, n_sample=2)
+                                n_step = max(1,2000//(global_place_params["iteration"] - iteration))
+                                # obj_fn = lambda x: self.op_collections.density_overflow_op(x)[0]
+                                obj_fn = lambda x: (self.op_collections.density_overflow_op(x)[0] + self.op_collections.hpwl_op(x)*1e-3)
+                                # obj_fn = self.op_collections.density_op
+                                optimizer = ZerothOrderSearch(self.parameters(), obj_fn=obj_fn, placedb=placedb, r_max=8, r_min=1, n_step=n_step, n_sample=2)
                                 optimizer_name = "zoo"
                                 allow_update = 0
 
@@ -463,7 +467,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                                 else:
                                     pos_trace.pop(0)
                                     pos_trace.append(self.pos[0].data.clone())
-                            flag = 0
+                            flag = 1
 
                             if(flag == 1 and check_plateau(overflow_list, window=20, threshold=0.001) and iteration - last_perturb_iter > min_perturb_interval):
                                 # model.density_weight *= max(1, 10*overflow_list[-1])
