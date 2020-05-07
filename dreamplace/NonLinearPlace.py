@@ -24,7 +24,7 @@ import PlaceObj
 import NesterovAcceleratedGradientOptimizer
 import EvalMetrics
 import pdb
-from optimizer import RAdam
+from optimizer import RAdam, Nesterov_Armijo, ZerothOrderSearch
 class NonLinearPlace (BasicPlace.BasicPlace):
     """
     @brief Nonlinear placement engine.
@@ -58,6 +58,10 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                 # When optimizing an inner problem, the outer parameters are fixed.
                 # This is a generalization to the eplace/RePlAce approach
 
+                # As global placement may easily diverge, we record the position of best overflow
+                best_metric = [None]
+                best_pos = [None]
+
                 if params.gpu:
                     torch.cuda.synchronize()
                 tt = time.time()
@@ -73,6 +77,8 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                     # optimizer = RAdam(self.parameters(), lr=0)
                 elif optimizer_name.lower() == "sgd":
                     optimizer = torch.optim.SGD(self.parameters(), lr=0)
+                elif optimizer_name.lower() == "zoo":
+                    optimizer = ZerothOrderSearch(self.parameters(), obj_fn=lambda x: self.op_collections.density_overflow_op(x)[0], placedb=placedb)
                 elif optimizer_name.lower() == "sgd_momentum":
                     optimizer = torch.optim.SGD(self.parameters(), lr=0, momentum=0.9, nesterov=False)
                 elif optimizer_name.lower() == "sgd_nesterov":
@@ -122,7 +128,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                 logging.info("%s initialization takes %g seconds" % (optimizer_name, (time.time()-tt)))
 
                 # as nesterov requires line search, we cannot follow the convention of other solvers
-                if optimizer_name.lower() in {"sgd", "adam", "sgd_momentum", "sgd_nesterov"}:
+                if optimizer_name.lower() in {"sgd", "adam", "sgd_momentum", "sgd_nesterov", "zoo"}:
                     model.obj_and_grad_fn(model.data_collections.pos[0])
                 elif optimizer_name.lower() != "nesterov":
                     assert 0, "unsupported optimizer %s" % (optimizer_name)
@@ -211,7 +217,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                         def obj_fn(x):
                             # return model.op_collections.hpwl_op(self.op_collections.detailed_place_op(self.op_collections.legalize_op(x)))
                             # return model.op_collections.hpwl_op(self.op_collections.legalize_op(x))
-                            return self.op_collections.density_overflow_op(x)[0].data
+                            return self.op_collections.density_overflow_op(x)[0].data# + model.op_collections.hpwl_op(x)
                             return model.op_collections.hpwl_op(x) + model.op_collections.density_op(x) * 2e2
                             return model.op_collections.density_op(x)
                             # return model.obj_fn(x)
@@ -240,10 +246,10 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                                     v_k = torch.randn_like(pos.data)
                                     v_k[num_movable_nodes:num_nodes-num_filler_nodes] = 0
                                     v_k[num_nodes+num_movable_nodes:-num_filler_nodes] = 0
+                                    # v_k = v_k / v_k.norm(p=2) * r_k
                                     v_k = v_k / v_k.norm(p=2) * r_k
                                     p1 = pos.data + v_k
                                     obj_k = obj_fn(p1).data.item()
-                                    # print(r_k, obj_k)
                                     if(obj_k < obj_min):
                                         obj_min = obj_k
                                         v_min = v_k.clone()
@@ -253,16 +259,9 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                             # zeroth-order optimization with decaying step size
                             diff = obj_start - obj_min
                             if(diff > 0.001):
-                                step_size = 1#max(1,min(10,diff / (10**(np.log10(diff)-1.2)) / r_min * 0.99 ** t))
+                                step_size = max(0.8, min(1.2, diff / r_min))
                                 # print(f"Search step: {t} stepsize: {step_size:5.2f} r_min: {r_min} obj reduce from {obj_start} to {obj_min}")
                                 pos.data.copy_(pos.data + v_min * step_size)
-                                # pos_lg = self.op_collections.legalize_op(pos.data)
-                                # pos.data = pos.data * 0.995 + 0.005 * pos_lg
-                                # print(v_min.sum(), pos_min.mean())
-                                # pos.data.copy_(pos_min)
-                                # R *= 0.5 # decaying search region
-
-
 
                 def one_descent_step(Lgamma_step, Llambda_density_weight_step, Lsub_step, iteration, metrics):
                     t0 = time.time()
@@ -290,7 +289,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                     #t2 = time.time()
 
                     # as nesterov requires line search, we cannot follow the convention of other solvers
-                    if optimizer_name.lower() in ["sgd", "adam", "sgd_momentum", "sgd_nesterov"]:
+                    if optimizer_name.lower() in ["sgd", "adam", "sgd_momentum", "sgd_nesterov", "zoo"]:
                         obj, grad = model.obj_and_grad_fn(pos)
                         cur_metric.objective = obj.data.clone()
                     elif optimizer_name.lower() != "nesterov":
@@ -312,6 +311,15 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                     # actually reports the metric before step
                     logging.info(cur_metric)
 
+                    # record the best overflow
+                    if best_metric[0] is None or best_metric[
+                            0].overflow > cur_metric.overflow:
+                        best_metric[0] = cur_metric
+                        if best_pos[0] is None:
+                            best_pos[0] = self.pos[0].data.clone()
+                        else:
+                            best_pos[0].data.copy_(self.pos[0].data)
+
                     logging.info("full step %.3f ms" % ((time.time()-t0)*1000))
 
                 Lgamma_metrics = all_metrics
@@ -330,6 +338,21 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                         return False
                     x = x[-window:]
                     return (np.max(x) - np.min(x)) / np.mean(x) < threshold
+
+                def check_divergence(x, window=50, threshold=0.05):
+                    if(len(x) < window):
+                        return False
+                    x = np.array(x[-window:])
+                    smooth = 5
+                    wl_beg, wl_end = np.mean(x[0:smooth,0]), np.mean(x[-smooth:,0])
+                    overflow_beg, overflow_end = np.mean(x[0:smooth,1]), np.mean(x[-smooth:,1])
+                    wl_ratio, overflow_ratio = (wl_end - wl_beg)/wl_beg, (overflow_end - overflow_beg)/overflow_beg
+                    if(wl_ratio > threshold and overflow_ratio > threshold):
+                        print("[Warning] Divergence detected")
+                        return True
+                    else:
+                        return False
+
 
                 try:
                     noise_list = {"adaptec1":[
@@ -380,16 +403,20 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                     noise_list = []
 
                 overflow_list = [1]
+                divergence_list = []
                 min_perturb_interval = 50
                 stop_counter = 0
                 stop_placement = 1
                 wait_for_restart = 0
                 last_perturb_iter = -min_perturb_interval
-                best_pos = None
-                best_obj = None
+                # best_pos = None
+                # best_obj = None
                 pos_trace = []
                 noise_injected_flag = 0
                 perturb_counter = 0
+                search_step = 0
+                max_search_step = 10
+                allow_update = 1
                 # model.quad_penalty = True
                 for Lgamma_step in range(model.Lgamma_iteration):
                     Lgamma_metrics.append([])
@@ -398,26 +425,18 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                         Llambda_metrics.append([])
                         Lsub_metrics = Llambda_metrics[-1]
                         for Lsub_step in range(model.Lsub_iteration):
-                            if(386>iteration >= 370):
-                                # if(iteration % 50 == 0):
-                                    # inject_perturbation(self.pos[0], placedb, shrink_factor=1, noise_intensity=0.1, mode="random")
-                                    # self.plot(params, placedb, iteration+1, self.pos[0].data.clone().cpu().numpy())
-                                inject_perturbation(self.pos[0], placedb, shrink_factor=0.996, noise_intensity=0.1, mode="search")
-                                pos = self.pos[0].data.clone()
-                                one_descent_step(Lgamma_step, Llambda_density_weight_step, Lsub_step, iteration, Lsub_metrics)
-                                self.pos[0].data.copy_(pos)
+                            if(overflow_list[-1] < 0.3 and search_step == 0 and check_divergence(divergence_list, window=50, threshold=0.001)):
+                                search_step += 1
+                                n_step = 1000//(global_place_params["iteration"] - iteration)
+                                optimizer = ZerothOrderSearch(self.parameters(), obj_fn=lambda x: self.op_collections.density_overflow_op(x)[0], placedb=placedb, r_max=8, r_min=1, n_step=n_step, n_sample=2)
+                                optimizer_name = "zoo"
                                 allow_update = 0
-                            else:
-                                # if(iteration == 386):
-                                #     # optimizer.state = initial_state
-                                #     for param_group in optimizer.param_groups:
-                                #         param_group['lr'] *= 0.01
 
-                                allow_update = 1
-                                one_descent_step(Lgamma_step, Llambda_density_weight_step, Lsub_step, iteration, Lsub_metrics)
+                            one_descent_step(Lgamma_step, Llambda_density_weight_step, Lsub_step, iteration, Lsub_metrics)
                             iteration += 1
 
                             overflow_list.append(Llambda_metrics[-1][-1].overflow.data.item())
+                            divergence_list.append([Llambda_metrics[-1][-1].hpwl.data.item(), Llambda_metrics[-1][-1].overflow.data.item()])
 
                             # stop_overflow_thres = (params.stop_overflow * 0.95 - 0.15)/3 * stop_counter + 0.15
                             # start_overflow_thres = (params.stop_overflow * 1.1 - 0.15)/3 * stop_counter + 0.15
@@ -559,6 +578,18 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                         if 'learning_rate_decay' in global_place_params:
                             for param_group in optimizer.param_groups:
                                 param_group['lr'] *= global_place_params['learning_rate_decay']
+
+                # in case of divergence, use the best metric
+                last_metric = all_metrics[-1][-1][-1]
+                if last_metric.overflow > max(
+                        params.stop_overflow, best_metric[0].overflow
+                ) and last_metric.hpwl > best_metric[0].hpwl:
+                    self.pos[0].data.copy_(best_pos[0].data)
+                    logging.error(
+                        "possible DIVERGENCE detected, roll back to the best position recorded"
+                    )
+                    all_metrics.append([best_metric])
+                    logging.info(best_metric[0])
 
                 logging.info("optimizer %s takes %.3f seconds" % (optimizer_name, time.time()-tt))
             # recover node size and pin offset for legalization, since node size is adjusted in global placement
