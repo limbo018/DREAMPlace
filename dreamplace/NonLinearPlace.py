@@ -343,7 +343,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                     if(len(x) < window):
                         return False
                     x = np.array(x[-window:])
-                    smooth = 5
+                    smooth = max(1,int(0.1*window))
                     wl_beg, wl_end = np.mean(x[0:smooth,0]), np.mean(x[-smooth:,0])
                     overflow_beg, overflow_end = np.mean(x[0:smooth,1]), np.mean(x[-smooth:,1])
                     wl_ratio, overflow_ratio = (wl_end - wl_beg)/wl_beg, (overflow_end - overflow_beg)/overflow_beg
@@ -425,16 +425,20 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                         Llambda_metrics.append([])
                         Lsub_metrics = Llambda_metrics[-1]
                         for Lsub_step in range(model.Lsub_iteration):
-                            if(overflow_list[-1] < 0.3 and search_step == 0 and check_divergence(divergence_list, window=20, threshold=0.001)):
+                            if(overflow_list[-1] < 0.3 and search_step == 0 and check_divergence(divergence_list, window=5, threshold=0.0001)):
                                 # pass
                                 search_step += 1
                                 n_step = max(1,2000//(global_place_params["iteration"] - iteration))
                                 # obj_fn = lambda x: self.op_collections.density_overflow_op(x)[0]
-                                obj_fn = lambda x: (self.op_collections.density_overflow_op(x)[0] + self.op_collections.hpwl_op(x)*1e-3)
+                                obj_fn = lambda x: (self.op_collections.density_overflow_op(x)[0] + self.op_collections.hpwl_op(x)*1e-2)
                                 # obj_fn = self.op_collections.density_op
                                 optimizer = ZerothOrderSearch(self.parameters(), obj_fn=obj_fn, placedb=placedb, r_max=8, r_min=1, n_step=n_step, n_sample=2)
                                 optimizer_name = "zoo"
+                                self.pos[0].data.copy_(best_pos[0].data)
                                 allow_update = 0
+                                logging.error(
+                                    "possible DIVERGENCE detected, roll back to the best position recorded and switch to ZerothOrderSearch of overflow and hpwl"
+                                )
 
                             one_descent_step(Lgamma_step, Llambda_density_weight_step, Lsub_step, iteration, Lsub_metrics)
                             iteration += 1
@@ -588,9 +592,9 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                 if last_metric.overflow > max(
                         params.stop_overflow, best_metric[0].overflow
                 ) and last_metric.hpwl > best_metric[0].hpwl:
-                    self.pos[0].data.copy_(best_pos[0].data)
+                    # self.pos[0].data.copy_(best_pos[0].data)
                     logging.error(
-                        "possible DIVERGENCE detected, roll back to the best position recorded"
+                        "Deprecated: possible DIVERGENCE detected, roll back to the best position recorded"
                     )
                     all_metrics.append([best_metric])
                     logging.info(best_metric[0])
