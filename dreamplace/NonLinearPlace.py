@@ -100,7 +100,8 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                         "density" : self.op_collections.density_op,
                         #"objective" : model.obj_fn,
                         "hpwl" : self.op_collections.hpwl_op,
-                        "overflow" : self.op_collections.density_overflow_op
+                        "overflow" : self.op_collections.density_overflow_op,
+                        "shpwl" : None
                         }
                 if params.routability_opt_flag:
                     eval_ops.update({
@@ -217,7 +218,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                         def obj_fn(x):
                             # return model.op_collections.hpwl_op(self.op_collections.detailed_place_op(self.op_collections.legalize_op(x)))
                             # return model.op_collections.hpwl_op(self.op_collections.legalize_op(x))
-                            return self.op_collections.density_overflow_op(x)[0].data# + model.op_collections.hpwl_op(x)
+                            return self.op_collections.density_overflow_op(x)[0].data + 1e-1 * model.op_collections.hpwl_op(x)
                             return model.op_collections.hpwl_op(x) + model.op_collections.density_op(x) * 2e2
                             return model.op_collections.density_op(x)
                             # return model.obj_fn(x)
@@ -226,7 +227,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                         R, r = 8, 1
                         # R /= 2**(iteration//300)
                         K = int(np.log2(R/r)) + 1
-                        T = 512
+                        T = 64
                         num_movable_nodes = placedb.num_movable_nodes
                         num_nodes = placedb.num_nodes
                         num_filler_nodes = placedb.num_filler_nodes
@@ -259,7 +260,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                             # zeroth-order optimization with decaying step size
                             diff = obj_start - obj_min
                             if(diff > 0.001):
-                                step_size = max(0.8, min(1.2, diff / r_min))
+                                step_size = max(1, min(1, diff / r_min))
                                 # print(f"Search step: {t} stepsize: {step_size:5.2f} r_min: {r_min} obj reduce from {obj_start} to {obj_min}")
                                 pos.data.copy_(pos.data + v_min * step_size)
 
@@ -346,10 +347,26 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                     smooth = max(1,int(0.1*window))
                     wl_beg, wl_end = np.mean(x[0:smooth,0]), np.mean(x[-smooth:,0])
                     overflow_beg, overflow_end = np.mean(x[0:smooth,1]), np.mean(x[-smooth:,1])
-                    wl_ratio, overflow_ratio = (wl_end - wl_beg)/wl_beg, (overflow_end - overflow_beg)/overflow_beg
-                    if(wl_ratio > threshold and overflow_ratio > threshold):
-                        print("[Warning] Divergence detected")
-                        return True
+                    # wl_ratio, overflow_ratio = (wl_end - wl_beg)/wl_beg, (overflow_end - overflow_beg)/overflow_beg
+                    # wl_ratio, overflow_ratio = (wl_end - wl_beg)/wl_beg, (overflow_end - max(params.stop_overflow, best_metric[0].overflow))/best_metric[0].overflow
+                    overflow_mean = np.mean(x[:,1])
+                    overflow_diff = np.maximum(0,np.sign(x[1:,1] - x[:-1,1])).astype(np.float32)
+                    overflow_diff = np.sum(overflow_diff) / overflow_diff.shape[0]
+                    overflow_range = np.max(x[:,1]) - np.min(x[:,1])
+                    wl_mean = np.mean(x[:,0])
+                    wl_ratio, overflow_ratio = (wl_mean - best_metric[0].hpwl)/best_metric[0].hpwl, (overflow_mean - max(params.stop_overflow, best_metric[0].overflow))/best_metric[0].overflow
+                    if(wl_ratio > threshold*1.2):
+                        if(overflow_ratio > threshold):
+                            print(f"[Warning] Divergence detected: overflow increases too much than best overflow ({overflow_ratio:.4f} > {threshold:.4f})")
+                            return True
+                        elif(overflow_range/overflow_mean < threshold):
+                            print(f"[Warning] Divergence detected: overflow plateau ({overflow_range/overflow_mean:.4f} < {threshold:.4f})")
+                            return True
+                        elif(overflow_diff > 0.6):
+                            print(f"[Warning] Divergence detected: overflow fluctuate too frequently ({overflow_diff:.2f} > 0.6)")
+                            return True
+                        else:
+                            return False
                     else:
                         return False
 
@@ -405,18 +422,16 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                 overflow_list = [1]
                 divergence_list = []
                 min_perturb_interval = 50
-                stop_counter = 0
-                stop_placement = 1
-                wait_for_restart = 0
+                stop_placement = 0
+
                 last_perturb_iter = -min_perturb_interval
-                # best_pos = None
-                # best_obj = None
                 pos_trace = []
                 noise_injected_flag = 0
                 perturb_counter = 0
-                search_step = 0
+                search_start = 0
                 max_search_step = 10
                 allow_update = 1
+
                 # model.quad_penalty = True
                 for Lgamma_step in range(model.Lgamma_iteration):
                     Lgamma_metrics.append([])
@@ -425,17 +440,24 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                         Llambda_metrics.append([])
                         Lsub_metrics = Llambda_metrics[-1]
                         for Lsub_step in range(model.Lsub_iteration):
-                            if(overflow_list[-1] < 0.3 and search_step == 0 and check_divergence(divergence_list, window=5, threshold=0.0001)):
-                                # pass
-                                search_step += 1
-                                n_step = max(1,2000//(global_place_params["iteration"] - iteration))
-                                # obj_fn = lambda x: self.op_collections.density_overflow_op(x)[0]
-                                obj_fn = lambda x: (self.op_collections.density_overflow_op(x)[0] + self.op_collections.hpwl_op(x)*1e-2)
-                                # obj_fn = self.op_collections.density_op
-                                optimizer = ZerothOrderSearch(self.parameters(), obj_fn=obj_fn, placedb=placedb, r_max=8, r_min=1, n_step=n_step, n_sample=2)
-                                optimizer_name = "zoo"
+                            flag = 1
+                            ## Jiaqi: divergence threshold should decrease as overflow decreases
+                            diverge_threshold = 0.01 * overflow_list[-1]
+
+                            ## Jiaqi: only detect divergence when overflow is relatively low but not too low
+                            if(flag == 1 and params.stop_overflow * 1.1 < overflow_list[-1] < params.stop_overflow * 4 and search_start == 0 and check_divergence(divergence_list, window=3, threshold=diverge_threshold)):
+                                search_start = 1
+                                n_step = max(1,500//(global_place_params["iteration"] - iteration))
+
+                                # obj_fn = lambda x: self.op_collections.hpwl_op(x)*(1+self.op_collections.density_overflow_op(x)[0])
+                                # optimizer = ZerothOrderSearch(self.parameters(), obj_fn=obj_fn, placedb=placedb, r_max=8, r_min=1, n_step=n_step, n_sample=8)
+                                optimizer = Nesterov_Armijo(self.parameters(), lr=1000, momentum=0, obj_and_grad_fn=model.obj_and_grad_fn, obj_fn=model.obj_fn, dampening=0, weight_decay=0, nesterov=False)
+
+                                optimizer_name = "sgd"
                                 self.pos[0].data.copy_(best_pos[0].data)
+                                stop_placement = 1
                                 allow_update = 0
+
                                 logging.error(
                                     "possible DIVERGENCE detected, roll back to the best position recorded and switch to ZerothOrderSearch of overflow and hpwl"
                                 )
@@ -446,33 +468,13 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                             overflow_list.append(Llambda_metrics[-1][-1].overflow.data.item())
                             divergence_list.append([Llambda_metrics[-1][-1].hpwl.data.item(), Llambda_metrics[-1][-1].overflow.data.item()])
 
-                            # stop_overflow_thres = (params.stop_overflow * 0.95 - 0.15)/3 * stop_counter + 0.15
-                            # start_overflow_thres = (params.stop_overflow * 1.1 - 0.15)/3 * stop_counter + 0.15
-                            # print("stop_overflow:", stop_overflow_thres, "start_overflow:", start_overflow_thres)
-                            # if(wait_for_restart == 0 and overflow_list[-1] < stop_overflow_thres):
-                            #     model.density_weight *= 0.8
-                            #     wait_for_restart = 1
+                            path = "%s/%s" % (params.result_dir, params.design_name())
+                            csvname = "%s/%s_ours.csv" % (path, params.design_name())
+                            with open(csvname, "a+") as f:
+                                f.write(f"{divergence_list[-1][0]},{divergence_list[-1][1]}\n")
 
-                            #     print(f"Stop density No.{stop_counter}")
-                            # if(wait_for_restart == 1 and overflow_list[-1] > start_overflow_thres):
-                            #     model.density_weight /= 0.8
-                            #     model.density_factor = 1
-                            #     wait_for_restart = 0
-                            #     stop_counter += 1
-                            #     if(stop_overflow_thres < params.stop_overflow):
-                            #         stop_placement = 1
-                            #     print(f"Restart density No.{stop_counter}")
-
-
-                            if(params.stop_overflow*0.95 < overflow_list[-1] < params.stop_overflow*1.2):
-                            # if(1):
-                                if(len(pos_trace)<20):
-                                    pos_trace.append(self.pos[0].data.clone())
-                                else:
-                                    pos_trace.pop(0)
-                                    pos_trace.append(self.pos[0].data.clone())
                             flag = 1
-
+                            # quadratic penalty and noise perturbation
                             if(flag == 1 and check_plateau(overflow_list, window=20, threshold=0.001) and iteration - last_perturb_iter > min_perturb_interval):
                                 # model.density_weight *= max(1, 10*overflow_list[-1])
                                 if(overflow_list[-1] > 0.9):
@@ -489,6 +491,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                                     perturb_counter += 1
 
                             flag = 0
+                            ## add manual noise?
                             if(flag and noise_number < len(noise_list) and Llambda_metrics[-1][-1].overflow < noise_list[noise_number][0]):
                                 # self.plot(params, placedb, iteration, self.pos[0].data.clone().cpu().numpy())
                                 print(iteration)
@@ -497,7 +500,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                                 # self.plot(params, placedb, iteration+1, self.pos[0].data.clone().cpu().numpy())
                                 noise_number += 1
                             # stopping criteria
-                            if Lsub_stop_criterion(Lgamma_step, Llambda_density_weight_step, Lsub_step, Lsub_metrics):
+                            if stop_placement == 1 or Lsub_stop_criterion(Lgamma_step, Llambda_density_weight_step, Lsub_step, Lsub_metrics):
                                 break
                         Llambda_flat_iteration += 1
 
@@ -505,7 +508,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                         if Llambda_flat_iteration > 1 and allow_update:
                             model.op_collections.update_density_weight_op(Llambda_metrics[-1][-1], Llambda_metrics[-2][-1] if len(Llambda_metrics) > 1 else Lgamma_metrics[-2][-1][-1], Llambda_flat_iteration)
                         #logging.debug("update density weight %.3f ms" % ((time.time()-t2)*1000))
-                        if Llambda_stop_criterion(Lgamma_step, Llambda_density_weight_step, Llambda_metrics):
+                        if stop_placement == 1 or Llambda_stop_criterion(Lgamma_step, Llambda_density_weight_step, Llambda_metrics):
                             break
 
                         # for routability optimization
@@ -578,7 +581,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                     # gradually reduce gamma to tradeoff smoothness and accuracy
                     model.op_collections.update_gamma_op(Lgamma_step, Llambda_metrics[-1][-1].overflow)
                     model.op_collections.precondition_op.set_overflow(Llambda_metrics[-1][-1].overflow)
-                    if Lgamma_stop_criterion(Lgamma_step, Lgamma_metrics) and stop_placement == 1:
+                    if Lgamma_stop_criterion(Lgamma_step, Lgamma_metrics) or stop_placement == 1:
                         break
 
                     # update learning rate
@@ -592,7 +595,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                 if last_metric.overflow > max(
                         params.stop_overflow, best_metric[0].overflow
                 ) and last_metric.hpwl > best_metric[0].hpwl:
-                    # self.pos[0].data.copy_(best_pos[0].data)
+                    self.pos[0].data.copy_(best_pos[0].data)
                     logging.error(
                         "Deprecated: possible DIVERGENCE detected, roll back to the best position recorded"
                     )
@@ -645,7 +648,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
             logging.info("legalization takes %.3f seconds" % (time.time()-tt))
             cur_metric = EvalMetrics.EvalMetrics(iteration)
             all_metrics.append(cur_metric)
-            cur_metric.evaluate(placedb, {"hpwl" : self.op_collections.hpwl_op}, self.pos[0])
+            cur_metric.evaluate(placedb, {"hpwl" : self.op_collections.hpwl_op, "overflow": self.op_collections.density_overflow_op, "shpwl": None}, self.pos[0])
             logging.info(cur_metric)
             iteration += 1
 
@@ -664,7 +667,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
             logging.info("detailed placement takes %.3f seconds" % (time.time()-tt))
             cur_metric = EvalMetrics.EvalMetrics(iteration)
             all_metrics.append(cur_metric)
-            cur_metric.evaluate(placedb, {"hpwl" : self.op_collections.hpwl_op}, self.pos[0])
+            cur_metric.evaluate(placedb, {"hpwl" : self.op_collections.hpwl_op, "overflow": self.op_collections.density_overflow_op, "shpwl": None}, self.pos[0])
             logging.info(cur_metric)
             iteration += 1
 

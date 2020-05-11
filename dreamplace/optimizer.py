@@ -295,7 +295,7 @@ class Nesterov_Armijo(Optimizer):
             raise ValueError("Invalid weight_decay value: {}".format(weight_decay))
 
         defaults = dict(lr=lr, momentum=momentum, dampening=dampening,
-                        weight_decay=weight_decay, nesterov=nesterov, eta=lr, eta_max=lr, gamma=10, step=1, tau=1, lamb=1, lamb_prev=0, max_backtrack_count=10, beta=0.5)
+                        weight_decay=weight_decay, nesterov=nesterov, eta=lr, eta_max=lr, gamma=0.5, step=1, tau=1, lamb=1, lamb_prev=0, max_backtrack_count=20, beta=0.8)
         if nesterov and (momentum <= 0 or dampening != 0):
             raise ValueError("Nesterov momentum requires a momentum and zero dampening")
         self.obj_and_grad_fn = obj_and_grad_fn
@@ -316,7 +316,7 @@ class Nesterov_Armijo(Optimizer):
         elif(opt == 1):
             return eta_max
         elif(opt == 2):
-            return eta_max * gamma ** (step/20)
+            return eta_max * gamma ** (step/80)
 
     def step(self, closure=None):
         """Performs a single optimization step.
@@ -348,10 +348,10 @@ class Nesterov_Armijo(Optimizer):
 
                 # armijo line search
                 # reset
-                # group["eta"] = self.reset(group["eta"], group["eta_max"], group["gamma"], group["step"], opt=2)
+                group["eta"] = self.reset(group["eta"], group["eta_max"], group["gamma"], group["step"], opt=2)
                 group["eta"] = group["eta_max"] / grad_norm
-                if(group["step"] % 20 == 0):
-                    group["eta_max"] *= group["gamma"]
+                # if(group["step"] % 20 == 0):
+                #     group["eta_max"] *= group["gamma"]
                 grad_norm = grad.dot(grad)
                 c = 0.5
                 backtrack_count = 0
@@ -359,10 +359,10 @@ class Nesterov_Armijo(Optimizer):
                 while(self.obj_fn(p - group["eta"]*grad) > obj_start - c*group["eta"]*grad_norm and backtrack_count < group["max_backtrack_count"]):
                     group["eta"] = group["beta"]*group["eta"]
                     backtrack_count += 1
-                if(backtrack_count == group["max_backtrack_count"]):
-                    print("fail to find optimal step size")
-                    group["eta"] = 0
-                    group["eta_max"] /= group["gamma"]
+                # if(backtrack_count == group["max_backtrack_count"]):
+                #     print("fail to find optimal step size")
+                #     group["eta"] = 0
+                #     group["eta_max"] /= group["gamma"]
 
                 print("find stepsize:", group["eta"])
 
