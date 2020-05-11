@@ -63,7 +63,7 @@ class PreconditionOp:
             self.iteration += 1
 
             # assume overflow has been updated
-            if self.overflows and self.overflows[-1] < 0.3:
+            if self.overflows and self.overflows[-1] < 0.3 and self.alpha < 1024:
                 if (self.iteration % 20) == 0:
                     self.alpha *= 2
                     logging.info(
