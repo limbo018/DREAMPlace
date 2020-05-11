@@ -68,9 +68,6 @@ class NesterovAcceleratedGradientOptimizer(Optimizer):
             obj_and_grad_fn = self.obj_and_grad_fn
             constraint_fn = self.constraint_fn
             for i, p in enumerate(group['params']):
-                # indices = torch.from_numpy(np.random.choice(np.arange(0, p.size(0)//2), size=[p.size(0)//320], replace=False, p=np.ones([p.size(0)//2])/(p.size(0)//2))).long().to(p.device)
-                indices = None
-
                 if p.grad is None:
                     continue
                 if not group['u_k']:
@@ -78,7 +75,7 @@ class NesterovAcceleratedGradientOptimizer(Optimizer):
                     # directly use p as v_k to save memory
                     #group['v_k'].append(torch.autograd.Variable(p.data, requires_grad=True))
                     group['v_k'].append(p)
-                    obj, grad = obj_and_grad_fn(group['v_k'][i], indices)
+                    obj, grad = obj_and_grad_fn(group['v_k'][i])
                     group['g_k'].append(grad.data.clone()) # must clone
                     group['obj_k'].append(obj.data.clone())
                 u_k = group['u_k'][i]
@@ -89,7 +86,7 @@ class NesterovAcceleratedGradientOptimizer(Optimizer):
                     group['a_k'].append(torch.ones(1, dtype=g_k.dtype, device=g_k.device))
                     group['v_k_1'].append(torch.autograd.Variable(torch.zeros_like(v_k), requires_grad=True))
                     group['v_k_1'][i].data.copy_(group['v_k'][i]-group['lr']*g_k)
-                    obj, grad = obj_and_grad_fn(group['v_k_1'][i], indices)
+                    obj, grad = obj_and_grad_fn(group['v_k_1'][i])
                     group['g_k_1'].append(grad.data)
                     group['obj_k_1'].append(obj.data.clone())
                 a_k = group['a_k'][i]
@@ -121,7 +118,7 @@ class NesterovAcceleratedGradientOptimizer(Optimizer):
                     # g_kp1 must correspond to v_kp1
                     constraint_fn(v_kp1)
 
-                    f_kp1, g_kp1 = obj_and_grad_fn(v_kp1, indices)
+                    f_kp1, g_kp1 = obj_and_grad_fn(v_kp1)
 
                     #tt = time.time()
                     alpha_kp1 = torch.sqrt(torch.sum((v_kp1.data-v_k.data)**2) / torch.sum((g_kp1.data-g_k.data)**2))
