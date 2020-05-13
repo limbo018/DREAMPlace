@@ -163,18 +163,21 @@ class PlaceObj(nn.Module):
         else:
             self.routability_Lsub_iteration = self.Lsub_iteration
 
-    def obj_fn(self, pos):
+    def obj_fn(self, pos_w, pos_g=None, admm_multiplier=None):
         """
         @brief Compute objective.
             wirelength + density_weight * density penalty
         @param pos locations of cells
         @return objective value
         """
-        wirelength = self.op_collections.wirelength_op(pos)
-        density = self.op_collections.density_op(pos)
-        return wirelength + self.density_weight * density
+        wirelength = self.op_collections.wirelength_op(pos_w)
+        density = self.op_collections.density_op(pos_w)
+        result = wirelength + self.density_weight * density
+        if pos_g is not None:
+            result += 0.5 * torch.dot(pos_w - pos_g + admm_multiplier, pos_w - pos_g + admm_multiplier)
+        return result
 
-    def obj_and_grad_fn(self, pos):
+    def obj_and_grad_fn(self, pos_w, pos_g=None, admm_multiplier=None):
         """
         @brief compute objective and gradient.
             wirelength + density_weight * density penalty
@@ -182,16 +185,16 @@ class PlaceObj(nn.Module):
         @return objective value
         """
         #self.check_gradient(pos)
-        obj = self.obj_fn(pos)
+        obj = self.obj_fn(pos_w, pos_g, admm_multiplier)
 
-        if pos.grad is not None:
-            pos.grad.zero_()
+        if pos_w.grad is not None:
+            pos_w.grad.zero_()
 
         obj.backward()
 
-        self.op_collections.precondition_op(pos.grad, self.density_weight)
+        self.op_collections.precondition_op(pos_w.grad, self.density_weight)
 
-        return obj, pos.grad
+        return obj, pos_w.grad
 
     def forward(self):
         """
