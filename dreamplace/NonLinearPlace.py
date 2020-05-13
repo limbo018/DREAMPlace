@@ -75,6 +75,13 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                     self.op_collections, global_place_params).to(
                         self.data_collections.pos[0].device)
                 optimizer_name = global_place_params["optimizer"]
+                
+                if len(placedb.regions) != 0:
+                    pos_g = self.data_collections.pos[0].data.clone()
+                    admm_multiplier = torch.zeros_like(self.data_collections.pos[0])
+                else:
+                    pos_g = None
+                    admm_multiplier = None
 
                 # determine optimizer
                 if optimizer_name.lower() == "adam":
@@ -262,7 +269,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         self.plot(params, placedb, iteration, cur_pos)
 
                     t3 = time.time()
-                    optimizer.step()
+                    optimizer.step(pos_g, admm_multiplier)
                     logging.info("optimizer step %.3f ms" %
                                  ((time.time() - t3) * 1000))
 
@@ -478,11 +485,11 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                     self.data_collections.pin_offset_y.copy_(
                         self.data_collections.original_pin_offset_y)
             
-            if iteration % 10 == 0:
-                W_k_p_1 = model.data_collections.pos[0]
-                G_k_p_1 = solve_problem_2(W_k_p_1)
-                admm_multiplier += W_k_p_1 - G_k_p_1
-                model.data_collections.pos[0] = G_k_p_1
+            if len(placedb.regions) != 0 and iteration % 10 == 0:
+                pos_w = model.data_collections.pos[0]
+                pos_g = solve_problem_2(pos_w)
+                admm_multiplier += pos_w - pos_g
+                model.data_collections.pos[0] = pos_g
 
         else:
             cur_metric = EvalMetrics.EvalMetrics(iteration)
