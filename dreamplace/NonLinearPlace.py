@@ -449,7 +449,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         pos_x, pos_y = pos_g[:num_movable_nodes], pos_g[num_nodes:num_nodes + num_movable_nodes]
                         node_size_x, node_size_y = model.data_collections.node_size_x[:num_movable_nodes], model.data_collections.node_size_y[:num_movable_nodes]
                         num_regions = len(placedb.regions)
-                        exclude_mask = (node2fence_region_map > 1e6)
+                        exclude_mask = (node2fence_region_map > 1e3)
                         pos_x_ex, pos_y_ex = pos_x[exclude_mask], pos_y[exclude_mask]
                         node_size_x_ex, node_size_y_ex = node_size_x[exclude_mask], node_size_y[exclude_mask]
                         regions = placedb.regions
@@ -460,33 +460,34 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                             node_size_x_i, node_size_y_i = node_size_x[mask], node_size_y[mask]
                             regions_i = regions[i] # [n_regions, 4]
                             delta_min = torch.empty(num_movable_nodes_i, device=pos_x.device).fill_(((placedb.xh-placedb.xl)**2+(placedb.yh-placedb.yl)**2))
-                            delta_x_min = torch.zeros_like(delta_min).fill_(placedb.xh-placedb.xl)
-                            delta_y_min = torch.zeros_like(delta_min).fill_(placedb.yh-placedb.yl)
+                            delta_x_min = torch.zeros_like(delta_min)
+                            delta_y_min = torch.zeros_like(delta_min)
+                            margin = 12
                             for sub_region in regions_i:
                                 delta_x = torch.zeros_like(delta_min)
                                 delta_y = torch.zeros_like(delta_min)
                                 xl, yl, xh, yh = sub_region
                                 # on the left
-                                mask_l = pos_x_i < xl
+                                mask_l = pos_x_i < xl + margin
                                 # on the right
                                 pos_xh_i = pos_x_i + node_size_x_i
-                                mask_r = pos_xh_i > xh
+                                mask_r = pos_xh_i > xh - margin
                                 # on the top
                                 pos_yh_i = pos_y_i + node_size_y_i
-                                mask_t = pos_yh_i > yh
+                                mask_t = pos_yh_i > yh - margin
                                 # on the bottom
-                                mask_b = pos_y_i < yl
+                                mask_b = pos_y_i < yl + margin
 
                                 # x replacement for left cell
-                                delta_x.masked_scatter_(mask_l, xl - pos_x_i[mask_l])
+                                delta_x.masked_scatter_(mask_l, xl + margin - pos_x_i[mask_l])
                                 # x replacement for right cell
-                                delta_x.masked_scatter_(mask_r, xh - pos_xh_i[mask_r])
-                                delta_x.masked_fill_(~(mask_l | mask_r), 0)
+                                delta_x.masked_scatter_(mask_r, xh - margin - pos_xh_i[mask_r])
+                                # delta_x.masked_fill_(~(mask_l | mask_r), 0)
                                 # y replacement for top cell
-                                delta_y.masked_scatter_(mask_t, yh - pos_yh_i[mask_t])
+                                delta_y.masked_scatter_(mask_t, yh - margin - pos_yh_i[mask_t])
                                 # y replacement for bottom cell
-                                delta_y.masked_scatter_(mask_b, yl - pos_y_i[mask_b])
-                                delta_y.masked_fill_(~(mask_t | mask_b), 0)
+                                delta_y.masked_scatter_(mask_b, yl + margin - pos_y_i[mask_b])
+                                # delta_y.masked_fill_(~(mask_t | mask_b), 0)
                                 # update minimum replacement
                                 delta_i = (delta_x ** 2 + delta_y ** 2)
                                 update_mask = delta_i < delta_min
@@ -495,43 +496,59 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                                 delta_y_min.masked_scatter_(update_mask, delta_y[update_mask])
                                 delta_min.masked_scatter_(update_mask, delta_i)
 
-                                # move excluded cells out of the region
-                                delta_x_ex = torch.zeros_like(pos_x_ex)
-                                delta_y_ex = torch.zeros_like(pos_y_ex)
-                                move_out_mask = (pos_x_ex < xh) & (pos_x_ex > xl) & (pos_y_ex > yl) & (pos_y_ex < yh)
+                                ##### move excluded cells out of the region
+                                pos_x_ex_new = pos_x_ex.clone()
+                                pos_y_ex_new = pos_y_ex.clone()
+                                move_out_mask = (pos_x_ex < xh+margin) & ((pos_x_ex + node_size_x_ex) > xl-margin) & ((pos_y_ex + node_size_y_ex) > yl-margin) & (pos_y_ex < yh+margin)
+                                # print("move out:", move_out_mask.float().sum().data.item(), "out of", move_out_mask.numel())
                                 delta_x_ex_l = xl - (pos_x_ex[move_out_mask] + node_size_x_ex[move_out_mask])
+                                delta_x_ex_l_abs = delta_x_ex_l.abs()
                                 delta_x_ex_r = xh - pos_x_ex[move_out_mask]
-                                move_left_mask = delta_x_ex_l.abs() < delta_x_ex_r
-                                delta_x_ex_out = torch.zeros_like(delta_x_ex_l)
-                                delta_x_ex_out.masked_scatter_(move_left_mask, delta_x_ex_l)
-                                delta_x_ex_out.masked_scatter_(~move_left_mask, delta_x_ex_r)
-                                delta_x_ex.masked_scatter_(move_out_mask, delta_x_ex_out)
-
                                 delta_y_ex_b = yl - (pos_y_ex[move_out_mask] + node_size_y_ex[move_out_mask])
+                                delta_y_ex_b_abs = delta_y_ex_b.abs()
                                 delta_y_ex_t = yh - pos_y_ex[move_out_mask]
-                                move_btm_mask = delta_y_ex_b.abs() < delta_y_ex_t
-                                delta_y_ex_out = torch.zeros_like(delta_y_ex_b)
-                                delta_y_ex_out.masked_scatter_(move_btm_mask, delta_y_ex_b)
-                                delta_y_ex_out.masked_scatter_(~move_btm_mask, delta_y_ex_t)
-                                delta_y_ex.masked_scatter_(move_out_mask, delta_y_ex_out)
 
-                                pos_x.masked_scatter_(exclude_mask, pos_x_ex + delta_x_ex)
-                                pos_y.masked_scatter_(exclude_mask, pos_y_ex + delta_y_ex)
+                                move_left_mask = (delta_x_ex_l_abs < delta_x_ex_r) & (delta_x_ex_l_abs < delta_y_ex_b_abs) & (delta_x_ex_l_abs < delta_y_ex_t)
+                                move_right_mask = (delta_x_ex_r <= delta_x_ex_l_abs) & (delta_x_ex_r < delta_y_ex_b_abs) & (delta_x_ex_r < delta_y_ex_t)
+                                move_top_mask = (delta_y_ex_t < delta_x_ex_l_abs) & (delta_y_ex_t < delta_x_ex_r) & (delta_y_ex_t < delta_y_ex_b_abs)
+                                move_btm_mask = (delta_y_ex_b_abs < delta_x_ex_l_abs) & (delta_y_ex_b_abs < delta_x_ex_r) & (delta_y_ex_b_abs <= delta_y_ex_t)
+
+                                pos_x_ex_out = pos_x_ex[move_out_mask]
+                                pos_x_ex_out.masked_scatter_(move_left_mask, xl - margin- node_size_x_ex[move_out_mask] )
+                                pos_x_ex_out.masked_fill_(move_right_mask, xh + margin)
+                                pos_x_ex.masked_scatter_(move_out_mask, pos_x_ex_out)
+
+                                pos_y_ex_out = pos_y_ex[move_out_mask]
+                                pos_y_ex_out.masked_scatter_(move_btm_mask, yl - margin - node_size_y_ex[move_out_mask])
+                                pos_y_ex_out.masked_fill_(move_top_mask, yh + margin)
+                                pos_y_ex.masked_scatter_(move_out_mask, pos_y_ex_out)
+
+                                pos_x.masked_scatter_(exclude_mask, pos_x_ex)
+                                pos_y.masked_scatter_(exclude_mask, pos_y_ex)
+
+                                ## check validity
+                                # move_out_mask = (pos_x[exclude_mask] < xh) & ((pos_x[exclude_mask] + node_size_x_ex) > xl) & ((pos_y[exclude_mask] + node_size_y_ex) > yl) & (pos_y[exclude_mask] < yh)
+                                # error = move_out_mask.float().sum()
+                                # print(f"{error} cells are still in region")
+                                # assert error < 1e-3
                             # update the minimum replacement for subregions
                             pos_x.masked_scatter_(mask, pos_x_i + delta_x_min)
                             pos_y.masked_scatter_(mask, pos_y_i + delta_y_min)
-                        res = pos_w.data.clone()
+                        res = pos_g.data.clone()
                         res.data[:num_movable_nodes].copy_(pos_x)
                         res.data[num_nodes:num_nodes + num_movable_nodes].copy_(pos_y)
                         return res
 
-                    if len(placedb.regions) != 0 and Llambda_metrics[-1][-1].overflow < 0.5 and iteration % int(50*0.997**iteration) == 0:
-                        self.plot(params, placedb, iteration-1,self.pos[0].data.clone().cpu().numpy())
+                    if 1 and len(placedb.regions) != 0 and Llambda_metrics[-1][-1].overflow < 0.7 and iteration % 5 == 0:
+                    # if(1 and iteration == 980):
+                        if(iteration % 10 == 0):
+                            self.plot(params, placedb, iteration-1,self.pos[0].data.clone().cpu().numpy())
                         pos_w = self.pos[0]
                         pos_g = solve_problem_2(pos_w, admm_multiplier)
                         admm_multiplier += pos_w - pos_g
                         self.pos[0].data.copy_(pos_g)
-                        self.plot(params, placedb, iteration,self.pos[0].data.clone().cpu().numpy())
+                        if(iteration % 10 == 0):
+                            self.plot(params, placedb, iteration,self.pos[0].data.clone().cpu().numpy())
 
                 # in case of divergence, use the best metric
                 last_metric = all_metrics[-1][-1][-1]
