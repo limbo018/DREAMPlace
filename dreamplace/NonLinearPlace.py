@@ -50,7 +50,6 @@ class NonLinearPlace(BasicPlace.BasicPlace):
 
         # global placement
         if params.global_place_flag:
-            assert len(placedb.regions) == 0, "FENCE REGIONS are not supported in global placement yet"
             # global placement may run in multiple stages according to user specification
             for global_place_params in params.global_place_stages:
 
@@ -137,6 +136,13 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         initialize_learning_rate(model.data_collections.pos[0])
                 # the state must be saved after setting learning rate
                 initial_state = copy.deepcopy(optimizer.state_dict())
+
+                if len(placedb.regions) != 0:
+                    pos_g = self.data_collections.pos[0].data.clone()
+                    admm_multiplier = torch.zeros_like(self.data_collections.pos[0])
+                else:
+                    pos_g = None
+                    admm_multiplier = None
 
                 if params.gpu:
                     torch.cuda.synchronize()
@@ -262,7 +268,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         self.plot(params, placedb, iteration, cur_pos)
 
                     t3 = time.time()
-                    optimizer.step()
+                    optimizer.step(pos_g, admm_multiplier)
                     logging.info("optimizer step %.3f ms" %
                                  ((time.time() - t3) * 1000))
 
@@ -284,65 +290,6 @@ class NonLinearPlace(BasicPlace.BasicPlace):
 
                     logging.info("full step %.3f ms" %
                                  ((time.time() - t0) * 1000))
-
-                def solve_problem_2(W_k_p_1, admm_multiplier):
-                    num_nodes = placedb.num_nodes
-                    num_movable_nodes = placedb.num_movable_nodes
-                    num_filler_nodes = placedb.num_filler_nodes
-                    num_fixed_nodes = num_nodes - num_filler_nodes - num_movable_nodes
-
-                    g = W_k_p_1 + admm_multiplier # minimize the L2 norm
-                    node2fence_region_map = model.data_collections.node2fence_region_map[:num_movable_nodes]
-
-                    pos_x, pos_y = g[:num_movable_nodes], g[num_nodes:num_nodes + num_movable_nodes]
-                    node_size_x, node_size_y = model.data_collections.node_size_x, model.data_collections.node_size_y
-                    num_regions = len(placedb.regions)
-                    regions = model.data_collections.regions
-                    for i in range(num_regions):
-                        mask = (node2fence_region_map == i)
-                        pos_x_i, pos_y_i = pos_x[mask], pos_y[mask]
-                        node_size_x_i, node_size_y_i = node_size_x[mask], node_size_y[mask]
-                        regions_i = regions[i] # [n_regions, 4]
-                        delta_min = torch.empty(num_movable_nodes, device=pos_x.device).fill_(((placedb.xh-placedb.xl)**2+(placedb.yh-placedb.yl)**2))
-                        delta_x_min = torch.zeros_like(delta_min).fill_(placedb.xh-placedb.xl)
-                        delta_y_min = torch.zeros_like(delta_min).fill_(placedb.yh-placedb.yl)
-                        for sub_region in regions_i:
-                            delta_x = torch.zeros_like(delta_min)
-                            delta_y = torch.zeros_like(delta_min)
-                            xl, yl, xh, yh = sub_region
-                            # on the left
-                            mask_l = pos_x_i < xl
-                            # on the right
-                            pos_xh_i = pos_x_i + node_size_x_i
-                            mask_r = pos_xh_i > xh
-                            # on the top
-                            pos_yh_i = pos_y_i + node_size_y_i
-                            mask_t = pos_yh_i > yh
-                            # on the bottom
-                            mask_b = pos_y_i < yl
-
-                            # x replacement for left cell
-                            delta_x[mask_l].copy_(xl - pos_x_i[mask_l])
-                            # x replacement for right cell
-                            delta_x[mask_r].copy(xh - pos_xh_i[mask_r])
-                            # y replacement for top cell
-                            delta_y[mask_t].copy_(yh - pos_yh_i[mask_t])
-                            # y replacement for bottom cell
-                            delta_y[mask_b].copy_(yl - pos_y_i[mask_b])
-                            # update minimum replacement
-                            update_mask = (delta_x ** 2 + delta_y ** 2) < delta_min
-                            delta_x_min[update_mask].copy_(delta_x[update_mask])
-                            delta_y_min[update_mask].copy_(delta_y[update_mask])
-                        # update the minimum replacement for subregions
-                        pos_x.add_(delta_x_min)
-                        pos_y.add_(delta_y_min)
-                    res = W_k_p_1.data.clone()
-                    res.data[:num_movable_nodes].copy_(pos_x)
-                    res.data[num_nodes:num_nodes + num_movable_nodes].copy_(pos_y)
-                    return res
-
-
-
 
                 Lgamma_metrics = all_metrics
 
@@ -537,11 +484,66 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                     self.data_collections.pin_offset_y.copy_(
                         self.data_collections.original_pin_offset_y)
 
-            if iteration % 10 == 0:
-                W_k_p_1 = model.data_collections.pos[0]
-                G_k_p_1 = solve_problem_2(W_k_p_1)
-                admm_multiplier += W_k_p_1 - G_k_p_1
-                model.data_collections.pos[0] = G_k_p_1
+            def solve_problem_2(pos_w, admm_multiplier):
+                    num_nodes = placedb.num_nodes
+                    num_movable_nodes = placedb.num_movable_nodes
+                    num_filler_nodes = placedb.num_filler_nodes
+
+                    g = pos_w + admm_multiplier # minimize the L2 norm
+                    node2fence_region_map = model.data_collections.node2fence_region_map[:num_movable_nodes]
+
+                    pos_x, pos_y = g[:num_movable_nodes], g[num_nodes:num_nodes + num_movable_nodes]
+                    node_size_x, node_size_y = model.data_collections.node_size_x, model.data_collections.node_size_y
+                    num_regions = len(placedb.regions)
+                    regions = model.data_collections.regions
+                    for i in range(num_regions):
+                        mask = (node2fence_region_map == i)
+                        pos_x_i, pos_y_i = pos_x[mask], pos_y[mask]
+                        node_size_x_i, node_size_y_i = node_size_x[mask], node_size_y[mask]
+                        regions_i = regions[i] # [n_regions, 4]
+                        delta_min = torch.empty(num_movable_nodes, device=pos_x.device).fill_(((placedb.xh-placedb.xl)**2+(placedb.yh-placedb.yl)**2))
+                        delta_x_min = torch.zeros_like(delta_min).fill_(placedb.xh-placedb.xl)
+                        delta_y_min = torch.zeros_like(delta_min).fill_(placedb.yh-placedb.yl)
+                        for sub_region in regions_i:
+                            delta_x = torch.zeros_like(delta_min)
+                            delta_y = torch.zeros_like(delta_min)
+                            xl, yl, xh, yh = sub_region
+                            # on the left
+                            mask_l = pos_x_i < xl
+                            # on the right
+                            pos_xh_i = pos_x_i + node_size_x_i
+                            mask_r = pos_xh_i > xh
+                            # on the top
+                            pos_yh_i = pos_y_i + node_size_y_i
+                            mask_t = pos_yh_i > yh
+                            # on the bottom
+                            mask_b = pos_y_i < yl
+
+                            # x replacement for left cell
+                            delta_x[mask_l].copy_(xl - pos_x_i[mask_l])
+                            # x replacement for right cell
+                            delta_x[mask_r].copy(xh - pos_xh_i[mask_r])
+                            # y replacement for top cell
+                            delta_y[mask_t].copy_(yh - pos_yh_i[mask_t])
+                            # y replacement for bottom cell
+                            delta_y[mask_b].copy_(yl - pos_y_i[mask_b])
+                            # update minimum replacement
+                            update_mask = (delta_x ** 2 + delta_y ** 2) < delta_min
+                            delta_x_min[update_mask].copy_(delta_x[update_mask])
+                            delta_y_min[update_mask].copy_(delta_y[update_mask])
+                        # update the minimum replacement for subregions
+                        pos_x.add_(delta_x_min)
+                        pos_y.add_(delta_y_min)
+                    res = pos_w.data.clone()
+                    res.data[:num_movable_nodes].copy_(pos_x)
+                    res.data[num_nodes:num_nodes + num_movable_nodes].copy_(pos_y)
+                    return res
+
+            if len(placedb.regions) != 0 and iteration % 10 == 0:
+                pos_w = model.data_collections.pos[0]
+                pos_g = solve_problem_2(pos_w, admm_multiplier)
+                admm_multiplier += pos_w - pos_g
+                model.data_collections.pos[0] = pos_g
 
         else:
             cur_metric = EvalMetrics.EvalMetrics(iteration)
