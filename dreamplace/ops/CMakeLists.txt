@@ -12,16 +12,17 @@ add_subdirectory(move_boundary)
 add_subdirectory(weighted_average_wirelength)
 add_subdirectory(rmst_wl)
 add_subdirectory(place_io)
-# legalization operators 
+add_subdirectory(fence_region)
+# legalization operators
 add_subdirectory(legality_check)
 add_subdirectory(macro_legalize)
 add_subdirectory(greedy_legalize)
 add_subdirectory(abacus_legalize)
-# detailed placement operators 
+# detailed placement operators
 add_subdirectory(global_swap)
 add_subdirectory(independent_set_matching)
 add_subdirectory(k_reorder)
-# routing congestion operator 
+# routing congestion operator
 add_subdirectory(pin_utilization)
 add_subdirectory(rudy)
 add_subdirectory(adjust_node_area)
