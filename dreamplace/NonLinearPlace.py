@@ -451,6 +451,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         num_regions = len(placedb.regions)
                         exclude_mask = (node2fence_region_map > 1e6)
                         pos_x_ex, pos_y_ex = pos_x[exclude_mask], pos_y[exclude_mask]
+                        node_size_x_ex, node_size_y_ex = node_size_x[exclude_mask], node_size_y[exclude_mask]
                         regions = placedb.regions
                         for i in range(num_regions):
                             mask = (node2fence_region_map == i)
@@ -495,7 +496,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                                 delta_x_ex = torch.zeros_like(pos_x_ex)
                                 delta_y_ex = torch.zeros_like(pos_y_ex)
                                 move_out_mask = (pos_x_ex < xh) & (pos_x_ex > xl) & (pos_y_ex > yl) & (pos_y_ex < yh)
-                                delta_x_ex_l = xl - pos_x_ex[move_out_mask]
+                                delta_x_ex_l = xl - (pos_x_ex[move_out_mask] + node_size_x_ex[move_out_mask])
                                 delta_x_ex_r = xh - pos_x_ex[move_out_mask]
                                 move_left_mask = delta_x_ex_l.abs() < delta_x_ex_r
                                 delta_x_ex_out = torch.zeros_like(delta_x_ex_l)
@@ -503,7 +504,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                                 delta_x_ex_out.masked_scatter_(~move_left_mask, delta_x_ex_r)
                                 delta_x_ex.masked_scatter_(move_out_mask, delta_x_ex_out)
 
-                                delta_y_ex_b = yl - pos_y_ex[move_out_mask]
+                                delta_y_ex_b = yl - (pos_y_ex[move_out_mask] + node_size_y_ex[move_out_mask])
                                 delta_y_ex_t = yh - pos_y_ex[move_out_mask]
                                 move_btm_mask = delta_y_ex_b.abs() < delta_y_ex_t
                                 delta_y_ex_out = torch.zeros_like(delta_y_ex_b)
