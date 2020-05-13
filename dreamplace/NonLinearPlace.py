@@ -488,9 +488,12 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                                 delta_y.masked_scatter_(mask_b, yl - pos_y_i[mask_b])
                                 delta_y.masked_fill_(~(mask_t | mask_b), 0)
                                 # update minimum replacement
-                                update_mask = (delta_x ** 2 + delta_y ** 2) < delta_min
+                                delta_i = (delta_x ** 2 + delta_y ** 2)
+                                update_mask = delta_i < delta_min
+
                                 delta_x_min.masked_scatter_(update_mask, delta_x[update_mask])
                                 delta_y_min.masked_scatter_(update_mask, delta_y[update_mask])
+                                delta_min.masked_scatter_(update_mask, delta_i)
 
                                 # move excluded cells out of the region
                                 delta_x_ex = torch.zeros_like(pos_x_ex)
