@@ -493,7 +493,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                     node2fence_region_map = torch.from_numpy(placedb.node2fence_region_map[:num_movable_nodes]).to(g.device)
 
                     pos_x, pos_y = g[:num_movable_nodes], g[num_nodes:num_nodes + num_movable_nodes]
-                    node_size_x, node_size_y = model.data_collections.node_size_x, model.data_collections.node_size_y
+                    node_size_x, node_size_y = model.data_collections.node_size_x[:num_movable_nodes], model.data_collections.node_size_y[:num_movable_nodes]
                     num_regions = len(placedb.regions)
                     regions = placedb.regions
                     for i in range(num_regions):
