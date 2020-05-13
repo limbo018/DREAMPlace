@@ -50,9 +50,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
 
         # global placement
         if params.global_place_flag:
-            assert len(
-                placedb.regions
-            ) == 0, "FENCE REGIONS are not supported in global placement yet"
+            assert len(placedb.regions) == 0, "FENCE REGIONS are not supported in global placement yet"
             # global placement may run in multiple stages according to user specification
             for global_place_params in params.global_place_stages:
 
@@ -479,6 +477,12 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         self.data_collections.original_pin_offset_x)
                     self.data_collections.pin_offset_y.copy_(
                         self.data_collections.original_pin_offset_y)
+            
+            if iteration % 10 == 0:
+                W_k_p_1 = model.data_collections.pos[0]
+                G_k_p_1 = solve_problem_2(W_k_p_1)
+                admm_multiplier += W_k_p_1 - G_k_p_1
+                model.data_collections.pos[0] = G_k_p_1
 
         else:
             cur_metric = EvalMetrics.EvalMetrics(iteration)
