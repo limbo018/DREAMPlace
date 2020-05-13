@@ -499,7 +499,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                     for i in range(num_regions):
                         mask = (node2fence_region_map == i)
                         pos_x_i, pos_y_i = pos_x[mask], pos_y[mask]
-                        num_novable_nodes_i = pos_x_i.numel()
+                        num_movable_nodes_i = pos_x_i.numel()
                         node_size_x_i, node_size_y_i = node_size_x[mask], node_size_y[mask]
                         regions_i = regions[i] # [n_regions, 4]
                         delta_min = torch.empty(num_movable_nodes_i, device=pos_x.device).fill_(((placedb.xh-placedb.xl)**2+(placedb.yh-placedb.yl)**2))
@@ -521,13 +521,13 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                             mask_b = pos_y_i < yl
 
                             # x replacement for left cell
-                            delta_x[mask_l].copy_(xl - pos_x_i[mask_l])
+                            delta_x.masked_scatter_(mask_l, xl - pos_x_i[mask_l])
                             # x replacement for right cell
-                            delta_x[mask_r].copy(xh - pos_xh_i[mask_r])
+                            delta_x.masked_scatter_(mask_r, xh - pos_xh_i[mask_r])
                             # y replacement for top cell
-                            delta_y[mask_t].copy_(yh - pos_yh_i[mask_t])
+                            delta_y.masked_scatter_(mask_t, yh - pos_yh_i[mask_t])
                             # y replacement for bottom cell
-                            delta_y[mask_b].copy_(yl - pos_y_i[mask_b])
+                            delta_y.masked_scatter_(mask_b, yl - pos_y_i[mask_b])
                             # update minimum replacement
                             update_mask = (delta_x ** 2 + delta_y ** 2) < delta_min
                             delta_x_min[update_mask].copy_(delta_x[update_mask])
