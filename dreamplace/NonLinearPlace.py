@@ -490,18 +490,19 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                     num_filler_nodes = placedb.num_filler_nodes
 
                     g = pos_w + admm_multiplier # minimize the L2 norm
-                    node2fence_region_map = model.data_collections.node2fence_region_map[:num_movable_nodes]
+                    node2fence_region_map = torch.from_numpy(placedb.node2fence_region_map[:num_movable_nodes]).to(g.device)
 
                     pos_x, pos_y = g[:num_movable_nodes], g[num_nodes:num_nodes + num_movable_nodes]
                     node_size_x, node_size_y = model.data_collections.node_size_x, model.data_collections.node_size_y
                     num_regions = len(placedb.regions)
-                    regions = model.data_collections.regions
+                    regions = placedb.regions
                     for i in range(num_regions):
                         mask = (node2fence_region_map == i)
                         pos_x_i, pos_y_i = pos_x[mask], pos_y[mask]
+                        num_novable_nodes_i = pos_x_i.numel()
                         node_size_x_i, node_size_y_i = node_size_x[mask], node_size_y[mask]
                         regions_i = regions[i] # [n_regions, 4]
-                        delta_min = torch.empty(num_movable_nodes, device=pos_x.device).fill_(((placedb.xh-placedb.xl)**2+(placedb.yh-placedb.yl)**2))
+                        delta_min = torch.empty(num_movable_nodes_i, device=pos_x.device).fill_(((placedb.xh-placedb.xl)**2+(placedb.yh-placedb.yl)**2))
                         delta_x_min = torch.zeros_like(delta_min).fill_(placedb.xh-placedb.xl)
                         delta_y_min = torch.zeros_like(delta_min).fill_(placedb.yh-placedb.yl)
                         for sub_region in regions_i:
@@ -532,8 +533,8 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                             delta_x_min[update_mask].copy_(delta_x[update_mask])
                             delta_y_min[update_mask].copy_(delta_y[update_mask])
                         # update the minimum replacement for subregions
-                        pos_x.add_(delta_x_min)
-                        pos_y.add_(delta_y_min)
+                        pos_x.masked_scatter_(mask, pos_x_i + delta_x_min)
+                        pos_y.masked_scatter_(mask, pos_y_i + delta_y_min)
                     res = pos_w.data.clone()
                     res.data[:num_movable_nodes].copy_(pos_x)
                     res.data[num_nodes:num_nodes + num_movable_nodes].copy_(pos_y)
