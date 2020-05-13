@@ -295,12 +295,51 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                     node2fence_region_map = model.data_collections.node2fence_region_map[:num_movable_nodes]
 
                     pos_x, pos_y = g[:num_movable_nodes], g[num_nodes:num_nodes + num_movable_nodes]
+                    node_size_x, node_size_y = model.data_collections.node_size_x, model.data_collections.node_size_y
                     num_regions = len(placedb.regions)
                     regions = model.data_collections.regions
                     for i in range(num_regions):
                         mask = (node2fence_region_map == i)
                         pos_x_i, pos_y_i = pos_x[mask], pos_y[mask]
-                        regions_i = regions[i]
+                        node_size_x_i, node_size_y_i = node_size_x[mask], node_size_y[mask]
+                        regions_i = regions[i] # [n_regions, 4]
+                        delta_min = torch.empty(num_movable_nodes, device=pos_x.device).fill_(((placedb.xh-placedb.xl)**2+(placedb.yh-placedb.yl)**2))
+                        delta_x_min = torch.zeros_like(delta_min).fill_(placedb.xh-placedb.xl)
+                        delta_y_min = torch.zeros_like(delta_min).fill_(placedb.yh-placedb.yl)
+                        for sub_region in regions_i:
+                            delta_x = torch.zeros_like(delta_min)
+                            delta_y = torch.zeros_like(delta_min)
+                            xl, yl, xh, yh = sub_region
+                            # on the left
+                            mask_l = pos_x_i < xl
+                            # on the right
+                            pos_xh_i = pos_x_i + node_size_x_i
+                            mask_r = pos_xh_i > xh
+                            # on the top
+                            pos_yh_i = pos_y_i + node_size_y_i
+                            mask_t = pos_yh_i > yh
+                            # on the bottom
+                            mask_b = pos_y_i < yl
+
+                            # x replacement for left cell
+                            delta_x[mask_l].copy_(xl - pos_x_i[mask_l])
+                            # x replacement for right cell
+                            delta_x[mask_r].copy(xh - pos_xh_i[mask_r])
+                            # y replacement for top cell
+                            delta_y[mask_t].copy_(yh - pos_yh_i[mask_t])
+                            # y replacement for bottom cell
+                            delta_y[mask_b].copy_(yl - pos_y_i[mask_b])
+                            # update minimum replacement
+                            update_mask = (delta_x ** 2 + delta_y ** 2) < delta_min
+                            delta_x_min[update_mask].copy_(delta_x[update_mask])
+                            delta_y_min[update_mask].copy_(delta_y[update_mask])
+                        # update the minimum replacement for subregions
+                        pos_x.add_(delta_x_min)
+                        pos_y.add_(delta_y_min)
+                    res = W_k_p_1.data.clone()
+                    res.data[:num_movable_nodes].copy_(pos_x)
+                    res.data[num_nodes:num_nodes + num_movable_nodes].copy_(pos_y)
+                    return res
 
 
 
