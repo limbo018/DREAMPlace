@@ -13,3 +13,4 @@ install
 *.so
 thirdparty/flute
 .DS_Store
+.vscode/*

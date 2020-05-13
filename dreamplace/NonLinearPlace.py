@@ -438,67 +438,96 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                             for param_group in optimizer.param_groups:
                                 param_group['lr'] *= global_place_params[
                                     'learning_rate_decay']
-                    
+
                     def solve_problem_2(pos_w, admm_multiplier):
-                            num_nodes = placedb.num_nodes
-                            num_movable_nodes = placedb.num_movable_nodes
+                        num_nodes = placedb.num_nodes
+                        num_movable_nodes = placedb.num_movable_nodes
 
-                            g = pos_w + admm_multiplier # minimize the L2 norm
-                            node2fence_region_map = torch.from_numpy(placedb.node2fence_region_map[:num_movable_nodes]).to(g.device)
+                        pos_g = pos_w + admm_multiplier # minimize the L2 norm
+                        node2fence_region_map = torch.from_numpy(placedb.node2fence_region_map[:num_movable_nodes]).to(pos_g.device)
 
-                            pos_x, pos_y = g[:num_movable_nodes], g[num_nodes:num_nodes + num_movable_nodes]
-                            node_size_x, node_size_y = model.data_collections.node_size_x[:num_movable_nodes], model.data_collections.node_size_y[:num_movable_nodes]
-                            num_regions = len(placedb.regions)
-                            regions = placedb.regions
-                            for i in range(num_regions):
-                                mask = (node2fence_region_map == i)
-                                pos_x_i, pos_y_i = pos_x[mask], pos_y[mask]
-                                num_movable_nodes_i = pos_x_i.numel()
-                                node_size_x_i, node_size_y_i = node_size_x[mask], node_size_y[mask]
-                                regions_i = regions[i] # [n_regions, 4]
-                                delta_min = torch.empty(num_movable_nodes_i, device=pos_x.device).fill_(((placedb.xh-placedb.xl)**2+(placedb.yh-placedb.yl)**2))
-                                delta_x_min = torch.zeros_like(delta_min).fill_(placedb.xh-placedb.xl)
-                                delta_y_min = torch.zeros_like(delta_min).fill_(placedb.yh-placedb.yl)
-                                for sub_region in regions_i:
-                                    delta_x = torch.zeros_like(delta_min)
-                                    delta_y = torch.zeros_like(delta_min)
-                                    xl, yl, xh, yh = sub_region
-                                    # on the left
-                                    mask_l = pos_x_i < xl
-                                    # on the right
-                                    pos_xh_i = pos_x_i + node_size_x_i
-                                    mask_r = pos_xh_i > xh
-                                    # on the top
-                                    pos_yh_i = pos_y_i + node_size_y_i
-                                    mask_t = pos_yh_i > yh
-                                    # on the bottom
-                                    mask_b = pos_y_i < yl
+                        pos_x, pos_y = pos_g[:num_movable_nodes], pos_g[num_nodes:num_nodes + num_movable_nodes]
+                        node_size_x, node_size_y = model.data_collections.node_size_x[:num_movable_nodes], model.data_collections.node_size_y[:num_movable_nodes]
+                        num_regions = len(placedb.regions)
+                        exclude_mask = (node2fence_region_map > 1e6)
+                        pos_x_ex, pos_y_ex = pos_x[exclude_mask], pos_y[exclude_mask]
+                        regions = placedb.regions
+                        for i in range(num_regions):
+                            mask = (node2fence_region_map == i)
+                            pos_x_i, pos_y_i = pos_x[mask], pos_y[mask]
+                            num_movable_nodes_i = pos_x_i.numel()
+                            node_size_x_i, node_size_y_i = node_size_x[mask], node_size_y[mask]
+                            regions_i = regions[i] # [n_regions, 4]
+                            delta_min = torch.empty(num_movable_nodes_i, device=pos_x.device).fill_(((placedb.xh-placedb.xl)**2+(placedb.yh-placedb.yl)**2))
+                            delta_x_min = torch.zeros_like(delta_min).fill_(placedb.xh-placedb.xl)
+                            delta_y_min = torch.zeros_like(delta_min).fill_(placedb.yh-placedb.yl)
+                            for sub_region in regions_i:
+                                delta_x = torch.zeros_like(delta_min)
+                                delta_y = torch.zeros_like(delta_min)
+                                xl, yl, xh, yh = sub_region
+                                # on the left
+                                mask_l = pos_x_i < xl
+                                # on the right
+                                pos_xh_i = pos_x_i + node_size_x_i
+                                mask_r = pos_xh_i > xh
+                                # on the top
+                                pos_yh_i = pos_y_i + node_size_y_i
+                                mask_t = pos_yh_i > yh
+                                # on the bottom
+                                mask_b = pos_y_i < yl
 
-                                    # x replacement for left cell
-                                    delta_x.masked_scatter_(mask_l, xl - pos_x_i[mask_l])
-                                    # x replacement for right cell
-                                    delta_x.masked_scatter_(mask_r, xh - pos_xh_i[mask_r])
-                                    # y replacement for top cell
-                                    delta_y.masked_scatter_(mask_t, yh - pos_yh_i[mask_t])
-                                    # y replacement for bottom cell
-                                    delta_y.masked_scatter_(mask_b, yl - pos_y_i[mask_b])
-                                    # update minimum replacement
-                                    update_mask = (delta_x ** 2 + delta_y ** 2) < delta_min
-                                    delta_x_min[update_mask].copy_(delta_x[update_mask])
-                                    delta_y_min[update_mask].copy_(delta_y[update_mask])
-                                # update the minimum replacement for subregions
-                                pos_x.masked_scatter_(mask, pos_x_i + delta_x_min)
-                                pos_y.masked_scatter_(mask, pos_y_i + delta_y_min)
-                            res = pos_w.data.clone()
-                            res.data[:num_movable_nodes].copy_(pos_x)
-                            res.data[num_nodes:num_nodes + num_movable_nodes].copy_(pos_y)
-                            return res
+                                # x replacement for left cell
+                                delta_x.masked_scatter_(mask_l, xl - pos_x_i[mask_l])
+                                # x replacement for right cell
+                                delta_x.masked_scatter_(mask_r, xh - pos_xh_i[mask_r])
+                                delta_x.masked_fill_(~(mask_l | mask_r), 0)
+                                # y replacement for top cell
+                                delta_y.masked_scatter_(mask_t, yh - pos_yh_i[mask_t])
+                                # y replacement for bottom cell
+                                delta_y.masked_scatter_(mask_b, yl - pos_y_i[mask_b])
+                                delta_y.masked_fill_(~(mask_t | mask_b), 0)
+                                # update minimum replacement
+                                update_mask = (delta_x ** 2 + delta_y ** 2) < delta_min
+                                delta_x_min.masked_scatter_(update_mask, delta_x[update_mask])
+                                delta_y_min.masked_scatter_(update_mask, delta_y[update_mask])
 
-                    if len(placedb.regions) != 0 and iteration % 10 == 0:
-                        pos_w = model.data_collections.pos[0]
+                                # move excluded cells out of the region
+                                delta_x_ex = torch.zeros_like(pos_x_ex)
+                                delta_y_ex = torch.zeros_like(pos_y_ex)
+                                move_out_mask = (pos_x_ex < xh) & (pos_x_ex > xl) & (pos_y_ex > yl) & (pos_y_ex < yh)
+                                delta_x_ex_l = xl - pos_x_ex[move_out_mask]
+                                delta_x_ex_r = xh - pos_x_ex[move_out_mask]
+                                move_left_mask = delta_x_ex_l.abs() < delta_x_ex_r
+                                delta_x_ex_out = torch.zeros_like(delta_x_ex_l)
+                                delta_x_ex_out.masked_scatter_(move_left_mask, delta_x_ex_l)
+                                delta_x_ex_out.masked_scatter_(~move_left_mask, delta_x_ex_r)
+                                delta_x_ex.masked_scatter_(move_out_mask, delta_x_ex_out)
+
+                                delta_y_ex_b = yl - pos_y_ex[move_out_mask]
+                                delta_y_ex_t = yh - pos_y_ex[move_out_mask]
+                                move_btm_mask = delta_y_ex_b.abs() < delta_y_ex_t
+                                delta_y_ex_out = torch.zeros_like(delta_y_ex_b)
+                                delta_y_ex_out.masked_scatter_(move_btm_mask, delta_y_ex_b)
+                                delta_y_ex_out.masked_scatter_(~move_btm_mask, delta_y_ex_t)
+                                delta_y_ex.masked_scatter_(move_out_mask, delta_y_ex_out)
+
+                                pos_x.masked_scatter_(exclude_mask, pos_x_ex + delta_x_ex)
+                                pos_y.masked_scatter_(exclude_mask, pos_y_ex + delta_y_ex)
+                            # update the minimum replacement for subregions
+                            pos_x.masked_scatter_(mask, pos_x_i + delta_x_min)
+                            pos_y.masked_scatter_(mask, pos_y_i + delta_y_min)
+                        res = pos_w.data.clone()
+                        res.data[:num_movable_nodes].copy_(pos_x)
+                        res.data[num_nodes:num_nodes + num_movable_nodes].copy_(pos_y)
+                        return res
+
+                    if len(placedb.regions) != 0 and Llambda_metrics[-1][-1].overflow < 0.5 and iteration % int(50*0.997**iteration) == 0:
+                        self.plot(params, placedb, iteration-1,self.pos[0].data.clone().cpu().numpy())
+                        pos_w = self.pos[0]
                         pos_g = solve_problem_2(pos_w, admm_multiplier)
                         admm_multiplier += pos_w - pos_g
-                        model.data_collections.pos[0].data.copy_(pos_g)                                    
+                        self.pos[0].data.copy_(pos_g)
+                        self.plot(params, placedb, iteration,self.pos[0].data.clone().cpu().numpy())
 
                 # in case of divergence, use the best metric
                 last_metric = all_metrics[-1][-1][-1]
