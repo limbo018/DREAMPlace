@@ -301,7 +301,9 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                     num_area_adjust = 0
 
                 Llambda_flat_iteration = 0
-                non_fence_regions = fence_region.slice_non_fence_region(placedb.regions, placedb.xl, placedb.yl, placedb.xh, placedb.yh, merge=True)
+                non_fence_regions_ex = fence_region.slice_non_fence_region(placedb.regions, placedb.xl, placedb.yl, placedb.xh, placedb.yh, merge=True)
+                non_fence_regions = [fence_region.slice_non_fence_region(region, placedb.xl, placedb.yl, placedb.xh, placedb.yh, merge=True) for region in placedb.regions]
+
                 for Lgamma_step in range(model.Lgamma_iteration):
                     Lgamma_metrics.append([])
                     Llambda_metrics = Lgamma_metrics[-1]
@@ -542,7 +544,16 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         return res
 
 
-                    def solve_problem_2(pos_w, admm_multiplier, non_fence_regions):
+                    def solve_problem_2(pos_w, admm_multiplier, non_fence_regions_ex, non_fence_regions, iteration):
+                        def check_valid(regions, pos_x, pos_y, pos_xh, pos_yh, valid_margin=None):
+                            if(type(regions) == list):
+                                regions = np.concatenate(regions,0)
+                            valid_mask = torch.ones_like(pos_x, dtype=torch.bool)
+                            for sub_region in regions:
+                                xll, yll, xhh, yhh = sub_region
+                                valid_mask.masked_fill_((pos_x < xhh-valid_margin) & (pos_xh > xll+valid_margin) & (pos_y < yhh-valid_margin) & (pos_yh > yll+valid_margin), 0)
+                            return valid_mask
+
                         num_nodes = placedb.num_nodes
                         num_movable_nodes = placedb.num_movable_nodes
 
@@ -555,31 +566,35 @@ class NonLinearPlace(BasicPlace.BasicPlace):
 
                         regions = placedb.regions
                         margin = 12
+                        valid_margin = 100 * 0.99**iteration
                         ### move cells into fence regions
                         for i in range(num_regions):
                             mask = (node2fence_region_map == i)
                             pos_x_i, pos_y_i = pos_x[mask], pos_y[mask]
                             num_movable_nodes_i = pos_x_i.numel()
                             node_size_x_i, node_size_y_i = node_size_x[mask], node_size_y[mask]
+                            pos_xh_i = pos_x_i + node_size_x_i
+                            pos_yh_i = pos_y_i + node_size_y_i
                             regions_i = regions[i] # [n_regions, 4]
                             delta_min = torch.empty(num_movable_nodes_i, device=pos_x.device).fill_(((placedb.xh-placedb.xl)**2+(placedb.yh-placedb.yl)**2))
                             delta_x_min = torch.zeros_like(delta_min)
                             delta_y_min = torch.zeros_like(delta_min)
 
+                            valid_mask = check_valid(non_fence_regions[i], pos_x_i, pos_y_i, pos_xh_i, pos_yh_i, valid_margin)
+
                             for sub_region in regions_i:
                                 delta_x = torch.zeros_like(delta_min)
                                 delta_y = torch.zeros_like(delta_min)
                                 xl, yl, xh, yh = sub_region
+
                                 # on the left
-                                mask_l = pos_x_i < xl + margin
+                                mask_l = (pos_x_i < xl + margin).masked_fill_(valid_mask, 0)
                                 # on the right
-                                pos_xh_i = pos_x_i + node_size_x_i
-                                mask_r = pos_xh_i > xh - margin
+                                mask_r = (pos_xh_i > xh - margin).masked_fill_(valid_mask, 0)
                                 # on the top
-                                pos_yh_i = pos_y_i + node_size_y_i
-                                mask_t = pos_yh_i > yh - margin
+                                mask_t = (pos_yh_i > yh - margin).masked_fill_(valid_mask, 0)
                                 # on the bottom
-                                mask_b = pos_y_i < yl + margin
+                                mask_b = (pos_y_i < yl + margin).masked_fill_(valid_mask, 0)
 
                                 # x replacement for left cell
                                 delta_x.masked_scatter_(mask_l, xl + margin - pos_x_i[mask_l])
@@ -604,7 +619,8 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                             pos_y.masked_scatter_(mask, pos_y_i + delta_y_min)
 
                         ### move cells out of fence regions
-                        margin = -1
+                        margin = 0
+                        valid_margin = 100 * 0.99**iteration
                         exclude_mask = (node2fence_region_map > 1e3)
                         pos_x_ex, pos_y_ex = pos_x[exclude_mask], pos_y[exclude_mask]
                         node_size_x_ex, node_size_y_ex = node_size_x[exclude_mask], node_size_y[exclude_mask]
@@ -614,25 +630,22 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         delta_min = torch.empty(pos_x_ex.numel(), device=pos_x.device).fill_(((placedb.xh-placedb.xl)**2+(placedb.yh-placedb.yl)**2))
                         delta_x_min = torch.zeros_like(delta_min)
                         delta_y_min = torch.zeros_like(delta_min)
+                        ### don't move valid cells
+                        valid_mask = check_valid(regions, pos_x_ex, pos_y_ex, pos_xh_ex, pos_yh_ex, valid_margin)
 
-                        for sub_region in non_fence_regions:
+                        for sub_region in non_fence_regions_ex:
                             delta_x = torch.zeros_like(delta_min)
                             delta_y = torch.zeros_like(delta_min)
                             xl, yl, xh, yh = sub_region
-                            valid_mask = torch.ones_like(pos_x_ex, dtype=torch.bool)
-                            for fence_region in regions:
-                                for sub_fence_region in fence_region:
-                                    xll, yll, xhh, yhh = sub_fence_region
-                                    valid_mask.masked_fill_((pos_x_ex < xhh) & (pos_xh_ex > xll) & (pos_y_ex < yhh) & (pos_yh_ex > yll), 0)
 
                             # on the left
-                            mask_l = (pos_x_ex < xl + margin).masked_fill_(valid_mask, 0)
+                            mask_l = (pos_x_ex < xl).masked_fill_(valid_mask, 0)
                             # on the right
-                            mask_r = (pos_xh_ex > xh - margin).masked_fill_(valid_mask, 0)
+                            mask_r = (pos_xh_ex > xh).masked_fill_(valid_mask, 0)
                             # on the top
-                            mask_t = (pos_yh_ex > yh - margin).masked_fill_(valid_mask, 0)
+                            mask_t = (pos_yh_ex > yh).masked_fill_(valid_mask, 0)
                             # on the bottom
-                            mask_b = (pos_y_ex < yl + margin).masked_fill_(valid_mask, 0)
+                            mask_b = (pos_y_ex < yl).masked_fill_(valid_mask, 0)
 
                             # x replacement for left cell
                             delta_x.masked_scatter_(mask_l, xl + margin - pos_x_ex[mask_l])
@@ -663,12 +676,12 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         return res
 
 
-                    if 1 and len(placedb.regions) != 0 and Llambda_metrics[-1][-1].overflow < 0.7 and iteration % 5 == 0:
+                    if 1 and len(placedb.regions) != 0 and Llambda_metrics[-1][-1].overflow < 0.99 and iteration % 1 == 0:
                     # if(1 and iteration == 980):
                         if(iteration % 10 == 0):
                             self.plot(params, placedb, iteration-1,self.pos[0].data.clone().cpu().numpy())
                         pos_w = self.pos[0]
-                        pos_g = solve_problem_2(pos_w, admm_multiplier, non_fence_regions)
+                        pos_g = solve_problem_2(pos_w, admm_multiplier, non_fence_regions_ex, non_fence_regions, iteration)
                         admm_multiplier += pos_w - pos_g
                         self.pos[0].data.copy_(pos_g)
                         if(iteration % 10 == 0):

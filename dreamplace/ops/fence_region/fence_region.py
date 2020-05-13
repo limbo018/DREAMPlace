@@ -14,6 +14,8 @@ def slice_non_fence_region(regions, xl, yl, xh, yh, merge=False, plot=False):
             regions = torch.from_numpy(np.concatenate(regions, 0))
         elif(isinstance(regions[0], torch.Tensor)):
             regions = torch.cat(regions, dim=0) # [n_box, 4]
+    elif(isinstance(regions, np.ndarray)):
+        regions = torch.from_numpy(regions)
     num_boxes = regions.size(0)
     regions = regions.view(num_boxes, 2, 2)
     fence_regions = MultiPolygon(
