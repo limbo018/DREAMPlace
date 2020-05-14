@@ -6,16 +6,19 @@ from shapely.geometry import (GeometryCollection, LineString, MultiPolygon,
 from shapely.ops import unary_union
 import numpy as np
 
-__all__ = ["gen_macros_for_non_fence_region", "gen_macros_for_fence_region", "slice_non_fence_region"]
+__all__ = ["gen_macros_for_non_fence_region",
+           "gen_macros_for_fence_region", "slice_non_fence_region"]
 
-def slice_non_fence_region(regions, xl, yl, xh, yh, merge=False, plot=False):
+
+def slice_non_fence_region(regions, xl, yl, xh, yh, merge=False, plot=False, figname="non_fence_region.png"):
     if(type(regions) == list):
         if(isinstance(regions[0], np.ndarray)):
             regions = torch.from_numpy(np.concatenate(regions, 0))
         elif(isinstance(regions[0], torch.Tensor)):
-            regions = torch.cat(regions, dim=0) # [n_box, 4]
+            regions = torch.cat(regions, dim=0)  # [n_box, 4]
     elif(isinstance(regions, np.ndarray)):
         regions = torch.from_numpy(regions)
+
     num_boxes = regions.size(0)
     regions = regions.view(num_boxes, 2, 2)
     fence_regions = MultiPolygon(
@@ -30,9 +33,12 @@ def slice_non_fence_region(regions, xl, yl, xh, yh, merge=False, plot=False):
         x_l = xl if i == 0 else xs[i-1]
         x_h = xh if i == xs.size(0) else xs[i]
         cvx_hull = box(x_l, yl, x_h, yh)
-        if(not cvx_hull.is_valid):
+
+        if(x_l >= x_h or not cvx_hull.is_valid):
             continue
         intersect = non_fence_region.intersection(cvx_hull)
+        # if(300<x_l<400):
+        #     print(intersect)
 
         if(isinstance(intersect, Polygon)):
             slices.append(intersect.bounds)
@@ -59,7 +65,6 @@ def slice_non_fence_region(regions, xl, yl, xh, yh, merge=False, plot=False):
     else:
         bbox_list = slices
 
-
     if(plot):
         from matplotlib import pyplot as plt
         from descartes.patch import PolygonPatch
@@ -76,13 +81,14 @@ def slice_non_fence_region(regions, xl, yl, xh, yh, merge=False, plot=False):
                 non_fence_region), edgecolor=color_isvalid(non_fence_region, valid=BLUE), alpha=0.5, zorder=2)
             ax.add_patch(patch)
 
-        set_limits(ax, -1, 20, -1, 20)
+        set_limits(ax, -1, 1000, -1, 1000, dx=100, dy=100)
         ax = fig.add_subplot(122)
         patch = PolygonPatch(non_fence_region, facecolor=color_isvalid(
             non_fence_region), edgecolor=color_isvalid(non_fence_region, valid=BLUE), alpha=0.5, zorder=2)
         ax.add_patch(patch)
-        set_limits(ax, -1, 20, -1, 20)
-        plt.savefig('non_fence_region.png')
+        set_limits(ax, -1, 1000, -1, 1000, dx=100, dy=100)
+        plt.savefig(figname)
+        plt.close()
 
     bbox_list = torch.tensor(bbox_list, device=regions.device)
     return bbox_list
@@ -266,7 +272,23 @@ def gen_macros_for_fence_region(macro_pos_x, macro_pos_y, macro_size_x, macro_si
     return pos_x, pos_y, node_size_x, node_size_y
 
 
+def draw_ispd2015():
+    regions = [np.array([(47200, 252000, 99200, 492000)], dtype=np.float32)/1000,
+               np.array([(136000, 252000, 297800, 300000), (194800, 346000, 297800, 396000), (297800, 252000,
+                                                                                              361200, 396000), (136000, 346000, 194800, 490000), (194800, 440000, 361200, 490000)], dtype=np.float32)/1000,
+               np.array([(483200, 254000, 484400, 408000), (484400, 364000, 565400, 408000), (426000, 250000, 483200,
+                                                                                              490000), (483200, 450000, 565400, 490000), (565400, 364000, 622600, 490000)], dtype=np.float32)/1000,
+               np.array([(725000, 252000, 828000, 300000),       (668200, 252000, 725000, 490000),       (725000, 448000, 828000, 490000),       (828000, 252000, 856200, 490000)], dtype=np.float32)/1000]
+    xl, yl, xh, yh = 0, 0, 1000, 1000
+    non_fence_regions_ex = slice_non_fence_region(
+        regions, xl, yl, xh, yh, merge=False, plot=True, figname="nonfence_ex.png")
+    non_fence_regions = [slice_non_fence_region(
+        region, xl, yl, xh, yh, merge=False, plot=True, figname=f"nonfence_{i}.png") for i, region in enumerate(regions)]
+
+
 if __name__ == "__main__":
+    draw_ispd2015()
+    exit(1)
     xl, yl, xh, yh = 0, 0, 20, 20
     macro_pos_x = torch.tensor([8]).float()
     macro_pos_y = torch.tensor([5]).float()

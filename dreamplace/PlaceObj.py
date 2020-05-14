@@ -32,8 +32,8 @@ import dreamplace.ops.adjust_node_area.adjust_node_area as adjust_node_area
 
 
 class PreconditionOp:
-    """Preconditioning engine is critical for convergence. 
-    Need to be carefully designed. 
+    """Preconditioning engine is critical for convergence.
+    Need to be carefully designed.
     """
     def __init__(self, placedb, data_collections):
         self.placedb = placedb
@@ -50,12 +50,12 @@ class PreconditionOp:
         else:
             self.best_overflow = min(self.best_overflow, overflow)
 
-    def __call__(self, grad, density_weight):
-        """Introduce alpha parameter to avoid divergence. 
-        It is tricky for this parameter to increase. 
+    def __call__(self, grad, density_weight, admm_rho=0):
+        """Introduce alpha parameter to avoid divergence.
+        It is tricky for this parameter to increase.
         """
         with torch.no_grad():
-            precond = self.data_collections.num_pins_in_nodes + self.alpha * density_weight * self.data_collections.node_areas
+            precond = self.data_collections.num_pins_in_nodes + self.alpha * density_weight * self.data_collections.node_areas + admm_rho
             precond.clamp_(min=1.0)
             grad[0:self.placedb.num_nodes].div_(precond)
             grad[self.placedb.num_nodes:self.placedb.num_nodes *
@@ -162,6 +162,7 @@ class PlaceObj(nn.Module):
                 'routability_Lsub_iteration']
         else:
             self.routability_Lsub_iteration = self.Lsub_iteration
+        self.admm_rho = 1
 
     def obj_fn(self, pos_w, pos_g=None, admm_multiplier=None):
         """
@@ -174,7 +175,8 @@ class PlaceObj(nn.Module):
         density = self.op_collections.density_op(pos_w)
         result = wirelength + self.density_weight * density
         if pos_g is not None:
-            result += 0.5 * torch.dot(pos_w - pos_g + admm_multiplier, pos_w - pos_g + admm_multiplier)
+            diff = pos_w - pos_g + admm_multiplier
+            result += self.admm_rho / 2 * torch.dot(diff, diff)
         return result
 
     def obj_and_grad_fn(self, pos_w, pos_g=None, admm_multiplier=None):
@@ -192,7 +194,7 @@ class PlaceObj(nn.Module):
 
         obj.backward()
 
-        self.op_collections.precondition_op(pos_w.grad, self.density_weight)
+        self.op_collections.precondition_op(pos_w.grad, self.density_weight, self.admm_rho)
 
         return obj, pos_w.grad
 
@@ -228,10 +230,10 @@ class PlaceObj(nn.Module):
 
     def estimate_initial_learning_rate(self, x_k, lr):
         """
-        @brief Estimate initial learning rate by moving a small step. 
-        Computed as | x_k - x_k_1 |_2 / | g_k - g_k_1 |_2. 
-        @param x_k current solution 
-        @param lr small step 
+        @brief Estimate initial learning rate by moving a small step.
+        Computed as | x_k - x_k_1 |_2 / | g_k - g_k_1 |_2.
+        @param x_k current solution
+        @param lr small step
         """
         obj_k, g_k = self.obj_and_grad_fn(x_k)
         x_k_1 = torch.autograd.Variable(x_k - lr * g_k, requires_grad=True)
@@ -620,10 +622,10 @@ class PlaceObj(nn.Module):
 
     def build_route_utilization_map(self, params, placedb, data_collections):
         """
-        @brief routing congestion map based on current cell locations 
-        @param params parameters 
-        @param placedb placement database 
-        @param data_collections a collection of all data and variables required for constructing the ops 
+        @brief routing congestion map based on current cell locations
+        @param params parameters
+        @param placedb placement database
+        @param data_collections a collection of all data and variables required for constructing the ops
         """
         congestion_op = rudy.Rudy(
             netpin_start=data_collections.flat_net2pin_start_map,
@@ -650,10 +652,10 @@ class PlaceObj(nn.Module):
 
     def build_pin_utilization_map(self, params, placedb, data_collections):
         """
-        @brief pin density map based on current cell locations 
-        @param params parameters 
-        @param placedb placement database 
-        @param data_collections a collection of all data and variables required for constructing the ops 
+        @brief pin density map based on current cell locations
+        @param params parameters
+        @param placedb placement database
+        @param data_collections a collection of all data and variables required for constructing the ops
         """
         return pin_utilization.PinUtilization(
             pin_weights=data_collections.pin_weights,
@@ -673,7 +675,7 @@ class PlaceObj(nn.Module):
 
     def build_nctugr_congestion_map(self, params, placedb, data_collections):
         """
-        @brief call NCTUgr for congestion estimation 
+        @brief call NCTUgr for congestion estimation
         """
         path = "%s/%s" % (params.result_dir, params.design_name())
         return nctugr_binary.NCTUgr(
@@ -695,7 +697,7 @@ class PlaceObj(nn.Module):
 
     def build_adjust_node_area(self, params, placedb, data_collections):
         """
-        @brief adjust cell area according to routing congestion and pin utilization map 
+        @brief adjust cell area according to routing congestion and pin utilization map
         """
         total_movable_area = (
             data_collections.node_size_x[:placedb.num_movable_nodes] *

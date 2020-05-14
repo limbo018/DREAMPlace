@@ -301,6 +301,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                     num_area_adjust = 0
 
                 Llambda_flat_iteration = 0
+
                 non_fence_regions_ex = fence_region.slice_non_fence_region(placedb.regions, placedb.xl, placedb.yl, placedb.xh, placedb.yh, merge=True)
                 non_fence_regions = [fence_region.slice_non_fence_region(region, placedb.xl, placedb.yl, placedb.xh, placedb.yh, merge=True) for region in placedb.regions]
 
@@ -565,8 +566,10 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         num_regions = len(placedb.regions)
 
                         regions = placedb.regions
-                        margin = 12
-                        valid_margin = 100 * 0.99**iteration
+                        margin = 50 * 0.997**iteration
+
+                        valid_margin = 1000 * 0.994**iteration
+                        valid_margin = 0 if valid_margin < 5 else valid_margin
                         ### move cells into fence regions
                         for i in range(num_regions):
                             mask = (node2fence_region_map == i)
@@ -612,15 +615,15 @@ class NonLinearPlace(BasicPlace.BasicPlace):
 
                                 delta_x_min.masked_scatter_(update_mask, delta_x[update_mask])
                                 delta_y_min.masked_scatter_(update_mask, delta_y[update_mask])
-                                delta_min.masked_scatter_(update_mask, delta_i)
+                                delta_min.masked_scatter_(update_mask, delta_i[update_mask])
 
                             # update the minimum replacement for subregions
                             pos_x.masked_scatter_(mask, pos_x_i + delta_x_min)
                             pos_y.masked_scatter_(mask, pos_y_i + delta_y_min)
 
                         ### move cells out of fence regions
-                        margin = 0
-                        valid_margin = 100 * 0.99**iteration
+                        # margin = 0
+                        # valid_margin = 100 * 0.99**iteration
                         exclude_mask = (node2fence_region_map > 1e3)
                         pos_x_ex, pos_y_ex = pos_x[exclude_mask], pos_y[exclude_mask]
                         node_size_x_ex, node_size_y_ex = node_size_x[exclude_mask], node_size_y[exclude_mask]
@@ -663,7 +666,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
 
                             delta_x_min.masked_scatter_(update_mask, delta_x[update_mask])
                             delta_y_min.masked_scatter_(update_mask, delta_y[update_mask])
-                            delta_min.masked_scatter_(update_mask, delta_i)
+                            delta_min.masked_scatter_(update_mask, delta_i[update_mask])
 
                         # update the minimum replacement for subregions
                         pos_x.masked_scatter_(exclude_mask, pos_x_ex + delta_x_min)
@@ -676,7 +679,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         return res
 
 
-                    if 1 and len(placedb.regions) != 0 and Llambda_metrics[-1][-1].overflow < 0.99 and iteration % 1 == 0:
+                    if 1 and len(placedb.regions) != 0 and Llambda_metrics[-1][-1].overflow < 0.995 and iteration % 1 == 0:
                     # if(1 and iteration == 980):
                         if(iteration % 10 == 0):
                             self.plot(params, placedb, iteration-1,self.pos[0].data.clone().cpu().numpy())
@@ -688,6 +691,11 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                             self.plot(params, placedb, iteration,self.pos[0].data.clone().cpu().numpy())
 
                 # in case of divergence, use the best metric
+                ### always rollback to best overflow
+                self.pos[0].data.copy_(best_pos[0].data)
+                logging.error(
+                        "possible DIVERGENCE detected, roll back to the best position recorded"
+                    )
                 last_metric = all_metrics[-1][-1][-1]
                 if last_metric.overflow > max(
                         params.stop_overflow, best_metric[0].overflow
