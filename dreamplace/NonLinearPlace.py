@@ -302,8 +302,9 @@ class NonLinearPlace(BasicPlace.BasicPlace):
 
                 Llambda_flat_iteration = 0
 
-                non_fence_regions_ex = fence_region.slice_non_fence_region(placedb.regions, placedb.xl, placedb.yl, placedb.xh, placedb.yh, merge=True)
-                non_fence_regions = [fence_region.slice_non_fence_region(region, placedb.xl, placedb.yl, placedb.xh, placedb.yh, merge=True) for region in placedb.regions]
+                if(len(placedb.regions)>0):
+                    non_fence_regions_ex = fence_region.slice_non_fence_region(placedb.regions, placedb.xl, placedb.yl, placedb.xh, placedb.yh, merge=True)
+                    non_fence_regions = [fence_region.slice_non_fence_region(region, placedb.xl, placedb.yl, placedb.xh, placedb.yh, merge=True) for region in placedb.regions]
 
                 for Lgamma_step in range(model.Lgamma_iteration):
                     Lgamma_metrics.append([])
