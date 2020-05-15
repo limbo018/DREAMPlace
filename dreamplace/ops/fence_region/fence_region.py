@@ -10,14 +10,20 @@ __all__ = ["gen_macros_for_non_fence_region",
            "gen_macros_for_fence_region", "slice_non_fence_region"]
 
 
-def slice_non_fence_region(regions, xl, yl, xh, yh, merge=False, plot=False, figname="non_fence_region.png"):
+def slice_non_fence_region(regions, xl, yl, xh, yh, macro_pos_x=None, macro_pos_y=None, macro_size_x=None, macro_size_y=None, merge=False, plot=False, figname="non_fence_region.png", device=torch.device("cuda:0")):
     if(type(regions) == list):
         if(isinstance(regions[0], np.ndarray)):
-            regions = torch.from_numpy(np.concatenate(regions, 0))
+            regions = torch.from_numpy(np.concatenate(regions, 0)).to(device)
         elif(isinstance(regions[0], torch.Tensor)):
-            regions = torch.cat(regions, dim=0)  # [n_box, 4]
+            regions = torch.cat(regions, dim=0).to(device)  # [n_box, 4]
     elif(isinstance(regions, np.ndarray)):
-        regions = torch.from_numpy(regions)
+        regions = torch.from_numpy(regions).to(device)
+
+    if(macro_pos_x is not None):
+        print(macro_pos_x.size(), macro_pos_y.size(), macro_size_x.size(), macro_size_y.size())
+        macros = unary_union(MultiPolygon([box(macro_pos_x[i], macro_pos_y[i], macro_pos_x[i]+macro_size_x[i],
+                               macro_pos_y[i]+macro_size_y[i]) for i in range(macro_size_x.size(0))]))
+
 
     num_boxes = regions.size(0)
     regions = regions.view(num_boxes, 2, 2)
@@ -25,7 +31,10 @@ def slice_non_fence_region(regions, xl, yl, xh, yh, merge=False, plot=False, fig
         [box(regions[i, 0, 0], regions[i, 0, 1], regions[i, 1, 0], regions[i, 1, 1]) for i in range(num_boxes)])
     fence_regions = unary_union(fence_regions)
     site = box(xl, yl, xh, yh)
-    non_fence_region = unary_union(site.difference(fence_regions))
+    if(macro_pos_x is not None):
+        non_fence_region = unary_union(site.difference(unary_union(fence_regions.union(macros))))
+    else:
+        non_fence_region = unary_union(site.difference(fence_regions))
 
     slices = []
     xs = regions[:, :, 0].view(-1).sort()[0]
@@ -90,7 +99,7 @@ def slice_non_fence_region(regions, xl, yl, xh, yh, merge=False, plot=False, fig
         plt.savefig(figname)
         plt.close()
 
-    bbox_list = torch.tensor(bbox_list, device=regions.device)
+    bbox_list = torch.tensor(bbox_list, device=device)
     return bbox_list
 
 
@@ -283,7 +292,7 @@ def draw_ispd2015():
     non_fence_regions_ex = slice_non_fence_region(
         regions, xl, yl, xh, yh, merge=False, plot=True, figname="nonfence_ex.png")
     non_fence_regions = [slice_non_fence_region(
-        region, xl, yl, xh, yh, merge=False, plot=True, figname=f"nonfence_{i}.png") for i, region in enumerate(regions)]
+        region, xl, yl, xh, yh, merge=True, plot=True, figname=f"nonfence_{i}.png") for i, region in enumerate(regions)]
 
 
 if __name__ == "__main__":

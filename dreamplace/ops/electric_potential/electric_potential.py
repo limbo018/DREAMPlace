@@ -88,13 +88,30 @@ class ElectricPotentialFunction(Function):
         idct2=None,
         idct_idxst=None,
         idxst_idct=None,
-        fast_mode=True  # fast mode will discard some computation
+        fast_mode=True,  # fast mode will discard some computation
+        fence_region_map=None, # used to modify density map to emulate multi-electric fields
     ):
 
         tt = time.time()
+
+        # if(fence_region_map is not None):
+        #     added_target_density = 1.3 * target_density.data.item()
+        #     added_density = (fence_region_map>fence_region_map.min().data.item()).float().sum()*added_target_density
+        #     ori_init_density = initial_density_map.sum() #/ (bin_size_x * bin_size_y)
+        #     print(added_density, ori_init_density)
+        #     initial_density_map = initial_density_map*ori_init_density/(added_density+ori_init_density)
+
+        if(fence_region_map is not None):
+            mask = fence_region_map > fence_region_map.min().data.item()
+            factor = (~mask).float().mean()
+            factor = (1.4 + (1.2-1.4)*factor)
+        else:
+            factor = 1
+
+
         density_map = ElectricDensityMapFunction.forward(
             pos, node_size_x_clamped, node_size_y_clamped, offset_x, offset_y,
-            ratio, bin_center_x, bin_center_y, initial_density_map,
+            ratio, bin_center_x, bin_center_y, initial_density_map*factor,
             target_density, xl, yl, xh, yh, bin_size_x, bin_size_y,
             num_movable_nodes, num_filler_nodes, padding, padding_mask,
             num_bins_x, num_bins_y, num_movable_impacted_bins_x,
@@ -156,6 +173,11 @@ class ElectricPotentialFunction(Function):
 
         # compute auv
         density_map.mul_(1.0 / (ctx.bin_size_x * ctx.bin_size_y))
+
+        if(fence_region_map is not None):
+            padded_density = min(1,factor*target_density.data.item())
+            density_map = density_map.masked_fill_(mask, padded_density)
+
 
         #auv = discrete_spectral_transform.dct2_2N(density_map, expk0=exact_expkM, expk1=exact_expkN)
         auv = dct2.forward(density_map)
@@ -270,7 +292,7 @@ class ElectricPotentialFunction(Function):
             None, None, None, None, \
             None, None, None, None, \
             None, None, None, None, \
-            None
+            None, None
 
 
 class ElectricPotential(ElectricOverflow):
@@ -294,10 +316,12 @@ class ElectricPotential(ElectricOverflow):
         num_terminals,
         num_filler_nodes,
         padding,
-        deterministic_flag,  # control whether to use deterministic routine 
+        deterministic_flag,  # control whether to use deterministic routine
         sorted_node_map,
         movable_macro_mask=None,
-        fast_mode=False):
+        fast_mode=False,
+        fence_regions=None # [n_subregion, 4] as dummy macros added to initial density. (xl,yl,xh,yh) rectangles
+        ):
         """
         @brief initialization
         Be aware that all scalars must be python type instead of tensors.
@@ -318,7 +342,7 @@ class ElectricPotential(ElectricOverflow):
         @param num_terminals number of fixed cells
         @param num_filler_nodes number of filler cells
         @param padding bin padding to boundary of placement region
-        @param deterministic_flag control whether to use deterministic routine 
+        @param deterministic_flag control whether to use deterministic routine
         @param fast_mode if true, only gradient is computed, while objective computation is skipped
         """
         super(ElectricPotential,
@@ -341,9 +365,56 @@ class ElectricPotential(ElectricOverflow):
                              sorted_node_map=sorted_node_map,
                              movable_macro_mask=movable_macro_mask)
         self.fast_mode = fast_mode
+        self.fence_regions = fence_regions
+
+
+    def compute_fence_region_map(self, fence_region, macro_pos_x=None, macro_pos_y=None, macro_size_x=None, macro_size_y=None):
+        '''
+        @description: generate density map for invalid regions to enable fence region aware spreading
+        @param fence_region {Tensor}
+        @param macro_pos_x {Tensor}
+        @param macro_pos_y {Tensor}
+        @param macro_size_x {Tensor}
+        @param macro_size_y {Tensor}
+        @return: density map
+        '''
+        if(macro_pos_x is not None):
+            pos = torch.cat([fence_region[:,0], macro_pos_x, fence_region[:,1], macro_pos_y], 0)
+            num_terminals = fence_region.size(0) + macro_size_x.size(0)
+            node_size_x = torch.cat([fence_region[:,2] - fence_region[:,0], macro_size_x], 0)
+            node_size_y = torch.cat([fence_region[:,3] - fence_region[:,1], macro_size_y], 0)
+        else:
+            pos = fence_region[:,:2].t().contiguous().view(-1)
+            num_terminals = fence_region.size(0)
+            node_size_x = fence_region[:,2] - fence_region[:,0]
+            node_size_y = fence_region[:,3] - fence_region[:,1]
+        max_size_x = node_size_x.max()
+        max_size_y = node_size_y.max()
+        num_fixed_impacted_bins_x = ((max_size_x + self.bin_size_x) /
+                                        self.bin_size_x).ceil().clamp(
+                                            max=self.num_bins_x)
+        num_fixed_impacted_bins_y = ((max_size_y + self.bin_size_y) /
+                                        self.bin_size_y).ceil().clamp(
+                                            max=self.num_bins_y)
+
+        if pos.is_cuda:
+            func = electric_potential_cuda.fixed_density_map
+        else:
+            func = electric_potential_cpp.fixed_density_map
+
+        fence_region_map = func(
+            pos, node_size_x, node_size_y, self.bin_center_x,
+            self.bin_center_y, self.xl, self.yl, self.xh, self.yh,
+            self.bin_size_x, self.bin_size_y, 0,
+            num_terminals, self.num_bins_x, self.num_bins_y,
+            num_fixed_impacted_bins_x, num_fixed_impacted_bins_y,
+            self.deterministic_flag)
+        # scale density of virtual macros
+        fence_region_map.mul_(self.target_density)
+        return fence_region_map
 
     def reset(self):
-        """ Compute members derived from input 
+        """ Compute members derived from input
         """
         super(ElectricPotential, self).reset()
         logger.info("regard %d cells as movable macros in global placement" %
@@ -361,8 +432,27 @@ class ElectricPotential(ElectricOverflow):
         self.idct_idxst = None
         self.idxst_idct = None
 
+        # reset fence region map
+        self.fence_region_map = None
+
     def forward(self, pos):
+        if(self.fence_regions is not None):
+            self.fence_region_map = self.compute_fence_region_map(self.fence_regions)
+        else:
+            self.fence_region_map = None
+
         if self.initial_density_map is None:
+            # self.num_nodes = self.num_filler_nodes + self.num_movable_nodes + self.num_terminals
+            # if(self.fence_region_map is not None):
+            #     self.initial_density_map = self.compute_fence_region_map(
+            #         self.fence_regions,
+            #         pos[self.num_movable_nodes:self.num_movable_nodes+self.num_terminals],
+            #         pos[self.num_nodes+self.num_movable_nodes:self.num_nodes+self.num_movable_nodes+self.num_terminals],
+            #         self.node_size_x[self.num_movable_nodes:self.num_movable_nodes+self.num_terminals],
+            #         self.node_size_y[self.num_movable_nodes:self.num_movable_nodes+self.num_terminals]
+            #         )
+            # else:
+            #     self.compute_initial_density_map(pos)
             self.compute_initial_density_map(pos)
             # plot(0, self.initial_density_map.clone().div(self.bin_size_x*self.bin_size_y).cpu().numpy(), self.padding, 'summary/initial_potential_map')
             logger.info("fixed density map: average %g, max %g, bin area %g" %
@@ -420,4 +510,4 @@ class ElectricPotential(ElectricOverflow):
             self.exact_expkN, self.inv_wu2_plus_wv2,
             self.wu_by_wu2_plus_wv2_half, self.wv_by_wu2_plus_wv2_half,
             self.dct2, self.idct2, self.idct_idxst, self.idxst_idct,
-            self.fast_mode)
+            self.fast_mode, self.fence_region_map)

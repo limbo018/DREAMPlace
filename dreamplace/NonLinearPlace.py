@@ -302,9 +302,25 @@ class NonLinearPlace(BasicPlace.BasicPlace):
 
                 Llambda_flat_iteration = 0
 
-                if(len(placedb.regions)>0):
+                ### Fence region preparation
+                if(len(placedb.regions) > 0):
+                    num_movable_nodes = placedb.num_movable_nodes
+                    num_filler_nodes = placedb.num_filler_nodes
+                    num_nodes = placedb.num_nodes
                     non_fence_regions_ex = fence_region.slice_non_fence_region(placedb.regions, placedb.xl, placedb.yl, placedb.xh, placedb.yh, merge=True)
                     non_fence_regions = [fence_region.slice_non_fence_region(region, placedb.xl, placedb.yl, placedb.xh, placedb.yh, merge=True) for region in placedb.regions]
+                    inner_fence_region = fence_region.slice_non_fence_region(
+                        placedb.regions,
+                        placedb.xl, placedb.yl, placedb.xh, placedb.yh, merge=True,
+                        macro_pos_x=self.pos[0][num_movable_nodes:num_nodes-num_filler_nodes],
+                        macro_pos_y=self.pos[0][num_nodes+num_movable_nodes:2*num_nodes-num_filler_nodes],
+                        macro_size_x=self.data_collections.node_size_x[num_movable_nodes:num_nodes-num_filler_nodes],
+                        macro_size_y=self.data_collections.node_size_y[num_movable_nodes:num_nodes-num_filler_nodes]
+                        )# macro padded for inner cells
+                    outer_fence_region = torch.from_numpy(np.concatenate(placedb.regions, 0)).to(self.pos[0].device)
+                    fence_region_list = [inner_fence_region, outer_fence_region]
+                    model.build_fence_region_density_op(fence_region_list, placedb.node2fence_region_map)
+
 
                 for Lgamma_step in range(model.Lgamma_iteration):
                     Lgamma_metrics.append([])
@@ -545,7 +561,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         res.data[num_nodes:num_nodes + num_movable_nodes].copy_(pos_y)
                         return res
 
-
+                    ### solve admm problem 2, closest region projection
                     def solve_problem_2(pos_w, admm_multiplier, non_fence_regions_ex, non_fence_regions, iteration):
                         def check_valid(regions, pos_x, pos_y, pos_xh, pos_yh, valid_margin=None):
                             if(type(regions) == list):
@@ -560,7 +576,8 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         num_movable_nodes = placedb.num_movable_nodes
 
                         pos_g = pos_w + admm_multiplier # minimize the L2 norm
-                        node2fence_region_map = torch.from_numpy(placedb.node2fence_region_map[:num_movable_nodes]).to(pos_g.device)
+                        # node2fence_region_map = torch.from_numpy(placedb.node2fence_region_map[:num_movable_nodes]).to(pos_g.device)
+                        node2fence_region_map = self.data_collections.node2fence_region_map
 
                         pos_x, pos_y = pos_g[:num_movable_nodes], pos_g[num_nodes:num_nodes + num_movable_nodes]
                         node_size_x, node_size_y = model.data_collections.node_size_x[:num_movable_nodes], model.data_collections.node_size_y[:num_movable_nodes]
@@ -569,7 +586,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         regions = placedb.regions
                         margin = 50 * 0.997**iteration
 
-                        valid_margin = 1000 * 0.994**iteration
+                        valid_margin = 1000 * 0.995**iteration
                         valid_margin = 0 if valid_margin < 5 else valid_margin
                         ### move cells into fence regions
                         for i in range(num_regions):
@@ -679,17 +696,21 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         res.data[num_nodes:num_nodes + num_movable_nodes].copy_(pos_y)
                         return res
 
-
-                    if 1 and len(placedb.regions) != 0 and Llambda_metrics[-1][-1].overflow < 0.995 and iteration % 1 == 0:
+                    ### admm algorithm for fence region
+                    if 1 and len(placedb.regions) != 0 and Llambda_metrics[-1][-1].overflow < 0.999 and iteration % 1 == 0:
                     # if(1 and iteration == 980):
                         if(iteration % 10 == 0):
                             self.plot(params, placedb, iteration-1,self.pos[0].data.clone().cpu().numpy())
-                        pos_w = self.pos[0]
-                        pos_g = solve_problem_2(pos_w, admm_multiplier, non_fence_regions_ex, non_fence_regions, iteration)
-                        admm_multiplier += pos_w - pos_g
-                        self.pos[0].data.copy_(pos_g)
+                        if(iteration % 1 == 0 or not model.start_fence_region_density):
+                            pos_w = self.pos[0]
+                            pos_g = solve_problem_2(pos_w, admm_multiplier, non_fence_regions_ex, non_fence_regions, iteration)
+                            admm_multiplier += pos_w - pos_g
+                            self.pos[0].data.copy_(pos_g)
                         if(iteration % 10 == 0):
                             self.plot(params, placedb, iteration,self.pos[0].data.clone().cpu().numpy())
+                        if(Llambda_metrics[-1][-1].overflow < 0.999):
+                            model.start_fence_region_density = True
+
 
                 # in case of divergence, use the best metric
                 ### always rollback to best overflow

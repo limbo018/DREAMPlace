@@ -92,6 +92,12 @@ class PlaceObj(nn.Module):
         """
         super(PlaceObj, self).__init__()
 
+        self.params = params
+        self.placedb = placedb
+        self.data_collections = data_collections
+        self.op_collections = op_collections
+        self.global_place_params = global_place_params
+
         self.gpu = params.gpu
         self.data_collections = data_collections
         self.op_collections = op_collections
@@ -109,6 +115,9 @@ class PlaceObj(nn.Module):
         num_bins_y = global_place_params["num_bins_y"] if global_place_params[
             "num_bins_y"] else placedb.num_bins_y
         name = "%dx%d bins" % (num_bins_x, num_bins_y)
+        self.name = name
+        self.num_bins_x = num_bins_x
+        self.num_bins_y = num_bins_y
         if global_place_params["wirelength"] == "weighted_average":
             self.op_collections.wirelength_op, self.op_collections.update_gamma_op = self.build_weighted_average_wl(
                 params, placedb, self.data_collections,
@@ -163,6 +172,7 @@ class PlaceObj(nn.Module):
         else:
             self.routability_Lsub_iteration = self.Lsub_iteration
         self.admm_rho = 1
+        self.start_fence_region_density = False
 
     def obj_fn(self, pos_w, pos_g=None, admm_multiplier=None):
         """
@@ -187,12 +197,63 @@ class PlaceObj(nn.Module):
         @return objective value
         """
         #self.check_gradient(pos)
-        obj = self.obj_fn(pos_w, pos_g, admm_multiplier)
+        if(not self.start_fence_region_density):
+            obj = self.obj_fn(pos_w, pos_g, admm_multiplier)
+            if pos_w.grad is not None:
+                pos_w.grad.zero_()
+            obj.backward()
+        else:
+            num_nodes = self.placedb.num_nodes
+            num_movable_nodes = self.placedb.num_movable_nodes
+            num_filler_nodes = self.placedb.num_filler_nodes
 
-        if pos_w.grad is not None:
-            pos_w.grad.zero_()
 
-        obj.backward()
+            wl = self.op_collections.wirelength_op(pos_w)
+            if pos_w.grad is not None:
+                pos_w.grad.zero_()
+            wl.backward()
+            wl_grad = pos_w.grad.data.clone()
+            if pos_w.grad is not None:
+                pos_w.grad.zero_()
+
+            inner_density = self.op_collections.inner_fence_region_density_op(pos_w)
+            inner_density.backward()
+            inner_density_grad = pos_w.grad.data.clone()
+            mask = self.data_collections.node2fence_region_map > 1e3
+            inner_density_grad[:num_movable_nodes].masked_fill_(mask, 0)
+            inner_density_grad[num_nodes:num_nodes+num_movable_nodes].masked_fill_(mask, 0)
+            inner_density_grad[num_nodes-num_filler_nodes:num_nodes].mul_(0.5)
+            inner_density_grad[-num_filler_nodes:].mul_(0.5)
+            if pos_w.grad is not None:
+                pos_w.grad.zero_()
+
+            outer_density = self.op_collections.outer_fence_region_density_op(pos_w)
+            outer_density.backward()
+            outer_density_grad = pos_w.grad.data.clone()
+            mask = self.data_collections.node2fence_region_map < 1e3
+            outer_density_grad[:num_movable_nodes].masked_fill_(mask, 0)
+            outer_density_grad[num_nodes:num_nodes+num_movable_nodes].masked_fill_(mask, 0)
+            outer_density_grad[num_nodes-num_filler_nodes:num_nodes].mul_(0.5)
+            outer_density_grad[-num_filler_nodes:].mul_(0.5)
+
+            if 0 and pos_g is not None:
+                if pos_w.grad is not None:
+                    pos_w.grad.zero_()
+                diff = pos_w - pos_g + admm_multiplier
+                penalty = self.admm_rho / 2 * torch.dot(diff, diff)
+                penalty.backward()
+                admm_grad = pos_w.grad.data.clone()
+                pos_w.grad.data.copy_(wl_grad + self.density_weight*(inner_density_grad + outer_density_grad) + admm_grad)
+                obj = wl.data.item() + self.density_weight * self.op_collections.density_op(pos_w.data) + penalty
+
+            else:
+                pos_w.grad.data.copy_(wl_grad + self.density_weight*(inner_density_grad + outer_density_grad))
+                obj = wl.data.item() + self.density_weight * self.op_collections.density_op(pos_w.data)
+
+
+
+
+
 
         self.op_collections.precondition_op(pos_w.grad, self.density_weight, self.admm_rho)
 
@@ -433,7 +494,7 @@ class PlaceObj(nn.Module):
             delta=2.0)
 
     def build_electric_potential(self, params, placedb, data_collections,
-                                 num_bins_x, num_bins_y, padding, name):
+                                 num_bins_x, num_bins_y, padding, name, fence_regions=None):
         """
         @brief e-place electrostatic potential
         @param params parameters
@@ -443,6 +504,7 @@ class PlaceObj(nn.Module):
         @param num_bins_y number of bins in vertical direction
         @param padding number of padding bins to left, right, bottom, top of the placement region
         @param name string for printing
+        @param fence_regions a [n_subregions, 4] tensor for fence regions potential penalty
         """
         bin_size_x = (placedb.xh - placedb.xl) / num_bins_x
         bin_size_y = (placedb.yh - placedb.yl) / num_bins_y
@@ -493,7 +555,8 @@ class PlaceObj(nn.Module):
             deterministic_flag=params.deterministic_flag,
             sorted_node_map=data_collections.sorted_node_map,
             movable_macro_mask=data_collections.movable_macro_mask,
-            fast_mode=params.RePlAce_skip_energy_flag)
+            fast_mode=params.RePlAce_skip_energy_flag,
+            fence_regions=fence_regions)
 
     def initialize_density_weight(self, params, placedb):
         """
@@ -740,3 +803,25 @@ class PlaceObj(nn.Module):
                 route_utilization_map, pin_utilization_map)
 
         return build_adjust_node_area_op
+
+    def build_fence_region_density_op(self, fence_region_list, node2fence_region_map):
+        assert type(fence_region_list) == list and len(fence_region_list) == 2, "Unsupported fence region list"
+        self.op_collections.inner_fence_region_density_op = self.build_electric_potential(
+            self.params,
+            self.placedb,
+            self.data_collections,
+            self.num_bins_x,
+            self.num_bins_y,
+            padding=0,
+            name=self.name,
+            fence_regions = fence_region_list[0]) # density penalty for inner cells
+        self.op_collections.outer_fence_region_density_op = self.build_electric_potential(
+            self.params,
+            self.placedb,
+            self.data_collections,
+            self.num_bins_x,
+            self.num_bins_y,
+            padding=0,
+            name=self.name,
+            fence_regions = fence_region_list[1]) # density penalty for outer cells
+        self.data_collections.node2fence_region_map = torch.from_numpy(self.placedb.node2fence_region_map[:self.placedb.num_movable_nodes]).to(fence_region_list[0].device)
