@@ -20,9 +20,13 @@ def slice_non_fence_region(regions, xl, yl, xh, yh, macro_pos_x=None, macro_pos_
         regions = torch.from_numpy(regions).to(device)
 
     if(macro_pos_x is not None):
+        regions = torch.cat([regions, torch.stack([macro_pos_x.float(), macro_pos_y.float(), macro_pos_x.float()+macro_size_x.float(), macro_pos_y.float()+macro_size_y.float()], 0).t().to(device)], 0)
         print(macro_pos_x.size(), macro_pos_y.size(), macro_size_x.size(), macro_size_y.size())
-        macros = unary_union(MultiPolygon([box(macro_pos_x[i], macro_pos_y[i], macro_pos_x[i]+macro_size_x[i],
-                               macro_pos_y[i]+macro_size_y[i]) for i in range(macro_size_x.size(0))]))
+        total_macro_area = (macro_size_x * macro_size_y).sum().item()
+
+        # macros = unary_union(MultiPolygon([box(macro_pos_x[i], macro_pos_y[i], macro_pos_x[i]+macro_size_x[i],
+        #                        macro_pos_y[i]+macro_size_y[i]) for i in range(macro_size_x.size(0))]))
+        # print("total macro area:", total_macro_area, macros.area)
 
 
     num_boxes = regions.size(0)
@@ -31,10 +35,9 @@ def slice_non_fence_region(regions, xl, yl, xh, yh, macro_pos_x=None, macro_pos_
         [box(regions[i, 0, 0], regions[i, 0, 1], regions[i, 1, 0], regions[i, 1, 1]) for i in range(num_boxes)])
     fence_regions = unary_union(fence_regions)
     site = box(xl, yl, xh, yh)
-    if(macro_pos_x is not None):
-        non_fence_region = unary_union(site.difference(unary_union(fence_regions.union(macros))))
-    else:
-        non_fence_region = unary_union(site.difference(fence_regions))
+
+    non_fence_region = unary_union(site.difference(fence_regions))
+    # print("non fence region area:", non_fence_region.area)
 
     slices = []
     xs = regions[:, :, 0].view(-1).sort()[0]
@@ -100,6 +103,7 @@ def slice_non_fence_region(regions, xl, yl, xh, yh, macro_pos_x=None, macro_pos_
         plt.close()
 
     bbox_list = torch.tensor(bbox_list, device=device)
+    # print("non fence region area after slicing:", ((bbox_list[:,2]-bbox_list[:,0])*(bbox_list[:,3]-bbox_list[:,1])).sum().item())
     return bbox_list
 
 
@@ -289,10 +293,16 @@ def draw_ispd2015():
                                                                                               490000), (483200, 450000, 565400, 490000), (565400, 364000, 622600, 490000)], dtype=np.float32)/1000,
                np.array([(725000, 252000, 828000, 300000),       (668200, 252000, 725000, 490000),       (725000, 448000, 828000, 490000),       (828000, 252000, 856200, 490000)], dtype=np.float32)/1000]
     xl, yl, xh, yh = 0, 0, 1000, 1000
-    non_fence_regions_ex = slice_non_fence_region(
-        regions, xl, yl, xh, yh, merge=False, plot=True, figname="nonfence_ex.png")
-    non_fence_regions = [slice_non_fence_region(
-        region, xl, yl, xh, yh, merge=True, plot=True, figname=f"nonfence_{i}.png") for i, region in enumerate(regions)]
+
+    # non_fence_regions_ex = slice_non_fence_region(
+    #     regions, xl, yl, xh, yh, merge=False, plot=True, figname="nonfence_ex.png")
+    # non_fence_regions = [slice_non_fence_region(
+    #     region, xl, yl, xh, yh, merge=True, plot=True, figname=f"nonfence_{i}.png") for i, region in enumerate(regions)]
+    macro_pos_x = torch.tensor([600])
+    macro_pos_y = torch.tensor([600])
+    macro_size_x = torch.tensor([200])
+    macro_size_y = torch.tensor([200])
+    inner_fence_region = slice_non_fence_region(regions, xl, yl, xh, yh, merge=False, plot=True, figname="inner_nonfence_ex.png", macro_pos_x=macro_pos_x, macro_pos_y=macro_pos_y, macro_size_x=macro_size_x, macro_size_y=macro_size_y)
 
 
 if __name__ == "__main__":
