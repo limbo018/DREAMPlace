@@ -1,6 +1,6 @@
 {
 "lef_input" : ["benchmarks/ispd2015/mgc_matrix_mult_b/tech.lef", "benchmarks/ispd2015/mgc_matrix_mult_b/cells.lef"],
-"def_input" : "benchmarks/ispd2015/mgc_matrix_mult_b/after_legalized.ntup.fix.def",
+"def_input" : "benchmarks/ispd2015/mgc_matrix_mult_b/floorplan.def",
 "verilog_input" : "benchmarks/ispd2015/mgc_matrix_mult_b/design.v",
 "gpu" : 1,
 "num_bins_x" : 512,
@@ -22,7 +22,7 @@
 "detailed_place_command" : "",
 "stop_overflow" : 0.07,
 "dtype" : "float32",
-"plot_flag" : 0,
+"plot_flag" : 1,
 "random_center_init_flag" : 1,
 "sort_nets_by_degree" : 0,
 "num_threads" : 8,

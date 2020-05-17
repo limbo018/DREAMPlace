@@ -55,7 +55,17 @@ class PreconditionOp:
         It is tricky for this parameter to increase.
         """
         with torch.no_grad():
-            precond = self.data_collections.num_pins_in_nodes + self.alpha * density_weight * self.data_collections.node_areas + admm_rho
+            #### TODO vectorized preconditioning
+            if(self.density_weight.size(0) == 1):
+                precond = self.data_collections.num_pins_in_nodes + self.alpha * density_weight * self.data_collections.node_areas
+            else:
+                density_precond = 0
+                for i in range(self.density_weight.size(0)):
+                    node_area = self.data_collections.node_areas.clone()
+                    node_area = node_area.view(2, -1)
+                    node_area[:,:self.palcedb.num_movable_nodes].masked_scatter_(node_area[:,:self.palcedb.num_movable_nodes][:,self.data_collections.node2fence_region_map == i]*density_weight[i])
+                precond = self.data_collections.num_pins_in_nodes
+
             precond.clamp_(min=1.0)
             grad[0:self.placedb.num_nodes].div_(precond)
             grad[self.placedb.num_nodes:self.placedb.num_nodes *
@@ -63,12 +73,12 @@ class PreconditionOp:
             self.iteration += 1
 
             # assume overflow has been updated
-            if self.overflows and self.overflows[-1] < 0.3 and self.alpha < 1024:
-                if (self.iteration % 20) == 0:
-                    self.alpha *= 2
-                    logging.info(
-                        "preconditioning alpha = %g, best_overflow %g, overflow %g"
-                        % (self.alpha, self.best_overflow, self.overflows[-1]))
+            # if self.overflows and self.overflows[-1] < 0.3 and self.alpha < 1024:
+            #     if (self.iteration % 20) == 0:
+            #         self.alpha *= 2
+            #         logging.info(
+            #             "preconditioning alpha = %g, best_overflow %g, overflow %g"
+            #             % (self.alpha, self.best_overflow, self.overflows[-1]))
 
         return grad
 
@@ -106,10 +116,18 @@ class PlaceObj(nn.Module):
         self.gpu = params.gpu
         self.data_collections = data_collections
         self.op_collections = op_collections
-        self.density_weight = torch.tensor(
-            [density_weight],
-            dtype=self.data_collections.pos[0].dtype,
-            device=self.data_collections.pos[0].device)
+        if(len(placedb.regions)>0):
+            ### different fence region needs different density weights in multi-electric field algorithm
+            self.density_weight = torch.tensor(
+                [density_weight]*(len(placedb.regions)+1),
+                dtype=self.data_collections.pos[0].dtype,
+                device=self.data_collections.pos[0].device)
+        else:
+            self.density_weight = torch.tensor(
+                [density_weight],
+                dtype=self.data_collections.pos[0].dtype,
+                device=self.data_collections.pos[0].device)
+        ### Note: even for multi-electric fields, they use the same gamma
         self.gamma = torch.tensor(10 * self.base_gamma(params, placedb),
                                   dtype=self.data_collections.pos[0].dtype,
                                   device=self.data_collections.pos[0].device)
@@ -143,6 +161,9 @@ class PlaceObj(nn.Module):
             num_bins_y,
             padding=0,
             name=name)
+        ### build multiple density op for multi-electric field
+        if(len(self.placedb.regions)>0):
+            self.op_collections.fence_region_density_ops, self.op_collections.fence_region_density_merged_op = self.build_multi_fence_region_density_op()
         self.op_collections.update_density_weight_op = self.build_update_density_weight(
             params, placedb)
         self.op_collections.precondition_op = self.build_precondition(
@@ -291,7 +312,7 @@ class PlaceObj(nn.Module):
         @return objective value
         """
         #self.check_gradient(pos)
-        if(not self.start_fence_region_density):
+        if(len(self.placedb.regions) == 0):
             obj = self.obj_fn(pos_w, pos_g, admm_multiplier)
             if pos_w.grad is not None:
                 pos_w.grad.zero_()
@@ -310,42 +331,54 @@ class PlaceObj(nn.Module):
             if pos_w.grad is not None:
                 pos_w.grad.zero_()
 
-            if(self.init_density is None):
-                self.init_density = self.op_collections.density_op(pos_w.data).data.item()
-
             total_density_grad = 0
             num_regions = len(self.op_collections.fence_region_density_ops)-1
-            for i, density_op in enumerate(self.op_collections.fence_region_density_ops):
-                if(self.quad_penalty):
-                    density = density_op(pos_w)
-                    density = density + self.density_quad_coeff / 2 / self.init_density  * density**2
-                else:
-                    density = density_op(pos_w)
+            if(self.init_density is None):
+                self.init_density = self.op_collections.fence_region_density_merged_op(pos_w.data).data
+                # self.init_density = torch.tensor([density_op(pos_w.data).data.item() for density_op in self.op_collections.fence_region_density_ops], device=pos_w.device)
 
-                density.backward()
-                density_grad = pos_w.grad.data.clone()
-                mask = (self.data_collections.node2fence_region_map != i) if (i < num_regions) else (self.data_collections.node2fence_region_map < num_regions)
-                density_grad[:num_movable_nodes].masked_fill_(mask, 0)
-                density_grad[num_nodes:num_nodes+num_movable_nodes].masked_fill_(mask, 0)
-                ### handle filler gradients
-                filler_beg, filler_end = self.filler_start_map[i], self.filler_start_map[i+1]
-                density_grad = density_grad.view(2, -1)
-                density_grad[:,num_nodes-num_filler_nodes:num_nodes-num_filler_nodes+filler_beg].zero_()
-                density_grad[:,num_nodes-num_filler_nodes+filler_end:].zero_()
-                density_grad = density_grad.view(-1)
+            # total_density = 0
+            # for i, density_op in enumerate(self.op_collections.fence_region_density_ops):
+            #     if(self.quad_penalty):
+            #         density = density_op(pos_w)
+            #         total_density = total_density + density + self.density_quad_coeff / 2 / self.init_density[i]  * density**2
+            #     else:
+            #         total_density = total_density + density_op(pos_w)
+            total_density = self.density_weight.dot(self.op_collections.fence_region_density_merged_op(pos_w))
+            total_density.backward()
+            total_density_grad = pos_w.grad
 
-                if pos_w.grad is not None:
-                    pos_w.grad.zero_()
-                total_density_grad += density_grad
+            # for i, density_op in enumerate(self.op_collections.fence_region_density_ops):
+            #     if(self.quad_penalty):
+            #         density = density_op(pos_w)
+            #         density = density + self.density_quad_coeff / 2 / self.init_density[i]  * density**2
+            #     else:
+            #         density = density_op(pos_w)
 
-            if(self.quad_penalty):
-                density = self.op_collections.density_op(pos_w.data)
-                obj = wl.data.item() + self.density_weight * (density + self.density_quad_coeff / 2 / self.init_density * density**2)
-            else:
-                obj = wl.data.item() + self.density_weight * self.op_collections.density_op(pos_w.data)
+            #     density.backward()
+            #     density_grad = pos_w.grad.data.clone()
+            #     mask = (self.data_collections.node2fence_region_map != i) if (i < num_regions) else (self.data_collections.node2fence_region_map < num_regions)
+            #     density_grad[:num_movable_nodes].masked_fill_(mask, 0)
+            #     density_grad[num_nodes:num_nodes+num_movable_nodes].masked_fill_(mask, 0)
+            #     ### handle filler gradients
+            #     filler_beg, filler_end = self.filler_start_map[i], self.filler_start_map[i+1]
+            #     density_grad = density_grad.view(2, -1)
+            #     density_grad[:,num_nodes-num_filler_nodes:num_nodes-num_filler_nodes+filler_beg].zero_()
+            #     density_grad[:,num_nodes-num_filler_nodes+filler_end:].zero_()
+            #     density_grad = density_grad.view(-1)
+
+            #     if pos_w.grad is not None:
+            #         pos_w.grad.zero_()
+            #     total_density_grad += density_grad
+
+            obj = torch.zeros([1])
+            # if(self.quad_penalty):
+            #     obj = wl.data.item() + self.density_weight * (density + self.density_quad_coeff / 2 / self.init_density * density**2)
+            # else:
+            #     obj = wl.data.item() + self.density_weight * self.op_collections.density_op(pos_w.data)
 
 
-            pos_w.grad.data.copy_(wl_grad + self.density_weight*total_density_grad)
+            pos_w.grad.data.copy_(wl_grad + total_density_grad)
 
 
         self.op_collections.precondition_op(pos_w.grad, self.density_weight, 0)
@@ -588,7 +621,7 @@ class PlaceObj(nn.Module):
             delta=2.0)
 
     def build_electric_potential(self, params, placedb, data_collections,
-                                 num_bins_x, num_bins_y, padding, name, fence_regions=None, fence_region_mask=None):
+                                 num_bins_x, num_bins_y, padding, name, region_id=None, fence_regions=None):
         """
         @brief e-place electrostatic potential
         @param params parameters
@@ -627,7 +660,8 @@ class PlaceObj(nn.Module):
         if local_num_bins_y < max_num_bins:
             logging.warning("local_num_bins_y (%d) < max_num_bins (%d)" %
                             (local_num_bins_y, max_num_bins))
-
+        #### for fence region, the target density is different from different regions
+        target_density = data_collections.target_density.item() if fence_regions is None else placedb.target_density_fence_region[region_id]
         return electric_potential.ElectricPotential(
             node_size_x=data_collections.node_size_x,
             node_size_y=data_collections.node_size_y,
@@ -635,7 +669,7 @@ class PlaceObj(nn.Module):
                 placedb, padding),
             bin_center_y=data_collections.bin_center_y_padded(
                 placedb, padding),
-            target_density=data_collections.target_density,
+            target_density=target_density,
             xl=xl,
             yl=yl,
             xh=xh,
@@ -650,8 +684,9 @@ class PlaceObj(nn.Module):
             sorted_node_map=data_collections.sorted_node_map,
             movable_macro_mask=data_collections.movable_macro_mask,
             fast_mode=params.RePlAce_skip_energy_flag,
+            region_id=region_id,
             fence_regions=fence_regions,
-            fence_region_mask=fence_region_mask,
+            node2fence_region_map=data_collections.node2fence_region_map,
             placedb=placedb)
 
     def initialize_density_weight(self, params, placedb):
@@ -680,17 +715,24 @@ class PlaceObj(nn.Module):
 
         return self.density_weight
 
-    def build_update_density_weight(self, params, placedb):
+    def build_update_density_weight(self, params, placedb, algo="hpwl"):
         """
         @brief update density weight
         @param params parameters
         @param placedb placement database
         """
+        ### params for hpwl mode from RePlAce
         ref_hpwl = params.RePlAce_ref_hpwl
         LOWER_PCOF = params.RePlAce_LOWER_PCOF
         UPPER_PCOF = params.RePlAce_UPPER_PCOF
+        ### params for overflow mode from elfPlace
+        alpha_h = 1.038
+        alpha_l = 1.028
+        self.density_step_size = alpha_h-1
+        assert algo in {"hpwl", "overflow"}, logging.error("density weight update not supports hpwl mode or overflow mode")
 
-        def update_density_weight_op(cur_metric, prev_metric, iteration):
+        def update_density_weight_op_hpwl(cur_metric, prev_metric, iteration):
+            ### based on hpwl
             with torch.no_grad():
                 delta_hpwl = cur_metric.hpwl - prev_metric.hpwl
                 if delta_hpwl < 0:
@@ -702,6 +744,18 @@ class PlaceObj(nn.Module):
                         UPPER_PCOF, -delta_hpwl / ref_hpwl).clamp(
                             min=LOWER_PCOF, max=UPPER_PCOF)
                 self.density_weight *= mu
+
+        def update_density_weight_op_overflow(cur_metric, prev_metric, iteration):
+            ### based on overflow
+            with torch.no_grad():
+                density_norm = cur_metric.density/self.init_density
+                # density_weight_grad = density_norm + self.density_quad_coeff / 2 * density_norm**2
+                self.density_weight += self.density_step_size * 1e-12
+                self.density_step_size *= np.log(self.density_quad_coeff * density_norm + 1) / (
+                    1+np.log(self.density_quad_coeff * density_norm + 1)) * (alpha_h-alpha_l) + alpha_l
+
+        update_density_weight_op = {"hpwl":update_density_weight_op_hpwl,
+                                    "overflow": update_density_weight_op_overflow}[algo]
 
         return update_density_weight_op
 
@@ -924,7 +978,27 @@ class PlaceObj(nn.Module):
             fence_regions = fence_region_list[1],
             fence_region_mask=self.data_collections.node2fence_region_map<1e3) # density penalty for outer cells
 
-    def build_multi_fence_region_density_op(self, fence_region_list, node2fence_region_map):
+    def build_multi_fence_region_density_op(self):
+        import dreamplace.ops.fence_region.fence_region as fence_region
+
+        num_movable_nodes = self.placedb.num_movable_nodes
+        num_terminals = self.placedb.num_terminals# + placedb.num_terminal_NIs
+        num_filler_nodes = self.placedb.num_filler_nodes
+        num_nodes = self.placedb.num_nodes
+
+        non_fence_regions = [fence_region.slice_non_fence_region(region,
+            self.placedb.xl, self.placedb.yl, self.placedb.xh, self.placedb.yh, merge=False, device=self.data_collections.pos[0].device,
+            macro_pos_x=self.data_collections.pos[0][num_movable_nodes:num_movable_nodes+num_terminals],
+            macro_pos_y=self.data_collections.pos[0][num_nodes+num_movable_nodes:num_nodes+num_movable_nodes+num_terminals],
+            macro_size_x=self.data_collections.node_size_x[num_movable_nodes:num_movable_nodes+num_terminals],
+            macro_size_y=self.data_collections.node_size_y[num_movable_nodes:num_movable_nodes+num_terminals]
+            ) for region in self.placedb.regions]
+
+        outer_fence_region = torch.from_numpy(np.concatenate(self.placedb.regions, 0)).to(self.data_collections.pos[0].device)
+
+        fence_region_list = non_fence_regions + [outer_fence_region]
+
+
         assert type(fence_region_list) == list and len(fence_region_list) >= 2, "Unsupported fence region list"
 
         self.data_collections.node2fence_region_map = torch.from_numpy(self.placedb.node2fence_region_map[:self.placedb.num_movable_nodes]).to(fence_region_list[0].device)
@@ -941,8 +1015,8 @@ class PlaceObj(nn.Module):
                         self.num_bins_y,
                         padding=0,
                         name=self.name,
-                        fence_regions=fence_region,
-                        fence_region_mask=(self.data_collections.node2fence_region_map != i))
+                        region_id=i,
+                        fence_regions=fence_region)
             )
 
         self.op_collections.fence_region_density_ops.append(self.build_electric_potential(
@@ -953,23 +1027,25 @@ class PlaceObj(nn.Module):
                         self.num_bins_y,
                         padding=0,
                         name=self.name,
-                        fence_regions=fence_region_list[-1],
-                        fence_region_mask=(self.data_collections.node2fence_region_map < len(fence_region_list)))
+                        region_id=len(self.placedb.regions),
+                        fence_regions=fence_region_list[-1])
         )
+        def merged_op(pos):
+            return torch.stack([density_op(pos) for density_op in self.op_collections.fence_region_density_ops])
+        self.op_collections.fence_region_density_merged_op = merged_op
+        return self.op_collections.fence_region_density_ops, self.op_collections.fence_region_density_merged_op
         ### calculate filler mask for each electric field
-        num_filler_nodes = self.placedb.num_filler_nodes
-        filler_list = [0]
-        for i, density_op in enumerate(self.op_collections.fence_region_density_ops):
-            density_op.region_id = i
-            density_op.compute_fence_region_map(density_op.fence_regions)
-            num_remove_filler = density_op.calc_num_remove_filler()
-            filler_list.append(num_filler_nodes - num_remove_filler)
-        filler_start_map = torch.from_numpy(np.cumsum(filler_list)).to(fence_region_list[0].device).clamp_(max=num_filler_nodes)
-        for i, density_op in enumerate(self.op_collections.fence_region_density_ops):
-            density_op.filler_start_map = filler_start_map
-            self.filler_start_map = filler_start_map
-            density_op.filler_beg = filler_start_map[i]
-            density_op.filler_end = filler_start_map[i+1]
+        # for i, density_op in enumerate(self.op_collections.fence_region_density_ops):
+        #     density_op.compute_fence_region_map(density_op.fence_regions)
+        #     num_filler = self.placedb.num_filler_nodes_fence_region[i]#density_op.calc_num_filler()
+        #     density_op.num_filler = num_filler
 
+        # self.filler_start_map = torch.from_numpy(self.placedb.filler_start_map).to(fence_region_list[0].device)
+
+        # for i, density_op in enumerate(self.op_collections.fence_region_density_ops):
+        #     density_op.filler_start_map = filler_start_map
+        #     self.filler_start_map = filler_start_map
+        #     density_op.filler_beg = filler_start_map[i]
+        #     density_op.filler_end = filler_start_map[i+1]
 
 

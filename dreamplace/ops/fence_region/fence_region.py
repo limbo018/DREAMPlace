@@ -10,6 +10,22 @@ __all__ = ["gen_macros_for_non_fence_region",
            "gen_macros_for_fence_region", "slice_non_fence_region"]
 
 
+def calc_region_area(regions):
+    if(type(regions) == list):
+        if(isinstance(regions[0], np.ndarray)):
+            regions = torch.from_numpy(np.concatenate(regions, 0))
+        elif(isinstance(regions[0], torch.Tensor)):
+            regions = torch.cat(regions, dim=0)  # [n_box, 4]
+    elif(isinstance(regions, np.ndarray)):
+        regions = torch.from_numpy(regions)
+
+    num_boxes = regions.size(0)
+    regions = regions.view(num_boxes, 2, 2)
+    fence_regions = MultiPolygon(
+        [box(regions[i, 0, 0], regions[i, 0, 1], regions[i, 1, 0], regions[i, 1, 1]) for i in range(num_boxes)])
+    fence_regions = unary_union(fence_regions)
+    return fence_regions.area
+
 def slice_non_fence_region(regions, xl, yl, xh, yh, macro_pos_x=None, macro_pos_y=None, macro_size_x=None, macro_size_y=None, merge=False, plot=False, figname="non_fence_region.png", device=torch.device("cuda:0")):
     if(type(regions) == list):
         if(isinstance(regions[0], np.ndarray)):
@@ -20,8 +36,14 @@ def slice_non_fence_region(regions, xl, yl, xh, yh, macro_pos_x=None, macro_pos_
         regions = torch.from_numpy(regions).to(device)
 
     if(macro_pos_x is not None):
-        regions = torch.cat([regions, torch.stack([macro_pos_x.float(), macro_pos_y.float(), macro_pos_x.float()+macro_size_x.float(), macro_pos_y.float()+macro_size_y.float()], 0).t().to(device)], 0)
-        print(macro_pos_x.size(), macro_pos_y.size(), macro_size_x.size(), macro_size_y.size())
+        if(isinstance(macro_pos_x, np.ndarray)):
+            macro_pos_x = torch.from_numpy(macro_pos_x).to(device).float()
+            macro_pos_y = torch.from_numpy(macro_pos_y).to(device).float()
+            macro_size_x = torch.from_numpy(macro_size_x).to(device).float()
+            macro_size_y = torch.from_numpy(macro_size_y).to(device).float()
+
+        regions = torch.cat([regions, torch.stack([macro_pos_x, macro_pos_y, macro_pos_x+macro_size_x, macro_pos_y+macro_size_y], 0).t()], 0)
+        # print(macro_pos_x.size(), macro_pos_y.size(), macro_size_x.size(), macro_size_y.size())
         total_macro_area = (macro_size_x * macro_size_y).sum().item()
 
         # macros = unary_union(MultiPolygon([box(macro_pos_x[i], macro_pos_y[i], macro_pos_x[i]+macro_size_x[i],

@@ -118,6 +118,11 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         'pin_utilization':
                         self.op_collections.pin_utilization_map_op
                     })
+                if len(placedb.regions) > 0:
+                    eval_ops.update({
+                        'density':
+                        self.op_collections.fence_region_density_merged_op
+                    })
 
                 # a function to initialize learning rate
                 def initialize_learning_rate(pos):
@@ -241,10 +246,14 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                     # move any out-of-bound cell back to placement region
                     self.op_collections.move_boundary_op(pos)
 
-                    if torch.eq(model.density_weight, 0.0):
+                    # handle multiple density weights for multi-electric field
+                    if torch.eq(model.density_weight.mean(), 0.0):
                         model.initialize_density_weight(params, placedb)
-                        logging.info("density_weight = %.6E" %
+                        if(model.density_weight.size(0) == 1):
+                            logging.info("density_weight = %.6E" %
                                      (model.density_weight.data))
+                        else:
+                            logging.info("density_weight = ", model.density_weight.data.cpu().numpy().tolist())
 
                     optimizer.zero_grad()
 
@@ -302,35 +311,35 @@ class NonLinearPlace(BasicPlace.BasicPlace):
 
                 Llambda_flat_iteration = 0
 
-                if(1 and len(placedb.regions) > 0):
-                    model.quad_penalty = True
-                    model.start_fence_region_density = True
-                    num_movable_nodes = placedb.num_movable_nodes
-                    num_terminals = placedb.num_terminals# + placedb.num_terminal_NIs
-                    num_filler_nodes = placedb.num_filler_nodes
-                    num_nodes = placedb.num_nodes
-                    non_fence_regions_ex = fence_region.slice_non_fence_region(placedb.regions, placedb.xl, placedb.yl, placedb.xh, placedb.yh, merge=False, device=self.pos[0].device)
-                    non_fence_regions = [fence_region.slice_non_fence_region(region,
-                        placedb.xl, placedb.yl, placedb.xh, placedb.yh, merge=False, device=self.pos[0].device,
-                        macro_pos_x=self.pos[0][num_movable_nodes:num_movable_nodes+num_terminals],
-                        macro_pos_y=self.pos[0][num_nodes+num_movable_nodes:num_nodes+num_movable_nodes+num_terminals],
-                        macro_size_x=self.data_collections.node_size_x[num_movable_nodes:num_movable_nodes+num_terminals],
-                        macro_size_y=self.data_collections.node_size_y[num_movable_nodes:num_movable_nodes+num_terminals]
-                        ) for region in placedb.regions]
-                    inner_fence_region = fence_region.slice_non_fence_region(
-                        placedb.regions,
-                        placedb.xl, placedb.yl, placedb.xh, placedb.yh, merge=False,
-                        macro_pos_x=self.pos[0][num_movable_nodes:num_movable_nodes+num_terminals],
-                        macro_pos_y=self.pos[0][num_nodes+num_movable_nodes:num_nodes+num_movable_nodes+num_terminals],
-                        macro_size_x=self.data_collections.node_size_x[num_movable_nodes:num_movable_nodes+num_terminals],
-                        macro_size_y=self.data_collections.node_size_y[num_movable_nodes:num_movable_nodes+num_terminals],
-                        device=self.pos[0].device
-                        )# macro padded for inner cells
-                    outer_fence_region = torch.from_numpy(np.concatenate(placedb.regions, 0)).to(self.pos[0].device)
-                    # fence_region_list = [inner_fence_region, outer_fence_region]
-                    fence_region_list = non_fence_regions + [outer_fence_region]
-                    # model.build_fence_region_density_op(fence_region_list, placedb.node2fence_region_map)
-                    model.build_multi_fence_region_density_op(fence_region_list, placedb.node2fence_region_map)
+                # if(1 and len(placedb.regions) > 0):
+                #     # model.quad_penalty = True
+                #     model.start_fence_region_density = True
+                #     num_movable_nodes = placedb.num_movable_nodes
+                #     num_terminals = placedb.num_terminals# + placedb.num_terminal_NIs
+                #     num_filler_nodes = placedb.num_filler_nodes
+                #     num_nodes = placedb.num_nodes
+                #     non_fence_regions_ex = fence_region.slice_non_fence_region(placedb.regions, placedb.xl, placedb.yl, placedb.xh, placedb.yh, merge=False, device=self.pos[0].device)
+                #     non_fence_regions = [fence_region.slice_non_fence_region(region,
+                #         placedb.xl, placedb.yl, placedb.xh, placedb.yh, merge=False, device=self.pos[0].device,
+                #         macro_pos_x=self.pos[0][num_movable_nodes:num_movable_nodes+num_terminals],
+                #         macro_pos_y=self.pos[0][num_nodes+num_movable_nodes:num_nodes+num_movable_nodes+num_terminals],
+                #         macro_size_x=self.data_collections.node_size_x[num_movable_nodes:num_movable_nodes+num_terminals],
+                #         macro_size_y=self.data_collections.node_size_y[num_movable_nodes:num_movable_nodes+num_terminals]
+                #         ) for region in placedb.regions]
+                #     inner_fence_region = fence_region.slice_non_fence_region(
+                #         placedb.regions,
+                #         placedb.xl, placedb.yl, placedb.xh, placedb.yh, merge=False,
+                #         macro_pos_x=self.pos[0][num_movable_nodes:num_movable_nodes+num_terminals],
+                #         macro_pos_y=self.pos[0][num_nodes+num_movable_nodes:num_nodes+num_movable_nodes+num_terminals],
+                #         macro_size_x=self.data_collections.node_size_x[num_movable_nodes:num_movable_nodes+num_terminals],
+                #         macro_size_y=self.data_collections.node_size_y[num_movable_nodes:num_movable_nodes+num_terminals],
+                #         device=self.pos[0].device
+                #         )# macro padded for inner cells
+                #     outer_fence_region = torch.from_numpy(np.concatenate(placedb.regions, 0)).to(self.pos[0].device)
+                #     # fence_region_list = [inner_fence_region, outer_fence_region]
+                #     fence_region_list = non_fence_regions + [outer_fence_region]
+                #     # model.build_fence_region_density_op(fence_region_list, placedb.node2fence_region_map)
+                #     model.build_multi_fence_region_density_op(fence_region_list, placedb.node2fence_region_map)
 
 
                 for Lgamma_step in range(model.Lgamma_iteration):
@@ -726,11 +735,12 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         if(iteration % 20 == 0):
                             self.plot(params, placedb, iteration,self.pos[0].data.clone().cpu().numpy())
                     else:
+                        pass
                         # if(iteration == 2):
                         #     pos_g = solve_problem_2(self.pos[0].data, 0, non_fence_regions_ex, non_fence_regions, iteration)
                         #     self.pos[0].data.copy_(pos_g)
-                        if(iteration % 50 == 0):
-                            self.plot(params, placedb, iteration,self.pos[0].data.clone().cpu().numpy())
+                        # if(iteration % 50 == 0):
+                        #     self.plot(params, placedb, iteration,self.pos[0].data.clone().cpu().numpy())
 
 
 

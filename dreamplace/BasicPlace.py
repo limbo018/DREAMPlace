@@ -37,15 +37,15 @@ import pdb
 
 class PlaceDataCollection(object):
     """
-    @brief A wraper for all data tensors on device for building ops 
+    @brief A wraper for all data tensors on device for building ops
     """
     def __init__(self, pos, params, placedb, device):
         """
-        @brief initialization 
-        @param pos locations of cells 
-        @param params parameters 
-        @param placedb placement database 
-        @param device cpu or cuda 
+        @brief initialization
+        @param pos locations of cells
+        @param params parameters
+        @param placedb placement database
+        @param device cpu or cuda
         """
         self.device = device
         torch.set_num_threads(params.num_threads)
@@ -197,9 +197,9 @@ class PlaceDataCollection(object):
 
     def bin_center_x_padded(self, placedb, padding):
         """
-        @brief compute array of bin center horizontal coordinates with padding 
-        @param placedb placement database 
-        @param padding number of bins padding to boundary of placement region 
+        @brief compute array of bin center horizontal coordinates with padding
+        @param placedb placement database
+        @param padding number of bins padding to boundary of placement region
         """
         if padding == 0:
             return self.bin_center_x
@@ -213,9 +213,9 @@ class PlaceDataCollection(object):
 
     def bin_center_y_padded(self, placedb, padding):
         """
-        @brief compute array of bin center vertical coordinates with padding 
-        @param placedb placement database 
-        @param padding number of bins padding to boundary of placement region 
+        @brief compute array of bin center vertical coordinates with padding
+        @param placedb placement database
+        @param padding number of bins padding to boundary of placement region
         """
         if padding == 0:
             return self.bin_center_y
@@ -230,7 +230,7 @@ class PlaceDataCollection(object):
 
 class PlaceOpCollection(object):
     """
-    @brief A wrapper for all ops 
+    @brief A wrapper for all ops
     """
     def __init__(self):
         """
@@ -259,14 +259,14 @@ class PlaceOpCollection(object):
 
 class BasicPlace(nn.Module):
     """
-    @brief Base placement class. 
-    All placement engines should be derived from this class. 
+    @brief Base placement class.
+    All placement engines should be derived from this class.
     """
     def __init__(self, params, placedb):
         """
         @brief initialization
-        @param params parameter 
-        @param placedb placement database 
+        @param params parameter
+        @param placedb placement database
         """
         torch.manual_seed(params.random_seed)
         super(BasicPlace, self).__init__()
@@ -295,19 +295,57 @@ class BasicPlace(nn.Module):
         #init_y[0:placedb.num_movable_nodes] = init_y[0:placedb.num_movable_nodes]*0.01 + (placedb.yl+placedb.yh)/2
 
         if placedb.num_filler_nodes:  # uniformly distribute filler cells in the layout
-            self.init_pos[placedb.num_physical_nodes:placedb.
-                          num_nodes] = np.random.uniform(
-                              low=placedb.xl,
-                              high=placedb.xh -
-                              placedb.node_size_x[-placedb.num_filler_nodes],
-                              size=placedb.num_filler_nodes)
-            self.init_pos[placedb.num_nodes +
-                          placedb.num_physical_nodes:placedb.num_nodes *
-                          2] = np.random.uniform(
-                              low=placedb.yl,
-                              high=placedb.yh -
-                              placedb.node_size_y[-placedb.num_filler_nodes],
-                              size=placedb.num_filler_nodes)
+            if(len(placedb.regions)>0):
+                ### uniformly spread fillers in fence region
+                ### for cells in the fence region
+                for i, region in enumerate(placedb.regions):
+                    filler_beg, filler_end = placedb.filler_start_map[i:i+2]
+                    subregion_areas = (region[:,2]-region[:,0])*(region[:,3]-region[:,1])
+                    total_area = np.sum(subregion_areas)
+                    subregion_area_ratio = subregion_areas / total_area
+                    subregion_num_filler = np.round((filler_end - filler_beg) * subregion_area_ratio)
+                    subregion_num_filler[-1] = (filler_end - filler_beg) - np.sum(subregion_num_filler[:-1])
+                    subregion_num_filler_start_map = np.concatenate([np.zeros([1]),np.cumsum(subregion_num_filler)],0).astype(np.int32)
+                    for j, subregion in enumerate(region):
+                        sub_filler_beg, sub_filler_end = subregion_num_filler_start_map[j:j+2]
+                        self.init_pos[placedb.num_physical_nodes+filler_beg+sub_filler_beg:placedb.num_physical_nodes+filler_beg+sub_filler_end]=np.random.uniform(
+                                low=subregion[0],
+                                high=subregion[2] -
+                                placedb.filler_size_x_fence_region[i],
+                                size=sub_filler_end-sub_filler_beg)
+                        self.init_pos[placedb.num_nodes+placedb.num_physical_nodes+filler_beg+sub_filler_beg:placedb.num_nodes+placedb.num_physical_nodes+filler_beg+sub_filler_end]=np.random.uniform(
+                                low=subregion[1],
+                                high=subregion[3] -
+                                placedb.filler_size_y_fence_region[i],
+                                size=sub_filler_end-sub_filler_beg)
+
+                ### for cells outside fence region
+                filler_beg, filler_end = placedb.filler_start_map[-2:]
+                self.init_pos[placedb.num_physical_nodes+filler_beg:placedb.num_physical_nodes+filler_end] = np.random.uniform(
+                                low=placedb.xl,
+                                high=placedb.xh -
+                                placedb.filler_size_x_fence_region[-1],
+                                size=filler_end-filler_beg)
+                self.init_pos[placedb.num_nodes+placedb.num_physical_nodes+filler_beg:placedb.num_nodes+placedb.num_physical_nodes+filler_end] = np.random.uniform(
+                                low=placedb.yl,
+                                high=placedb.yh -
+                                placedb.filler_size_y_fence_region[-1],
+                                size=filler_end-filler_beg)
+
+            else:
+                self.init_pos[placedb.num_physical_nodes:placedb.
+                            num_nodes] = np.random.uniform(
+                                low=placedb.xl,
+                                high=placedb.xh -
+                                placedb.node_size_x[-placedb.num_filler_nodes],
+                                size=placedb.num_filler_nodes)
+                self.init_pos[placedb.num_nodes +
+                            placedb.num_physical_nodes:placedb.num_nodes *
+                            2] = np.random.uniform(
+                                low=placedb.yl,
+                                high=placedb.yh -
+                                placedb.node_size_y[-placedb.num_filler_nodes],
+                                size=placedb.num_filler_nodes)
 
         logging.debug("prepare init_pos takes %.2f seconds" %
                       (time.time() - tt))
@@ -373,20 +411,20 @@ class BasicPlace(nn.Module):
 
     def __call__(self, params, placedb):
         """
-        @brief Solve placement.  
-        placeholder for derived classes. 
-        @param params parameters 
-        @param placedb placement database 
+        @brief Solve placement.
+        placeholder for derived classes.
+        @param params parameters
+        @param placedb placement database
         """
         pass
 
     def build_pin_pos(self, params, placedb, data_collections, device):
         """
-        @brief sum up the pins for each cell 
-        @param params parameters 
-        @param placedb placement database 
-        @param data_collections a collection of all data and variables required for constructing the ops 
-        @param device cpu or cuda 
+        @brief sum up the pins for each cell
+        @param params parameters
+        @param placedb placement database
+        @param data_collections a collection of all data and variables required for constructing the ops
+        @param device cpu or cuda
         """
         # Yibo: I found CPU version of this is super slow, more than 2s for ISPD2005 bigblue4 with 10 threads.
         # So I implemented a custom CPU version, which is around 20ms
@@ -410,11 +448,11 @@ class BasicPlace(nn.Module):
 
     def build_move_boundary(self, params, placedb, data_collections, device):
         """
-        @brief bound nodes into layout region 
-        @param params parameters 
-        @param placedb placement database 
-        @param data_collections a collection of all data and variables required for constructing the ops 
-        @param device cpu or cuda 
+        @brief bound nodes into layout region
+        @param params parameters
+        @param placedb placement database
+        @param data_collections a collection of all data and variables required for constructing the ops
+        @param device cpu or cuda
         """
         return move_boundary.MoveBoundary(
             data_collections.node_size_x,
@@ -429,12 +467,12 @@ class BasicPlace(nn.Module):
     def build_hpwl(self, params, placedb, data_collections, pin_pos_op,
                    device):
         """
-        @brief compute half-perimeter wirelength 
-        @param params parameters 
-        @param placedb placement database 
-        @param data_collections a collection of all data and variables required for constructing the ops 
-        @param pin_pos_op the op to compute pin locations according to cell locations 
-        @param device cpu or cuda 
+        @brief compute half-perimeter wirelength
+        @param params parameters
+        @param placedb placement database
+        @param data_collections a collection of all data and variables required for constructing the ops
+        @param pin_pos_op the op to compute pin locations according to cell locations
+        @param device cpu or cuda
         """
 
         wirelength_for_pin_op = hpwl.HPWL(
@@ -453,11 +491,11 @@ class BasicPlace(nn.Module):
 
     def build_rmst_wl(self, params, placedb, pin_pos_op, device):
         """
-        @brief compute rectilinear minimum spanning tree wirelength with flute 
-        @param params parameters 
-        @param placedb placement database 
-        @param pin_pos_op the op to compute pin locations according to cell locations 
-        @param device cpu or cuda 
+        @brief compute rectilinear minimum spanning tree wirelength with flute
+        @param params parameters
+        @param placedb placement database
+        @param pin_pos_op the op to compute pin locations according to cell locations
+        @param device cpu or cuda
         """
         # wirelength cost
 
@@ -490,11 +528,11 @@ class BasicPlace(nn.Module):
     def build_density_overflow(self, params, placedb, data_collections,
                                device):
         """
-        @brief compute density overflow 
-        @param params parameters 
-        @param placedb placement database 
-        @param data_collections a collection of all data and variables required for constructing the ops 
-        @param device cpu or cuda 
+        @brief compute density overflow
+        @param params parameters
+        @param placedb placement database
+        @param data_collections a collection of all data and variables required for constructing the ops
+        @param device cpu or cuda
         """
         return density_overflow.DensityOverflow(
             data_collections.node_size_x,
@@ -515,11 +553,11 @@ class BasicPlace(nn.Module):
     def build_electric_overflow(self, params, placedb, data_collections,
                                 device):
         """
-        @brief compute electric density overflow 
-        @param params parameters 
-        @param placedb placement database 
-        @param data_collections a collection of all data and variables required for constructing the ops 
-        @param device cpu or cuda 
+        @brief compute electric density overflow
+        @param params parameters
+        @param placedb placement database
+        @param data_collections a collection of all data and variables required for constructing the ops
+        @param device cpu or cuda
         """
         return electric_overflow.ElectricOverflow(
             node_size_x=data_collections.node_size_x,
@@ -543,11 +581,11 @@ class BasicPlace(nn.Module):
 
     def build_legality_check(self, params, placedb, data_collections, device):
         """
-        @brief legality check 
-        @param params parameters 
-        @param placedb placement database 
-        @param data_collections a collection of all data and variables required for constructing the ops 
-        @param device cpu or cuda 
+        @brief legality check
+        @param params parameters
+        @param placedb placement database
+        @param data_collections a collection of all data and variables required for constructing the ops
+        @param device cpu or cuda
         """
         return legality_check.LegalityCheck(
             node_size_x=data_collections.node_size_x,
@@ -561,17 +599,17 @@ class BasicPlace(nn.Module):
             yh=placedb.yh,
             site_width=placedb.site_width,
             row_height=placedb.row_height,
-            scale_factor=params.scale_factor, 
+            scale_factor=params.scale_factor,
             num_terminals=placedb.num_terminals,
             num_movable_nodes=placedb.num_movable_nodes)
 
     def build_legalization(self, params, placedb, data_collections, device):
         """
-        @brief legalization 
-        @param params parameters 
-        @param placedb placement database 
-        @param data_collections a collection of all data and variables required for constructing the ops 
-        @param device cpu or cuda 
+        @brief legalization
+        @param params parameters
+        @param placedb placement database
+        @param data_collections a collection of all data and variables required for constructing the ops
+        @param device cpu or cuda
         """
         # for movable macro legalization
         # the number of bins control the search granularity
@@ -649,11 +687,11 @@ class BasicPlace(nn.Module):
     def build_detailed_placement(self, params, placedb, data_collections,
                                  device):
         """
-        @brief detailed placement consisting of global swap and independent set matching 
-        @param params parameters 
-        @param placedb placement database 
-        @param data_collections a collection of all data and variables required for constructing the ops 
-        @param device cpu or cuda 
+        @brief detailed placement consisting of global swap and independent set matching
+        @param params parameters
+        @param placedb placement database
+        @param data_collections a collection of all data and variables required for constructing the ops
+        @param device cpu or cuda
         """
         gs = global_swap.GlobalSwap(
             node_size_x=data_collections.node_size_x,
@@ -754,19 +792,19 @@ class BasicPlace(nn.Module):
             if not legal:
                 return pos1
 
-            # integer factorization to prime numbers 
+            # integer factorization to prime numbers
             def prime_factorization(num):
                 lt = []
                 while num != 1:
                     for i in range(2, int(num+1)):
-                        if num % i == 0:  # i is a prime factor 
+                        if num % i == 0:  # i is a prime factor
                             lt.append(i)
-                            num = num / i # get the quotient for further factorization 
+                            num = num / i # get the quotient for further factorization
                             break
-                return lt 
+                return lt
 
-            # compute the scale factor for detailed placement 
-            # as the algorithms prefer integer coordinate systems 
+            # compute the scale factor for detailed placement
+            # as the algorithms prefer integer coordinate systems
             scale_factor = params.scale_factor
             if params.scale_factor != 1.0:
                 inv_scale_factor = int(round(1.0 / params.scale_factor))
@@ -775,7 +813,7 @@ class BasicPlace(nn.Module):
                 for factor in prime_factors:
                     if factor != 2 and factor != 5:
                         target_inv_scale_factor = inv_scale_factor
-                        break 
+                        break
                 scale_factor = 1.0 / target_inv_scale_factor
                 logging.info("Deriving from system scale factor %g (1/%d)" % (params.scale_factor, inv_scale_factor))
                 logging.info("Use scale factor %g (1/%d) for detailed placement" % (scale_factor, target_inv_scale_factor))
@@ -808,18 +846,18 @@ class BasicPlace(nn.Module):
 
     def build_draw_placement(self, params, placedb):
         """
-        @brief plot placement  
-        @param params parameters 
-        @param placedb placement database 
+        @brief plot placement
+        @param params parameters
+        @param placedb placement database
         """
         return draw_place.DrawPlace(placedb)
 
     def validate(self, placedb, pos, iteration):
         """
-        @brief validate placement 
-        @param placedb placement database 
-        @param pos locations of cells 
-        @param iteration optimization step 
+        @brief validate placement
+        @param placedb placement database
+        @param pos locations of cells
+        @param iteration optimization step
         """
         pos = torch.from_numpy(pos).to(self.device)
         hpwl = self.op_collections.hpwl_op(pos)
@@ -833,10 +871,10 @@ class BasicPlace(nn.Module):
     def plot(self, params, placedb, iteration, pos):
         """
         @brief plot layout
-        @param params parameters 
-        @param placedb placement database 
-        @param iteration optimization step 
-        @param pos locations of cells 
+        @param params parameters
+        @param placedb placement database
+        @param iteration optimization step
+        @param pos locations of cells
         """
         tt = time.time()
         path = "%s/%s" % (params.result_dir, params.design_name())
@@ -851,11 +889,11 @@ class BasicPlace(nn.Module):
     def dump(self, params, placedb, pos, filename):
         """
         @brief dump intermediate solution as compressed pickle file (.pklz)
-        @param params parameters 
-        @param placedb placement database 
-        @param iteration optimization step 
-        @param pos locations of cells 
-        @param filename output file name 
+        @param params parameters
+        @param placedb placement database
+        @param iteration optimization step
+        @param pos locations of cells
+        @param filename output file name
         """
         with gzip.open(filename, "wb") as f:
             pickle.dump(
@@ -878,11 +916,11 @@ class BasicPlace(nn.Module):
     def load(self, params, placedb, filename):
         """
         @brief dump intermediate solution as compressed pickle file (.pklz)
-        @param params parameters 
-        @param placedb placement database 
-        @param iteration optimization step 
-        @param pos locations of cells 
-        @param filename output file name 
+        @param params parameters
+        @param placedb placement database
+        @param iteration optimization step
+        @param pos locations of cells
+        @param filename output file name
         """
         with gzip.open(filename, "rb") as f:
             data = pickle.load(f)
