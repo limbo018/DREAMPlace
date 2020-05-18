@@ -520,8 +520,8 @@ class PlaceDB (object):
         self.flat_region_boxes = np.array(pydb.flat_region_boxes, dtype=self.dtype)
         self.flat_region_boxes_start = np.array(pydb.flat_region_boxes_start, dtype=np.int32)
         self.node2fence_region_map = np.array(pydb.node2fence_region_map, dtype=np.int32)
-        #### nonfence region is set to INT_MAX, we set it to #regions
-        self.node2fence_region_map = np.minimum(self.node2fence_region_map, len(self.regions))
+        #### nonfence region is set to INT_MAX, we set it to #regions??? not compatible with other APIs
+        # self.node2fence_region_map = np.minimum(self.node2fence_region_map, len(self.regions))
         self.xl = float(pydb.xl)
         self.yl = float(pydb.yl)
         self.xh = float(pydb.xh)
@@ -575,17 +575,20 @@ class PlaceDB (object):
         logging.info("reading benchmark takes %g seconds" % (time.time()-tt))
 
 
-    def calc_num_filler_for_fence_region(self, fence_regions, region_id, node2fence_region_map, target_density):
+    def calc_num_filler_for_fence_region(self, region_id, node2fence_region_map, target_density):
         '''
         @description: calculate number of fillers for each fence region
         @param fence_regions{type}
         @return:
         '''
-        if(isinstance(fence_regions, torch.Tensor)):
-            fence_regions = fence_regions.cpu().numpy()
+        # if(isinstance(fence_regions, torch.Tensor)):
+        #     fence_regions = fence_regions.cpu().numpy()
         num_regions = len(self.regions)
         node2fence_region_map = node2fence_region_map[:self.num_movable_nodes]
-        fence_region_mask = node2fence_region_map == region_id
+        if(region_id < len(self.regions)):
+            fence_region_mask = node2fence_region_map == region_id
+        else:
+            fence_region_mask = node2fence_region_map >= len(self.regions)
 
 
         num_movable_nodes = self.num_movable_nodes
@@ -628,13 +631,17 @@ class PlaceDB (object):
 
         ### recompute target density based on the region utilization
         utilization = min(total_movable_node_area / placeable_area, 1.0)
-        target_density_fence_region = min(1,max(utilization + 0.001, target_density))
+        if(target_density < utilization):
+            target_density_fence_region = min(1,utilization + 0.01)
+        else:
+            target_density_fence_region = target_density
+        # target_density_fence_region = min(1,max(utilization + 0.005, target_density))
 
         total_filler_node_area = max(placeable_area*target_density_fence_region-total_movable_node_area, 0.0)
 
         num_filler = int(round(total_filler_node_area/(filler_size_x*filler_size_y)))
-
-        print("utilization:", utilization, "target density", target_density_fence_region, "num_filler:", num_filler, "filler_size_x:", filler_size_x)
+        print("Region:%2d movable_node_area =%10.1f, placeable_area =%10.1f, utilization =%.3f, filler_node_area =%10.1f, #fillers =%8d, filler sizes =%2.4gx%g\n" % (region_id, total_movable_node_area, placeable_area, utilization, total_filler_node_area, num_filler, filler_size_x, filler_size_y))
+        # print("utilization:", utilization, "target density", target_density_fence_region, "num_filler:", num_filler, "filler_size_x:", filler_size_x)
 
         return num_filler, target_density_fence_region, filler_size_x, filler_size_y
 
@@ -712,18 +719,6 @@ row height = %g, site width = %g
             # summarize the area of fixed cells, which may overlap with each other.
             if(len(self.regions) > 0):
                 ### calculate fillers if there is fence region
-
-                non_fence_regions = [fence_region.slice_non_fence_region(region,
-                    self.xl, self.yl, self.xh, self.yh, merge=False,
-                    macro_pos_x=self.node_x[self.num_movable_nodes:self.num_movable_nodes+self.num_terminals],
-                    macro_pos_y=self.node_y[self.num_movable_nodes:self.num_movable_nodes+self.num_terminals],
-                    macro_size_x=self.node_size_x[self.num_movable_nodes:self.num_movable_nodes+self.num_terminals],
-                    macro_size_y=self.node_size_y[self.num_movable_nodes:self.num_movable_nodes+self.num_terminals],
-                    device=torch.device("cpu")
-                    ).numpy() for region in self.regions]
-                outer_fence_region = np.concatenate(self.regions, 0)
-                ### N+1 non fence region slicing
-                fence_region_list = non_fence_regions + [outer_fence_region]
                 self.filler_size_x_fence_region = []
                 self.filler_size_y_fence_region = []
                 self.num_filler_nodes = 0
@@ -733,8 +728,8 @@ row height = %g, site width = %g
                 filler_node_size_x_list = []
                 filler_node_size_y_list = []
                 self.total_filler_node_area = 0
-                for i, region in enumerate(fence_region_list):
-                    num_filler_i, target_density_i, filler_size_x_i, filler_size_y_i = self.calc_num_filler_for_fence_region(region, i, self.node2fence_region_map, params.target_density)
+                for i in range(len(self.regions)+1):
+                    num_filler_i, target_density_i, filler_size_x_i, filler_size_y_i = self.calc_num_filler_for_fence_region(i, self.node2fence_region_map, params.target_density)
                     self.num_filler_nodes_fence_region.append(num_filler_i)
                     self.target_density_fence_region.append(target_density_i)
                     self.filler_size_x_fence_region.append(filler_size_x_i)

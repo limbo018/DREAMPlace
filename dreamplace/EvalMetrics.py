@@ -50,7 +50,7 @@ class EvalMetrics (object):
             if(self.density.numel() == 1):
                 content += ", Density %.3E" % (self.density)
             else:
-                content += ", Density %s" % ", ".join(["%.3E" % i for i in self.density.cpu().numpy().tolist()])
+                content += ", Density [%s]" % ", ".join(["%.3E" % i for i in self.density.cpu().numpy().tolist()])
         if self.density_weight is not None:
             if(self.density_weight.numel() == 1):
                 content += ", DensityWeight %.6E" % (self.density_weight)

@@ -247,7 +247,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                             logging.info("density_weight = %.6E" %
                                      (model.density_weight.data))
                         else:
-                            logging.info("density_weight = ", model.density_weight.data.cpu().numpy().tolist())
+                            logging.info("density_weight = [%s]" % ", ".join(["%.3E" % i for i in model.density_weight.cpu().numpy().tolist()]))
 
                     optimizer.zero_grad()
 

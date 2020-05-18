@@ -344,7 +344,10 @@ class ElectricPotential(ElectricOverflow):
         if(region_id is not None):
             ### reconstruct data structure
             num_nodes = placedb.num_nodes
-            self.fence_region_mask = node2fence_region_map[:num_movable_nodes] == region_id
+            if(region_id < len(placedb.regions)):
+                self.fence_region_mask = node2fence_region_map[:num_movable_nodes] == region_id
+            else:
+                self.fence_region_mask = node2fence_region_map[:num_movable_nodes] >= len(placedb.regions)
 
             node_size_x = torch.cat([node_size_x[:num_movable_nodes][self.fence_region_mask],
                                     node_size_x[num_movable_nodes:num_nodes-num_filler_nodes],

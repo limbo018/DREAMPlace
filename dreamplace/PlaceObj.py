@@ -61,7 +61,10 @@ class PreconditionOp:
             else:
                 for i in range(density_weight.size(0)):
                     node_areas = self.data_collections.node_areas.clone()
-                    mask = self.data_collections.node2fence_region_map[:self.placedb.num_movable_nodes] == i
+                    if(i < len(self.placedb.regions)):
+                        mask = self.data_collections.node2fence_region_map[:self.placedb.num_movable_nodes] == i
+                    else:
+                        mask = self.data_collections.node2fence_region_map[:self.placedb.num_movable_nodes] >= len(self.placedb.regions)
                     node_areas[:self.placedb.num_movable_nodes].masked_scatter_(mask, node_areas[:self.placedb.num_movable_nodes][mask]*density_weight[i])
                     filler_beg, filler_end = self.placedb.filler_start_map[i:i+2]
                     node_areas[self.placedb.num_nodes-self.placedb.num_filler_nodes+filler_beg:self.placedb.num_nodes-self.placedb.num_filler_nodes+filler_end] *= density_weight[i]
@@ -105,7 +108,7 @@ class PlaceObj(nn.Module):
         super(PlaceObj, self).__init__()
 
         ### quadratic penalty
-        self.density_quad_coeff = 2000
+        self.density_quad_coeff = 1000
         self.init_density = None
         self.quad_penalty = True
 
@@ -213,12 +216,15 @@ class PlaceObj(nn.Module):
             density = self.op_collections.fence_region_density_merged_op(pos)
         else:
             density = self.op_collections.density_op(pos)
+
         if(self.init_density is None):
             ### record initial density
             self.init_density = density.data.clone()
+            ### density weight subgradient preconditioner
+            self.density_weight_grad_precond = self.init_density.masked_scatter(self.init_density > 0, 1/self.init_density[self.init_density > 0])
         if(self.quad_penalty):
             ### quadratic density penalty
-            density = density + self.density_quad_coeff / 2 / self.init_density * density**2
+            density = density + self.density_quad_coeff / 2 * self.density_weight_grad_precond * density**2
         if(len(self.placedb.regions) > 0):
             result = wirelength + self.density_weight.dot(density)
         else:
@@ -652,15 +658,43 @@ class PlaceObj(nn.Module):
         self.data_collections.pos[0].grad.zero_()
         density_weight = []
         if(len(self.placedb.regions) > 0):
-            density = self.op_collections.fence_region_density_merged_op(self.data_collections.pos[0]).sum()
-            density.backward()
-            density_grad_norm = self.data_collections.pos[0].grad.norm(p=1)
-            grad_norm_ratio = wirelength_grad_norm / density_grad_norm
-            density_weight = params.density_weight * grad_norm_ratio
-            self.data_collections.pos[0].grad.zero_()
-            self.density_weight = torch.tensor([density_weight]*(len(self.placedb.regions)+1), device=self.data_collections.pos[0].device)
+            density_list = []
+            density_grad_list = []
+            for density_op in self.op_collections.fence_region_density_ops:
+                density_i = density_op(self.data_collections.pos[0])
+                density_list.append(density_i.data.clone())
+                # if(self.quad_penalty):
+                #     density_i = density_i + self.density_quad_coeff / 2 / density_i * density_i **2
+                density_i.backward()
+                density_grad_list.append(self.data_collections.pos[0].grad.data.clone())
+                self.data_collections.pos[0].grad.zero_()
+
+            # density = self.op_collections.fence_region_density_merged_op(self.data_collections.pos[0])
+            ### record initial density
+            self.init_density = torch.stack(density_list)
+            ### density weight subgradient preconditioner
+            self.density_weight_grad_precond = self.init_density.masked_scatter(self.init_density > 0, 1/self.init_density[self.init_density > 0])
+            ### compute u
+            self.density_weight_u = self.init_density * self.density_weight_grad_precond
+            self.density_weight_u += 0.5 * self.density_quad_coeff * self.density_weight_u**2
+            ### compute s
+            density_weight_s = 1 + self.density_quad_coeff * self.init_density * self.density_weight_grad_precond
+            ### compute density grad L1 norm
+            density_grad_norm = sum(self.density_weight_u[i]*density_weight_s[i]*density_grad_list[i].norm(p=1) for i in range(density_weight_s.size(0)))
+            # density_grad_norm = sum(density_weight_s[i]*density_grad_list[i].norm(p=1) for i in range(density_weight_s.size(0)))
+
+            self.density_weight_u *= params.density_weight * wirelength_grad_norm / density_grad_norm
+            ### set initial step size for density weight update
+            self.density_weight_step_size_inc_low = 1.03
+            self.density_weight_step_size_inc_high = 1.04
+            self.density_weight_step_size = (self.density_weight_step_size_inc_low - 1) * self.density_weight_u.norm(p=2)
+             ### commit initial density weight
+            self.density_weight = self.density_weight_u * density_weight_s
+
         else:
             density = self.op_collections.density_op(self.data_collections.pos[0])
+            ### record initial density
+            self.init_density = density.data.clone()
             density.backward()
             density_grad_norm = self.data_collections.pos[0].grad.norm(p=1)
 
@@ -683,9 +717,9 @@ class PlaceObj(nn.Module):
         LOWER_PCOF = params.RePlAce_LOWER_PCOF
         UPPER_PCOF = params.RePlAce_UPPER_PCOF
         ### params for overflow mode from elfPlace
-        alpha_h = 1.038
-        alpha_l = 1.028
-        self.density_step_size = alpha_h-1
+        # alpha_h = 1.06
+        # alpha_l = 1.05
+        # self.density_step_size = alpha_h-1
         assert algo in {"hpwl", "overflow"}, logging.error("density weight update not supports hpwl mode or overflow mode")
 
         def update_density_weight_op_hpwl(cur_metric, prev_metric, iteration):
@@ -703,16 +737,25 @@ class PlaceObj(nn.Module):
                 self.density_weight *= mu
 
         def update_density_weight_op_overflow(cur_metric, prev_metric, iteration):
+            assert self.quad_penalty == True, "[Error] density weight update based on overflow only works for quadratic density penalty"
             ### based on overflow
             with torch.no_grad():
-                density_norm = cur_metric.density/self.init_density
+                density_norm = cur_metric.density * self.density_weight_grad_precond
                 density_weight_grad = density_norm + self.density_quad_coeff/2*density_norm**2
                 density_weight_grad /= density_weight_grad.norm(p=2)
-                # density_weight_grad = density_norm + self.density_quad_coeff / 2 * density_norm**2
-                self.density_weight += self.density_step_size * density_weight_grad * 1e-11
-                self.density_step_size *= torch.log(self.density_quad_coeff * density_norm + 1) / (
-                    1+torch.log(self.density_quad_coeff * density_norm + 1)) * (alpha_h-alpha_l) + alpha_l
 
+                # self.density_weight += self.density_weight_step_size * density_weight_grad# * 1e-7
+                self.density_weight_u += self.density_weight_step_size * density_weight_grad
+                density_weight_s = 1 + self.density_quad_coeff * density_norm
+                self.density_weight = self.density_weight_u * density_weight_s
+                rate = torch.log(self.density_quad_coeff * density_norm.norm(p=2)).clamp(min=0)
+                rate = rate / (1 + rate)
+                rate = rate * (self.density_weight_step_size_inc_high - self.density_weight_step_size_inc_low) + self.density_weight_step_size_inc_low
+                self.density_weight_step_size *= rate
+
+        if(not self.quad_penalty and algo == "overflow"):
+            logging.warn("quadratic density penalty is disabled, density weight update is forced to be based on HPWL")
+            algo = "hpwl"
         update_density_weight_op = {"hpwl":update_density_weight_op_hpwl,
                                     "overflow": update_density_weight_op_overflow}[algo]
 
@@ -993,18 +1036,6 @@ class PlaceObj(nn.Module):
             return torch.stack([density_op(pos) for density_op in self.op_collections.fence_region_density_ops])
         self.op_collections.fence_region_density_merged_op = merged_op
         return self.op_collections.fence_region_density_ops, self.op_collections.fence_region_density_merged_op
-        ### calculate filler mask for each electric field
-        # for i, density_op in enumerate(self.op_collections.fence_region_density_ops):
-        #     density_op.compute_fence_region_map(density_op.fence_regions)
-        #     num_filler = self.placedb.num_filler_nodes_fence_region[i]#density_op.calc_num_filler()
-        #     density_op.num_filler = num_filler
 
-        # self.filler_start_map = torch.from_numpy(self.placedb.filler_start_map).to(fence_region_list[0].device)
-
-        # for i, density_op in enumerate(self.op_collections.fence_region_density_ops):
-        #     density_op.filler_start_map = filler_start_map
-        #     self.filler_start_map = filler_start_map
-        #     density_op.filler_beg = filler_start_map[i]
-        #     density_op.filler_end = filler_start_map[i+1]
 
 
