@@ -61,7 +61,7 @@ class PreconditionOp:
             else:
                 for i in range(density_weight.size(0)):
                     node_areas = self.data_collections.node_areas.clone()
-                    mask = self.data_collections.node2fence_region_map == i
+                    mask = self.data_collections.node2fence_region_map[:self.placedb.num_movable_nodes] == i
                     node_areas[:self.placedb.num_movable_nodes].masked_scatter_(mask, node_areas[:self.placedb.num_movable_nodes][mask]*density_weight[i])
                     filler_beg, filler_end = self.placedb.filler_start_map[i:i+2]
                     node_areas[self.placedb.num_nodes-self.placedb.num_filler_nodes+filler_beg:self.placedb.num_nodes-self.placedb.num_filler_nodes+filler_end] *= density_weight[i]
@@ -960,7 +960,7 @@ class PlaceObj(nn.Module):
 
         assert type(fence_region_list) == list and len(fence_region_list) >= 2, "Unsupported fence region list"
 
-        self.data_collections.node2fence_region_map = torch.from_numpy(self.placedb.node2fence_region_map[:self.placedb.num_movable_nodes]).to(fence_region_list[0].device)
+        # self.data_collections.node2fence_region_map = torch.from_numpy(self.placedb.node2fence_region_map[:self.placedb.num_movable_nodes]).to(fence_region_list[0].device)
 
         # region 0, ..., region n, non_fence_region
         self.op_collections.fence_region_density_ops = []
