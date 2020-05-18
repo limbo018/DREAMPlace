@@ -50,21 +50,23 @@ class PreconditionOp:
         else:
             self.best_overflow = min(self.best_overflow, overflow)
 
-    def __call__(self, grad, density_weight, admm_rho=0):
+    def __call__(self, grad, density_weight):
         """Introduce alpha parameter to avoid divergence.
         It is tricky for this parameter to increase.
         """
         with torch.no_grad():
             #### TODO vectorized preconditioning
-            if(self.density_weight.size(0) == 1):
+            if(density_weight.size(0) == 1):
                 precond = self.data_collections.num_pins_in_nodes + self.alpha * density_weight * self.data_collections.node_areas
             else:
-                density_precond = 0
-                for i in range(self.density_weight.size(0)):
-                    node_area = self.data_collections.node_areas.clone()
-                    node_area = node_area.view(2, -1)
-                    node_area[:,:self.palcedb.num_movable_nodes].masked_scatter_(node_area[:,:self.palcedb.num_movable_nodes][:,self.data_collections.node2fence_region_map == i]*density_weight[i])
-                precond = self.data_collections.num_pins_in_nodes
+                for i in range(density_weight.size(0)):
+                    node_areas = self.data_collections.node_areas.clone()
+                    mask = self.data_collections.node2fence_region_map == i
+                    node_areas[:self.placedb.num_movable_nodes].masked_scatter_(mask, node_areas[:self.placedb.num_movable_nodes][mask]*density_weight[i])
+                    filler_beg, filler_end = self.placedb.filler_start_map[i:i+2]
+                    node_areas[self.placedb.num_nodes-self.placedb.num_filler_nodes+filler_beg:self.placedb.num_nodes-self.placedb.num_filler_nodes+filler_end] *= density_weight[i]
+
+                precond = self.data_collections.num_pins_in_nodes + self.alpha * node_areas
 
             precond.clamp_(min=1.0)
             grad[0:self.placedb.num_nodes].div_(precond)
@@ -105,7 +107,7 @@ class PlaceObj(nn.Module):
         ### quadratic penalty
         self.density_quad_coeff = 2000
         self.init_density = None
-        self.quad_penalty = False
+        self.quad_penalty = True
 
         self.params = params
         self.placedb = placedb
@@ -197,22 +199,31 @@ class PlaceObj(nn.Module):
                 'routability_Lsub_iteration']
         else:
             self.routability_Lsub_iteration = self.Lsub_iteration
-        self.admm_rho = 1
         self.start_fence_region_density = False
 
-    def obj_fn(self, pos_w, pos_g=None, admm_multiplier=None):
+    def obj_fn(self, pos):
         """
         @brief Compute objective.
             wirelength + density_weight * density penalty
         @param pos locations of cells
         @return objective value
         """
-        wirelength = self.op_collections.wirelength_op(pos_w)
-        density = self.op_collections.density_op(pos_w)
-        result = wirelength + self.density_weight * density
-        if pos_g is not None:
-            diff = pos_w - pos_g + admm_multiplier
-            result += self.admm_rho / 2 * torch.dot(diff, diff)
+        wirelength = self.op_collections.wirelength_op(pos)
+        if(len(self.placedb.regions) > 0):
+            density = self.op_collections.fence_region_density_merged_op(pos)
+        else:
+            density = self.op_collections.density_op(pos)
+        if(self.init_density is None):
+            ### record initial density
+            self.init_density = density.data.clone()
+        if(self.quad_penalty):
+            ### quadratic density penalty
+            density = density + self.density_quad_coeff / 2 / self.init_density * density**2
+        if(len(self.placedb.regions) > 0):
+            result = wirelength + self.density_weight.dot(density)
+        else:
+            result = wirelength + self.density_weight * density
+
         return result
 
     def obj_and_grad_fn_old(self, pos_w, pos_g=None, admm_multiplier=None):
@@ -304,7 +315,7 @@ class PlaceObj(nn.Module):
         return obj, pos_w.grad
 
 
-    def obj_and_grad_fn(self, pos_w, pos_g=None, admm_multiplier=None):
+    def obj_and_grad_fn(self, pos):
         """
         @brief compute objective and gradient.
             wirelength + density_weight * density penalty
@@ -312,78 +323,14 @@ class PlaceObj(nn.Module):
         @return objective value
         """
         #self.check_gradient(pos)
-        if(len(self.placedb.regions) == 0):
-            obj = self.obj_fn(pos_w, pos_g, admm_multiplier)
-            if pos_w.grad is not None:
-                pos_w.grad.zero_()
-            obj.backward()
-        else:
-            num_nodes = self.placedb.num_nodes
-            num_movable_nodes = self.placedb.num_movable_nodes
-            num_filler_nodes = self.placedb.num_filler_nodes
+        obj = self.obj_fn(pos)
+        if pos.grad is not None:
+            pos.grad.zero_()
+        obj.backward()
 
+        self.op_collections.precondition_op(pos.grad, self.density_weight)
 
-            wl = self.op_collections.wirelength_op(pos_w)
-            if pos_w.grad is not None:
-                pos_w.grad.zero_()
-            wl.backward()
-            wl_grad = pos_w.grad.data.clone()
-            if pos_w.grad is not None:
-                pos_w.grad.zero_()
-
-            total_density_grad = 0
-            num_regions = len(self.op_collections.fence_region_density_ops)-1
-            if(self.init_density is None):
-                self.init_density = self.op_collections.fence_region_density_merged_op(pos_w.data).data
-                # self.init_density = torch.tensor([density_op(pos_w.data).data.item() for density_op in self.op_collections.fence_region_density_ops], device=pos_w.device)
-
-            # total_density = 0
-            # for i, density_op in enumerate(self.op_collections.fence_region_density_ops):
-            #     if(self.quad_penalty):
-            #         density = density_op(pos_w)
-            #         total_density = total_density + density + self.density_quad_coeff / 2 / self.init_density[i]  * density**2
-            #     else:
-            #         total_density = total_density + density_op(pos_w)
-            total_density = self.density_weight.dot(self.op_collections.fence_region_density_merged_op(pos_w))
-            total_density.backward()
-            total_density_grad = pos_w.grad
-
-            # for i, density_op in enumerate(self.op_collections.fence_region_density_ops):
-            #     if(self.quad_penalty):
-            #         density = density_op(pos_w)
-            #         density = density + self.density_quad_coeff / 2 / self.init_density[i]  * density**2
-            #     else:
-            #         density = density_op(pos_w)
-
-            #     density.backward()
-            #     density_grad = pos_w.grad.data.clone()
-            #     mask = (self.data_collections.node2fence_region_map != i) if (i < num_regions) else (self.data_collections.node2fence_region_map < num_regions)
-            #     density_grad[:num_movable_nodes].masked_fill_(mask, 0)
-            #     density_grad[num_nodes:num_nodes+num_movable_nodes].masked_fill_(mask, 0)
-            #     ### handle filler gradients
-            #     filler_beg, filler_end = self.filler_start_map[i], self.filler_start_map[i+1]
-            #     density_grad = density_grad.view(2, -1)
-            #     density_grad[:,num_nodes-num_filler_nodes:num_nodes-num_filler_nodes+filler_beg].zero_()
-            #     density_grad[:,num_nodes-num_filler_nodes+filler_end:].zero_()
-            #     density_grad = density_grad.view(-1)
-
-            #     if pos_w.grad is not None:
-            #         pos_w.grad.zero_()
-            #     total_density_grad += density_grad
-
-            obj = torch.zeros([1])
-            # if(self.quad_penalty):
-            #     obj = wl.data.item() + self.density_weight * (density + self.density_quad_coeff / 2 / self.init_density * density**2)
-            # else:
-            #     obj = wl.data.item() + self.density_weight * self.op_collections.density_op(pos_w.data)
-
-
-            pos_w.grad.data.copy_(wl_grad + total_density_grad)
-
-
-        self.op_collections.precondition_op(pos_w.grad, self.density_weight, 0)
-
-        return obj, pos_w.grad
+        return obj, pos.grad
 
 
     def forward(self):
@@ -703,19 +650,29 @@ class PlaceObj(nn.Module):
         wirelength_grad_norm = self.data_collections.pos[0].grad.norm(p=1)
 
         self.data_collections.pos[0].grad.zero_()
-        density = self.op_collections.density_op(self.data_collections.pos[0])
-        density.backward()
-        density_grad_norm = self.data_collections.pos[0].grad.norm(p=1)
+        density_weight = []
+        if(len(self.placedb.regions) > 0):
+            density = self.op_collections.fence_region_density_merged_op(self.data_collections.pos[0]).sum()
+            density.backward()
+            density_grad_norm = self.data_collections.pos[0].grad.norm(p=1)
+            grad_norm_ratio = wirelength_grad_norm / density_grad_norm
+            density_weight = params.density_weight * grad_norm_ratio
+            self.data_collections.pos[0].grad.zero_()
+            self.density_weight = torch.tensor([density_weight]*(len(self.placedb.regions)+1), device=self.data_collections.pos[0].device)
+        else:
+            density = self.op_collections.density_op(self.data_collections.pos[0])
+            density.backward()
+            density_grad_norm = self.data_collections.pos[0].grad.norm(p=1)
 
-        grad_norm_ratio = wirelength_grad_norm / density_grad_norm
-        self.density_weight = torch.tensor(
-            [params.density_weight * grad_norm_ratio],
-            dtype=self.data_collections.pos[0].dtype,
-            device=self.data_collections.pos[0].device)
+            grad_norm_ratio = wirelength_grad_norm / density_grad_norm
+            self.density_weight = torch.tensor(
+                [params.density_weight * grad_norm_ratio],
+                dtype=self.data_collections.pos[0].dtype,
+                device=self.data_collections.pos[0].device)
 
         return self.density_weight
 
-    def build_update_density_weight(self, params, placedb, algo="hpwl"):
+    def build_update_density_weight(self, params, placedb, algo="overflow"):
         """
         @brief update density weight
         @param params parameters
@@ -749,10 +706,12 @@ class PlaceObj(nn.Module):
             ### based on overflow
             with torch.no_grad():
                 density_norm = cur_metric.density/self.init_density
+                density_weight_grad = density_norm + self.density_quad_coeff/2*density_norm**2
+                density_weight_grad /= density_weight_grad.norm(p=2)
                 # density_weight_grad = density_norm + self.density_quad_coeff / 2 * density_norm**2
-                self.density_weight += self.density_step_size * 1e-12
-                self.density_step_size *= np.log(self.density_quad_coeff * density_norm + 1) / (
-                    1+np.log(self.density_quad_coeff * density_norm + 1)) * (alpha_h-alpha_l) + alpha_l
+                self.density_weight += self.density_step_size * density_weight_grad * 1e-11
+                self.density_step_size *= torch.log(self.density_quad_coeff * density_norm + 1) / (
+                    1+torch.log(self.density_quad_coeff * density_norm + 1)) * (alpha_h-alpha_l) + alpha_l
 
         update_density_weight_op = {"hpwl":update_density_weight_op_hpwl,
                                     "overflow": update_density_weight_op_overflow}[algo]

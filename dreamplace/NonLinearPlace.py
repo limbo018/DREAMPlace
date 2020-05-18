@@ -143,12 +143,6 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                 # the state must be saved after setting learning rate
                 initial_state = copy.deepcopy(optimizer.state_dict())
 
-                if len(placedb.regions) != 0:
-                    pos_g = self.data_collections.pos[0].data.clone()
-                    admm_multiplier = torch.zeros_like(self.data_collections.pos[0])
-                else:
-                    pos_g = None
-                    admm_multiplier = None
 
                 if params.gpu:
                     torch.cuda.synchronize()
@@ -278,7 +272,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         self.plot(params, placedb, iteration, cur_pos)
 
                     t3 = time.time()
-                    optimizer.step(pos_g, admm_multiplier)
+                    optimizer.step()
                     logging.info("optimizer step %.3f ms" %
                                  ((time.time() - t3) * 1000))
 
@@ -722,28 +716,6 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         res.data[num_nodes:num_nodes + num_movable_nodes].copy_(pos_y)
                         return res
 
-
-                    if 0 and len(placedb.regions) != 0 and iteration % 1 == 0:
-                    # if(1 and iteration == 980):
-                        # if(iteration % 10 == 0):
-                        #     self.plot(params, placedb, iteration-1,self.pos[0].data.clone().cpu().numpy())
-                        if(not model.start_fence_region_density):
-                            pos_w = self.pos[0]
-                            pos_g = solve_problem_2(pos_w, admm_multiplier, non_fence_regions_ex, non_fence_regions, iteration)
-                            admm_multiplier += pos_w - pos_g
-                            self.pos[0].data.copy_(pos_g)
-                        if(iteration % 20 == 0):
-                            self.plot(params, placedb, iteration,self.pos[0].data.clone().cpu().numpy())
-                    else:
-                        pass
-                        # if(iteration == 2):
-                        #     pos_g = solve_problem_2(self.pos[0].data, 0, non_fence_regions_ex, non_fence_regions, iteration)
-                        #     self.pos[0].data.copy_(pos_g)
-                        # if(iteration % 50 == 0):
-                        #     self.plot(params, placedb, iteration,self.pos[0].data.clone().cpu().numpy())
-
-
-
                 # in case of divergence, use the best metric
                 ### always rollback to best overflow
                 self.pos[0].data.copy_(best_pos[0].data)
@@ -813,9 +785,9 @@ class NonLinearPlace(BasicPlace.BasicPlace):
 
         # legalization
         if params.legalize_flag:
-            assert len(
-                placedb.regions
-            ) == 0, "FENCE REGIONS are not supported in legalization yet"
+            # assert len(
+            #     placedb.regions
+            # ) == 0, "FENCE REGIONS are not supported in legalization yet"
             tt = time.time()
             self.pos[0].data.copy_(self.op_collections.legalize_op(
                 self.pos[0]))

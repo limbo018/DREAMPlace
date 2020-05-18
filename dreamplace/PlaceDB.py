@@ -710,7 +710,7 @@ row height = %g, site width = %g
         if params.enable_fillers:
             # the way to compute this is still tricky; we need to consider place_io together on how to
             # summarize the area of fixed cells, which may overlap with each other.
-            if(1 and len(self.regions) > 0):
+            if(len(self.regions) > 0):
                 ### calculate fillers if there is fence region
 
                 non_fence_regions = [fence_region.slice_non_fence_region(region,

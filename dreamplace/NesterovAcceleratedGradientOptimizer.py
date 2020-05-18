@@ -33,7 +33,7 @@ class NesterovAcceleratedGradientOptimizer(Optimizer):
 
         # u_k is major solution
         # v_k is reference solution
-        # obj_k is the objective at v_k 
+        # obj_k is the objective at v_k
         # a_k is optimization parameter
         # alpha_k is the step size
         # v_k_1 is previous reference solution
@@ -41,12 +41,12 @@ class NesterovAcceleratedGradientOptimizer(Optimizer):
         # obj_k_1 is the objective at v_k_1
         defaults = dict(lr=lr,
                 u_k=[], v_k=[], g_k=[], obj_k=[], a_k=[], alpha_k=[],
-                v_k_1=[], g_k_1=[], obj_k_1=[], 
+                v_k_1=[], g_k_1=[], obj_k_1=[],
                 v_kp1 = [None],
                 obj_eval_count=0)
         super(NesterovAcceleratedGradientOptimizer, self).__init__(params, defaults)
-        self.obj_and_grad_fn = obj_and_grad_fn 
-        self.constraint_fn = constraint_fn 
+        self.obj_and_grad_fn = obj_and_grad_fn
+        self.constraint_fn = constraint_fn
 
         # I do not know how to get generator's length
         if len(self.param_groups) != 1:
@@ -55,7 +55,7 @@ class NesterovAcceleratedGradientOptimizer(Optimizer):
     def __setstate__(self, state):
         super(NesterovAcceleratedGradientOptimizer, self).__setstate__(state)
 
-    def step(self, pos_g=None, admm_multiplier=None, closure=None):
+    def step(self, closure=None):
         """
         @brief Performs a single optimization step.
         @param closure A callable closure function that reevaluates the model and returns the loss.
@@ -75,7 +75,7 @@ class NesterovAcceleratedGradientOptimizer(Optimizer):
                     # directly use p as v_k to save memory
                     #group['v_k'].append(torch.autograd.Variable(p.data, requires_grad=True))
                     group['v_k'].append(p)
-                    obj, grad = obj_and_grad_fn(group['v_k'][i], pos_g, admm_multiplier)
+                    obj, grad = obj_and_grad_fn(group['v_k'][i])
                     group['g_k'].append(grad.data.clone()) # must clone
                     group['obj_k'].append(obj.data.clone())
                 u_k = group['u_k'][i]
@@ -86,7 +86,7 @@ class NesterovAcceleratedGradientOptimizer(Optimizer):
                     group['a_k'].append(torch.ones(1, dtype=g_k.dtype, device=g_k.device))
                     group['v_k_1'].append(torch.autograd.Variable(torch.zeros_like(v_k), requires_grad=True))
                     group['v_k_1'][i].data.copy_(group['v_k'][i]-group['lr']*g_k)
-                    obj, grad = obj_and_grad_fn(group['v_k_1'][i], pos_g, admm_multiplier)
+                    obj, grad = obj_and_grad_fn(group['v_k_1'][i])
                     group['g_k_1'].append(grad.data)
                     group['obj_k_1'].append(obj.data.clone())
                 a_k = group['a_k'][i]
@@ -118,7 +118,7 @@ class NesterovAcceleratedGradientOptimizer(Optimizer):
                     # g_kp1 must correspond to v_kp1
                     constraint_fn(v_kp1)
 
-                    f_kp1, g_kp1 = obj_and_grad_fn(v_kp1, pos_g, admm_multiplier)
+                    f_kp1, g_kp1 = obj_and_grad_fn(v_kp1)
 
                     #tt = time.time()
                     alpha_kp1 = torch.sqrt(torch.sum((v_kp1.data-v_k.data)**2) / torch.sum((g_kp1.data-g_k.data)**2))
@@ -136,7 +136,7 @@ class NesterovAcceleratedGradientOptimizer(Optimizer):
                         break
                     else:
                         alpha_k.data.copy_(alpha_kp1.data)
-                #if v_k.is_cuda: 
+                #if v_k.is_cuda:
                 #    torch.cuda.synchronize()
                 #logging.debug("\tline search %.3f ms" % ((time.time()-ttt)*1000))
 

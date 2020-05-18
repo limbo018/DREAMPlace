@@ -47,21 +47,21 @@ class EvalMetrics (object):
         if self.wirelength is not None:
             content += ", WL %.3E" % (self.wirelength)
         if self.density is not None:
-            if(self.density.size(0) == 1):
+            if(self.density.numel() == 1):
                 content += ", Density %.3E" % (self.density)
             else:
-                content += ", Density %s" % str(self.density.cpu().numpy().tolist())
+                content += ", Density %s" % ", ".join(["%.3E" % i for i in self.density.cpu().numpy().tolist()])
         if self.density_weight is not None:
-            if(self.density_weight.size(0) == 1):
+            if(self.density_weight.numel() == 1):
                 content += ", DensityWeight %.6E" % (self.density_weight)
             else:
-                content += ", DensityWeight %s" % str(self.density_weight.cpu().numpy().tolist())
+                content += ", DensityWeight [%s]" % ", ".join(["%.3E" % i for i in self.density_weight.cpu().numpy().tolist()])
         if self.hpwl is not None:
             content += ", HPWL %.6E" % (self.hpwl)
         if self.rmst_wl is not None:
             content += ", RMSTWL %.3E" % (self.rmst_wl)
         if self.overflow is not None:
-            if(self.overflow.size(0)):
+            if(self.overflow.numel()==1):
                 content += ", Overflow %.6E" % (self.overflow)
             else:
                 content += ", Overflow %s" % str(self.overflow.cpu().numpy().tolist())
