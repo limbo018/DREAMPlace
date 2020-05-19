@@ -50,12 +50,12 @@ class EvalMetrics (object):
             if(self.density.numel() == 1):
                 content += ", Density %.3E" % (self.density)
             else:
-                content += ", Density [%s]" % ", ".join(["%.3E" % i for i in self.density.cpu().numpy().tolist()])
+                content += ", Density [%s]" % ", ".join(["%.3E" % i for i in self.density])
         if self.density_weight is not None:
             if(self.density_weight.numel() == 1):
                 content += ", DensityWeight %.6E" % (self.density_weight)
             else:
-                content += ", DensityWeight [%s]" % ", ".join(["%.3E" % i for i in self.density_weight.cpu().numpy().tolist()])
+                content += ", DensityWeight [%s]" % ", ".join(["%.3E" % i for i in self.density_weight])
         if self.hpwl is not None:
             content += ", HPWL %.6E" % (self.hpwl)
         if self.rmst_wl is not None:
@@ -64,7 +64,7 @@ class EvalMetrics (object):
             if(self.overflow.numel()==1):
                 content += ", Overflow %.6E" % (self.overflow)
             else:
-                content += ", Overflow %s" % str(self.overflow.cpu().numpy().tolist())
+                content += ", Overflow [%s]" % ", ".join(["%.3E" % i for i in self.overflow])
         if self.max_density is not None:
             content += ", MaxDensity %.3E" % (self.max_density)
         if self.route_utilization is not None:
