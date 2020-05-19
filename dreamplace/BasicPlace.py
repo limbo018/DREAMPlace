@@ -695,12 +695,22 @@ class BasicPlace(nn.Module):
 
     def build_multi_fence_region_legalization(self, params, placedb, data_collections, device):
         legal_ops = [self.build_fence_region_legalization(region_id, params, placedb, data_collections, device) for region_id in range(len(placedb.regions)+1)]
+
+        pos_ml_list = []
+        pos_gl_list = []
         def build_legalization_op(pos):
             for i in range(len(placedb.regions)+1):
-                pos = legal_ops[i](pos)
+                pos, pos_ml, pos_gl = legal_ops[i][0](pos)
+                pos_ml_list.append(pos_ml)
+                pos_gl_list.append(pos_gl)
             legal = self.op_collections.legality_check_op(pos)
             if not legal:
                 logging.error("legality check failed in greedy legalization")
+                return pos
+            else:
+                ### start abacus legalizer
+                for i in range(len(placedb.regions)+1):
+                    pos = legal_ops[i][1](pos, pos_ml_list[i], pos_gl_list[i])
             return pos
         return build_legalization_op
 
@@ -757,24 +767,6 @@ class BasicPlace(nn.Module):
         num_movable_nodes_fence_region = fence_region_mask.long().sum().item()
         num_filler_nodes_fence_region = filler_end - filler_beg
         num_terminals_fence_region = num_terminals + virtual_macros_size_x.size(0)
-
-        ### build region legality check, important to abacus legalizer
-        ### fence regions are transformed to virtual macros
-        legality_check_op = legality_check.LegalityCheck(
-            node_size_x=node_size_x,
-            node_size_y=node_size_y,
-            flat_region_boxes=flat_region_boxes,
-            flat_region_boxes_start=flat_region_boxes_start,
-            node2fence_region_map=node2fence_region_map,
-            xl=placedb.xl,
-            yl=placedb.yl,
-            xh=placedb.xh,
-            yh=placedb.yh,
-            site_width=placedb.site_width,
-            row_height=placedb.row_height,
-            scale_factor=params.scale_factor,
-            num_terminals=num_terminals_fence_region,
-            num_movable_nodes=num_movable_nodes_fence_region)
 
         ml = macro_legalize.MacroLegalize(
             node_size_x=node_size_x,
@@ -835,7 +827,7 @@ class BasicPlace(nn.Module):
             num_terminal_NIs=placedb.num_terminal_NIs,
             num_filler_nodes=num_filler_nodes_fence_region)
 
-        def build_legalization_op(pos):
+        def build_greedy_legalization_op(pos):
             ### reconstruct pos for fence region
             pos_total = pos.data.clone()
             pos = pos.view(2, -1)
@@ -848,21 +840,27 @@ class BasicPlace(nn.Module):
 
             logging.info("Start legalization")
             pos1 = ml(pos, pos)
-            pos2 = gl(pos1, pos1)
-            legal = legality_check_op(pos2)
-            if not legal:
-                logging.error("legality check failed in greedy legalization")
-                result = pos2
-            else:
-                result = al(pos1, pos2)
+            result = gl(pos1, pos1)
             ## commit legal solution for movable cells in fence region
             pos_total = pos_total.view(2, -1)
             result = result.view(2, -1)
             pos_total[0, :num_movable_nodes].masked_scatter_(fence_region_mask, result[0, :num_movable_nodes_fence_region])
             pos_total[1, :num_movable_nodes].masked_scatter_(fence_region_mask, result[1, :num_movable_nodes_fence_region])
             pos_total = pos_total.view(-1).contiguous()
+            result = result.view(-1).contiguous()
+            return pos_total, pos1, result
+
+        def build_abacus_legalization_op(pos_total, pos_ref, pos):
+            result = al(pos_ref, pos)
+            ### commit abacus results to pos_total
+            pos_total = pos_total.view(2, -1)
+            result = result.view(2, -1)
+            pos_total[0, :num_movable_nodes].masked_scatter_(fence_region_mask, result[0, :num_movable_nodes_fence_region])
+            pos_total[1, :num_movable_nodes].masked_scatter_(fence_region_mask, result[1, :num_movable_nodes_fence_region])
+            pos_total = pos_total.view(-1).contiguous()
             return pos_total
-        return build_legalization_op
+
+        return build_greedy_legalization_op, build_abacus_legalization_op
 
     def build_detailed_placement(self, params, placedb, data_collections,
                                  device):
