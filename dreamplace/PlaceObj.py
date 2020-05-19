@@ -42,6 +42,12 @@ class PreconditionOp:
         self.alpha = 1.0
         self.best_overflow = None
         self.overflows = []
+        self.movablenode2fence_region_map_clamp = data_collections.node2fence_region_map[:placedb.num_movable_nodes].clamp(max=len(placedb.regions)).long()
+        self.filler2fence_region_map = torch.zeros(placedb.num_filler_nodes, device=data_collections.pos[0].device, dtype=torch.long)
+        for i in range(len(placedb.regions)+1):
+            filler_beg, filler_end = self.placedb.filler_start_map[i:i+2]
+            self.filler2fence_region_map[filler_beg:filler_end] = i
+
 
     def set_overflow(self, overflow):
         self.overflows.append(overflow)
@@ -55,19 +61,12 @@ class PreconditionOp:
         It is tricky for this parameter to increase.
         """
         with torch.no_grad():
-            #### TODO vectorized preconditioning
             if(density_weight.size(0) == 1):
                 precond = self.data_collections.num_pins_in_nodes + self.alpha * density_weight * self.data_collections.node_areas
             else:
-                for i in range(density_weight.size(0)):
-                    node_areas = self.data_collections.node_areas.clone()
-                    if(i < len(self.placedb.regions)):
-                        mask = self.data_collections.node2fence_region_map[:self.placedb.num_movable_nodes] == i
-                    else:
-                        mask = self.data_collections.node2fence_region_map[:self.placedb.num_movable_nodes] >= len(self.placedb.regions)
-                    node_areas[:self.placedb.num_movable_nodes].masked_scatter_(mask, node_areas[:self.placedb.num_movable_nodes][mask]*density_weight[i])
-                    filler_beg, filler_end = self.placedb.filler_start_map[i:i+2]
-                    node_areas[self.placedb.num_nodes-self.placedb.num_filler_nodes+filler_beg:self.placedb.num_nodes-self.placedb.num_filler_nodes+filler_end] *= density_weight[i]
+                node_areas = self.data_collections.node_areas.clone()
+                node_areas[:self.placedb.num_movable_nodes].mul_(density_weight[self.movablenode2fence_region_map_clamp])
+                node_areas[self.placedb.num_nodes-self.placedb.num_filler_nodes:].mul_(density_weight[self.filler2fence_region_map])
 
                 precond = self.data_collections.num_pins_in_nodes + self.alpha * node_areas
 
@@ -320,7 +319,6 @@ class PlaceObj(nn.Module):
 
         return obj, pos_w.grad
 
-
     def obj_and_grad_fn(self, pos):
         """
         @brief compute objective and gradient.
@@ -334,10 +332,9 @@ class PlaceObj(nn.Module):
             pos.grad.zero_()
         obj.backward()
 
-        self.op_collections.precondition_op(pos.grad, self.density_weight)
+        # self.op_collections.precondition_op(pos.grad, self.density_weight)
 
         return obj, pos.grad
-
 
     def forward(self):
         """
