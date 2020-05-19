@@ -520,6 +520,8 @@ class PlaceDB (object):
         self.flat_region_boxes = np.array(pydb.flat_region_boxes, dtype=self.dtype)
         self.flat_region_boxes_start = np.array(pydb.flat_region_boxes_start, dtype=np.int32)
         self.node2fence_region_map = np.array(pydb.node2fence_region_map, dtype=np.int32)
+        # print(self.flat_region_boxes, self.flat_region_boxes_start, self.node2fence_region_map)
+        # print(self.flat_region_boxes.shape, self.flat_region_boxes_start.shape, self.node2fence_region_map.shape)
         #### nonfence region is set to INT_MAX, we set it to #regions??? not compatible with other APIs
         # self.node2fence_region_map = np.minimum(self.node2fence_region_map, len(self.regions))
         self.xl = float(pydb.xl)
@@ -712,6 +714,19 @@ row height = %g, site width = %g
             logging.warn("target_density %g is smaller than utilization %g, ignored" % (params.target_density, target_density))
             params.target_density = target_density
         content += "utilization = %g, target_density = %g\n" % (self.total_movable_node_area / self.total_space_area, params.target_density)
+
+        # calculate fence region virtual macro
+        if(len(self.regions) > 0):
+            virtual_macro_for_fence_region = [fence_region.slice_non_fence_region(region,
+                self.xl, self.yl, self.xh, self.yh, merge=False, device="cpu",
+                macro_pos_x=self.node_x[self.num_movable_nodes:self.num_movable_nodes+self.num_terminals],
+                macro_pos_y=self.node_y[self.num_movable_nodes:self.num_movable_nodes+self.num_terminals],
+                macro_size_x=self.node_size_x[self.num_movable_nodes:self.num_movable_nodes+self.num_terminals],
+                macro_size_y=self.node_size_y[self.num_movable_nodes:self.num_movable_nodes+self.num_terminals]
+                ).cpu().numpy() for region in self.regions]
+            virtual_macro_for_non_fence_region = np.concatenate(self.regions, 0)
+            self.virtual_macro_fence_region = virtual_macro_for_fence_region + [virtual_macro_for_non_fence_region]
+
 
         # insert filler nodes
         if params.enable_fillers:

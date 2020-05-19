@@ -154,6 +154,9 @@ class PlaceDataCollection(object):
                 placedb.flat_region_boxes_start).to(device)
             self.node2fence_region_map = torch.from_numpy(
                 placedb.node2fence_region_map).to(device)
+            # This is for multi-electric potential and legalization
+            # boxes defined as left-bottm point and top-right point
+            self.virtual_macro_fence_region = [torch.from_numpy(region).to(device) for region in placedb.virtual_macro_fence_region]
 
             self.net_mask_all = torch.from_numpy(
                 np.ones(placedb.num_nets,
@@ -393,7 +396,11 @@ class BasicPlace(nn.Module):
         self.op_collections.legality_check_op = self.build_legality_check(
             params, placedb, self.data_collections, self.device)
         # legalization
-        self.op_collections.legalize_op = self.build_legalization(
+        if(len(placedb.regions) > 0):
+            self.op_collections.legalize_op = self.build_multi_fence_region_legalization(
+            params, placedb, self.data_collections, self.device)
+        else:
+            self.op_collections.legalize_op = self.build_legalization(
             params, placedb, self.data_collections, self.device)
         # detailed placement
         self.op_collections.detailed_place_op = self.build_detailed_placement(
@@ -632,7 +639,9 @@ class BasicPlace(nn.Module):
             num_terminal_NIs=placedb.num_terminal_NIs,
             num_filler_nodes=placedb.num_filler_nodes)
         # for standard cell legalization
-        gl = greedy_legalize.GreedyLegalize(
+        # legalize_alg = mg_legalize.MGLegalize
+        legalize_alg = greedy_legalize.GreedyLegalize
+        gl = legalize_alg(
             node_size_x=data_collections.node_size_x,
             node_size_y=data_collections.node_size_y,
             node_weights=data_collections.num_pins_in_nodes,
@@ -682,6 +691,177 @@ class BasicPlace(nn.Module):
                 return pos2
             return al(pos1, pos2)
 
+        return build_legalization_op
+
+    def build_multi_fence_region_legalization(self, params, placedb, data_collections, device):
+        legal_ops = [self.build_fence_region_legalization(region_id, params, placedb, data_collections, device) for region_id in range(len(placedb.regions)+1)]
+        def build_legalization_op(pos):
+            for i in range(len(placedb.regions)+1):
+                pos = legal_ops[i](pos)
+            legal = self.op_collections.legality_check_op(pos)
+            if not legal:
+                logging.error("legality check failed in greedy legalization")
+            return pos
+        return build_legalization_op
+
+    def build_fence_region_legalization(self, region_id, params, placedb, data_collections, device):
+        ### reconstruct node size
+        ### extract necessary nodes in the electric field and insert virtual macros to replace fence region
+        num_nodes = placedb.num_nodes
+        num_movable_nodes = placedb.num_movable_nodes
+        num_filler_nodes = placedb.num_filler_nodes
+        num_terminals = placedb.num_terminals
+        num_terminal_NIs = placedb.num_terminal_NIs
+        if(region_id < len(placedb.regions)):
+            fence_region_mask = data_collections.node2fence_region_map[:num_movable_nodes] == region_id
+        else:
+            fence_region_mask = data_collections.node2fence_region_map[:num_movable_nodes] >= len(placedb.regions)
+
+        virtual_macros = data_collections.virtual_macro_fence_region[region_id]
+        virtual_macros_size_x = virtual_macros[:,2]-virtual_macros[:,0]
+        virtual_macros_size_y = virtual_macros[:,3]-virtual_macros[:,1]
+        virtual_macros_pos = virtual_macros[:,0:2].t().contiguous()
+        ### node size
+        node_size_x, node_size_y = data_collections.node_size_x, data_collections.node_size_y
+        filler_beg, filler_end = placedb.filler_start_map[region_id:region_id+2]
+        node_size_x = torch.cat([node_size_x[:num_movable_nodes][fence_region_mask], ## movable
+                                node_size_x[num_movable_nodes:num_movable_nodes+num_terminals], ## terminals
+                                virtual_macros_size_x, ## virtual macros
+                                node_size_x[num_movable_nodes+num_terminals:num_movable_nodes+num_terminals+num_terminal_NIs], ## terminal NIs
+                                node_size_x[num_nodes-num_filler_nodes+filler_beg:num_nodes-num_filler_nodes+filler_end] ## fillers
+                                ], 0)
+        node_size_y = torch.cat([node_size_y[:num_movable_nodes][fence_region_mask], ## movable
+                                node_size_y[num_movable_nodes:num_movable_nodes+num_terminals], ## terminals
+                                virtual_macros_size_y, ## virtual macros
+                                node_size_y[num_movable_nodes+num_terminals:num_movable_nodes+num_terminals+num_terminal_NIs], ## terminal NIs
+                                node_size_y[num_nodes-num_filler_nodes+filler_beg:num_nodes-num_filler_nodes+filler_end] ## fillers
+                                ], 0)
+
+        ### num pins in nodes
+        ### 0 for virtual macros and fillers
+        num_pins_in_nodes = data_collections.num_pins_in_nodes
+        num_pins_in_nodes = torch.cat([num_pins_in_nodes[:num_movable_nodes][fence_region_mask], ## movable
+                                       num_pins_in_nodes[num_movable_nodes:num_movable_nodes+num_terminals], ## terminals
+                                       torch.zeros(virtual_macros_size_x.size(0), dtype=num_pins_in_nodes.dtype, device=device), ## virtual macros
+                                       num_pins_in_nodes[num_movable_nodes+num_terminals:num_movable_nodes+num_terminals+num_terminal_NIs], ## terminal NIs
+                                       num_pins_in_nodes[num_nodes-num_filler_nodes+filler_beg:num_nodes-num_filler_nodes+filler_end] ## fillers
+                                       ], 0)
+        ### flat region boxes
+        flat_region_boxes = torch.tensor([], device=node_size_x.device, dtype=data_collections.flat_region_boxes.dtype)
+        ### flat region boxes start
+        flat_region_boxes_start = torch.tensor([0], device=node_size_x.device, dtype=data_collections.flat_region_boxes_start.dtype)
+        ### node2fence region map
+        node2fence_region_map = torch.zeros(num_movable_nodes, dtype=data_collections.node2fence_region_map.dtype, device=node_size_x.device).fill_(data_collections.node2fence_region_map.max().item())
+
+        ## num movable nodes and num filler nodes
+        num_movable_nodes_fence_region = fence_region_mask.long().sum().item()
+        num_filler_nodes_fence_region = filler_end - filler_beg
+        num_terminals_fence_region = num_terminals + virtual_macros_size_x.size(0)
+
+        ### build region legality check, important to abacus legalizer
+        ### fence regions are transformed to virtual macros
+        legality_check_op = legality_check.LegalityCheck(
+            node_size_x=node_size_x,
+            node_size_y=node_size_y,
+            flat_region_boxes=flat_region_boxes,
+            flat_region_boxes_start=flat_region_boxes_start,
+            node2fence_region_map=node2fence_region_map,
+            xl=placedb.xl,
+            yl=placedb.yl,
+            xh=placedb.xh,
+            yh=placedb.yh,
+            site_width=placedb.site_width,
+            row_height=placedb.row_height,
+            scale_factor=params.scale_factor,
+            num_terminals=num_terminals_fence_region,
+            num_movable_nodes=num_movable_nodes_fence_region)
+
+        ml = macro_legalize.MacroLegalize(
+            node_size_x=node_size_x,
+            node_size_y=node_size_y,
+            node_weights=num_pins_in_nodes,
+            flat_region_boxes=flat_region_boxes,
+            flat_region_boxes_start=flat_region_boxes_start,
+            node2fence_region_map=node2fence_region_map,
+            xl=placedb.xl,
+            yl=placedb.yl,
+            xh=placedb.xh,
+            yh=placedb.yh,
+            site_width=placedb.site_width,
+            row_height=placedb.row_height,
+            num_bins_x=params.num_bins_x,
+            num_bins_y=params.num_bins_y,
+            num_movable_nodes=num_movable_nodes_fence_region,
+            num_terminal_NIs=placedb.num_terminal_NIs,
+            num_filler_nodes=num_filler_nodes_fence_region)
+
+        gl = greedy_legalize.GreedyLegalize(
+            node_size_x=node_size_x,
+            node_size_y=node_size_y,
+            node_weights=num_pins_in_nodes,
+            flat_region_boxes=flat_region_boxes,
+            flat_region_boxes_start=flat_region_boxes_start,
+            node2fence_region_map=node2fence_region_map,
+            xl=placedb.xl,
+            yl=placedb.yl,
+            xh=placedb.xh,
+            yh=placedb.yh,
+            site_width=placedb.site_width,
+            row_height=placedb.row_height,
+            num_bins_x=1,
+            num_bins_y=64,
+            #num_bins_x=64, num_bins_y=64,
+            num_movable_nodes=num_movable_nodes_fence_region,
+            num_terminal_NIs=placedb.num_terminal_NIs,
+            num_filler_nodes=num_filler_nodes_fence_region)
+        # for standard cell legalization
+        al = abacus_legalize.AbacusLegalize(
+            node_size_x=node_size_x,
+            node_size_y=node_size_y,
+            node_weights=num_pins_in_nodes,
+            flat_region_boxes=flat_region_boxes,
+            flat_region_boxes_start=flat_region_boxes_start,
+            node2fence_region_map=node2fence_region_map,
+            xl=placedb.xl,
+            yl=placedb.yl,
+            xh=placedb.xh,
+            yh=placedb.yh,
+            site_width=placedb.site_width,
+            row_height=placedb.row_height,
+            num_bins_x=1,
+            num_bins_y=64,
+            #num_bins_x=64, num_bins_y=64,
+            num_movable_nodes=num_movable_nodes_fence_region,
+            num_terminal_NIs=placedb.num_terminal_NIs,
+            num_filler_nodes=num_filler_nodes_fence_region)
+
+        def build_legalization_op(pos):
+            ### reconstruct pos for fence region
+            pos_total = pos.data.clone()
+            pos = pos.view(2, -1)
+            pos = torch.cat([pos[:,:num_movable_nodes][:,fence_region_mask], ## movable
+                            pos[:,num_movable_nodes:num_movable_nodes+num_terminals], ## terminals
+                            virtual_macros_pos, ## virtual macros
+                            pos[:,num_movable_nodes+num_terminals:num_movable_nodes+num_terminals+num_terminal_NIs], ## terminal NIs
+                            pos[:,num_nodes-num_filler_nodes+filler_beg:num_nodes-num_filler_nodes+filler_end] ## fillers
+                            ], 1).view(-1).contiguous()
+
+            logging.info("Start legalization")
+            pos1 = ml(pos, pos)
+            pos2 = gl(pos1, pos1)
+            legal = legality_check_op(pos2)
+            if not legal:
+                logging.error("legality check failed in greedy legalization")
+                result = pos2
+            else:
+                result = al(pos1, pos2)
+            ## commit legal solution for movable cells in fence region
+            pos_total = pos_total.view(2, -1)
+            result = result.view(2, -1)
+            pos_total[0, :num_movable_nodes].masked_scatter_(fence_region_mask, result[0, :num_movable_nodes_fence_region])
+            pos_total[1, :num_movable_nodes].masked_scatter_(fence_region_mask, result[1, :num_movable_nodes_fence_region])
+            pos_total = pos_total.view(-1).contiguous()
+            return pos_total
         return build_legalization_op
 
     def build_detailed_placement(self, params, placedb, data_collections,

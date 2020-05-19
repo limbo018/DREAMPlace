@@ -981,34 +981,33 @@ class PlaceObj(nn.Module):
             fence_region_mask=self.data_collections.node2fence_region_map<1e3) # density penalty for outer cells
 
     def build_multi_fence_region_density_op(self):
-        import dreamplace.ops.fence_region.fence_region as fence_region
+        # import dreamplace.ops.fence_region.fence_region as fence_region
 
-        num_movable_nodes = self.placedb.num_movable_nodes
-        num_terminals = self.placedb.num_terminals# + placedb.num_terminal_NIs
-        num_filler_nodes = self.placedb.num_filler_nodes
-        num_nodes = self.placedb.num_nodes
+        # num_movable_nodes = self.placedb.num_movable_nodes
+        # num_terminals = self.placedb.num_terminals# + placedb.num_terminal_NIs
+        # num_filler_nodes = self.placedb.num_filler_nodes
+        # num_nodes = self.placedb.num_nodes
 
-        non_fence_regions = [fence_region.slice_non_fence_region(region,
-            self.placedb.xl, self.placedb.yl, self.placedb.xh, self.placedb.yh, merge=False, device=self.data_collections.pos[0].device,
-            macro_pos_x=self.data_collections.pos[0][num_movable_nodes:num_movable_nodes+num_terminals],
-            macro_pos_y=self.data_collections.pos[0][num_nodes+num_movable_nodes:num_nodes+num_movable_nodes+num_terminals],
-            macro_size_x=self.data_collections.node_size_x[num_movable_nodes:num_movable_nodes+num_terminals],
-            macro_size_y=self.data_collections.node_size_y[num_movable_nodes:num_movable_nodes+num_terminals]
-            ) for region in self.placedb.regions]
+        # non_fence_regions = [fence_region.slice_non_fence_region(region,
+        #     self.placedb.xl, self.placedb.yl, self.placedb.xh, self.placedb.yh, merge=False, device=self.data_collections.pos[0].device,
+        #     macro_pos_x=self.data_collections.pos[0][num_movable_nodes:num_movable_nodes+num_terminals],
+        #     macro_pos_y=self.data_collections.pos[0][num_nodes+num_movable_nodes:num_nodes+num_movable_nodes+num_terminals],
+        #     macro_size_x=self.data_collections.node_size_x[num_movable_nodes:num_movable_nodes+num_terminals],
+        #     macro_size_y=self.data_collections.node_size_y[num_movable_nodes:num_movable_nodes+num_terminals]
+        #     ) for region in self.placedb.regions]
 
-        outer_fence_region = torch.from_numpy(np.concatenate(self.placedb.regions, 0)).to(self.data_collections.pos[0].device)
+        # outer_fence_region = torch.from_numpy(np.concatenate(self.placedb.regions, 0)).to(self.data_collections.pos[0].device)
 
-        fence_region_list = non_fence_regions + [outer_fence_region]
+        # fence_region_list = non_fence_regions + [outer_fence_region]
 
 
-        assert type(fence_region_list) == list and len(fence_region_list) >= 2, "Unsupported fence region list"
 
-        # self.data_collections.node2fence_region_map = torch.from_numpy(self.placedb.node2fence_region_map[:self.placedb.num_movable_nodes]).to(fence_region_list[0].device)
+        # assert type(fence_region_list) == list and len(fence_region_list) >= 2, "Unsupported fence region list"
 
         # region 0, ..., region n, non_fence_region
         self.op_collections.fence_region_density_ops = []
 
-        for i, fence_region in enumerate(fence_region_list[:-1]):
+        for i, fence_region in enumerate(self.data_collections.virtual_macro_fence_region[:-1]):
             self.op_collections.fence_region_density_ops.append(self.build_electric_potential(
                         self.params,
                         self.placedb,
@@ -1030,7 +1029,7 @@ class PlaceObj(nn.Module):
                         padding=0,
                         name=self.name,
                         region_id=len(self.placedb.regions),
-                        fence_regions=fence_region_list[-1])
+                        fence_regions=self.data_collections.virtual_macro_fence_region[-1])
         )
         def merged_op(pos):
             return torch.stack([density_op(pos) for density_op in self.op_collections.fence_region_density_ops])
