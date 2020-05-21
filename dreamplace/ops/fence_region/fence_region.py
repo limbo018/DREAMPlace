@@ -155,7 +155,7 @@ def slice_non_fence_region(regions, xl, yl, xh, yh, macro_pos_x=None, macro_pos_
             minx, miny, maxx, maxy = p
             if(cur_bbox is None):
                 cur_bbox = [minx, miny, maxx, maxy]
-            elif(cur_bbox[1] == miny and cur_bbox[3] == maxy):
+            elif(cur_bbox[1] == miny and cur_bbox[3] == maxy and cur_bbox[2] == minx):
                 cur_bbox[2:] = p[2:]
             else:
                 bbox_list.append(cur_bbox)
@@ -385,14 +385,14 @@ def draw_ispd2015():
     xl, yl, xh, yh = 0, 0, 1000, 1000
 
     # non_fence_regions_ex = slice_non_fence_region(
-    #     regions, xl, yl, xh, yh, merge=False, plot=True, figname="nonfence_ex.png")
+    #     regions, xl, yl, xh, yh, merge=True, plot=True, figname="nonfence_ex.png")
     # non_fence_regions = [slice_non_fence_region(
     #     region, xl, yl, xh, yh, merge=True, plot=True, figname=f"nonfence_{i}.png") for i, region in enumerate(regions)]
-    macro_pos_x = torch.tensor([600])
-    macro_pos_y = torch.tensor([600])
-    macro_size_x = torch.tensor([200])
-    macro_size_y = torch.tensor([200])
-    inner_fence_region = slice_non_fence_region(regions, xl, yl, xh, yh, merge=False, plot=True, figname="inner_nonfence_ex.png", macro_pos_x=macro_pos_x, macro_pos_y=macro_pos_y, macro_size_x=macro_size_x, macro_size_y=macro_size_y)
+    macro_pos_x = torch.tensor([600.])
+    macro_pos_y = torch.tensor([600.])
+    macro_size_x = torch.tensor([200.])
+    macro_size_y = torch.tensor([200.])
+    inner_fence_region = slice_non_fence_region(regions, xl, yl, xh, yh, merge=True, plot=True, figname="inner_nonfence_ex.png", macro_pos_x=macro_pos_x, macro_pos_y=macro_pos_y, macro_size_x=macro_size_x, macro_size_y=macro_size_y, device="cpu")
 
 
 if __name__ == "__main__":
