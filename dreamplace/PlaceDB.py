@@ -718,7 +718,7 @@ row height = %g, site width = %g
         # calculate fence region virtual macro
         if(len(self.regions) > 0):
             virtual_macro_for_fence_region = [fence_region.slice_non_fence_region(region,
-                self.xl, self.yl, self.xh, self.yh, merge=False, plot=False, figname=f"vmacro_{region_id}.png", device="cpu",
+                self.xl, self.yl, self.xh, self.yh, merge=True, plot=False, figname=f"vmacro_{region_id}.png", device="cpu",
                 macro_pos_x=self.node_x[self.num_movable_nodes:self.num_movable_nodes+self.num_terminals],
                 macro_pos_y=self.node_y[self.num_movable_nodes:self.num_movable_nodes+self.num_terminals],
                 macro_size_x=self.node_size_x[self.num_movable_nodes:self.num_movable_nodes+self.num_terminals],
