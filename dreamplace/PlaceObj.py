@@ -42,21 +42,23 @@ class PreconditionOp:
         self.alpha = 1.0
         self.best_overflow = None
         self.overflows = []
-        self.movablenode2fence_region_map_clamp = data_collections.node2fence_region_map[:placedb.num_movable_nodes].clamp(max=len(placedb.regions)).long()
-        self.filler2fence_region_map = torch.zeros(placedb.num_filler_nodes, device=data_collections.pos[0].device, dtype=torch.long)
-        for i in range(len(placedb.regions)+1):
-            filler_beg, filler_end = self.placedb.filler_start_map[i:i+2]
-            self.filler2fence_region_map[filler_beg:filler_end] = i
+        if(len(placedb.regions)>0):
+            self.movablenode2fence_region_map_clamp = data_collections.node2fence_region_map[:placedb.num_movable_nodes].clamp(max=len(placedb.regions)).long()
+            self.filler2fence_region_map = torch.zeros(placedb.num_filler_nodes, device=data_collections.pos[0].device, dtype=torch.long)
+            for i in range(len(placedb.regions)+1):
+                filler_beg, filler_end = self.placedb.filler_start_map[i:i+2]
+                self.filler2fence_region_map[filler_beg:filler_end] = i
 
 
     def set_overflow(self, overflow):
         self.overflows.append(overflow)
         if self.best_overflow is None:
             self.best_overflow = overflow
-        else:
-            self.best_overflow = min(self.best_overflow, overflow)
+        elif(self.best_overflow.mean() > overflow.mean()):
+            # self.best_overflow = min(self.best_overflow, overflow)
+            self.best_overflow = overflow
 
-    def __call__(self, grad, density_weight):
+    def __call__(self, grad, density_weight, update_mask=None):
         """Introduce alpha parameter to avoid divergence.
         It is tricky for this parameter to increase.
         """
@@ -64,16 +66,36 @@ class PreconditionOp:
             if(density_weight.size(0) == 1):
                 precond = self.data_collections.num_pins_in_nodes + self.alpha * density_weight * self.data_collections.node_areas
             else:
-                node_areas = self.data_collections.node_areas.clone()
-                node_areas[:self.placedb.num_movable_nodes].mul_(density_weight[self.movablenode2fence_region_map_clamp])
-                node_areas[self.placedb.num_nodes-self.placedb.num_filler_nodes:].mul_(density_weight[self.filler2fence_region_map])
+                # node_areas = self.data_collections.node_areas.clone()
+                # node_areas[:self.placedb.num_movable_nodes].mul_(density_weight[self.movablenode2fence_region_map_clamp])
+                # node_areas[self.placedb.num_nodes-self.placedb.num_filler_nodes:].mul_(density_weight[self.filler2fence_region_map])
 
+                # precond = self.data_collections.num_pins_in_nodes + self.alpha * node_areas
+                ### only precondition the non fence region
+                node_areas = self.data_collections.node_areas.clone()
+
+                mask = self.data_collections.node2fence_region_map[:self.placedb.num_movable_nodes] >= len(self.placedb.regions)
+                node_areas[:self.placedb.num_movable_nodes].masked_scatter_(mask, node_areas[:self.placedb.num_movable_nodes][mask]*density_weight[-1])
+                filler_beg, filler_end = self.placedb.filler_start_map[-2:]
+                node_areas[self.placedb.num_nodes-self.placedb.num_filler_nodes+filler_beg:self.placedb.num_nodes-self.placedb.num_filler_nodes+filler_end] *= density_weight[-1]
                 precond = self.data_collections.num_pins_in_nodes + self.alpha * node_areas
+
+
 
             precond.clamp_(min=1.0)
             grad[0:self.placedb.num_nodes].div_(precond)
             grad[self.placedb.num_nodes:self.placedb.num_nodes *
                  2].div_(precond)
+            if(update_mask is not None):
+                grad = grad.view(2, -1)
+                update_mask = ~update_mask
+                movable_mask = update_mask[self.movablenode2fence_region_map_clamp]
+                filler_mask = update_mask[self.filler2fence_region_map]
+                grad[0, :self.placedb.num_movable_nodes].masked_fill_(movable_mask, 0)
+                grad[1, :self.placedb.num_movable_nodes].masked_fill_(movable_mask, 0)
+                grad[0, self.placedb.num_nodes-self.placedb.num_filler_nodes:].masked_fill_(filler_mask, 0)
+                grad[1, self.placedb.num_nodes-self.placedb.num_filler_nodes:].masked_fill_(filler_mask, 0)
+                grad = grad.view(-1)
             self.iteration += 1
 
             # assume overflow has been updated
@@ -107,9 +129,17 @@ class PlaceObj(nn.Module):
         super(PlaceObj, self).__init__()
 
         ### quadratic penalty
-        self.density_quad_coeff = 1000
+        self.density_quad_coeff = 2000
         self.init_density = None
         self.quad_penalty = True
+        ### fence region
+        if(len(placedb.regions) > 0):
+            ### update mask controls whether stop gradient/updating, 1 represents allow grad/update
+            self.update_mask = None
+            ### for subregion rough legalization, once stop updating, perform immediate greddy legalization once
+            ### this is to avoid repeated legalization
+            ### 1 represents already legal
+            self.legal_mask = torch.zeros(len(placedb.regions)+1)
 
         self.params = params
         self.placedb = placedb
@@ -167,7 +197,7 @@ class PlaceObj(nn.Module):
             name=name)
         ### build multiple density op for multi-electric field
         if(len(self.placedb.regions)>0):
-            self.op_collections.fence_region_density_ops, self.op_collections.fence_region_density_merged_op = self.build_multi_fence_region_density_op()
+            self.op_collections.fence_region_density_ops, self.op_collections.fence_region_density_merged_op, self.op_collections.fence_region_density_overflow_merged_op = self.build_multi_fence_region_density_op()
         self.op_collections.update_density_weight_op = self.build_update_density_weight(
             params, placedb)
         self.op_collections.precondition_op = self.build_precondition(
@@ -202,6 +232,7 @@ class PlaceObj(nn.Module):
         else:
             self.routability_Lsub_iteration = self.Lsub_iteration
         self.start_fence_region_density = False
+
 
     def obj_fn(self, pos):
         """
@@ -332,7 +363,7 @@ class PlaceObj(nn.Module):
             pos.grad.zero_()
         obj.backward()
 
-        # self.op_collections.precondition_op(pos.grad, self.density_weight)
+        self.op_collections.precondition_op(pos.grad, self.density_weight, self.update_mask)
 
         return obj, pos.grad
 
@@ -736,15 +767,30 @@ class PlaceObj(nn.Module):
         def update_density_weight_op_overflow(cur_metric, prev_metric, iteration):
             assert self.quad_penalty == True, "[Error] density weight update based on overflow only works for quadratic density penalty"
             ### based on overflow
+            ### stop updating if a region has lower overflow than stop overflow
             with torch.no_grad():
                 density_norm = cur_metric.density * self.density_weight_grad_precond
                 density_weight_grad = density_norm + self.density_quad_coeff/2*density_norm**2
                 density_weight_grad /= density_weight_grad.norm(p=2)
 
-                # self.density_weight += self.density_weight_step_size * density_weight_grad# * 1e-7
+                ## self.density_weight += self.density_weight_step_size * density_weight_grad# * 1e-7
                 self.density_weight_u += self.density_weight_step_size * density_weight_grad
                 density_weight_s = 1 + self.density_quad_coeff * density_norm
-                self.density_weight = self.density_weight_u * density_weight_s
+
+                density_weight_new = (self.density_weight_u * density_weight_s).clamp(max=10)
+                # density_weight_new = density_weight_new * 0.1 + 0.9 * density_weight_new.mean()
+                # density_weight_new = self.density_weight + self.density_weight_step_size * density_weight_grad
+
+                ### conditional update if this region's overflow is higher than stop overflow
+                if(self.update_mask is None):
+                    self.update_mask = cur_metric.overflow >= self.params.stop_overflow
+                else:
+                    ### restart updating is not allowed
+                    self.update_mask &= cur_metric.overflow >= self.params.stop_overflow
+                self.density_weight.masked_scatter_(self.update_mask, density_weight_new[self.update_mask])
+
+
+                ### update density weight step size
                 rate = torch.log(self.density_quad_coeff * density_norm.norm(p=2)).clamp(min=0)
                 rate = rate / (1 + rate)
                 rate = rate * (self.density_weight_step_size_inc_high - self.density_weight_step_size_inc_low) + self.density_weight_step_size_inc_low
@@ -753,6 +799,10 @@ class PlaceObj(nn.Module):
         if(not self.quad_penalty and algo == "overflow"):
             logging.warn("quadratic density penalty is disabled, density weight update is forced to be based on HPWL")
             algo = "hpwl"
+        if(len(self.placedb.regions) == 0 and algo == "overflow"):
+            logging.warn("for benchmark without fence region, density weight update is forced to be based on HPWL")
+            algo = "hpwl"
+
         update_density_weight_op = {"hpwl":update_density_weight_op_hpwl,
                                     "overflow": update_density_weight_op_overflow}[algo]
 
@@ -773,7 +823,13 @@ class PlaceObj(nn.Module):
         @param overflow evaluated in current step
         @param base_gamma base gamma
         """
-        coef = torch.pow(10, (overflow - 0.1) * 20 / 9 - 1)
+        ### overflow can have multiple values for fence regions, use their weighted average based on movable node number
+        if(overflow.numel() == 1):
+            overflow_avg = overflow
+        else:
+            # overflow_avg = overflow.dot(self.data_collections.num_movable_nodes_fence_region/self.data_collections.num_movable_nodes_fence_region.sum())
+            overflow_avg = overflow
+        coef = torch.pow(10, (overflow_avg - 0.1) * 20 / 9 - 1)
         self.gamma.data.fill_(base_gamma * coef)
         return True
 
@@ -1005,10 +1061,32 @@ class PlaceObj(nn.Module):
                         region_id=len(self.placedb.regions),
                         fence_regions=self.data_collections.virtual_macro_fence_region[-1])
         )
-        def merged_op(pos):
-            return torch.stack([density_op(pos) for density_op in self.op_collections.fence_region_density_ops])
-        self.op_collections.fence_region_density_merged_op = merged_op
-        return self.op_collections.fence_region_density_ops, self.op_collections.fence_region_density_merged_op
+        def merged_density_op(pos):
+            ### stop mask is to stop forward of density
+            ### 1 represents stop flag
+            res = torch.stack([density_op(pos, mode="density") for density_op in self.op_collections.fence_region_density_ops])
+            # if(stop_mask is not None):
+            #     assert stop_mask.size() == res.size()
+            #     res[stop_mask] = res[stop_mask] * 0
+            return res
+
+        def merged_density_overflow_op(pos):
+            ### stop mask is to stop forward of density
+            ### 1 represents stop flag
+            overflow_list, max_density_list = [], []
+            for density_op in self.op_collections.fence_region_density_ops:
+                overflow, max_density = density_op(pos, mode="overflow")
+                overflow_list.append(overflow)
+                max_density_list.append(max_density)
+            overflow_list, max_density_list = torch.stack(overflow_list), torch.stack(max_density_list)
+
+            return overflow_list, max_density_list
+
+        self.op_collections.fence_region_density_merged_op = merged_density_op
+
+        self.op_collections.fence_region_density_overflow_merged_op = merged_density_overflow_op
+        return self.op_collections.fence_region_density_ops, self.op_collections.fence_region_density_merged_op, self.op_collections.fence_region_density_overflow_merged_op
+
 
 
 

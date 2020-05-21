@@ -121,7 +121,11 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                 if len(placedb.regions) > 0:
                     eval_ops.update({
                         'density':
-                        self.op_collections.fence_region_density_merged_op
+                        self.op_collections.fence_region_density_merged_op,
+                        "overflow":
+                        self.op_collections.fence_region_density_overflow_merged_op,
+                        "goverflow":
+                        self.op_collections.density_overflow_op
                     })
 
                 # a function to initialize learning rate
@@ -158,21 +162,28 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                     assert 0, "unsupported optimizer %s" % (optimizer_name)
 
                 # stopping criteria
-                def Lgamma_stop_criterion(Lgamma_step, metrics):
+                def Lgamma_stop_criterion(Lgamma_step, metrics, stop_mask=None):
                     with torch.no_grad():
                         if len(metrics) > 1:
                             cur_metric = metrics[-1][-1][-1]
                             prev_metric = metrics[-2][-1][-1]
+                            ### update stop mask for each fence region
+                            # if(stop_mask is not None):
+                            #     stop_mask.copy_(cur_metric.overflow < params.stop_overflow)
+
                             if Lgamma_step > 100 and (
-                                (cur_metric.overflow < params.stop_overflow
+                                ### for fence region, the outer cell overflow decides the stopping of GP
+                                (cur_metric.overflow[-1] < params.stop_overflow
                                  and cur_metric.hpwl > prev_metric.hpwl)
-                                    or cur_metric.max_density <
+                                    or cur_metric.max_density[-1] <
                                     params.target_density):
                                 logging.debug(
                                     "Lgamma stopping criteria: %d > 100 and (( %g < 0.1 and %g > %g ) or %g < 1.0)"
-                                    % (Lgamma_step, cur_metric.overflow,
+                                    % (Lgamma_step, cur_metric.overflow[-1],
                                        cur_metric.hpwl, prev_metric.hpwl,
-                                       cur_metric.max_density))
+                                       cur_metric.max_density[-1]))
+
+
                                 return True
                         return False
 
@@ -183,15 +194,16 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         if len(metrics) > 1:
                             cur_metric = metrics[-1][-1]
                             prev_metric = metrics[-2][-1]
-                            if (cur_metric.overflow < params.stop_overflow
+                            ### for fence regions, the outer cell overflow and max_density decides whether to stop
+                            if (cur_metric.overflow[-1] < params.stop_overflow
                                     and cur_metric.hpwl > prev_metric.hpwl
-                                ) or cur_metric.max_density < 1.0:
+                                ) or cur_metric.max_density[-1] < 1.0:
                                 logging.debug(
                                     "Llambda stopping criteria: %d and (( %g < 0.1 and %g > %g ) or %g < 1.0)"
                                     %
                                     (Llambda_density_weight_step,
-                                     cur_metric.overflow, cur_metric.hpwl,
-                                     prev_metric.hpwl, cur_metric.max_density))
+                                     cur_metric.overflow[-1], cur_metric.hpwl,
+                                     prev_metric.hpwl, cur_metric.max_density[-1]))
                                 return True
                     return False
 
@@ -225,7 +237,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                     return False
 
                 def one_descent_step(Lgamma_step, Llambda_density_weight_step,
-                                     Lsub_step, iteration, metrics):
+                                     Lsub_step, iteration, metrics, stop_mask=None):
                     t0 = time.time()
 
                     # metric for this iteration
@@ -252,7 +264,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                     optimizer.zero_grad()
 
                     # t1 = time.time()
-                    cur_metric.evaluate(placedb, eval_ops, pos)
+                    cur_metric.evaluate(placedb, eval_ops, pos, model.data_collections)
                     model.overflow = cur_metric.overflow.data.clone()
                     #logging.debug("evaluation %.3f ms" % ((time.time()-t1)*1000))
                     #t2 = time.time()
@@ -271,8 +283,25 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         cur_pos = self.pos[0].data.clone().cpu().numpy()
                         self.plot(params, placedb, iteration, cur_pos)
 
+                    #### stop updating fence regions that are marked stop, exclude the outer cell !
                     t3 = time.time()
-                    optimizer.step()
+                    if(model.update_mask is not None):
+                        pos_bk = pos.data.clone()
+                        optimizer.step()
+                        print(model.update_mask)
+                        for region_id, fence_region_update_flag in enumerate(model.update_mask[:-1]):
+                            if(fence_region_update_flag == 0):
+                                ### don't update cell location in that region
+                                mask = self.op_collections.fence_region_density_ops[region_id].pos_mask
+                                pos.data.masked_scatter_(mask, pos_bk[mask])
+                                ### immediately perform legalization (only once)
+                                # if(model.legal_mask[region_id] == 0):
+                                #     pos.data.copy_(self.op_collections.individual_legalize_op(pos, region_id))
+                                #     model.legal_mask[region_id] = 1
+                    else:
+                        optimizer.step()
+                    # optimizer.step()
+
                     logging.info("optimizer step %.3f ms" %
                                  ((time.time() - t3) * 1000))
 
@@ -283,9 +312,9 @@ class NonLinearPlace(BasicPlace.BasicPlace):
 
                     # actually reports the metric before step
                     logging.info(cur_metric)
-                    # record the best overflow
+                    # record the best outer cell overflow
                     if best_metric[0] is None or best_metric[
-                            0].overflow > cur_metric.overflow:
+                            0].overflow[-1] > cur_metric.overflow[-1]:
                         best_metric[0] = cur_metric
                         if best_pos[0] is None:
                             best_pos[0] = self.pos[0].data.clone()
@@ -305,35 +334,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
 
                 Llambda_flat_iteration = 0
 
-                # if(1 and len(placedb.regions) > 0):
-                #     # model.quad_penalty = True
-                #     model.start_fence_region_density = True
-                #     num_movable_nodes = placedb.num_movable_nodes
-                #     num_terminals = placedb.num_terminals# + placedb.num_terminal_NIs
-                #     num_filler_nodes = placedb.num_filler_nodes
-                #     num_nodes = placedb.num_nodes
-                #     non_fence_regions_ex = fence_region.slice_non_fence_region(placedb.regions, placedb.xl, placedb.yl, placedb.xh, placedb.yh, merge=False, device=self.pos[0].device)
-                #     non_fence_regions = [fence_region.slice_non_fence_region(region,
-                #         placedb.xl, placedb.yl, placedb.xh, placedb.yh, merge=False, device=self.pos[0].device,
-                #         macro_pos_x=self.pos[0][num_movable_nodes:num_movable_nodes+num_terminals],
-                #         macro_pos_y=self.pos[0][num_nodes+num_movable_nodes:num_nodes+num_movable_nodes+num_terminals],
-                #         macro_size_x=self.data_collections.node_size_x[num_movable_nodes:num_movable_nodes+num_terminals],
-                #         macro_size_y=self.data_collections.node_size_y[num_movable_nodes:num_movable_nodes+num_terminals]
-                #         ) for region in placedb.regions]
-                #     inner_fence_region = fence_region.slice_non_fence_region(
-                #         placedb.regions,
-                #         placedb.xl, placedb.yl, placedb.xh, placedb.yh, merge=False,
-                #         macro_pos_x=self.pos[0][num_movable_nodes:num_movable_nodes+num_terminals],
-                #         macro_pos_y=self.pos[0][num_nodes+num_movable_nodes:num_nodes+num_movable_nodes+num_terminals],
-                #         macro_size_x=self.data_collections.node_size_x[num_movable_nodes:num_movable_nodes+num_terminals],
-                #         macro_size_y=self.data_collections.node_size_y[num_movable_nodes:num_movable_nodes+num_terminals],
-                #         device=self.pos[0].device
-                #         )# macro padded for inner cells
-                #     outer_fence_region = torch.from_numpy(np.concatenate(placedb.regions, 0)).to(self.pos[0].device)
-                #     # fence_region_list = [inner_fence_region, outer_fence_region]
-                #     fence_region_list = non_fence_regions + [outer_fence_region]
-                #     # model.build_fence_region_density_op(fence_region_list, placedb.node2fence_region_map)
-                #     model.build_multi_fence_region_density_op(fence_region_list, placedb.node2fence_region_map)
+
 
 
                 for Lgamma_step in range(model.Lgamma_iteration):
@@ -459,10 +460,12 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                                 break
 
                     # gradually reduce gamma to tradeoff smoothness and accuracy
-                    model.op_collections.update_gamma_op(
-                        Lgamma_step, Llambda_metrics[-1][-1].overflow)
-                    model.op_collections.precondition_op.set_overflow(
-                        Llambda_metrics[-1][-1].overflow)
+                    if(Llambda_metrics[-1][-1].goverflow is not None):
+                        model.op_collections.update_gamma_op(
+                            Lgamma_step, Llambda_metrics[-1][-1].goverflow)
+                    else:
+                        model.op_collections.precondition_op.set_overflow(
+                            Llambda_metrics[-1][-1].overflow)
                     if Lgamma_stop_criterion(Lgamma_step, Lgamma_metrics):
                         break
 
@@ -717,16 +720,16 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         return res
 
                 # in case of divergence, use the best metric
-                ### always rollback to best overflow
-                self.pos[0].data.copy_(best_pos[0].data)
+                ### always rollback to best outer cell overflow
+                # self.pos[0].data.copy_(best_pos[0].data)
                 logging.error(
                         "possible DIVERGENCE detected, roll back to the best position recorded"
                     )
                 last_metric = all_metrics[-1][-1][-1]
-                if last_metric.overflow > max(
-                        params.stop_overflow, best_metric[0].overflow
+                if last_metric.overflow[-1] > max(
+                        params.stop_overflow, best_metric[0].overflow[-1]
                 ) and last_metric.hpwl > best_metric[0].hpwl:
-                    self.pos[0].data.copy_(best_pos[0].data)
+                    # self.pos[0].data.copy_(best_pos[0].data)
                     logging.error(
                         "possible DIVERGENCE detected, roll back to the best position recorded"
                     )

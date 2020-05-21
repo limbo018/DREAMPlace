@@ -1,6 +1,6 @@
 {
 "lef_input" : ["benchmarks/ispd2015/mgc_pci_bridge32_a/tech.lef", "benchmarks/ispd2015/mgc_pci_bridge32_a/cells.lef"],
-"def_input" : "benchmarks/ispd2015/mgc_pci_bridge32_a/after_legalized.ntup.fix.def",
+"def_input" : "benchmarks/ispd2015/mgc_pci_bridge32_a/floorplan.def",
 "verilog_input" : "benchmarks/ispd2015/mgc_pci_bridge32_a/design.v",
 "gpu" : 1,
 "num_bins_x" : 512,
@@ -16,8 +16,8 @@
 "enable_fillers" : 1,
 "gp_noise_ratio" : 0.025,
 "global_place_flag" : 1,
-"legalize_flag" : 0,
-"detailed_place_flag" : 0,
+"legalize_flag" : 1,
+"detailed_place_flag" : 1,
 "detailed_place_engine" : "thirdparty/ntuplace_4dr",
 "detailed_place_command" : "-nolegal -nodetail",
 "stop_overflow" : 0.07,

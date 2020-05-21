@@ -447,7 +447,8 @@ class ElectricPotential(ElectricOverflow):
         self.idct_idxst = None
         self.idxst_idct = None
 
-    def forward(self, pos):
+    def forward(self, pos, mode="density"):
+        assert mode in {"density", "overflow"}, "Only support density mode or overflow mode"
         if(self.region_id is not None):
             ### reconstruct pos, only extract cells in this electric field
             pos = pos[self.pos_mask]
@@ -515,17 +516,37 @@ class ElectricPotential(ElectricOverflow):
             self.wv_by_wu2_plus_wv2_half = wv.mul(self.inv_wu2_plus_wv2).mul_(
                 1. / 2)
 
-        return ElectricPotentialFunction.apply(
-            pos, self.node_size_x_clamped, self.node_size_y_clamped,
-            self.offset_x, self.offset_y, self.ratio, self.bin_center_x,
-            self.bin_center_y, self.initial_density_map, self.target_density,
-            self.xl, self.yl, self.xh, self.yh, self.bin_size_x,
-            self.bin_size_y, self.num_movable_nodes, self.num_filler_nodes,
-            self.padding, self.padding_mask, self.num_bins_x, self.num_bins_y,
-            self.num_movable_impacted_bins_x, self.num_movable_impacted_bins_y,
-            self.num_filler_impacted_bins_x, self.num_filler_impacted_bins_y,
-            self.deterministic_flag, self.sorted_node_map, self.exact_expkM,
-            self.exact_expkN, self.inv_wu2_plus_wv2,
-            self.wu_by_wu2_plus_wv2_half, self.wv_by_wu2_plus_wv2_half,
-            self.dct2, self.idct2, self.idct_idxst, self.idxst_idct,
-            self.fast_mode)
+        if(mode == "density"):
+            return ElectricPotentialFunction.apply(
+                pos, self.node_size_x_clamped, self.node_size_y_clamped,
+                self.offset_x, self.offset_y, self.ratio, self.bin_center_x,
+                self.bin_center_y, self.initial_density_map, self.target_density,
+                self.xl, self.yl, self.xh, self.yh, self.bin_size_x,
+                self.bin_size_y, self.num_movable_nodes, self.num_filler_nodes,
+                self.padding, self.padding_mask, self.num_bins_x, self.num_bins_y,
+                self.num_movable_impacted_bins_x, self.num_movable_impacted_bins_y,
+                self.num_filler_impacted_bins_x, self.num_filler_impacted_bins_y,
+                self.deterministic_flag, self.sorted_node_map, self.exact_expkM,
+                self.exact_expkN, self.inv_wu2_plus_wv2,
+                self.wu_by_wu2_plus_wv2_half, self.wv_by_wu2_plus_wv2_half,
+                self.dct2, self.idct2, self.idct_idxst, self.idxst_idct,
+                self.fast_mode)
+        elif(mode == "overflow"):
+            ### num_filler_nodes is set 0
+            density_map = ElectricDensityMapFunction.forward(
+                pos, self.node_size_x_clamped, self.node_size_y_clamped,
+                self.offset_x, self.offset_y, self.ratio, self.bin_center_x,
+                self.bin_center_y, self.initial_density_map, self.target_density,
+                self.xl, self.yl, self.xh, self.yh, self.bin_size_x,
+                self.bin_size_y, self.num_movable_nodes, 0,
+                self.padding, self.padding_mask, self.num_bins_x, self.num_bins_y,
+                self.num_movable_impacted_bins_x, self.num_movable_impacted_bins_y,
+                self.num_filler_impacted_bins_x, self.num_filler_impacted_bins_y,
+                self.deterministic_flag, self.sorted_node_map)
+
+            bin_area = self.bin_size_x * self.bin_size_y
+            density_cost = (density_map -
+                            self.target_density * bin_area).clamp_(min=0.0).sum()
+
+            return density_cost, density_map.max() / bin_area
+

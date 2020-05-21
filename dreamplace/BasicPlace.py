@@ -154,9 +154,16 @@ class PlaceDataCollection(object):
                 placedb.flat_region_boxes_start).to(device)
             self.node2fence_region_map = torch.from_numpy(
                 placedb.node2fence_region_map).to(device)
-            # This is for multi-electric potential and legalization
-            # boxes defined as left-bottm point and top-right point
-            self.virtual_macro_fence_region = [torch.from_numpy(region).to(device) for region in placedb.virtual_macro_fence_region]
+            if(len(placedb.regions) > 0):
+                # This is for multi-electric potential and legalization
+                # boxes defined as left-bottm point and top-right point
+                self.virtual_macro_fence_region = [torch.from_numpy(region).to(device) for region in placedb.virtual_macro_fence_region]
+                ## this is for overflow op
+                self.total_movable_node_area_fence_region = torch.from_numpy(placedb.total_movable_node_area_fence_region).to(device)
+                ## this is for gamma update
+                self.num_movable_nodes_fence_region = torch.from_numpy(placedb.num_movable_nodes_fence_region).to(device)
+                ## this is not used yet
+                self.num_filler_nodes_fence_region = torch.from_numpy(placedb.num_filler_nodes_fence_region).to(device)
 
             self.net_mask_all = torch.from_numpy(
                 np.ones(placedb.num_nets,
@@ -397,7 +404,7 @@ class BasicPlace(nn.Module):
             params, placedb, self.data_collections, self.device)
         # legalization
         if(len(placedb.regions) > 0):
-            self.op_collections.legalize_op = self.build_multi_fence_region_legalization(
+            self.op_collections.legalize_op, self.op_collections.individual_legalize_op = self.build_multi_fence_region_legalization(
             params, placedb, self.data_collections, self.device)
         else:
             self.op_collections.legalize_op = self.build_legalization(
@@ -712,7 +719,12 @@ class BasicPlace(nn.Module):
                 for i in range(len(placedb.regions)+1):
                     pos = legal_ops[i][1](pos, pos_ml_list[i], pos_gl_list[i])
             return pos
-        return build_legalization_op
+
+        def build_individual_legalization_ops(pos, region_id):
+            pos = legal_ops[region_id][0](pos)[0]
+            return pos
+
+        return build_legalization_op, build_individual_legalization_ops
 
     def build_fence_region_legalization(self, region_id, params, placedb, data_collections, device):
         ### reconstruct node size
@@ -728,9 +740,21 @@ class BasicPlace(nn.Module):
             fence_region_mask = data_collections.node2fence_region_map[:num_movable_nodes] >= len(placedb.regions)
 
         virtual_macros = data_collections.virtual_macro_fence_region[region_id]
-        virtual_macros_size_x = virtual_macros[:,2]-virtual_macros[:,0]
-        virtual_macros_size_y = virtual_macros[:,3]-virtual_macros[:,1]
+        virtual_macros_center_x = (virtual_macros[:,2] + virtual_macros[:,0]) / 2
+        virtual_macros_center_y = (virtual_macros[:,3] + virtual_macros[:,1]) / 2
+        virtual_macros_size_x = (virtual_macros[:,2]-virtual_macros[:,0]).clamp(min=10)
+
+        virtual_macros_size_y = (virtual_macros[:,3]-virtual_macros[:,1]).clamp(min=10)
+        virtual_macros[:, 0] = virtual_macros_center_x - virtual_macros_size_x / 2
+        virtual_macros[:, 1] = virtual_macros_center_y - virtual_macros_size_y / 2
         virtual_macros_pos = virtual_macros[:,0:2].t().contiguous()
+        # if(region_id == 0):
+            # print(virtual_macros.t().contiguous().sort()[0][:,-10:])
+            # print(virtual_macros_pos.sort()[0][:,-10:])
+            # print(virtual_macros_size_x)
+            # print(virtual_macros_size_y)
+
+            # exit(1)
         ### node size
         node_size_x, node_size_y = data_collections.node_size_x, data_collections.node_size_y
         filler_beg, filler_end = placedb.filler_start_map[region_id:region_id+2]
@@ -756,17 +780,20 @@ class BasicPlace(nn.Module):
                                        num_pins_in_nodes[num_movable_nodes+num_terminals:num_movable_nodes+num_terminals+num_terminal_NIs], ## terminal NIs
                                        num_pins_in_nodes[num_nodes-num_filler_nodes+filler_beg:num_nodes-num_filler_nodes+filler_end] ## fillers
                                        ], 0)
-        ### flat region boxes
-        flat_region_boxes = torch.tensor([], device=node_size_x.device, dtype=data_collections.flat_region_boxes.dtype)
-        ### flat region boxes start
-        flat_region_boxes_start = torch.tensor([0], device=node_size_x.device, dtype=data_collections.flat_region_boxes_start.dtype)
-        ### node2fence region map
-        node2fence_region_map = torch.zeros(num_movable_nodes, dtype=data_collections.node2fence_region_map.dtype, device=node_size_x.device).fill_(data_collections.node2fence_region_map.max().item())
-
         ## num movable nodes and num filler nodes
         num_movable_nodes_fence_region = fence_region_mask.long().sum().item()
         num_filler_nodes_fence_region = filler_end - filler_beg
         num_terminals_fence_region = num_terminals + virtual_macros_size_x.size(0)
+        assert node_size_x.size(0) == node_size_y.size(0) == num_movable_nodes_fence_region + num_terminals_fence_region + num_terminal_NIs + num_filler_nodes_fence_region
+
+        ### flat region boxes
+        flat_region_boxes = torch.tensor([], device=node_size_x.device, dtype=data_collections.flat_region_boxes.dtype)
+        ### flat region boxes start
+        flat_region_boxes_start = torch.tensor([0], device=node_size_x.device, dtype=data_collections.flat_region_boxes_start.dtype)
+        ### node2fence region map: movable + terminal
+        node2fence_region_map = torch.zeros(num_movable_nodes_fence_region + num_terminals_fence_region, dtype=data_collections.node2fence_region_map.dtype, device=node_size_x.device).fill_(data_collections.node2fence_region_map.max().item())
+
+
 
         ml = macro_legalize.MacroLegalize(
             node_size_x=node_size_x,
@@ -837,6 +864,7 @@ class BasicPlace(nn.Module):
                             pos[:,num_movable_nodes+num_terminals:num_movable_nodes+num_terminals+num_terminal_NIs], ## terminal NIs
                             pos[:,num_nodes-num_filler_nodes+filler_beg:num_nodes-num_filler_nodes+filler_end] ## fillers
                             ], 1).view(-1).contiguous()
+            assert pos.size(0) == 2 * node_size_x.size(0)
 
             logging.info("Start legalization")
             pos1 = ml(pos, pos)
