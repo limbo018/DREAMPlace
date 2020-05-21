@@ -742,9 +742,9 @@ class BasicPlace(nn.Module):
         virtual_macros = data_collections.virtual_macro_fence_region[region_id]
         virtual_macros_center_x = (virtual_macros[:,2] + virtual_macros[:,0]) / 2
         virtual_macros_center_y = (virtual_macros[:,3] + virtual_macros[:,1]) / 2
-        virtual_macros_size_x = (virtual_macros[:,2]-virtual_macros[:,0]).clamp(min=20)
+        virtual_macros_size_x = (virtual_macros[:,2]-virtual_macros[:,0]).clamp(min=30)
 
-        virtual_macros_size_y = (virtual_macros[:,3]-virtual_macros[:,1]).clamp(min=20)
+        virtual_macros_size_y = (virtual_macros[:,3]-virtual_macros[:,1]).clamp(min=30)
         virtual_macros[:, 0] = virtual_macros_center_x - virtual_macros_size_x / 2
         virtual_macros[:, 1] = virtual_macros_center_y - virtual_macros_size_y / 2
         virtual_macros_pos = virtual_macros[:,0:2].t().contiguous()
