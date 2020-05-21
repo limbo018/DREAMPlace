@@ -133,9 +133,9 @@ class PlaceObj(nn.Module):
         self.init_density = None
         self.quad_penalty = True
         ### fence region
+        ### update mask controls whether stop gradient/updating, 1 represents allow grad/update
+        self.update_mask = None
         if(len(placedb.regions) > 0):
-            ### update mask controls whether stop gradient/updating, 1 represents allow grad/update
-            self.update_mask = None
             ### for subregion rough legalization, once stop updating, perform immediate greddy legalization once
             ### this is to avoid repeated legalization
             ### 1 represents already legal
@@ -778,7 +778,7 @@ class PlaceObj(nn.Module):
                 density_weight_s = 1 + self.density_quad_coeff * density_norm
 
                 density_weight_new = (self.density_weight_u * density_weight_s).clamp(max=10)
-                # density_weight_new = density_weight_new * 0.1 + 0.9 * density_weight_new.mean()
+                # density_weight_new = density_weight_new * 0.8 + 0.2 * density_weight_new.mean()
                 # density_weight_new = self.density_weight + self.density_weight_step_size * density_weight_grad
 
                 ### conditional update if this region's overflow is higher than stop overflow
@@ -830,7 +830,7 @@ class PlaceObj(nn.Module):
             # overflow_avg = overflow.dot(self.data_collections.num_movable_nodes_fence_region/self.data_collections.num_movable_nodes_fence_region.sum())
             overflow_avg = overflow
         coef = torch.pow(10, (overflow_avg - 0.1) * 20 / 9 - 1)
-        self.gamma.data.fill_(base_gamma * coef)
+        self.gamma.data.fill_((base_gamma * coef).item())
         return True
 
     def build_noise(self, params, placedb, data_collections):
