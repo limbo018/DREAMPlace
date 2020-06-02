@@ -349,7 +349,8 @@ class ElectricPotential(ElectricOverflow):
 
             num_movable_nodes = (self.fence_region_mask).long().sum().item()
             num_filler_nodes = placedb.filler_start_map[region_id+1]-placedb.filler_start_map[region_id]
-            movable_macro_mask = movable_macro_mask[self.fence_region_mask]
+            if(movable_macro_mask is not None):
+                movable_macro_mask = movable_macro_mask[self.fence_region_mask]
             ## sorted cell is recomputed
             sorted_node_map = torch.sort(node_size_x[:num_movable_nodes])[1].to(torch.int32)
             ## make pos mask for fast forward
