@@ -182,8 +182,9 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                                     % (Lgamma_step, cur_metric.overflow[-1],
                                        cur_metric.hpwl, prev_metric.hpwl,
                                        cur_metric.max_density[-1]))
-
-
+                                return True
+                            if(len(placedb.regions)>0 and model.update_mask.sum() == 0):
+                                logging.debug("All regions stop updating, finish global placement")
                                 return True
                         return False
 
@@ -279,7 +280,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         assert 0, "unsupported optimizer %s" % (optimizer_name)
 
                     # plot placement
-                    if params.plot_flag and iteration % 100 == 0:
+                    if params.plot_flag and (iteration % 100 == 0 or iteration == 999):
                         cur_pos = self.pos[0].data.clone().cpu().numpy()
                         self.plot(params, placedb, iteration, cur_pos)
 
@@ -288,8 +289,8 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                     if(model.update_mask is not None):
                         pos_bk = pos.data.clone()
                         optimizer.step()
-                        print(model.update_mask)
-                        for region_id, fence_region_update_flag in enumerate(model.update_mask[:-1]):
+                        # print(model.update_mask)
+                        for region_id, fence_region_update_flag in enumerate(model.update_mask):
                             if(fence_region_update_flag == 0):
                                 ### don't update cell location in that region
                                 mask = self.op_collections.fence_region_density_ops[region_id].pos_mask
@@ -324,6 +325,131 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                     logging.info("full step %.3f ms" %
                                  ((time.time() - t0) * 1000))
 
+                def check_plateau(x, window=10, threshold=0.001):
+                    if(len(x) < window):
+                        return False
+                    x = x[-window:]
+                    return (np.max(x) - np.min(x)) / np.mean(x) < threshold
+
+                def check_divergence(x, window=50, threshold=0.05):
+                    if(len(x) < window):
+                        return False
+                    x = np.array(x[-window:])
+                    smooth = max(1,int(0.1*window))
+                    wl_beg, wl_end = np.mean(x[0:smooth,0]), np.mean(x[-smooth:,0])
+                    overflow_beg, overflow_end = np.mean(x[0:smooth,1]), np.mean(x[-smooth:,1])
+                    # wl_ratio, overflow_ratio = (wl_end - wl_beg)/wl_beg, (overflow_end - overflow_beg)/overflow_beg
+                    # wl_ratio, overflow_ratio = (wl_end - wl_beg)/wl_beg, (overflow_end - max(params.stop_overflow, best_metric[0].overflow))/best_metric[0].overflow
+                    overflow_mean = np.mean(x[:,1])
+                    overflow_diff = np.maximum(0,np.sign(x[1:,1] - x[:-1,1])).astype(np.float32)
+                    overflow_diff = np.sum(overflow_diff) / overflow_diff.shape[0]
+                    overflow_range = np.max(x[:,1]) - np.min(x[:,1])
+                    wl_mean = np.mean(x[:,0])
+                    wl_ratio, overflow_ratio = (wl_mean - best_metric[0].hpwl.item())/best_metric[0].hpwl.item(), (overflow_mean - max(params.stop_overflow, best_metric[0].overflow.item()))/best_metric[0].overflow.item()
+                    if(wl_ratio > threshold*1.2):
+                        if(overflow_ratio > threshold):
+                            print(f"[Warning] Divergence detected: overflow increases too much than best overflow ({overflow_ratio:.4f} > {threshold:.4f})")
+                            return True
+                        elif(overflow_range/overflow_mean < threshold):
+                            print(f"[Warning] Divergence detected: overflow plateau ({overflow_range/overflow_mean:.4f} < {threshold:.4f})")
+                            return True
+                        elif(overflow_diff > 0.6):
+                            print(f"[Warning] Divergence detected: overflow fluctuate too frequently ({overflow_diff:.2f} > 0.6)")
+                            return True
+                        else:
+                            return False
+                    else:
+                        return False
+
+                def inject_perturbation(pos, placedb, shrink_factor=1, noise_intensity=1, mode="random", iteration=1):
+                    if(mode == "lg_dp"):
+                        pos_lg = self.op_collections.detailed_place_op(self.op_collections.legalize_op(pos))
+                        diff = pos_lg - pos.data
+                        diff_abs = diff.abs()
+                        diff_abs2 = diff_abs[(diff_abs > 0.1) & (diff_abs < 60)]
+                        avg, std = diff_abs2.mean(), diff_abs2.std()
+                        print(avg, std)
+                        mask = (diff_abs < avg + noise_intensity * std) & (diff_abs > avg - noise_intensity * std)
+                        n_cell = mask.float().sum().data.item()
+                        print(f"{n_cell} cells are moved")
+                        pos.data[mask] += diff[mask]
+                        # model.density_weight *= 0.9
+                        # pos.data[mask] = pos_lg[mask]
+                        return
+                    elif(mode == "random"):
+                        print(pos[:placedb.num_movable_nodes].mean())
+                        xc = pos[:placedb.num_movable_nodes].data.mean()
+                        yc = pos.data[placedb.num_nodes:placedb.num_nodes+placedb.num_movable_nodes].mean()
+                        num_movable_nodes = placedb.num_movable_nodes
+                        num_nodes = placedb.num_nodes
+                        num_filler_nodes = placedb.num_filler_nodes
+                        num_fixed_nodes = num_nodes - num_movable_nodes - num_filler_nodes
+
+                        fixed_pos_x = pos.data[num_movable_nodes:num_movable_nodes+num_fixed_nodes].clone()
+                        fixed_pos_y = pos.data[num_nodes+ num_movable_nodes:num_nodes+num_movable_nodes+num_fixed_nodes].clone()
+                        if(shrink_factor != 1):
+                            pos.data[:num_nodes] = (pos.data[:num_nodes] - xc) * shrink_factor + xc
+                            pos.data[num_nodes:] = (pos.data[num_nodes:] - yc) * shrink_factor + yc
+                        if(noise_intensity>0.01):
+                            # pos.data.add_(noise_intensity * torch.rand(num_nodes*2, device=pos.device).sub_(0.5))
+                            pos.data.add_(noise_intensity * torch.randn(num_nodes*2, device=pos.device))
+
+                        pos.data[num_movable_nodes:num_movable_nodes+num_fixed_nodes] = fixed_pos_x
+                        pos.data[num_nodes+ num_movable_nodes:num_nodes+num_movable_nodes+num_fixed_nodes] = fixed_pos_y
+                        print(pos[:placedb.num_movable_nodes].mean())
+                    elif(mode == "search"):
+                        # when overflow meets plateau, show search the descent direction of density, not WL
+                        # obj_fn = model.op_collections.density_op
+                        def obj_fn(x):
+                            # return model.op_collections.hpwl_op(self.op_collections.detailed_place_op(self.op_collections.legalize_op(x)))
+                            # return model.op_collections.hpwl_op(self.op_collections.legalize_op(x))
+                            return self.op_collections.density_overflow_op(x)[0].data + 1e-1 * model.op_collections.hpwl_op(x)
+                            return model.op_collections.hpwl_op(x) + model.op_collections.density_op(x) * 2e2
+                            return model.op_collections.density_op(x)
+                            # return model.obj_fn(x)
+                            return model.op_collections.wirelength_op(x)
+
+                        R, r = 8, 1
+                        # R /= 2**(iteration//300)
+                        K = int(np.log2(R/r)) + 1
+                        T = 64
+                        num_movable_nodes = placedb.num_movable_nodes
+                        num_nodes = placedb.num_nodes
+                        num_filler_nodes = placedb.num_filler_nodes
+                        num_fixed_nodes = num_nodes - num_movable_nodes - num_filler_nodes
+                        obj_min = obj_fn(pos.data).data.item()
+                        pos_min = pos.data
+                        v_min = 0
+                        # print(obj_min)
+                        for t in range(T):
+                            # obj_fn = [model.op_collections.density_op, model.op_collections.wirelength_op][t > (T//2)]
+                            obj_min = obj_fn(pos.data).data.item()
+                            obj_start = obj_min
+                            # print(f"start obj: {obj_start}")
+                            for k in range(K):
+                                r_k = 2**(-k) * R
+                                for i in range(2):
+                                    v_k = torch.randn_like(pos.data)
+                                    v_k[num_movable_nodes:num_nodes-num_filler_nodes] = 0
+                                    v_k[num_nodes+num_movable_nodes:-num_filler_nodes] = 0
+                                    # v_k = v_k / v_k.norm(p=2) * r_k
+                                    v_k = v_k / v_k.norm(p=2) * r_k
+                                    p1 = pos.data + v_k
+                                    obj_k = obj_fn(p1).data.item()
+                                    if(obj_k < obj_min):
+                                        obj_min = obj_k
+                                        v_min = v_k.clone()
+                                        r_min = r_k
+                                        pos_min = p1.clone()
+                                        # print(v_min.sum(), pos_min.mean())
+                            # zeroth-order optimization with decaying step size
+                            diff = obj_start - obj_min
+                            if(diff > 0.001):
+                                step_size = max(1, min(1, diff / r_min))
+                                # print(f"Search step: {t} stepsize: {step_size:5.2f} r_min: {r_min} obj reduce from {obj_start} to {obj_min}")
+                                pos.data.copy_(pos.data + v_min * step_size)
+
+
                 Lgamma_metrics = all_metrics
 
                 if params.routability_opt_flag:
@@ -334,8 +460,15 @@ class NonLinearPlace(BasicPlace.BasicPlace):
 
                 Llambda_flat_iteration = 0
 
-
-
+                ### self-adaptive divergence check
+                overflow_list = [1]
+                divergence_list = []
+                min_perturb_interval = 50
+                stop_placement = 0
+                last_perturb_iter = -min_perturb_interval
+                noise_injected_flag = 0
+                perturb_counter = 0
+                allow_update = 1
 
                 for Lgamma_step in range(model.Lgamma_iteration):
                     Lgamma_metrics.append([])
@@ -345,10 +478,47 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         Llambda_metrics.append([])
                         Lsub_metrics = Llambda_metrics[-1]
                         for Lsub_step in range(model.Lsub_iteration):
+                            ## Jiaqi: divergence threshold should decrease as overflow decreases
+                            # diverge_threshold = 0.01 * overflow_list[-1] ? 0.001 overflow_list[1]??
+                            ## Jiaqi: only detect divergence when overflow is relatively low but not too low
+                            if(len(placedb.regions)==0 and params.stop_overflow * 1.1 < overflow_list[-1] < params.stop_overflow * 4 and check_divergence(divergence_list, window=3, threshold=0.01 * overflow_list[-1])):
+                                self.pos[0].data.copy_(best_pos[0].data)
+                                stop_placement = 1
+                                allow_update = 0
+                                logging.error(
+                                    "possible DIVERGENCE detected, roll back to the best position recorded and switch to ZerothOrderSearch of overflow and hpwl"
+                                )
+
+
                             one_descent_step(Lgamma_step,
                                              Llambda_density_weight_step,
                                              Lsub_step, iteration,
                                              Lsub_metrics)
+
+                            if(len(placedb.regions)==0):
+                                overflow_list.append(Llambda_metrics[-1][-1].overflow.data.item())
+                                divergence_list.append([Llambda_metrics[-1][-1].hpwl.data.item(), Llambda_metrics[-1][-1].overflow.data.item()])
+
+                            # path = "%s/%s" % (params.result_dir, params.design_name())
+                            # csvname = "%s/%s_ours.csv" % (path, params.design_name())
+                            # with open(csvname, "a+") as f:
+                            #     f.write(f"{divergence_list[-1][0]},{divergence_list[-1][1]}\n")
+
+                            # quadratic penalty and noise perturbation
+
+
+                            if(len(placedb.regions)==0 and iteration - last_perturb_iter > min_perturb_interval and check_plateau(overflow_list, window=15, threshold=0.001)):
+                                if(overflow_list[-1] > 0.9):
+                                    model.quad_penalty = True
+                                    model.density_factor *= 2
+                                    print(f"Start quadratic penalty")
+                                    if(overflow_list[-1] > 0.95): # ISPD test 3 and 7
+                                        noise_intensity = min(max(40 + (120-40) * (overflow_list[-1]-0.95)*10, 40), 90)# * 0.5**perturb_counter
+                                        inject_perturbation(self.pos[0], placedb, shrink_factor=0.996, noise_intensity=noise_intensity, mode="random")
+                                        print(f"Inject noise, noise={noise_intensity}")
+                                    last_perturb_iter = iteration
+                                    perturb_counter += 1
+
                             iteration += 1
                             # stopping criteria
                             if Lsub_stop_criterion(
@@ -460,13 +630,16 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                                 break
 
                     # gradually reduce gamma to tradeoff smoothness and accuracy
-                    if(Llambda_metrics[-1][-1].goverflow is not None):
+                    if(len(placedb.regions) > 0 and Llambda_metrics[-1][-1].goverflow is not None):
                         model.op_collections.update_gamma_op(
                             Lgamma_step, Llambda_metrics[-1][-1].goverflow)
+                    elif(len(placedb.regions) == 0 and Llambda_metrics[-1][-1].overflow is not None):
+                        model.op_collections.update_gamma_op(
+                            Lgamma_step, Llambda_metrics[-1][-1].overflow)
                     else:
                         model.op_collections.precondition_op.set_overflow(
                             Llambda_metrics[-1][-1].overflow)
-                    if Lgamma_stop_criterion(Lgamma_step, Lgamma_metrics):
+                    if Lgamma_stop_criterion(Lgamma_step, Lgamma_metrics) or stop_placement == 1:
                         break
 
                     # update learning rate
