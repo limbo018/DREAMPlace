@@ -86,6 +86,8 @@ class PreconditionOp:
             grad[0:self.placedb.num_nodes].div_(precond)
             grad[self.placedb.num_nodes:self.placedb.num_nodes *
                  2].div_(precond)
+
+            ### stop gradients for terminated electric field
             if(update_mask is not None):
                 grad = grad.view(2, -1)
                 update_mask = ~update_mask
@@ -98,13 +100,13 @@ class PreconditionOp:
                 grad = grad.view(-1)
             self.iteration += 1
 
-            # assume overflow has been updated
-            # if self.overflows and self.overflows[-1] < 0.3 and self.alpha < 1024:
-            #     if (self.iteration % 20) == 0:
-            #         self.alpha *= 2
-            #         logging.info(
-            #             "preconditioning alpha = %g, best_overflow %g, overflow %g"
-            #             % (self.alpha, self.best_overflow, self.overflows[-1]))
+            # pnly work in benchmarks without fence region, assume overflow has been updated
+            if len(self.placedb.regions) > 0 and self.overflows and self.overflows[-1] < 0.3 and self.alpha < 1024:
+                if (self.iteration % 20) == 0:
+                    self.alpha *= 2
+                    logging.info(
+                        "preconditioning alpha = %g, best_overflow %g, overflow %g"
+                        % (self.alpha, self.best_overflow, self.overflows[-1]))
 
         return grad
 
@@ -131,7 +133,16 @@ class PlaceObj(nn.Module):
         ### quadratic penalty
         self.density_quad_coeff = 2000
         self.init_density = None
-        self.quad_penalty = True
+        ### increase density penalty if slow convergence
+        self.density_factor = 1
+
+        if(len(placedb.regions) > 0):
+            ### fence region will enable quadratic penalty by default
+            self.quad_penalty = True
+        else:
+            ### non fence region will use first-order density penalty by default
+            self.quad_penalty = False
+
         ### fence region
         ### update mask controls whether stop gradient/updating, 1 represents allow grad/update
         self.update_mask = None
@@ -252,13 +263,16 @@ class PlaceObj(nn.Module):
             self.init_density = density.data.clone()
             ### density weight subgradient preconditioner
             self.density_weight_grad_precond = self.init_density.masked_scatter(self.init_density > 0, 1/self.init_density[self.init_density > 0])
+            self.quad_penalty_coeff = self.density_quad_coeff / 2 * self.density_weight_grad_precond
         if(self.quad_penalty):
             ### quadratic density penalty
-            density = density + self.density_quad_coeff / 2 * self.density_weight_grad_precond * density**2
+            # density = density + self.density_quad_coeff / 2 * self.density_weight_grad_precond * density**2
+            density = density*(1+self.quad_penalty_coeff * density)
         if(len(self.placedb.regions) > 0):
             result = wirelength + self.density_weight.dot(density)
         else:
-            result = wirelength + self.density_weight * density
+            # result = wirelength + (self.density_factor * self.density_weight) * density
+            result = torch.add(wirelength, density, alpha=(self.density_factor * self.density_weight).item())
 
         return result
 
@@ -358,9 +372,10 @@ class PlaceObj(nn.Module):
         @return objective value
         """
         #self.check_gradient(pos)
-        obj = self.obj_fn(pos)
         if pos.grad is not None:
             pos.grad.zero_()
+        obj = self.obj_fn(pos)
+
         obj.backward()
 
         self.op_collections.precondition_op(pos.grad, self.density_weight, self.update_mask)
