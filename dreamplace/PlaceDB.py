@@ -608,7 +608,7 @@ class PlaceDB (object):
         total_movable_node_area = np.sum(self.node_size_x[:num_movable_nodes][fence_region_mask]*self.node_size_y[:num_movable_nodes][fence_region_mask])
 
         if(region_id < num_regions):
-            ## placeable area is just fention region area??? not true! macro can have overlap with fence region!
+            ## placeable area is just fention region area? not true, macro can have overlap with fence region. But we approximate by this method temporarily
             region = self.regions[region_id]
             placeable_area = np.sum((region[:, 2]-region[:, 0])*(region[:, 3]-region[:, 1]))
 
