@@ -25,8 +25,8 @@ import pdb
 
 def place(params):
     """
-    @brief Top API to run the entire placement flow. 
-    @param params parameters 
+    @brief Top API to run the entire placement flow.
+    @param params parameters
     """
 
     assert (not params.gpu) or configure.compile_configurations["CUDA_FOUND"] == 'TRUE', \
@@ -104,13 +104,17 @@ def place(params):
                     cmd += " -tech_lef %s" % (lef)
                 else:
                     cmd += " -cell_lef %s" % (lef)
+                benchmark_dir = os.path.dirname(lef)
             cmd += " -floorplan_def %s" % (gp_out_file)
-            cmd += " -verilog %s" % (params.verilog_input)
+            if(params.verilog_input):
+                cmd += " -verilog %s" % (params.verilog_input)
             cmd += " -out ntuplace_4dr_out"
             cmd += " -placement_constraints %s/placement.constraints" % (
-                os.path.dirname(params.verilog_input))
+                # os.path.dirname(params.verilog_input))
+                benchmark_dir)
             cmd += " -noglobal %s ; " % (params.detailed_place_command)
-            cmd += "mv ntuplace_4dr_out.fence.plt %s.fense.plt ; " % (
+            # cmd += " %s ; " % (params.detailed_place_command) ## test whole flow
+            cmd += "mv ntuplace_4dr_out.fence.plt %s.fence.plt ; " % (
                 dp_out_file)
             cmd += "mv ntuplace_4dr_out.init.plt %s.init.plt ; " % (
                 dp_out_file)
@@ -141,7 +145,7 @@ def place(params):
 
 if __name__ == "__main__":
     """
-    @brief main function to invoke the entire placement flow. 
+    @brief main function to invoke the entire placement flow.
     """
     logging.root.name = 'DREAMPlace'
     logging.basicConfig(level=logging.INFO,
