@@ -22,7 +22,7 @@
     "detailed_place_command" : "-nolegal -nodetail",
     "stop_overflow" : 0.1,
     "dtype" : "float32",
-    "plot_flag" : 1,
+    "plot_flag" : 0,
     "random_center_init_flag" : 1,
     "sort_nets_by_degree" : 0,
     "num_threads" : 8,
