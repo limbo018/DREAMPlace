@@ -92,6 +92,7 @@ def calc_region_area(regions):
     fence_regions = unary_union(fence_regions)
     return fence_regions.area
 
+
 def slice_non_fence_region(regions, xl, yl, xh, yh, macro_pos_x=None, macro_pos_y=None, macro_size_x=None, macro_size_y=None, merge=False, plot=False, figname="non_fence_region.png", device=torch.device("cuda:0")):
     if(type(regions) == list):
         if(isinstance(regions[0], np.ndarray)):
@@ -110,7 +111,7 @@ def slice_non_fence_region(regions, xl, yl, xh, yh, macro_pos_x=None, macro_pos_
 
         regions = torch.cat([regions, torch.stack([macro_pos_x, macro_pos_y, macro_pos_x+macro_size_x, macro_pos_y+macro_size_y], 0).t()], 0)
         # print(macro_pos_x.size(), macro_pos_y.size(), macro_size_x.size(), macro_size_y.size())
-        total_macro_area = (macro_size_x * macro_size_y).sum().item()
+        # total_macro_area = (macro_size_x * macro_size_y).sum().item()
 
         # macros = unary_union(MultiPolygon([box(macro_pos_x[i], macro_pos_y[i], macro_pos_x[i]+macro_size_x[i],
         #                        macro_pos_y[i]+macro_size_y[i]) for i in range(macro_size_x.size(0))]))
@@ -140,11 +141,11 @@ def slice_non_fence_region(regions, xl, yl, xh, yh, macro_pos_x=None, macro_pos_
         # if(300<x_l<400):
         #     print(intersect)
 
-        if(isinstance(intersect, Polygon)):
+        if(isinstance(intersect, Polygon) and len(intersect.bounds)==4):
             slices.append(intersect.bounds)
         elif(isinstance(intersect, (GeometryCollection, MultiPolygon))):
             slices.extend(
-                [j.bounds for j in intersect if(isinstance(j, Polygon))])
+                [j.bounds for j in intersect if(isinstance(j, Polygon) and len(j.bounds)==4)])
 
     if(merge):
         raw_bbox_list = sorted(slices, key=lambda x: (x[1], x[0]))
