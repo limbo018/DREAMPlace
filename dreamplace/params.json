@@ -19,6 +19,11 @@
     "default" : "", 
     "required" : "optional for LEF/DEF"
     },
+"placedb_binary_input" : {
+    "descripton" : "input placedb binary file", 
+    "default" : "", 
+    "required" : "required for placedb"
+    },
 "gpu" : {
     "descripton" : "enable gpu or not", 
     "default" : 1

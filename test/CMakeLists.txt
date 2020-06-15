@@ -18,3 +18,6 @@ install(
     DIRECTORY ispd2019 DESTINATION ${PROJECT_NAME}
     )
 
+install(
+    DIRECTORY placedb DESTINATION ${PROJECT_NAME}
+    )

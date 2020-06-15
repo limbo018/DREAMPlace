@@ -12,6 +12,7 @@ import sys
 import time 
 import numpy as np 
 import logging
+import pickle
 # for consistency between python2 and python3
 root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if root_dir not in sys.path:
@@ -34,8 +35,13 @@ def place(params):
     np.random.seed(params.random_seed)
     # read database 
     tt = time.time()
-    placedb = PlaceDB.PlaceDB()
-    placedb(params)
+    if params.placedb_binary_input:
+        with open(params.placedb_binary_input, "rb") as input_file:
+            placedb = pickle.load(input_file)
+        placedb.initialize(params)
+    else:    
+        placedb = PlaceDB.PlaceDB()
+        placedb(params)
     logging.info("reading database takes %.2f seconds" % (time.time()-tt))
 
     # solve placement 
