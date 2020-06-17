@@ -57,7 +57,7 @@ class HPWL(nn.Module):
     Support two algoriths: net-by-net and atomic. 
     Different parameters are required for different algorithms. 
     """
-    def __init__(self, flat_netpin=None, netpin_start=None, pin2net_map=None, net_weights=None, net_mask=None, algorithm='atomic', num_threads=8):
+    def __init__(self, flat_netpin=None, netpin_start=None, pin2net_map=None, net_weights=None, net_mask=None, algorithm='atomic', scale_factor=1.0, num_threads=8):
         """
         @brief initialization 
         @param flat_netpin flat netpin map, length of #pins 
@@ -79,6 +79,7 @@ class HPWL(nn.Module):
         self.net_weights = net_weights
         self.net_mask = net_mask 
         self.algorithm = algorithm
+        self.scale_factor = scale_factor
         self.num_threads = num_threads
     def forward(self, pos): 
         if self.algorithm == 'net-by-net': 
@@ -90,7 +91,7 @@ class HPWL(nn.Module):
                     self.num_threads
                     )
         elif self.algorithm == 'atomic':
-            return HPWLAtomicFunction.apply(pos, 
+            return self.scale_factor * HPWLAtomicFunction.apply(pos, 
                     self.pin2net_map, 
                     self.net_weights,
                     self.net_mask

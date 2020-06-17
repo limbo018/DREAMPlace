@@ -446,6 +446,7 @@ class BasicPlace(nn.Module):
             net_weights=data_collections.net_weights,
             net_mask=data_collections.net_mask_all,
             algorithm='net-by-net',
+            scale_factor=params.scale_factor,
             num_threads=params.num_threads)
 
         # wirelength for position
