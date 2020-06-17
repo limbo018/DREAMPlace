@@ -91,8 +91,8 @@ class HPWL(nn.Module):
                     self.num_threads
                     )
         elif self.algorithm == 'atomic':
-            return self.scale_factor * HPWLAtomicFunction.apply(pos, 
+            return HPWLAtomicFunction.apply(pos, 
                     self.pin2net_map, 
                     self.net_weights,
                     self.net_mask
-                    )
+                    ) / self.scale_factor
