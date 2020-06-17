@@ -83,7 +83,7 @@ class HPWL(nn.Module):
         self.num_threads = num_threads
     def forward(self, pos): 
         if self.algorithm == 'net-by-net': 
-            return HPWLFunction.apply(pos, 
+            hpwl = HPWLFunction.apply(pos, 
                     self.flat_netpin, 
                     self.netpin_start, 
                     self.net_weights, 
@@ -91,8 +91,10 @@ class HPWL(nn.Module):
                     self.num_threads
                     )
         elif self.algorithm == 'atomic':
-            return HPWLAtomicFunction.apply(pos, 
+            hpwl = HPWLAtomicFunction.apply(pos, 
                     self.pin2net_map, 
                     self.net_weights,
                     self.net_mask
-                    ) / self.scale_factor
+                    )
+        
+        return hpwl / self.scale_factor
