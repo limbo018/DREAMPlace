@@ -18,8 +18,6 @@ from torch.autograd import Function
 from torch.nn import functional as F
 import logging
 
-import dreamplace.ops.dct.discrete_spectral_transform as discrete_spectral_transform
-
 import dreamplace.ops.dct.dct2_fft2 as dct
 from dreamplace.ops.dct.discrete_spectral_transform import get_exact_expk as precompute_expk
 
@@ -114,7 +112,6 @@ class ElectricPotentialFunction(Function):
                 num_threads
                 )
 
-        # output consists of (density_cost, density_map, max_density)
         ctx.node_size_x_clamped = node_size_x_clamped
         ctx.node_size_y_clamped = node_size_y_clamped
         ctx.offset_x = offset_x
@@ -146,16 +143,15 @@ class ElectricPotentialFunction(Function):
         #ctx.field_map_y = torch.ones([ctx.num_bins_x, ctx.num_bins_y], dtype=pos.dtype, device=pos.device)
         # return torch.zeros(1, dtype=pos.dtype, device=pos.device)
 
-        # for DCT
-        M = num_bins_x
-        N = num_bins_y
-
         # wu and wv
         if inv_wu2_plus_wv2 is None:
+            M = num_bins_x
+            N = num_bins_y
+            
             wu = torch.arange(M, dtype=density_map.dtype, device=density_map.device).mul(2 * np.pi / M).view([M, 1])
-            wv = torch.arange(N, dtype=density_map.dtype, device=density_map.device).mul(2 * np.pi / N).view([1, N])
+            wv = torch.arange(N, dtype=density_map.dtype, device=density_map.device).mul(2 * np.pi / N).view([1, N])            
             wu2_plus_wv2 = wu.pow(2) + wv.pow(2)
-            wu2_plus_wv2[0, 0] = 1.0  # avoid zero-division, it will be zeroed out
+            wu2_plus_wv2[0, 0] = 1.0  # avoid zero-division, it will be zeroed out            
             inv_wu2_plus_wv2 = 1.0 / wu2_plus_wv2
             inv_wu2_plus_wv2[0, 0] = 0.0
             wu_by_wu2_plus_wv2_half = wu.mul(inv_wu2_plus_wv2).mul_(1./ 2)
@@ -163,17 +159,13 @@ class ElectricPotentialFunction(Function):
 
         # compute auv
         density_map.mul_(1.0 / (ctx.bin_size_x * ctx.bin_size_y))
-
-        #auv = discrete_spectral_transform.dct2_2N(density_map, expk0=exact_expkM, expk1=exact_expkN)
         auv = dct2.forward(density_map)
 
         # compute field xi
         auv_by_wu2_plus_wv2_wu = auv.mul(wu_by_wu2_plus_wv2_half)
         auv_by_wu2_plus_wv2_wv = auv.mul(wv_by_wu2_plus_wv2_half)
 
-        #ctx.field_map_x = discrete_spectral_transform.idsct2(auv_by_wu2_plus_wv2_wu, exact_expkM, exact_expkN).contiguous()
         ctx.field_map_x = idxst_idct.forward(auv_by_wu2_plus_wv2_wu)
-        #ctx.field_map_y = discrete_spectral_transform.idcst2(auv_by_wu2_plus_wv2_wv, exact_expkM, exact_expkN).contiguous()
         ctx.field_map_y = idct_idxst.forward(auv_by_wu2_plus_wv2_wv)
 
         # energy = \sum q*phi
@@ -185,7 +177,6 @@ class ElectricPotentialFunction(Function):
             # compute potential phi
             # auv / (wu**2 + wv**2)
             auv_by_wu2_plus_wv2 = auv.mul(inv_wu2_plus_wv2)
-            #potential_map = discrete_spectral_transform.idcct2(auv_by_wu2_plus_wv2, exact_expkM, exact_expkN)
             potential_map = idct2.forward(auv_by_wu2_plus_wv2)
             # compute energy
             energy = potential_map.mul(density_map).sum()
