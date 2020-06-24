@@ -1,12 +1,12 @@
 {
 "placedb_binary_input" : "/tmp/sample.placedb", 
 "gpu" : 0,
-"num_bins_x" : 64,
-"num_bins_y" : 64,
+"num_bins_x" : 128,
+"num_bins_y" : 128,
 "global_place_stages" : [
-    {"num_bins_x" : 64, "num_bins_y" : 64, "iteration" : 1000, "learning_rate" : 0.01, "wirelength" : "weighted_average", "optimizer" : "nesterov", "Llambda_density_weight_iteration" : 1, "Lsub_iteration" : 1}
+    {"num_bins_x" : 128, "num_bins_y" : 128, "iteration" : 1000, "learning_rate" : 0.01, "wirelength" : "weighted_average", "optimizer" : "nesterov", "Llambda_density_weight_iteration" : 1, "Lsub_iteration" : 1}
 ],
-"target_density" : 1.0,
+"target_density" : 0.6,
 "density_weight" : 8e-5,
 "gamma" : 4.0,
 "random_seed" : 1000,
@@ -17,9 +17,9 @@
 "global_place_flag" : 1,
 "legalize_flag" : 0,
 "detailed_place_flag" : 0,
-"detailed_place_engine" : "thirdparty/ntuplace3", 
+"detailed_place_engine" : "", 
 "detailed_place_command" : "-nolegal -nodetail", 
-"stop_overflow" : 0.07, 
+"stop_overflow" : 0.15, 
 "dtype" : "float32", 
 "plot_flag" : 0, 
 "random_center_init_flag" : 1, 

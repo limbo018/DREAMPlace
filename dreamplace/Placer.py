@@ -49,7 +49,7 @@ def place(params):
     placer = NonLinearPlace.NonLinearPlace(params, placedb)
     logging.info("non-linear placement initialization takes %.2f seconds" % (time.time()-tt))
     metrics = placer(params, placedb)
-    logging.info("non-linear placement takes %.2f seconds" % (time.time()-tt))
+    logging.warning("non-linear placement takes %.2f seconds" % (time.time()-tt))
 
     # write placement solution 
     path = "%s/%s" % (params.result_dir, params.design_name())
@@ -123,7 +123,7 @@ if __name__ == "__main__":
     @brief main function to invoke the entire placement flow. 
     """
     logging.root.name = 'DREAMPlace'
-    logging.basicConfig(level=logging.INFO, format='[%(levelname)-7s] %(name)s - %(message)s', stream=sys.stdout)
+    logging.basicConfig(level=logging.WARNING, format='[%(levelname)-7s] %(name)s - %(message)s', stream=sys.stdout)
     params = Params.Params()
     params.printWelcome()
     if len(sys.argv) == 1 or '-h' in sys.argv[1:] or '--help' in sys.argv[1:]:

@@ -341,11 +341,10 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                     self.data_collections.pin_offset_x.copy_(self.data_collections.original_pin_offset_x)
                     self.data_collections.pin_offset_y.copy_(self.data_collections.original_pin_offset_y)
 
-        else: 
-            cur_metric = EvalMetrics.EvalMetrics(iteration)
-            all_metrics.append(cur_metric)
-            cur_metric.evaluate(placedb, {"hpwl" : self.op_collections.hpwl_op}, self.pos[0])
-            logging.info(cur_metric)
+        cur_metric = EvalMetrics.EvalMetrics(iteration)
+        all_metrics.append(cur_metric)
+        cur_metric.evaluate(placedb, {"hpwl" : self.op_collections.hpwl_op}, self.pos[0])
+        logging.warning(cur_metric)
 
         # dump global placement solution for legalization 
         if params.dump_global_place_solution_flag: 
