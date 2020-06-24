@@ -65,7 +65,7 @@ class EvalMetrics (object):
         if self.gamma is not None: 
             content += ", gamma %.6E" % (self.gamma)
         if self.eval_time is not None: 
-            content += ", time %.3fms" % (self.eval_time*1000)
+            content += ", time %.3f ms" % (self.eval_time*1000)
 
         return content 
 
