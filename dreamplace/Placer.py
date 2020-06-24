@@ -50,6 +50,7 @@ def place(params):
     logging.info("non-linear placement initialization takes %.2f seconds" % (time.time()-tt))
     metrics = placer(params, placedb)
     logging.warning("non-linear placement takes %.2f seconds" % (time.time()-tt))
+    return metrics
 
     # write placement solution 
     path = "%s/%s" % (params.result_dir, params.design_name())
