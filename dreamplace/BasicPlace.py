@@ -144,7 +144,7 @@ class PlaceDataCollection(object):
                 self.net_weights = torch.from_numpy(
                     placedb.net_weights).to(device)
             else:  # an empty tensor
-                logging.warning("net weights are all the same, ignored")
+                logging.info("net weights are all the same, ignored")
                 self.net_weights = torch.Tensor().to(device)
 
             # regions

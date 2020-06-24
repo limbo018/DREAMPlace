@@ -126,7 +126,7 @@ if __name__ == "__main__":
     logging.root.name = 'DREAMPlace'
     logging.basicConfig(level=logging.WARNING, format='[%(levelname)-7s] %(name)s - %(message)s', stream=sys.stdout)
     params = Params.Params()
-    params.printWelcome()
+    # params.printWelcome()
     if len(sys.argv) == 1 or '-h' in sys.argv[1:] or '--help' in sys.argv[1:]:
         params.printHelp()
         exit()
