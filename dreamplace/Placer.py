@@ -130,13 +130,15 @@ if __name__ == "__main__":
     if len(sys.argv) == 1 or '-h' in sys.argv[1:] or '--help' in sys.argv[1:]:
         params.printHelp()
         exit()
-    elif len(sys.argv) != 2:
+    elif len(sys.argv) > 3:
         logging.error("One input parameters in json format in required")
         params.printHelp()
         exit()
 
     # load parameters 
     params.load(sys.argv[1])
+    if len(sys.argv) == 3:
+        params.placedb_binary_input = sys.argv[2]
     logging.info("parameters = %s" % (params))
     # control numpy multithreading
     os.environ["OMP_NUM_THREADS"] = "%d" % (params.num_threads)
