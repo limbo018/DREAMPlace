@@ -160,7 +160,11 @@
     "descripton" : "maximum times to adjust node area", 
     "default" : 3
     },
-"adjust_route_area_flag" : {
+"adjust_nctugr_area_flag" : {
+    "descripton" : "whether use NCTUgr congestion map to guide area adjustment", 
+    "default" : 0
+    },
+"adjust_rudy_area_flag" : {
     "descripton" : "whether use RUDY/RISA map to guide area adjustment", 
     "default" : 1
     },
