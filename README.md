@@ -262,3 +262,7 @@ The list of options as follows will be shown.
 
 * [2.1.0](https://github.com/limbo018/DREAMPlace/releases/tag/2.1.0)
     - Support deterministic mode to ensure run-to-run determinism with minor runtime overhead
+
+* [2.2.0](https://github.com/limbo018/DREAMPlace/releases/tag/2.2.0)
+    - Integrate routability optimization relying on NCTUgr from TCAD extension
+    - Improved robustness on parallel CPU version 
