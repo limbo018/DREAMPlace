@@ -27,7 +27,7 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
 
 * [Yibo Lin](http://yibolin.com), Zixuan Jiang, Jiaqi Gu, [Wuxi Li](http://wuxili.net), Shounak Dhar, Haoxing Ren, Brucek Khailany and [David Z. Pan](http://users.ece.utexas.edu/~dpan), 
   "**DREAMPlace: Deep Learning Toolkit-Enabled GPU Acceleration for Modern VLSI Placement**", 
-  IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems (TCAD), 2020 (in submission)
+  IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems (TCAD), 2020 (accepted)
 
 * [Yibo Lin](http://yibolin.com), [Wuxi Li](http://wuxili.net), Jiaqi Gu, Haoxing Ren, Brucek Khailany and [David Z. Pan](http://users.ece.utexas.edu/~dpan), 
   "**ABCDPlace: Accelerated Batch-based Concurrent Detailed Placement on Multi-threaded CPUs and GPUs**", 
@@ -262,3 +262,7 @@ The list of options as follows will be shown.
 
 * [2.1.0](https://github.com/limbo018/DREAMPlace/releases/tag/2.1.0)
     - Support deterministic mode to ensure run-to-run determinism with minor runtime overhead
+
+* [2.2.0](https://github.com/limbo018/DREAMPlace/releases/tag/2.2.0)
+    - Integrate routability optimization relying on NCTUgr from TCAD extension
+    - Improved robustness on parallel CPU version 

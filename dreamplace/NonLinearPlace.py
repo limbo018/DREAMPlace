@@ -222,7 +222,7 @@ class NonLinearPlace (BasicPlace.BasicPlace):
 
                 if params.routability_opt_flag: 
                     adjust_area_flag = True
-                    adjust_route_area_flag = params.adjust_route_area_flag
+                    adjust_route_area_flag = params.adjust_nctugr_area_flag or params.adjust_rudy_area_flag 
                     adjust_pin_area_flag = params.adjust_pin_area_flag
                     num_area_adjust = 0
 
@@ -265,20 +265,22 @@ class NonLinearPlace (BasicPlace.BasicPlace):
                             route_utilization_map = None 
                             pin_utilization_map = None
                             if adjust_route_area_flag: 
-                                #route_utilization_map = model.op_collections.route_utilization_map_op(pos)
-                                route_utilization_map = model.op_collections.nctugr_congestion_map_op(pos)
-                                #if params.plot_flag:
-                                path = "%s/%s" % (params.result_dir, params.design_name())
-                                figname = "%s/plot/rudy%d.png" % (path, num_area_adjust)
-                                os.system("mkdir -p %s" % (os.path.dirname(figname)))
-                                plt.imsave(figname, route_utilization_map.data.cpu().numpy().T, origin='lower')
+                                if params.adjust_nctugr_area_flag: 
+                                    route_utilization_map = model.op_collections.nctugr_congestion_map_op(pos)
+                                else:
+                                    route_utilization_map = model.op_collections.route_utilization_map_op(pos)
+                                if params.plot_flag:
+                                    path = "%s/%s" % (params.result_dir, params.design_name())
+                                    figname = "%s/plot/route%d.png" % (path, num_area_adjust)
+                                    os.system("mkdir -p %s" % (os.path.dirname(figname)))
+                                    plt.imsave(figname, route_utilization_map.data.cpu().numpy().T, origin='lower')
                             if adjust_pin_area_flag:
                                 pin_utilization_map = model.op_collections.pin_utilization_map_op(pos)
-                                #if params.plot_flag: 
-                                path = "%s/%s" % (params.result_dir, params.design_name())
-                                figname = "%s/plot/pin%d.png" % (path, num_area_adjust)
-                                os.system("mkdir -p %s" % (os.path.dirname(figname)))
-                                plt.imsave(figname, pin_utilization_map.data.cpu().numpy().T, origin='lower')
+                                if params.plot_flag: 
+                                    path = "%s/%s" % (params.result_dir, params.design_name())
+                                    figname = "%s/plot/pin%d.png" % (path, num_area_adjust)
+                                    os.system("mkdir -p %s" % (os.path.dirname(figname)))
+                                    plt.imsave(figname, pin_utilization_map.data.cpu().numpy().T, origin='lower')
                             adjust_area_flag, adjust_route_area_flag, adjust_pin_area_flag = model.op_collections.adjust_node_area_op(
                                     pos,
                                     route_utilization_map,
