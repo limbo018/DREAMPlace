@@ -402,11 +402,11 @@ void idsct2_lee_forward(
 
     // two buffers are required to keep make sure no additional allocation of memory 
 
-    // idxst for rows 
+    // idxct for rows 
 
     idxct_lee_forward(x, cos1, buf0, out, num_threads);
 
-    // idxct for columns
+    // idxst for columns
     
     buf0.resize_({N, M}); 
     buf0.copy_(out.transpose(-2, -1));
