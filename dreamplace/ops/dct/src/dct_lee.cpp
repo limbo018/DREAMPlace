@@ -419,6 +419,84 @@ void idsct2_lee_forward(
     out.copy_(buf1.transpose(-2, -1));
 }
 
+void idct_idxst_lee_forward(
+        at::Tensor x,
+        at::Tensor cos0, 
+        at::Tensor cos1, 
+        at::Tensor buf0, 
+        at::Tensor buf1, 
+        at::Tensor out,
+		int num_threads=at::get_num_threads()
+        ) 
+{
+    CHECK_CPU(x);
+    CHECK_CONTIGUOUS(x);
+    CHECK_CPU(cos0);
+    CHECK_CONTIGUOUS(cos0);
+    CHECK_CPU(cos1);
+    CHECK_CONTIGUOUS(cos1);
+
+    auto N = x.size(-1);
+    auto M = x.numel()/N; 
+
+    // two buffers are required to keep make sure no additional allocation of memory 
+
+    // idxst for rows 
+
+    idxst_lee_forward(x, cos1, buf0, out, num_threads);
+
+    // idct for columns
+    
+    buf0.resize_({N, M}); 
+    buf0.copy_(out.transpose(-2, -1));
+    buf1.resize_({N, M}); 
+    out.resize_({N, M}); 
+
+    idct_lee_forward(buf0, cos0, out, buf1, num_threads); 
+
+    out.resize_({M, N}); 
+    out.copy_(buf1.transpose(-2, -1));
+}
+
+void idxst_idct_lee_forward(
+        at::Tensor x,
+        at::Tensor cos0, 
+        at::Tensor cos1, 
+        at::Tensor buf0, 
+        at::Tensor buf1, 
+        at::Tensor out, 
+		int num_threads=at::get_num_threads()
+        ) 
+{
+    CHECK_CPU(x);
+    CHECK_CONTIGUOUS(x);
+    CHECK_CPU(cos0);
+    CHECK_CONTIGUOUS(cos0);
+    CHECK_CPU(cos1);
+    CHECK_CONTIGUOUS(cos1);
+
+    auto N = x.size(-1);
+    auto M = x.numel()/N; 
+
+    // two buffers are required to keep make sure no additional allocation of memory 
+
+    // idct for rows 
+
+    idxct_lee_forward(x, cos1, buf0, out, num_threads);
+
+    // idxst for columns
+    
+    buf0.resize_({N, M}); 
+    buf0.copy_(out.transpose(-2, -1));
+    buf1.resize_({N, M}); 
+    out.resize_({N, M}); 
+
+    idxst_lee_forward(buf0, cos0, out, buf1, num_threads); 
+
+    out.resize_({M, N}); 
+    out.copy_(buf1.transpose(-2, -1));
+}
+
 DREAMPLACE_END_NAMESPACE
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
@@ -437,4 +515,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("idcct2", &DREAMPLACE_NAMESPACE::idcct2_lee_forward, "IDCCT2 forward");
   m.def("idcst2", &DREAMPLACE_NAMESPACE::idcst2_lee_forward, "IDCST2 forward");
   m.def("idsct2", &DREAMPLACE_NAMESPACE::idsct2_lee_forward, "IDSCT2 forward");
+  m.def("idct_idxst", &DREAMPLACE_NAMESPACE::idct_idxst_lee_forward, "IDCT_IDXST forward");
+  m.def("idxst_idct", &DREAMPLACE_NAMESPACE::idxst_idct_lee_forward, "IDXST_IDCT forward");
 }

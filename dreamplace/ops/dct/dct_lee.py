@@ -424,3 +424,86 @@ class IDSCT2(nn.Module):
             self.out = torch.empty_like(x)
         return IDSCT2Function.apply(x, self.expk0, self.expk1, self.buf0, self.buf1, self.out)
 
+def idct_idxst(x, expk0, expk1, buf0, buf1, out):
+    """compute inverse discrete cosine-sine transformation
+    This is equivalent to idct(idxst(x)^T)^T
+    """
+    if x.is_cuda:
+        dct_cuda.idct_idxst(x.view([-1, x.size(-1)]), expk0, expk1, buf0, buf1, out)
+    else:
+        dct_cpp.idct_idxst(x.view([-1, x.size(-1)]), expk0, expk1, buf0, buf1, out, torch.get_num_threads())
+    return 2 * out.view(x.size())  
+
+class IDCT_IDXSTFunction(Function):
+    @staticmethod
+    def forward(ctx, x, expk0, expk1, buf0, buf1, out):
+        return idct_idxst(x, expk0, expk1, buf0, buf1, out)
+
+class IDCT_IDXST(nn.Module):
+    def __init__(self, expk0=None, expk1=None):
+        super(IDCT_IDXST, self).__init__()
+        self.expk0 = expk0
+        self.expk1 = expk1
+        self.buf0 = None
+        self.buf1 = None
+        self.out = None
+    def forward(self, x): 
+        if self.expk0 is None or self.expk0.size(-1) != x.size(-2):
+            self.expk0 = torch.empty(x.size(-2), dtype=x.dtype, device=x.device)
+            if x.is_cuda: 
+                dct_cuda.precompute_idct_cos(x.size(-2), self.expk0)
+            else:
+                dct_cpp.precompute_idct_cos(x.size(-2), self.expk0)
+        if self.expk1 is None or self.expk1.size(-1) != x.size(-1):
+            self.expk1 = torch.empty(x.size(-2), dtype=x.dtype, device=x.device)
+            if x.is_cuda: 
+                dct_cuda.precompute_idct_cos(x.size(-1), self.expk1)
+            else:
+                dct_cpp.precompute_idct_cos(x.size(-1), self.expk1)
+        if self.out is None or self.out.size() != x.size():
+            self.buf0 = torch.empty_like(x)
+            self.buf1 = torch.empty_like(x)
+            self.out = torch.empty_like(x)
+        return IDCT_IDXSTFunction.apply(x, self.expk0, self.expk1, self.buf0, self.buf1, self.out)
+
+def idxst_idct(x, expk0, expk1, buf0, buf1, out):
+    """compute inverse discrete cosine-sine transformation
+    This is equivalent to idxst(idxct(x)^T)^T
+    """
+    if x.is_cuda:
+        dct_cuda.idxst_idct(x.view([-1, x.size(-1)]), expk0, expk1, buf0, buf1, out)
+    else:
+        dct_cpp.idxst_idct(x.view([-1, x.size(-1)]), expk0, expk1, buf0, buf1, out, torch.get_num_threads())
+    return 2 * out.view(x.size())  
+
+class IDXST_IDCTFunction(Function):
+    @staticmethod
+    def forward(ctx, x, expk0, expk1, buf0, buf1, out):
+        return idxst_idct(x, expk0, expk1, buf0, buf1, out)
+
+class IDXST_IDCT(nn.Module):
+    def __init__(self, expk0=None, expk1=None):
+        super(IDXST_IDCT, self).__init__()
+        self.expk0 = expk0
+        self.expk1 = expk1
+        self.buf0 = None
+        self.buf1 = None
+        self.out = None
+    def forward(self, x): 
+        if self.expk0 is None or self.expk0.size(-1) != x.size(-2):
+            self.expk0 = torch.empty(x.size(-2), dtype=x.dtype, device=x.device)
+            if x.is_cuda: 
+                dct_cuda.precompute_idct_cos(x.size(-2), self.expk0)
+            else:
+                dct_cpp.precompute_idct_cos(x.size(-2), self.expk0)
+        if self.expk1 is None or self.expk1.size(-1) != x.size(-1):
+            self.expk1 = torch.empty(x.size(-2), dtype=x.dtype, device=x.device)
+            if x.is_cuda: 
+                dct_cuda.precompute_idct_cos(x.size(-1), self.expk1)
+            else:
+                dct_cpp.precompute_idct_cos(x.size(-1), self.expk1)
+        if self.out is None or self.out.size() != x.size():
+            self.buf0 = torch.empty_like(x)
+            self.buf1 = torch.empty_like(x)
+            self.out = torch.empty_like(x)
+        return IDXST_IDCTFunction.apply(x, self.expk0, self.expk1, self.buf0, self.buf1, self.out)

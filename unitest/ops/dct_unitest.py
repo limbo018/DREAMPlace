@@ -692,35 +692,34 @@ class DXTOpTest(unittest.TestCase):
         idct_idxst_value = custom.forward(x)
         print("2D dct.idct_idxst")
         print(idct_idxst_value.data.numpy())
+        np.testing.assert_allclose(idct_idxst_value.data.numpy(), golden_value * 2, atol=1e-14)
 
+        custom = dct2_fft2.IDCT_IDXST(expkM, expkN)
+        idct_idxst_value = custom.forward(x)
+        print("2D dct2_fft2.idct_idxst cpu")
+        print(idct_idxst_value.data.numpy())
+        np.testing.assert_allclose(idct_idxst_value.data.numpy(), golden_value * 2, atol=1e-14)
+
+        custom = dct_lee.IDCT_IDXST()
+        idct_idxst_value = custom.forward(x)
+        print("2D dct_lee.idct_idxst cpu")
+        print(idct_idxst_value.data.numpy())
         np.testing.assert_allclose(idct_idxst_value.data.numpy(), golden_value * 2, atol=1e-14)
 
         # test gpu
-        custom = dct2_fft2.IDCT_IDXST(expkM, expkN)
-        idct_idxst_value = custom.forward(x)
-        print("2D dct2_fft2.idct_idxst cuda")
-        print(idct_idxst_value.data.numpy())
-
-        # note the scale factor
-        np.testing.assert_allclose(idct_idxst_value.data.numpy(), golden_value * 2, atol=1e-14)
-
         if torch.cuda.device_count():
-            # test gpu
             custom = dct.IDCT_IDXST()
             idct_idxst_value = custom.forward(x.cuda()).cpu()
             print("2D dct.idct_idxst cuda")
             print(idct_idxst_value.data.numpy())
-
             np.testing.assert_allclose(idct_idxst_value.data.numpy(), golden_value * 2, atol=1e-14)
 
-            # test gpu
             custom = dct2_fft2.IDCT_IDXST(expkM.cuda(), expkN.cuda())
             idct_idxst_value = custom.forward(x.cuda()).cpu()
             print("2D dct2_fft2.idct_idxst cuda")
             print(idct_idxst_value.data.numpy())
-
-            # note the scale factor
             np.testing.assert_allclose(idct_idxst_value.data.numpy(), golden_value * 2, atol=1e-14)
+
 
     def test_idxst_idctRandom(self):
         torch.manual_seed(10)
