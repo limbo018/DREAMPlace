@@ -254,15 +254,17 @@ void PlaceDB::resize_def_pin(int s) {
 }
 void PlaceDB::add_def_pin(DefParser::Pin const& p) {
   if (p.vLayer.empty()) {
-    dreamplacePrint(kWARN, "no layer specified by pin %s, ignored\n",
+    dreamplacePrint(kWARN, "no layer specified by pin %s\n",
                     p.pin_name.c_str());
-    return;
   }
+  std::vector<int> bbox = {0, 0, 0, 0}; 
   if (p.vBbox.empty()) {
     dreamplacePrint(
-        kWARN, "no position or bounding box specified by pin %s, ignored\n",
-        p.pin_name.c_str());
-    return;
+        kWARN, "no position or bounding box specified by pin %s, set to (%d, %d, %d, %d)\n",
+        p.pin_name.c_str(), bbox[0], bbox[1], bbox[2], bbox[3]);
+  } else {
+    // only read the first layer of pins
+    bbox = p.vBbox.front();
   }
   // create virtual macro
   std::pair<index_type, bool> insertMacroRet = addMacro(p.pin_name);
@@ -272,10 +274,6 @@ void PlaceDB::add_def_pin(DefParser::Pin const& p) {
   Macro& macro = m_vMacro.at(insertMacroRet.first);
   // indicate this is an IO pin
   macro.setClassName("DREAMPlace.IOPin");
-
-  // only read the first layer of pins
-  std::string const& layerName = p.vLayer.front();
-  std::vector<int> const& bbox = p.vBbox.front();
 
   macro.setInitOrigin(bbox[0], bbox[1]);
   macro.set(0, 0, bbox[2] - bbox[0],
@@ -300,7 +298,9 @@ void PlaceDB::add_def_pin(DefParser::Pin const& p) {
   iopin.macroPorts().push_back(MacroPort());
   MacroPort& macroPort = iopin.macroPorts().back();
   macroPort.setId(iopin.macroPorts().size() - 1);
-  macroPort.layers().push_back(layerName);
+  if (!p.vLayer.empty()) {
+    macroPort.layers().push_back(p.vLayer.front());
+  } 
   macroPort.boxes().push_back(MacroPort::box_type(
       0, 0, bbox[2] - bbox[0], bbox[3] - bbox[1]));  // adjust to origin (0, 0)
   deriveMacroPortBbox(macroPort);
