@@ -479,7 +479,7 @@ __device__  T compute_positions_hint(const DetailedPlaceDB<T>& db, const SwapSta
     cand.node_xl[1][0] = db.x[cand.node_id[1]];
     cand.node_yl[1][0] = db.y[cand.node_id[1]];
     T target_node_width = db.node_size_x[cand.node_id[1]]; 
-    const Space<T>& target_space = state.spaces[cand.node_id[1]];
+    auto target_space = db.align2site(state.spaces[cand.node_id[1]]);
     int cond = (space.xh >= target_space.xl); 
     cond &= (target_space.xh >= space.xl);
     cond &= (cand.node_yl[0][0] == cand.node_yl[1][0]);
@@ -685,7 +685,7 @@ void __launch_bounds__(256, 4) collect_candidates(
         node_xl = db.x[node_id]; 
         node_yl = db.y[node_id]; 
         node_width = db.node_size_x[node_id];
-        space = state.spaces[node_id]; 
+        space = db.align2site(state.spaces[node_id]); 
         max_num_candidates = state.max_num_candidates/5; 
 
         block_offset = blockIdx.y * state.max_num_candidates + blockIdx.x * max_num_candidates; 

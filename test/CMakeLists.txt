@@ -9,3 +9,12 @@ install(
 install(
     DIRECTORY ispd2015 DESTINATION ${PROJECT_NAME}
     )
+
+install(
+    DIRECTORY dac2012 DESTINATION ${PROJECT_NAME}
+    )
+
+install(
+    DIRECTORY ispd2019 DESTINATION ${PROJECT_NAME}
+    )
+

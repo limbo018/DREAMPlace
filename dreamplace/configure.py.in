@@ -17,7 +17,6 @@ compile_configurations = {
         "ZLIB_INCLUDE_DIRS" : "${ZLIB_INCLUDE_DIRS}", 
         "ZLIB_LIBRARIES" : "${ZLIB_LIBRARIES}", 
         "CUDA_FOUND" : "${CUDA_FOUND}", 
-        "CUDA_HOME" : "${CUDA_HOME}", 
         "CUDA_TOOLKIT_ROOT_DIR" : "${CUDA_TOOLKIT_ROOT_DIR}", 
         "CMAKE_CUDA_FLAGS" : "${CMAKE_CUDA_FLAGS}", 
         "CAIRO_FOUND" : "${CAIRO_FOUND}", 

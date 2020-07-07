@@ -32,7 +32,7 @@
     "default" : 512
     },
 "global_place_stages" : {
-    "descripton" : "global placement configurations of each stage, a dictionary of {\"num_bins_x\", \"num_bins_y\", \"iteration\", \"learning_rate\"}, learning_rate is relative to bin size", 
+    "descripton" : "global placement configurations of each stage, a dictionary of {\"num_bins_x\", \"num_bins_y\", \"iteration\", \"learning_rate\", \"learning_rate_decay\", \"wirelength\", \"optimizer\", \"Llambda_density_weight_iteration\", \"Lsub_iteration\"}", 
     "default" : "", 
     "required" : "required"
     },
@@ -42,11 +42,7 @@
     },
 "density_weight" : {
     "descripton" : "initial weight of density cost", 
-    "default" : 1.0
-    },
-"gamma" : {
-    "descripton" : "initial coefficient for log-sum-exp and weighted-average wirelength", 
-    "default" : 0.5
+    "default" : 8e-5
     },
 "random_seed" : {
     "descripton" : "random seed", 
@@ -116,6 +112,14 @@
     "descripton" : "upper bound ratio used in RePlAce for updating density weight", 
     "default" : 1.05
     },
+"gamma" : {
+    "descripton" : "base coefficient for log-sum-exp and weighted-average wirelength, a relative value to bin size",
+    "default" : 4.0
+    },
+"RePlAce_skip_energy_flag" : {
+    "descripton" : "whether skip density energy computation for fast mode, may not work with some solvers", 
+    "default" : 0
+    },
 "random_center_init_flag" : {
     "descripton" : "whether perform random initialization around the center for global placement", 
     "default" : 1
@@ -136,6 +140,78 @@
     "descripton" : "whether dump intermediate legalization solution as a compressed pickle object", 
     "default" : 0
     },
+"routability_opt_flag" : {
+    "descripton" : "whether enable routability optimization", 
+    "default" : 0
+    },
+"route_num_bins_x" : {
+    "descripton" : "number of routing grids/tiles", 
+    "default" : 512
+    },
+"route_num_bins_y" : {
+    "descripton" : "number of routing grids/tiles", 
+    "default" : 512
+    },
+"node_area_adjust_overflow" : {
+    "descripton" : "the overflow where to adjust node area", 
+    "default" : 0.15
+    },
+"max_num_area_adjust" : {
+    "descripton" : "maximum times to adjust node area", 
+    "default" : 3
+    },
+"adjust_nctugr_area_flag" : {
+    "descripton" : "whether use NCTUgr congestion map to guide area adjustment", 
+    "default" : 0
+    },
+"adjust_rudy_area_flag" : {
+    "descripton" : "whether use RUDY/RISA map to guide area adjustment", 
+    "default" : 1
+    },
+"adjust_pin_area_flag" : {
+    "descripton" : "whether use pin utilization map to guide area adjustment", 
+    "default" : 1
+    },
+"area_adjust_stop_ratio" : {
+    "descripton" : "area_adjust_stop_ratio", 
+    "default" : 0.01
+    },
+"route_area_adjust_stop_ratio" : {
+    "descripton" : "route_area_adjust_stop_ratio", 
+    "default" : 0.01
+    },
+"pin_area_adjust_stop_ratio" : {
+    "descripton" : "pin_area_adjust_stop_ratio", 
+    "default" : 0.05
+    },
+"unit_horizontal_capacity" : {
+    "descripton" : "number of horizontal routing tracks per unit distance", 
+    "default" : 1.5625
+    },
+"unit_vertical_capacity" : {
+    "descripton" : "number of vertical routing tracks per unit distance", 
+    "default" : 1.45
+    },
+"unit_pin_capacity" : {
+    "descripton" : "number of pins per unit area", 
+    "default" : 0.058
+    },
+"max_route_opt_adjust_rate" : {
+    "descripton" : "max_route_opt_adjust_rate", 
+    "default" : 2.0
+    },
+"route_opt_adjust_exponent" : {
+    "descripton" : "exponent to adjust the routing utilization map", 
+    "default" : 2.0
+    },
+"pin_stretch_ratio" : {
+    "descripton" : "pin_stretch_ratio", 
+    "default" : 1.414213562
+    },
+"max_pin_opt_adjust_rate" : {
+    "descripton" : "max_pin_opt_adjust_rate", 
+    "default" : 1.5
+    }, 
 "deterministic_flag" : {
     "descripton" : "whether require run-to-run determinism, may have efficiency overhead", 
     "default" : 0
