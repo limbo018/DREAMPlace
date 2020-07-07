@@ -395,6 +395,7 @@ void PlaceDB::add_def_net(DefParser::Net const& n) {
     // create and add pin
     addPin(n.vNetPin[i].second, net, node);
   }
+  net.setWeight(n.net_weight); 
 }
 void PlaceDB::resize_def_blockage(int n) {
   m_numPlaceBlockages = 0;
