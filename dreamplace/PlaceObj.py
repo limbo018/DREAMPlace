@@ -58,8 +58,7 @@ class PreconditionOp:
             precond = self.data_collections.num_pins_in_nodes + self.alpha * density_weight * self.data_collections.node_areas
             precond.clamp_(min=1.0)
             grad[0:self.placedb.num_nodes].div_(precond)
-            grad[self.placedb.num_nodes:self.placedb.num_nodes *
-                 2].div_(precond)
+            grad[self.placedb.num_nodes:self.placedb.num_nodes * 2].div_(precond)
             self.iteration += 1
 
             # assume overflow has been updated
@@ -170,9 +169,9 @@ class PlaceObj(nn.Module):
         @param pos locations of cells
         @return objective value
         """
-        wirelength = self.op_collections.wirelength_op(pos)
-        density = self.op_collections.density_op(pos)
-        return wirelength + self.density_weight * density
+        self.wirelength = self.op_collections.wirelength_op(pos)
+        self.density = self.op_collections.density_op(pos)
+        return self.wirelength + self.density_weight * self.density
 
     def obj_and_grad_fn(self, pos):
         """
@@ -187,7 +186,25 @@ class PlaceObj(nn.Module):
         if pos.grad is not None:
             pos.grad.zero_()
 
+        #self.wirelength.backward()
+        #wirelength_grad = pos.grad.data.clone()
+
+        #if pos.grad is not None:
+        #    pos.grad.zero_()
+
+        #self.density.backward()
+        #density_grad = pos.grad.data.clone()
+
+        ## overall gradient 
+        #pos.grad.data.copy_(wirelength_grad + self.density_weight * density_grad)
+
         obj.backward()
+
+        ## compute preconditioning alpha
+        #wirelength_grad_norm = wirelength_grad.norm(p=1)
+        #density_grad_norm = density_grad.norm(p=1)
+        #precond_alpha = (density_grad_norm / wirelength_grad_norm).clamp_(min=1.0)
+        #self.op_collections.precondition_op.alpha = precond_alpha 
 
         self.op_collections.precondition_op(pos.grad, self.density_weight)
 

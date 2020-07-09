@@ -286,7 +286,7 @@ __global__ void computeTriangleDensityMapSimpleLikeCPU(
 
     T inv_bin_size_x = 1.0 / bin_size_x; 
     T inv_bin_size_y = 1.0 / bin_size_y; 
-    int num_bins = num_bins_x * num_bins_y;
+    //int num_bins = num_bins_x * num_bins_y;
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < num_nodes)
     {
