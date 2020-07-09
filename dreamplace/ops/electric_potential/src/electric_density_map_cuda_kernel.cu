@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <float.h>
+#include <cstdint>
 #include "cuda_runtime.h"
 #include "utility/src/print.h"
 #include "utility/src/Msg.h"
@@ -341,9 +342,10 @@ __global__ void computeExactDensityMap(
     typename AtomicOp::type *density_map_tensor
     )
 {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
+    int64_t bound = int64_t(num_nodes) * num_impacted_bins_x * num_impacted_bins_y;
     // rank-one update density map
-    if (i < num_nodes * num_impacted_bins_x * num_impacted_bins_y)
+    if (i < bound)
     {
         int node_id = i / (num_impacted_bins_x * num_impacted_bins_y);
         int residual_index = i - node_id * num_impacted_bins_x * num_impacted_bins_y;
@@ -588,7 +590,9 @@ int computeExactDensityMapCallKernel(
         )
 {
     int thread_count = 512;
-    int block_count = (num_nodes * num_impacted_bins_x * num_impacted_bins_y - 1 + thread_count) / thread_count;
+    //int block_count = (num_nodes * num_impacted_bins_x * num_impacted_bins_y - 1 + thread_count) / thread_count;
+    // dreamplaceAssert(block_count >= 0); // avoid overflow 
+    int block_count = (num_nodes - 1 + thread_count) / thread_count;
 
     computeExactDensityMapCellByCell<<<block_count, thread_count>>>(
         x_tensor, y_tensor,
