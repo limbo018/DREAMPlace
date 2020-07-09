@@ -25,8 +25,8 @@ inline DREAMPLACE_HOST_DEVICE T div(T a, V b) {
 /// @brief template specialization for non-integral types
 template <typename T, typename V>
 inline DREAMPLACE_HOST_DEVICE typename std::enable_if<!std::is_integral<T>::value, T>::type
-floorDiv(T a, V b) {
-  return floor(div(a + DREAMPLACE_RTOL * b, b));
+floorDiv(T a, V b, T rtol = DREAMPLACE_RTOL) {
+  return floor(div(a + rtol * b, b));
 }
 
 /// @brief template specialization for integral types
@@ -39,8 +39,8 @@ floorDiv(T a, T b) {
 /// @brief template specialization for non-integral types
 template <typename T, typename V>
 inline DREAMPLACE_HOST_DEVICE typename std::enable_if<!std::is_integral<T>::value, T>::type
-ceilDiv(T a, V b) {
-  return ceil(div(a - DREAMPLACE_RTOL * b, b));
+ceilDiv(T a, V b, T rtol = DREAMPLACE_RTOL) {
+  return ceil(div(a - rtol * b, b));
 }
 
 /// @brief template specialization for integral types

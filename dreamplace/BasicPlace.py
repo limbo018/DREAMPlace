@@ -588,8 +588,8 @@ class BasicPlace(nn.Module):
             yh=placedb.yh,
             site_width=placedb.site_width,
             row_height=placedb.row_height,
-            num_bins_x=params.num_bins_x,
-            num_bins_y=params.num_bins_y,
+            num_bins_x=placedb.num_bins_x,
+            num_bins_y=placedb.num_bins_y,
             num_movable_nodes=placedb.num_movable_nodes,
             num_terminal_NIs=placedb.num_terminal_NIs,
             num_filler_nodes=placedb.num_filler_nodes)
