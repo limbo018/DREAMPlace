@@ -139,6 +139,8 @@ def place(params):
     return metrics
 
 
+    return metrics
+
 if __name__ == "__main__":
     """
     @brief main function to invoke the entire placement flow. 

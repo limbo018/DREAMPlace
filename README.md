@@ -27,7 +27,7 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
 
 * [Yibo Lin](http://yibolin.com), Zixuan Jiang, Jiaqi Gu, [Wuxi Li](http://wuxili.net), Shounak Dhar, Haoxing Ren, Brucek Khailany and [David Z. Pan](http://users.ece.utexas.edu/~dpan), 
   "**DREAMPlace: Deep Learning Toolkit-Enabled GPU Acceleration for Modern VLSI Placement**", 
-  IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems (TCAD), 2020 (in submission)
+  IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems (TCAD), 2020 (accepted)
 
 * [Yibo Lin](http://yibolin.com), [Wuxi Li](http://wuxili.net), Jiaqi Gu, Haoxing Ren, Brucek Khailany and [David Z. Pan](http://users.ece.utexas.edu/~dpan), 
   "**ABCDPlace: Accelerated Batch-based Concurrent Detailed Placement on Multi-threaded CPUs and GPUs**", 
@@ -65,10 +65,10 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
     - Otherwise, only CPU implementation is enabled. 
 
 - GPU architecture compatibility 6.0 or later (Optional)
-    - Code has been tested on GPUs with compute compatibility 6.0 and 7.0. 
+    - Code has been tested on GPUs with compute compatibility 6.0, 7.0, and 7.5. 
     - Please check the [compatibility](https://developer.nvidia.com/cuda-gpus) of the GPU devices. 
-    - The default compilation target is compatibility 6.0. 
-    For compatibility 7.0, it is necessary to set the CMAKE_CUDA_FLAGS to -gencode=arch=compute_70,code=sm_70. 
+    - The default compilation target is compatibility 6.0. This is the minimum requirement and lower compatibility is not supported for the GPU feature. 
+    - For compatibility 7.0, it is necessary to set the CMAKE_CUDA_FLAGS to -gencode=arch=compute_70,code=sm_70. 
 
 - [Cairo](https://github.com/freedesktop/cairo) (Optional)
     - If installed and found, the plotting functions will be faster by using C/C++ implementation. 
@@ -116,13 +116,21 @@ You can use the Docker container to avoid building all the dependencies yourself
     ```
 5. Enter bash environment of the container. Replace ```limbo018``` with your name if option 2 is chosen in the previous step. 
 
-Run with GPU. 
+Run with GPU on Linux. 
 ```
 docker run --gpus 1 -it -v $(pwd):/DREAMPlace limbo018/dreamplace:cuda bash
 ```
-Run without GPU. 
+Run with GPU on Windows.
+```
+docker run --gpus 1 -it -v /dreamplace limbo018/dreamplace:cuda bash
+```
+Run without GPU on Linux. 
 ```
 docker run -it -v $(pwd):/DREAMPlace limbo018/dreamplace:cuda bash
+```
+Run without GPU on Windows.
+```
+docker run -it -v /dreamplace limbo018/dreamplace:cuda bash
 ```
 6. ```cd /DREAMPlace```. 
 7. Go to next section to complete building. 
@@ -254,3 +262,7 @@ The list of options as follows will be shown.
 
 * [2.1.0](https://github.com/limbo018/DREAMPlace/releases/tag/2.1.0)
     - Support deterministic mode to ensure run-to-run determinism with minor runtime overhead
+
+* [2.2.0](https://github.com/limbo018/DREAMPlace/releases/tag/2.2.0)
+    - Integrate routability optimization relying on NCTUgr from TCAD extension
+    - Improved robustness on parallel CPU version 

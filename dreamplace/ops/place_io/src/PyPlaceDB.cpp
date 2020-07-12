@@ -289,9 +289,12 @@ void PyPlaceDB::set(PlaceDB const& db)
         }
     }
     // we only know num_nodes when all fixed cells with shapes are expanded 
-    //dreamplacePrint(kDEBUG, "num_terminals %d, numFixed %u, numPlaceBlockages %u\n", num_terminals, db.numFixed(), db.numPlaceBlockages());
+    dreamplacePrint(kDEBUG, "num_terminals %d, numFixed %u, numPlaceBlockages %u, num_terminal_NIs %d\n", 
+        num_terminals, db.numFixed(), db.numPlaceBlockages(), num_terminal_NIs);
     num_nodes = db.nodes().size() + num_terminals - db.numFixed() - db.numPlaceBlockages(); 
-    dreamplaceAssertMsg(num_nodes == node_x.size(), "%u != %lu", num_nodes, node_x.size());
+    dreamplaceAssertMsg(num_nodes == node_x.size(), 
+        "%u != %lu, db.nodes().size = %lu, num_terminals = %d, numFixed = %u, numPlaceBlockages = %u, num_terminal_NIs = %d", 
+        num_nodes, node_x.size(), db.nodes().size(), num_terminals, db.numFixed(), db.numPlaceBlockages(), num_terminal_NIs);
 
     // this is different from simply summing up the area of all fixed nodes 
     double total_fixed_node_overlap_area = 0;
