@@ -251,7 +251,7 @@ class MultiRowAttr : public EnumExt<MultiRowAttrEnum::MultiRowAttrType>
 /// class SignalDirect denotes direction of signal or pins 
 struct SignalDirectEnum 
 {
-    enum SignalDirectType {INPUT, OUTPUT, INOUT, UNKNOWN};
+    enum SignalDirectType {INPUT, OUTPUT, INOUT, OUTPUT_TRISTATE, UNKNOWN};
 };
 class SignalDirect : public EnumExt<SignalDirectEnum::SignalDirectType>
 {

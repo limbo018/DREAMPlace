@@ -305,7 +305,7 @@ void PyPlaceDB::set(PlaceDB const& db)
     // the total overlap area should not exceed the upper bound; 
     // current estimation may exceed if there are many overlapping fixed cells or boxes 
     total_space_area = db.rowBbox().area() - std::min(total_fixed_node_overlap_area, total_fixed_node_area); 
-    dreamplacePrint(kDEBUG, "fixed area overlap: %g total: %g, space area = %g\n", total_fixed_node_overlap_area, total_fixed_node_area, total_space_area);
+    dreamplacePrint(kDEBUG, "fixed area overlap: %g fixed area total: %g, space area = %g\n", total_fixed_node_overlap_area, total_fixed_node_area, total_space_area);
 
     // construct node2pin_map and flat_node2pin_map
     int count = 0; 
