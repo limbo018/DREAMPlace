@@ -438,6 +438,8 @@ class PlaceDB : public DefParser::DefDataBase
         /// \param r region name 
         /// \return index in m_vRegion and successful flag 
         std::pair<index_type, bool> addRegion(std::string const& r);
+        /// collect nodes for groups and summarize the statistics for fence region 
+        void processGroups(); 
 
         /// kernel data for placement 
         std::vector<Node> m_vNode; ///< instances, including movable and fixed instances, virtual placement blockages, and virtual io pins (appended) 

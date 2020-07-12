@@ -37,17 +37,17 @@ int greedyLegalizationCPU(
         num_bins_x = 1; 
         num_bins_y = 1;
         // adjust bin sizes 
-        T bin_size_x = (xh-xl)/num_bins_x; 
-        //bin_size_x = std::max(floor(bin_size_x/site_width)*site_width, site_width); 
-        T bin_size_y = (yh-yl)/num_bins_y; 
-        bin_size_y = std::max((T)(ceil(bin_size_y/row_height)*row_height), (T)row_height);
+        T bin_size_x = div((xh-xl), num_bins_x); 
+        //bin_size_x = std::max(floorDiv(bin_size_x, site_width)*site_width, site_width); 
+        T bin_size_y = div((yh-yl), num_bins_y); 
+        bin_size_y = std::max((T)(ceilDiv(bin_size_y, row_height)*row_height), (T)row_height);
 
-        //num_bins_x = ceil((xh-xl)/bin_size_x);
-        num_bins_y = ceil((yh-yl)/bin_size_y);
+        //num_bins_x = ceilDiv((xh-xl), bin_size_x);
+        num_bins_y = ceilDiv((yh-yl), bin_size_y);
 
         // bin dimension in y direction for blanks is different from that for cells 
         T blank_bin_size_y = row_height; 
-        int blank_num_bins_y = (yh-yl)/blank_bin_size_y; 
+        int blank_num_bins_y = floorDiv((yh-yl), blank_bin_size_y); 
         dreamplacePrint(kDEBUG, "%s blank_num_bins_y = %d\n", "Standard cell legalization", blank_num_bins_y);
 
         // allocate bin cells 
@@ -140,7 +140,7 @@ int greedyLegalizationCPU(
 
             // compute minimum size of unplaced cells 
             milliseconds = clock(); 
-            min_unplaced_node_size_x_host = int((xh-xl)/site_width);
+            min_unplaced_node_size_x_host = floorDiv((xh-xl), site_width);
             minNodeSizeCPU(
                     bin_cells, 
                     node_size_x, node_size_y, 

@@ -2,7 +2,7 @@
 #include <math.h>
 #include <float.h>
 #include "cuda_runtime.h"
-#include "utility/src/Msg.h"
+#include "utility/src/utils.cuh"
 
 DREAMPLACE_BEGIN_NAMESPACE
 

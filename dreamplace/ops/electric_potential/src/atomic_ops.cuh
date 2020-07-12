@@ -4,7 +4,7 @@
  * @date   Oct 2019
  */
 #include <type_traits>
-#include "utility/src/Msg.h"
+#include "utility/src/utils.cuh"
 
 DREAMPLACE_BEGIN_NAMESPACE
 

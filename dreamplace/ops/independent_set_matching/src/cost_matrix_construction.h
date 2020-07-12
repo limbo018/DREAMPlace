@@ -6,6 +6,8 @@
 #ifndef _DREAMPLACE_INDEPENDENT_SET_MATCHING_COST_MATRIX_CONSTRUCTION_H
 #define _DREAMPLACE_INDEPENDENT_SET_MATCHING_COST_MATRIX_CONSTRUCTION_H
 
+#include "independent_set_matching/src/adjust_pos.h"
+
 DREAMPLACE_BEGIN_NAMESPACE
 
 /// construct a NxN cost matrix 

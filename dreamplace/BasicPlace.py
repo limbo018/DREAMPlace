@@ -406,8 +406,7 @@ class BasicPlace(nn.Module):
             flat_node2pin_map=data_collections.flat_node2pin_map,
             flat_node2pin_start_map=data_collections.flat_node2pin_start_map,
             num_physical_nodes=placedb.num_physical_nodes,
-            algorithm="node-by-node",
-            num_threads=params.num_threads)
+            algorithm="node-by-node")
 
     def build_move_boundary(self, params, placedb, data_collections, device):
         """
@@ -425,8 +424,7 @@ class BasicPlace(nn.Module):
             xh=placedb.xh,
             yh=placedb.yh,
             num_movable_nodes=placedb.num_movable_nodes,
-            num_filler_nodes=placedb.num_filler_nodes,
-            num_threads=params.num_threads)
+            num_filler_nodes=placedb.num_filler_nodes)
 
     def build_hpwl(self, params, placedb, data_collections, pin_pos_op,
                    device):
@@ -445,8 +443,7 @@ class BasicPlace(nn.Module):
             pin2net_map=data_collections.pin2net_map,
             net_weights=data_collections.net_weights,
             net_mask=data_collections.net_mask_all,
-            algorithm='net-by-net',
-            num_threads=params.num_threads)
+            algorithm='net-by-net')
 
         # wirelength for position
         def build_wirelength_op(pos):
@@ -513,8 +510,7 @@ class BasicPlace(nn.Module):
             bin_size_y=placedb.bin_size_y,
             num_movable_nodes=placedb.num_movable_nodes,
             num_terminals=placedb.num_terminals,
-            num_filler_nodes=0,
-            num_threads=params.num_threads)
+            num_filler_nodes=0)
 
     def build_electric_overflow(self, params, placedb, data_collections,
                                 device):
@@ -543,8 +539,7 @@ class BasicPlace(nn.Module):
             padding=0,
             deterministic_flag=params.deterministic_flag,
             sorted_node_map=data_collections.sorted_node_map,
-            movable_macro_mask=data_collections.movable_macro_mask,
-            num_threads=params.num_threads)
+            movable_macro_mask=data_collections.movable_macro_mask)
 
     def build_legality_check(self, params, placedb, data_collections, device):
         """
@@ -566,6 +561,7 @@ class BasicPlace(nn.Module):
             yh=placedb.yh,
             site_width=placedb.site_width,
             row_height=placedb.row_height,
+            scale_factor=params.scale_factor, 
             num_terminals=placedb.num_terminals,
             num_movable_nodes=placedb.num_movable_nodes)
 
@@ -688,8 +684,7 @@ class BasicPlace(nn.Module):
             num_filler_nodes=placedb.num_filler_nodes,
             batch_size=256,
             max_iters=2,
-            algorithm='concurrent',
-            num_threads=params.num_threads)
+            algorithm='concurrent')
         kr = k_reorder.KReorder(
             node_size_x=data_collections.node_size_x,
             node_size_y=data_collections.node_size_y,
@@ -717,8 +712,7 @@ class BasicPlace(nn.Module):
             num_terminal_NIs=placedb.num_terminal_NIs,
             num_filler_nodes=placedb.num_filler_nodes,
             K=4,
-            max_iters=2,
-            num_threads=params.num_threads)
+            max_iters=2)
         ism = independent_set_matching.IndependentSetMatching(
             node_size_x=data_collections.node_size_x,
             node_size_y=data_collections.node_size_y,
@@ -748,31 +742,62 @@ class BasicPlace(nn.Module):
             batch_size=2048,
             set_size=128,
             max_iters=50,
-            algorithm='concurrent',
-            num_threads=params.num_threads)
+            algorithm='concurrent')
 
         # wirelength for position
         def build_detailed_placement_op(pos):
             logging.info("Start ABCDPlace for refinement")
             pos1 = pos
+            legal = self.op_collections.legality_check_op(pos1)
+            logging.info("ABCDPlace input legal flag = %d" %
+                         (legal))
+            if not legal:
+                return pos1
+
+            # integer factorization to prime numbers 
+            def prime_factorization(num):
+                lt = []
+                while num != 1:
+                    for i in range(2, int(num+1)):
+                        if num % i == 0:  # i is a prime factor 
+                            lt.append(i)
+                            num = num / i # get the quotient for further factorization 
+                            break
+                return lt 
+
+            # compute the scale factor for detailed placement 
+            # as the algorithms prefer integer coordinate systems 
+            scale_factor = params.scale_factor
+            if params.scale_factor != 1.0:
+                inv_scale_factor = int(round(1.0 / params.scale_factor))
+                prime_factors = prime_factorization(inv_scale_factor)
+                target_inv_scale_factor = 1
+                for factor in prime_factors:
+                    if factor != 2 and factor != 5:
+                        target_inv_scale_factor = inv_scale_factor
+                        break 
+                scale_factor = 1.0 / target_inv_scale_factor
+                logging.info("Deriving from system scale factor %g (1/%d)" % (params.scale_factor, inv_scale_factor))
+                logging.info("Use scale factor %g (1/%d) for detailed placement" % (scale_factor, target_inv_scale_factor))
+
             for i in range(1):
-                pos1 = kr(pos1)
+                pos1 = kr(pos1, scale_factor)
                 legal = self.op_collections.legality_check_op(pos1)
                 logging.info("K-Reorder legal flag = %d" % (legal))
                 if not legal:
                     return pos1
-                pos1 = ism(pos1)
+                pos1 = ism(pos1, scale_factor)
                 legal = self.op_collections.legality_check_op(pos1)
                 logging.info("Independent set matching legal flag = %d" %
                              (legal))
                 if not legal:
                     return pos1
-                pos1 = gs(pos1)
+                pos1 = gs(pos1, scale_factor)
                 legal = self.op_collections.legality_check_op(pos1)
                 logging.info("Global swap legal flag = %d" % (legal))
                 if not legal:
                     return pos1
-                pos1 = kr(pos1)
+                pos1 = kr(pos1, scale_factor)
                 legal = self.op_collections.legality_check_op(pos1)
                 logging.info("K-Reorder legal flag = %d" % (legal))
                 if not legal:

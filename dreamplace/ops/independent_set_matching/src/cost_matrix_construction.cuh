@@ -2,8 +2,9 @@
 #ifndef _DREAMPLACE_INDEPENDENT_SET_MATCHING_COST_MATRIX_CONSTRUCTION_CUH
 #define _DREAMPLACE_INDEPENDENT_SET_MATCHING_COST_MATRIX_CONSTRUCTION_CUH
 
-#include "utility/src/Box.cuh"
+#include "utility/src/utils.cuh"
 #include "global_swap/src/reduce_min.cuh"
+#include "independent_set_matching/src/adjust_pos.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
 

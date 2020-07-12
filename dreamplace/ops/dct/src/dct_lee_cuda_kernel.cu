@@ -14,7 +14,7 @@
 
 #include "dct_lee_cuda.h"
 #include "dct_lee_cuda_kernel.h"
-#include "utility/src/Msg.h"
+#include "utility/src/utils.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
 

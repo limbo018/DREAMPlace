@@ -30,7 +30,7 @@ void legalizeBinCPU(
         //T total_displace = 0; 
         int bin_id_x = i/num_bins_y; 
         int bin_id_y = i-bin_id_x*num_bins_y; 
-        int blank_num_bins_per_bin = round(bin_size_y/blank_bin_size_y);
+        int blank_num_bins_per_bin = roundDiv(bin_size_y, blank_bin_size_y);
         int blank_bin_id_yl = bin_id_y*blank_num_bins_per_bin;
         int blank_bin_id_yh = std::min(blank_bin_id_yl+blank_num_bins_per_bin, blank_num_bins_y);
 
@@ -53,19 +53,19 @@ void legalizeBinCPU(
         {
             int node_id = cells.at(ci); 
             // align to site 
-            //T init_xl = floor((init_x[node_id]-xl)/site_width)*site_width+xl;
+            //T init_xl = floorDiv((init_x[node_id]-xl), site_width)*site_width+xl;
             //T init_yl = init_y[node_id];
-            T init_xl = floor(((alpha*init_x[node_id]+(1-alpha)*x[node_id])-xl)/site_width)*site_width+xl;
+            T init_xl = floorDiv(((alpha*init_x[node_id]+(1-alpha)*x[node_id])-xl), site_width)*site_width+xl;
             T init_yl = (alpha*init_y[node_id]+(1-alpha)*y[node_id]);
-            T width = ceil(node_size_x[node_id]/site_width)*site_width;
+            T width = ceilDiv(node_size_x[node_id], site_width)*site_width;
             T height = node_size_y[node_id];
 
 
-            int num_node_rows = ceil(height/row_height); // may take multiple rows 
+            int num_node_rows = ceilDiv(height, row_height); // may take multiple rows 
             int blank_index_offset[num_node_rows]; 
             std::fill(blank_index_offset, blank_index_offset+num_node_rows, 0);
 
-            int blank_initial_bin_id_y = (init_yl-yl)/blank_bin_size_y;
+            int blank_initial_bin_id_y = floorDiv((init_yl-yl), blank_bin_size_y);
             blank_initial_bin_id_y = std::min(blank_bin_id_yh-1, std::max(blank_bin_id_yl, blank_initial_bin_id_y));
             int blank_bin_id_dist_y = std::max(blank_initial_bin_id_y+1, blank_bin_id_yh-blank_initial_bin_id_y); 
 
@@ -205,7 +205,7 @@ void legalizeBinCPU(
                     {
                         // update blank 
                         blank.xl += width; 
-                        if (floor((blank.xl-xl)/site_width)*site_width != blank.xl-xl)
+                        if (floorDiv((blank.xl-xl), site_width)*site_width != blank.xl-xl)
                         {
                             dreamplacePrint(kDEBUG, "1. move node %d from %g to %g, blank (%g, %g)\n", node_id, x[node_id], blank.xl, blank.xl, blank.xh);
                         }
@@ -218,7 +218,7 @@ void legalizeBinCPU(
                     {
                         // update blank 
                         blank.xh -= width; 
-                        if (floor((blank.xh-xl)/site_width)*site_width != blank.xh-xl)
+                        if (floorDiv((blank.xh-xl), site_width)*site_width != blank.xh-xl)
                         {
                             dreamplacePrint(kDEBUG, "2. move node %d from %g to %g, blank (%g, %g)\n", node_id, x[node_id], blank.xh-width, blank.xl, blank.xh);
                         }
@@ -236,10 +236,10 @@ void legalizeBinCPU(
                         new_blank.yl = blank.yl; 
                         new_blank.yh = blank.yh; 
                         blank.xh = best_xl; 
-                        if (floor((blank.xl-xl)/site_width)*site_width != blank.xl-xl 
-                                || floor((blank.xh-xl)/site_width)*site_width != blank.xh-xl
-                                || floor((new_blank.xl-xl)/site_width)*site_width != new_blank.xl-xl
-                                || floor((new_blank.xh-xl)/site_width)*site_width != new_blank.xh-xl)
+                        if (floorDiv((blank.xl-xl), site_width)*site_width != blank.xl-xl 
+                                || floorDiv((blank.xh-xl), site_width)*site_width != blank.xh-xl
+                                || floorDiv((new_blank.xl-xl), site_width)*site_width != new_blank.xl-xl
+                                || floorDiv((new_blank.xh-xl), site_width)*site_width != new_blank.xh-xl)
                         {
                             dreamplacePrint(kDEBUG, "3. move node %d from %g to %g, blank (%g, %g), new_blank (%g, %g)\n", node_id, x[node_id], init_xl, blank.xl, blank.xh, new_blank.xl, new_blank.xh);
                         }

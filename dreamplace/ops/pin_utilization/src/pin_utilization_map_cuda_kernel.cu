@@ -78,7 +78,7 @@ int pinDemandMapCudaLauncher(const T *node_x, const T *node_y,
                           )
 {
     int thread_count = 512;
-    int block_count = CPUCeilDiv(num_nodes, thread_count);
+    int block_count = ceilDiv(num_nodes, thread_count);
     pinDemandMap<<<block_count, thread_count>>>(
             node_x, node_y,
             node_size_x, node_size_y,

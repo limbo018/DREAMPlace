@@ -20,8 +20,8 @@ void make_row2node_map(const DetailedPlaceDBType& db, const typename DetailedPla
         //typename DetailedPlaceDBType::type node_xh = node_xl+db.node_size_x[i];
         typename DetailedPlaceDBType::type node_yh = node_yl+db.node_size_y[i];
 
-        int row_idxl = (node_yl-db.yl)/db.row_height; 
-        int row_idxh = ceil((node_yh-db.yl)/db.row_height)+1;
+        int row_idxl = floorDiv(node_yl-db.yl, db.row_height); 
+        int row_idxh = ceilDiv(node_yh-db.yl, db.row_height);
         row_idxl = std::max(row_idxl, 0); 
         row_idxh = std::min(row_idxh, db.num_sites_y); 
 

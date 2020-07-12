@@ -24,7 +24,7 @@ void make_bin2node_3d_map(const DetailedPlaceDBType& db, const typename Detailed
     {
         if (node_size_y[i] == db.row_height)
         {
-            int width = (int)ceil(node_size_x[i]/db.site_width); 
+            int width = (int)ceilDiv(node_size_x[i], db.site_width); 
             if (state.size2num_node_map.count(width))
             {
                 state.size2num_node_map[width] += 1; 
@@ -55,8 +55,8 @@ void make_bin2node_3d_map(const DetailedPlaceDBType& db, const typename Detailed
     {
         state.num_bins_xs[size_id] = std::max((int)ceil(sqrt(kv.second/2)), 1);
         state.num_bins_ys[size_id] = state.num_bins_xs[size_id];
-        state.bin_size_xs[size_id] = (db.xh-db.xl)/state.num_bins_xs[size_id];
-        state.bin_size_ys[size_id] = (db.yh-db.yl)/state.num_bins_ys[size_id];
+        state.bin_size_xs[size_id] = div((db.xh-db.xl), state.num_bins_xs[size_id]);
+        state.bin_size_ys[size_id] = div((db.yh-db.yl), state.num_bins_ys[size_id]);
         state.bin2node_3d_map[size_id].resize(state.num_bins_xs[size_id]*state.num_bins_ys[size_id]);
         state.size2id_map[kv.first] = size_id; 
         dreamplacePrint(kDEBUG, "size id %d: prepare bins %dx%d for %d cells with width %g\n", size_id, state.num_bins_xs[size_id], state.num_bins_ys[size_id], kv.second, kv.first*db.site_width);

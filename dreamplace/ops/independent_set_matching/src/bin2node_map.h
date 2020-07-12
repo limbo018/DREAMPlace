@@ -22,8 +22,8 @@ void make_bin2node_map(const DetailedPlaceDBType& db, const typename DetailedPla
         T node_x = host_x[node_id] + host_node_size_x[node_id]/2; 
         T node_y = host_y[node_id] + host_node_size_y[node_id]/2;
 
-        int bx = std::min(std::max((int)((node_x-db.xl)/db.bin_size_x), 0), db.num_bins_x-1);
-        int by = std::min(std::max((int)((node_y-db.yl)/db.bin_size_y), 0), db.num_bins_y-1);
+        int bx = std::min(std::max((int)floorDiv((node_x-db.xl), db.bin_size_x), 0), db.num_bins_x-1);
+        int by = std::min(std::max((int)floorDiv((node_y-db.yl), db.bin_size_y), 0), db.num_bins_y-1);
         int bin_id = bx*db.num_bins_y+by; 
         //int sub_id = bin2node_map.at(bin_id).size(); 
         state.bin2node_map.at(bin_id).push_back(node_id); 

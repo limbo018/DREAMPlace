@@ -12,7 +12,7 @@
 #include "Iterators.h"
 #include "LefCbkHelper.h"
 #include "RowMap.h"
-#include "utility/src/utils.h"
+#include "utility/src/defs.h"
 //#include <boost/timer/timer.hpp>
 
 DREAMPLACE_BEGIN_NAMESPACE
@@ -1457,50 +1457,8 @@ void PlaceDB::adjustParams() {
     updateNodePinOffset(node, OrientEnum::N, node.orient());
   }
 
-  dreamplacePrint(kINFO, "group cells for fence regions\n");
-  // set node indices in groups
-  // according to node names
-  WildcardMatch matcher;
-  std::vector<unsigned char> markers(numMovable() + numFixed(), 0);
-  for (index_type i = 0, ie = numMovable() + numFixed(); i < ie; ++i) {
-    Node const& node = this->node(i);
-    std::string const& name = this->nodeName(node);
-
-    for (index_type j = 0, je = m_vGroup.size(); j < je; ++j) {
-      Group& group = m_vGroup[j];
-      for (std::vector<std::string>::const_iterator
-               it = group.nodeNames().begin(),
-               ite = group.nodeNames().end();
-           it != ite; ++it) {
-        std::string const& pattern = *it;
-        if (matcher(name.c_str(), pattern.c_str(), name.size(),
-                    pattern.size())) {
-          if (markers.at(node.id())) {
-            dreamplacePrint(
-                kWARN,
-                "node %u in multiple groups, currently add to group %u\n",
-                node.id(), group.id());
-          }
-          group.nodes().push_back(node.id());
-          markers.at(node.id()) = 1;
-        }
-      }
-    }
-  }
-  dreamplacePrint(kINFO, "fence region done\n");
-#ifdef DEBUG
-  for (index_type i = 0; i < m_vRegion.size(); ++i) {
-    Region const& region = m_vRegion[i];
-    dreamplacePrint(kDEBUG, "region[%u] %s: ", region.id(),
-                    region.name().c_str());
-    for (index_type j = 0; j < region.boxes().size(); ++j) {
-      Region::box_type const& box = region.boxes().at(j);
-      dreamplacePrint(kNONE, "(%d, %d, %d, %d) ", box.xl(), box.yl(), box.xh(),
-                      box.yh());
-    }
-    dreamplacePrint(kNONE, "\n");
-  }
-#endif
+  // process region groups, like fence region 
+  processGroups(); 
 }
 
 PlaceDB::manhattan_distance_type PlaceDB::minMovableNodeWidth() const {
@@ -1886,54 +1844,6 @@ void PlaceDB::sortNodeByPlaceStatus() {
     }
   }
 
-#if 0
-    // 2. now we work on swapping IO pins and placement blockages 
-    if (numPlaceBlockages())
-    {
-        // temporary storage for blockages 
-        std::vector<Node> vTmpBlockageNode (m_vNode.begin() + numMovable() + numFixed() + numIOPin(), m_vNode.end()); 
-        std::vector<NodeProperty> vTmpBlockageProperty (m_vNodeProperty.begin() + numMovable() + numFixed() + numIOPin(), m_vNodeProperty.end()); 
-        // copy IO pins 
-        for (index_type i = 0, ie = numIOPin(); i < ie; ++i)
-        {
-            index_type target = m_vNode.size() - i - 1;
-            index_type source = numMovable() + numFixed() + numIOPin() - i - 1;
-            m_vNode[target] = m_vNode[source];
-            m_vNodeProperty[target] = m_vNodeProperty[source];
-        }
-        // copy blockages 
-        std::copy(vTmpBlockageNode.begin(), vTmpBlockageNode.end(), m_vNode.begin() + numMovable() + numFixed());
-        std::copy(vTmpBlockageProperty.begin(), vTmpBlockageProperty.end(), m_vNodeProperty.begin() + numMovable() + numFixed());
-        // update m_mNodeName2Index
-        for (index_type i = numMovable() + numFixed(), ie = m_vNode.size(); i < ie; ++i)
-        {
-            m_mNodeName2Index[m_vNodeProperty[i].name()] = i; 
-        }
-        // update node id and pin to node id for IO pins 
-        for (index_type i = m_vNode.size() - numIOPin() - numPlaceBlockages(), ie = m_vNode.size(); i < ie; ++i)
-        {
-            Node& node = m_vNode[i]; 
-            for (std::vector<index_type>::const_iterator it = node.pins().begin(), ite = node.pins().end(); it != ite; ++it)
-            {
-                // we have not update the node id yet
-                // so it should be consistent
-                dreamplaceAssert(m_vPin[*it].nodeId() == node.id());
-                m_vPin[*it].setNodeId(i);
-            }
-            node.setId(i);
-        }
-
-        // update blockage indices
-        m_vPlaceBlockageIndex.clear();
-        for (std::vector<Node>::const_iterator it = m_vNode.begin() + numMovable() + numFixed(), ite = m_vNode.begin() + numMovable() + numFixed() + numPlaceBlockages(); it != ite; ++it)
-        {
-            Node const& node = *it; 
-            dreamplaceAssert(node.status() == PlaceStatusEnum::FIXED); 
-            m_vPlaceBlockageIndex.push_back(node.id());
-        }
-    }
-#endif
-
 #ifdef DEBUG
   // check pins, nodes, and nets
   for (std::vector<Node>::const_iterator it = m_vNode.begin(),
@@ -1966,6 +1876,95 @@ void PlaceDB::sortNodeByPlaceStatus() {
   for (unsigned int i = 1; i < m_vPlaceBlockageIndex.size(); ++i) {
     dreamplaceAssert(m_vPlaceBlockageIndex[i - 1] + 1 ==
                      m_vPlaceBlockageIndex[i]);
+  }
+#endif
+}
+
+void PlaceDB::processGroups() {
+  dreamplacePrint(kINFO, "Group cells for fence regions\n");
+  std::vector<unsigned char> markers(numMovable() + numFixed(), 0);
+  // add a node to a group 
+  auto addNode2Group = [&](Group& group, index_type node_id) {
+    Node const& node = this->node(node_id); 
+    if (node.id() >= numMovable() + numFixed()) {
+      dreamplacePrint(kWARN, "node %s in group %s (%u) not movable, ignored\n", 
+          nodeName(node), group.name().c_str(), group.id()); 
+    } else if (markers.at(node.id())) {
+      dreamplacePrint(
+          kWARN, "node %u in multiple groups, currently add to group %u\n",
+          node.id(), group.id());
+    } else {
+      group.nodes().push_back(node.id());
+      markers.at(node.id()) = 1;
+    }
+  };
+  // set node indices in groups
+  // according to node names
+
+  // process non-wildcard patterns with exact names shown 
+  // filter out the wildcard patterns 
+  std::vector<std::pair<index_type, std::string>> vGroupWildcardPatternPair; 
+  // find node from group 
+  for (index_type i = 0, je = m_vGroup.size(); i < je; ++i) {
+    Group& group = m_vGroup[i];
+    for (std::vector<std::string>::const_iterator
+        it = group.nodeNames().begin(),
+        ite = group.nodeNames().end();
+        it != ite; ++it) {
+      std::string const& pattern = *it;
+      // find wildcard characters *, ?
+      auto found_star = pattern.find('*');
+      auto found_question = pattern.find('?'); 
+      // not wildcard pattern
+      if (found_star == std::string::npos && found_question == std::string::npos) {
+        auto found = m_mNodeName2Index.find(pattern); 
+        if (found == m_mNodeName2Index.end()) {
+          dreamplacePrint(kWARN, "Group %s (%u), pattern %s not found, ignored\n", 
+              group.name().c_str(), i, pattern.c_str());
+        } else {
+          addNode2Group(group, found->second); 
+        }
+      } else {
+        // wildcard pattern 
+        vGroupWildcardPatternPair.emplace_back(group.id(), pattern); 
+      }
+    }
+  }
+  // process rest wildcard patterns 
+  // find group from node 
+  WildcardMatch matcher;
+  for (index_type i = 0, ie = numMovable() + numFixed(); i < ie; ++i) {
+    Node const& node = this->node(i);
+    std::string const& name = this->nodeName(node);
+
+    for (auto const& kvp : vGroupWildcardPatternPair) {
+      auto& group = m_vGroup[kvp.first]; 
+      auto const& pattern = kvp.second; 
+      if (matcher(name.c_str(), pattern.c_str(), name.size(),
+            pattern.size())) {
+        addNode2Group(group, node.id()); 
+      }
+    }
+  }
+  dreamplacePrint(kINFO, "Construct %lu groups\n", m_vGroup.size()); 
+  for (auto const& group : m_vGroup) {
+    auto const& region = m_vRegion.at(group.region()); 
+    dreamplacePrint(kINFO, "Group %s (%u), region %s (%u), %lu boxes, contains %lu nodes\n", 
+        group.name().c_str(), group.id(), region.name().c_str(), group.region(), 
+        region.boxes().size(), group.nodes().size()); 
+  }
+  dreamplacePrint(kINFO, "Fence region groups done\n");
+#ifdef DEBUG
+  for (index_type i = 0; i < m_vRegion.size(); ++i) {
+    Region const& region = m_vRegion[i];
+    dreamplacePrint(kDEBUG, "region[%u] %s: ", region.id(),
+                    region.name().c_str());
+    for (index_type j = 0; j < region.boxes().size(); ++j) {
+      Region::box_type const& box = region.boxes().at(j);
+      dreamplacePrint(kNONE, "(%d, %d, %d, %d) ", box.xl(), box.yl(), box.xh(),
+                      box.yh());
+    }
+    dreamplacePrint(kNONE, "\n");
   }
 #endif
 }

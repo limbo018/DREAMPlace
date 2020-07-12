@@ -404,23 +404,23 @@ void partition_independent_sets_cuda2cpu(const DetailedPlaceDBType& db, Independ
         IndependentSetMatchingCPUState<typename DetailedPlaceDBType::type>& host_state
         )
 {
-    hr_clock_rep timer_start, timer_stop; 
+    CPUTimer::hr_clock_rep timer_start, timer_stop; 
     
     update_cpu_state(db, state, host_db, host_state);
 
-    timer_start = get_globaltime();
+    timer_start = CPUTimer::getGlobaltime();
     construct_selected_node2bin_map(host_db, host_state);
-    timer_stop = get_globaltime();
+    timer_stop = CPUTimer::getGlobaltime();
     dreamplacePrint(kDEBUG, "construct_selected_node2bin_map takes %g ms\n", 
-            get_timer_period()*(timer_stop-timer_start)
+            CPUTimer::getTimerPeriod()*(timer_stop-timer_start)
             );
 
-    timer_start = get_globaltime();
+    timer_start = CPUTimer::getGlobaltime();
 	//host_state.num_independent_sets = partitioning_diamond(host_db, host_state);
 	host_state.num_independent_sets = partitioning_kmeans(host_db, host_state);
-    timer_stop = get_globaltime();
+    timer_stop = CPUTimer::getGlobaltime();
     dreamplacePrint(kDEBUG, "partitioning_diamond takes %g ms\n", 
-            get_timer_period()*(timer_stop-timer_start)
+            CPUTimer::getTimerPeriod()*(timer_stop-timer_start)
             );
     postprocess_independent_sets(host_db, host_state, host_state.num_independent_sets);
     dreamplaceAssert(host_state.num_independent_sets <= state.batch_size);

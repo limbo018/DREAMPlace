@@ -2,10 +2,10 @@
 "lef_input" : ["benchmarks/ispd2019/ispd19_test7/ispd19_test7.input.lef"], 
 "def_input" : "benchmarks/ispd2019/ispd19_test7/ispd19_test7.input.def", 
 "gpu" : 1,
-"num_bins_x" : 512,
-"num_bins_y" : 512,
+"num_bins_x" : 1024,
+"num_bins_y" : 1024,
 "global_place_stages" : [
-    {"num_bins_x" : 512, "num_bins_y" : 512, "iteration" : 1000, "learning_rate" : 0.01, "wirelength" : "weighted_average", "optimizer" : "nesterov"}
+    {"num_bins_x" : 1024, "num_bins_y" : 1024, "iteration" : 1000, "learning_rate" : 0.01, "wirelength" : "weighted_average", "optimizer" : "nesterov"}
 ],
 "target_density" : 1.0,
 "density_weight" : 8e-5,
