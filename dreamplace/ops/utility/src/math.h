@@ -10,6 +10,7 @@
 #define _DREAMPLACE_UTILITY_MATH_H
 
 #include <cmath>
+#include <type_traits>
 #include "utility/src/defs.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
