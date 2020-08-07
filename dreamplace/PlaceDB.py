@@ -426,25 +426,25 @@ class PlaceDB (object):
         """
         logging.debug("row %d %s" % (row_id, self.rows[row_id]))
 
-    def flatten_nested_map(self, net2pin_map): 
-        """
-        @brief flatten an array of array to two arrays like CSV format 
-        @param net2pin_map array of array 
-        @return a pair of (elements, cumulative column indices of the beginning element of each row)
-        """
-        # flat netpin map, length of #pins
-        flat_net2pin_map = np.zeros(len(pin2net_map), dtype=np.int32)
-        # starting index in netpin map for each net, length of #nets+1, the last entry is #pins  
-        flat_net2pin_start_map = np.zeros(len(net2pin_map)+1, dtype=np.int32)
-        count = 0
-        for i in range(len(net2pin_map)):
-            flat_net2pin_map[count:count+len(net2pin_map[i])] = net2pin_map[i]
-            flat_net2pin_start_map[i] = count 
-            count += len(net2pin_map[i])
-        assert flat_net2pin_map[-1] != 0
-        flat_net2pin_start_map[len(net2pin_map)] = len(pin2net_map)
-
-        return flat_net2pin_map, flat_net2pin_start_map
+    #def flatten_nested_map(self, net2pin_map): 
+    #    """
+    #    @brief flatten an array of array to two arrays like CSV format 
+    #    @param net2pin_map array of array 
+    #    @return a pair of (elements, cumulative column indices of the beginning element of each row)
+    #    """
+    #    # flat netpin map, length of #pins
+    #    flat_net2pin_map = np.zeros(len(pin2net_map), dtype=np.int32)
+    #    # starting index in netpin map for each net, length of #nets+1, the last entry is #pins  
+    #    flat_net2pin_start_map = np.zeros(len(net2pin_map)+1, dtype=np.int32)
+    #    count = 0
+    #    for i in range(len(net2pin_map)):
+    #        flat_net2pin_map[count:count+len(net2pin_map[i])] = net2pin_map[i]
+    #        flat_net2pin_start_map[i] = count 
+    #        count += len(net2pin_map[i])
+    #    assert flat_net2pin_map[-1] != 0
+    #    flat_net2pin_start_map[len(net2pin_map)] = len(pin2net_map)
+     
+    #    return flat_net2pin_map, flat_net2pin_start_map
 
     def read(self, params): 
         """
@@ -602,8 +602,8 @@ row height = %g, site width = %g
         self.num_bins_x = max(params.num_bins_x, num_bins_x)
         self.num_bins_y = max(params.num_bins_y, num_bins_y)
         # set bin size 
-        self.bin_size_x = (self.xh-self.xl)/params.num_bins_x 
-        self.bin_size_y = (self.yh-self.yl)/params.num_bins_y 
+        self.bin_size_x = (self.xh-self.xl)/self.num_bins_x 
+        self.bin_size_y = (self.yh-self.yl)/self.num_bins_y 
 
         # bin center array 
         self.bin_center_x = self.bin_centers(self.xl, self.xh, self.bin_size_x)
