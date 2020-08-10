@@ -609,6 +609,14 @@ void PlaceDB::end_def_design() {
 }
 
 ///==== Verilog Callbacks ====
+void PlaceDB::verilog_module_declaration_cbk(std::string const& module_name, 
+        std::vector<VerilogParser::GeneralName> const& vPinName) {
+    dreamplaceAssertMsg(module_name == m_designName, 
+            "verilog module name %s must match design name %s", 
+            module_name.c_str(), 
+            m_designName.c_str()
+            );
+} 
 void PlaceDB::verilog_net_declare_cbk(std::string const& netName,
                                       VerilogParser::Range const& range) {
   dreamplaceAssertMsg(range.low == range.high, "do not support bus yet");
