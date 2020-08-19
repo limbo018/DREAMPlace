@@ -398,7 +398,7 @@ class PlaceDrawer
 
         }
         /// automatically increment by 2
-        /// \param reset controls whehter restart from 1 
+        /// \param reset controls whether restart from 1 
         unsigned getLayer(bool reset = false) const
         {
             static unsigned count = 0;
