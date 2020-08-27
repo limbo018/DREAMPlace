@@ -53,12 +53,16 @@ class PlaceDB (object):
 
         self.net_name2id_map = {} # net name to id map
         self.net_names = None # net name 
+        self.net_weights = None # weights for each net
+
         self.net2pin_map = None # array of 1D array, each row stores pin id
         self.flat_net2pin_map = None # flatten version of net2pin_map 
         self.flat_net2pin_start_map = None # starting index of each net in flat_net2pin_map
-        self.net_weights = None # weights for each net
 
         self.node2pin_map = None # array of 1D array, contains pin id of each node 
+        self.flat_node2pin_map = None # flatten version of node2pin_map
+        self.flat_node2pin_start_map = None # starting index of each node in flat_node2pin_map
+
         self.pin2node_map = None # 1D array, contain parent node id of each pin 
         self.pin2net_map = None # 1D array, contain parent net id of each pin 
 
