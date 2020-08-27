@@ -30,7 +30,7 @@ void compute_row_conflict_graph(const DetailedPlaceDBType& db,
                 int node_id1 = db.pin2node_map[net_pin_id1];
                 if (node_id1 < db.num_movable_nodes)
                 {
-                    int row_id1 = (db.y[node_id1]-db.yl)/db.row_height; 
+                    int row_id1 = floorDiv(db.y[node_id1]-db.yl, db.row_height); 
                     row_id1 = std::min(std::max(row_id1, 0), db.num_sites_y-1);
                     for (int net2pin_id2 = net2pin_id1; net2pin_id2 < net2pin_end; ++net2pin_id2)
                     {
@@ -38,7 +38,7 @@ void compute_row_conflict_graph(const DetailedPlaceDBType& db,
                         int node_id2 = db.pin2node_map[net_pin_id2];
                         if (node_id2 < db.num_movable_nodes)
                         {
-                            int row_id2 = (db.y[node_id2]-db.yl)/db.row_height; 
+                            int row_id2 = floorDiv(db.y[node_id2]-db.yl, db.row_height); 
                             row_id2 = std::min(std::max(row_id2, 0), db.num_sites_y-1);
                             unsigned char& adjacency_matrix_element1 = state_adjacency_matrix.at(row_id1*db.num_sites_y + row_id2); 
                             unsigned char& adjacency_matrix_element2 = state_adjacency_matrix.at(row_id2*db.num_sites_y + row_id1); 

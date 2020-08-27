@@ -58,12 +58,11 @@ class PreconditionOp:
             precond = self.data_collections.num_pins_in_nodes + self.alpha * density_weight * self.data_collections.node_areas
             precond.clamp_(min=1.0)
             grad[0:self.placedb.num_nodes].div_(precond)
-            grad[self.placedb.num_nodes:self.placedb.num_nodes *
-                 2].div_(precond)
+            grad[self.placedb.num_nodes:self.placedb.num_nodes * 2].div_(precond)
             self.iteration += 1
 
             # assume overflow has been updated
-            if self.overflows and self.overflows[-1] < 0.3 and self.alpha < 2048:
+            if self.overflows and self.overflows[-1] < 0.3 and self.alpha < 1024:
                 if (self.iteration % 20) == 0:
                     self.alpha *= 2
                     logging.info(
@@ -170,9 +169,9 @@ class PlaceObj(nn.Module):
         @param pos locations of cells
         @return objective value
         """
-        wirelength = self.op_collections.wirelength_op(pos)
-        density = self.op_collections.density_op(pos)
-        return wirelength + self.density_weight * density
+        self.wirelength = self.op_collections.wirelength_op(pos)
+        self.density = self.op_collections.density_op(pos)
+        return self.wirelength + self.density_weight * self.density
 
     def obj_and_grad_fn(self, pos):
         """
@@ -187,7 +186,25 @@ class PlaceObj(nn.Module):
         if pos.grad is not None:
             pos.grad.zero_()
 
+        #self.wirelength.backward()
+        #wirelength_grad = pos.grad.data.clone()
+
+        #if pos.grad is not None:
+        #    pos.grad.zero_()
+
+        #self.density.backward()
+        #density_grad = pos.grad.data.clone()
+
+        ## overall gradient 
+        #pos.grad.data.copy_(wirelength_grad + self.density_weight * density_grad)
+
         obj.backward()
+
+        ## compute preconditioning alpha
+        #wirelength_grad_norm = wirelength_grad.norm(p=1)
+        #density_grad_norm = density_grad.norm(p=1)
+        #precond_alpha = (density_grad_norm / wirelength_grad_norm).clamp_(min=1.0)
+        #self.op_collections.precondition_op.alpha = precond_alpha 
 
         self.op_collections.precondition_op(pos.grad, self.density_weight)
 
@@ -255,8 +272,7 @@ class PlaceObj(nn.Module):
             net_mask=data_collections.net_mask_ignore_large_degrees,
             pin_mask=data_collections.pin_mask_ignore_fixed_macros,
             gamma=self.gamma,
-            algorithm='merged',
-            num_threads=params.num_threads)
+            algorithm='merged')
 
         # wirelength for position
         def build_wirelength_op(pos):
@@ -289,8 +305,7 @@ class PlaceObj(nn.Module):
             net_mask=data_collections.net_mask_ignore_large_degrees,
             pin_mask=data_collections.pin_mask_ignore_fixed_macros,
             gamma=self.gamma,
-            algorithm='merged',
-            num_threads=params.num_threads)
+            algorithm='merged')
 
         # wirelength for position
         def build_wirelength_op(pos):
@@ -427,8 +442,7 @@ class PlaceObj(nn.Module):
             bin_size_y=bin_size_y,
             padding=padding,
             sigma=(1.0 / 16) * placedb.width / bin_size_x,
-            delta=2.0,
-            num_threads=params.num_threads)
+            delta=2.0)
 
     def build_electric_potential(self, params, placedb, data_collections,
                                  num_bins_x, num_bins_y, padding, name):
@@ -491,8 +505,7 @@ class PlaceObj(nn.Module):
             deterministic_flag=params.deterministic_flag,
             sorted_node_map=data_collections.sorted_node_map,
             movable_macro_mask=data_collections.movable_macro_mask,
-            fast_mode=params.RePlAce_skip_energy_flag,
-            num_threads=params.num_threads)
+            fast_mode=params.RePlAce_skip_energy_flag)
 
     def initialize_density_weight(self, params, placedb):
         """
@@ -641,8 +654,7 @@ class PlaceObj(nn.Module):
             initial_horizontal_utilization_map=data_collections.
             initial_horizontal_utilization_map,
             initial_vertical_utilization_map=data_collections.
-            initial_vertical_utilization_map,
-            num_threads=params.num_threads)
+            initial_vertical_utilization_map)
 
         def route_utilization_map_op(pos):
             pin_pos = self.op_collections.pin_pos_op(pos)
@@ -671,8 +683,7 @@ class PlaceObj(nn.Module):
             num_bins_x=placedb.num_routing_grids_x,
             num_bins_y=placedb.num_routing_grids_y,
             unit_pin_capacity=data_collections.unit_pin_capacity,
-            pin_stretch_ratio=params.pin_stretch_ratio,
-            num_threads=params.num_threads)
+            pin_stretch_ratio=params.pin_stretch_ratio)
 
     def build_nctugr_congestion_map(self, params, placedb, data_collections):
         """
@@ -730,8 +741,7 @@ class PlaceObj(nn.Module):
             area_adjust_stop_ratio=params.area_adjust_stop_ratio,
             route_area_adjust_stop_ratio=params.route_area_adjust_stop_ratio,
             pin_area_adjust_stop_ratio=params.pin_area_adjust_stop_ratio,
-            unit_pin_capacity=data_collections.unit_pin_capacity,
-            num_threads=params.num_threads)
+            unit_pin_capacity=data_collections.unit_pin_capacity)
 
         def build_adjust_node_area_op(pos, route_utilization_map,
                                       pin_utilization_map):

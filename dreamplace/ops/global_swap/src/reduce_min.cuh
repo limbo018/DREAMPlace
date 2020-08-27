@@ -7,7 +7,7 @@
 #ifndef _DREAMPLACE_GLOBAL_SWAP_REDUCE_MIN_CUH
 #define _DREAMPLACE_GLOBAL_SWAP_REDUCE_MIN_CUH
 
-#include "utility/src/Msg.h"
+#include "utility/src/utils.cuh"
 
 DREAMPLACE_BEGIN_NAMESPACE
 

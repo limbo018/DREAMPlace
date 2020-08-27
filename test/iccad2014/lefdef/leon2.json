@@ -1,0 +1,30 @@
+{
+"lef_input" : "benchmarks/iccad2014/leon2/techlib.lef", 
+"def_input" : "benchmarks/iccad2014/leon2/leon2.def", 
+"verilog_input" : "benchmarks/iccad2014/leon2/leon2.v", 
+"gpu" : 1,
+"num_bins_x" : 1024,
+"num_bins_y" : 1024,
+"global_place_stages" : [
+    {"num_bins_x" : 1024, "num_bins_y" : 1024, "iteration" : 2000, "learning_rate" : 0.01, "wirelength" : "weighted_average", "optimizer" : "nesterov"}
+],
+"target_density" : 1.0,
+"density_weight" : 8e-5,
+"gamma" : 4,
+"random_seed" : 1000,
+"ignore_net_degree" : 100,
+"enable_fillers" : 1,
+"gp_noise_ratio" : 0.025,
+"global_place_flag" : 1,
+"legalize_flag" : 1,
+"detailed_place_flag" : 1,
+"detailed_place_engine" : "thirdparty/ntuplace3", 
+"detailed_place_command" : "-nolegal -nodetail", 
+"stop_overflow" : 0.1, 
+"dtype" : "float32", 
+"plot_flag" : 0, 
+"random_center_init_flag" : 1, 
+"sort_nets_by_degree" : 0, 
+"num_threads" : 8,
+"deterministic_flag" : 0
+}

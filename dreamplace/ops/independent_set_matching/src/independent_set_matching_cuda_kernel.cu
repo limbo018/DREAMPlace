@@ -23,14 +23,14 @@
 //#define DYNAMIC
 #define NUM_NODE_SIZES 64 ///< number of different cell sizes
 
-#include "utility/src/Msg.h"
 #include "utility/src/utils.cuh"
-#include "utility/src/limits.cuh"
-#include "utility/src/DetailedPlaceDB.cuh"
-#include "utility/src/diamond_search.h"
+// database dependency
+#include "utility/src/detailed_place_db.cuh"
 #include "independent_set_matching/src/construct_spaces.cuh"
-//#include "independent_set_matching/src/auction.cuh"
-#include "independent_set_matching/src/auction_shared_memory.cuh"
+#include "independent_set_matching/src/auction.cuh"
+// This shared memory version is still buggy;
+// it gets very slow at ISPD 2018 test4/5/6 benchmarks and cannot cause illegal memory access 
+//#include "independent_set_matching/src/auction_shared_memory.cuh"
 //#include "independent_set_matching/src/auction_cuda2cpu.cuh"
 #include "independent_set_matching/src/maximal_independent_set.cuh"
 //#include "independent_set_matching/src/maximal_independent_set_cuda2cpu.cuh"
@@ -42,7 +42,6 @@
 #include "independent_set_matching/src/apply_solution.cuh"
 //#include "independent_set_matching/src/apply_solution_cuda2cpu.h"
 #include "independent_set_matching/src/shuffle.cuh"
-#include "utility/src/print.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
 
@@ -225,11 +224,11 @@ int independentSetMatchingCUDALauncher(DetailedPlaceDB<T> db,
     // fix random seed 
     std::srand(1000);
     //const double threshold = 0.0001; 
-    hr_clock_rep timer_start, timer_stop; 
-    hr_clock_rep kernel_timer_start, kernel_timer_stop; 
-    hr_clock_rep total_timer_start, total_timer_stop; 
+    CPUTimer::hr_clock_rep timer_start, timer_stop; 
+    CPUTimer::hr_clock_rep kernel_timer_start, kernel_timer_stop; 
+    CPUTimer::hr_clock_rep total_timer_start, total_timer_stop; 
 
-    total_timer_start = get_globaltime(); 
+    total_timer_start = CPUTimer::getGlobaltime(); 
 
     IndependentSetMatchingState<T> state; 
 
@@ -242,14 +241,14 @@ int independentSetMatchingCUDALauncher(DetailedPlaceDB<T> db,
     state.cost_matrix_size = state.set_size*state.set_size;
     state.num_bins = db.num_bins_x*db.num_bins_y;
     state.num_moved = 0; 
-    state.large_number = ((db.xh-db.xl) + (db.yh-db.yl))*10;
+    state.large_number = ((db.xh-db.xl) + (db.yh-db.yl))*set_size;
     state.skip_threshold = ((db.xh-db.xl) + (db.yh-db.yl))*0.01;
     state.auction_max_eps = 10.0; 
     state.auction_min_eps = 1.0;  
     state.auction_factor = 0.1;  
     state.auction_max_iterations = 9999; 
 
-    ////timer_start = get_globaltime(); 
+    ////timer_start = CPUTimer::getGlobaltime(); 
     ////std::map<int, int> size2num_node_map; ///< number of cells with different sizes 
     ////std::map<int, int> size2id_map; ///< map width of a cell to an index 
     ////std::vector<T> host_x (db.num_nodes);
@@ -312,17 +311,17 @@ int independentSetMatchingCUDALauncher(DetailedPlaceDB<T> db,
     ////        }
     ////    }
     ////}
-    ////timer_stop = get_globaltime(); 
-    ////dreamplacePrint(kINFO, "initializing cell size categories takes %g ms\n", get_timer_period()*(timer_stop-timer_start));
+    ////timer_stop = CPUTimer::getGlobaltime(); 
+    ////dreamplacePrint(kINFO, "initializing cell size categories takes %g ms\n", CPUTimer::getTimerPeriod()*(timer_stop-timer_start));
 
     // initialize cuda state 
-    timer_start = get_globaltime();
+    timer_start = CPUTimer::getGlobaltime();
     {
         ////allocateCopyCUDA(state.node_size_id, host_node_size_id.data(), db.num_movable_nodes);
         allocateCopyCUDA(state.spaces, host_spaces.data(), db.num_movable_nodes);
 
         allocateCUDA(state.ordered_nodes, db.num_movable_nodes, int);
-        iota<<<CPUCeilDiv(db.num_movable_nodes, 512), 512>>>(state.ordered_nodes, db.num_movable_nodes);
+        iota<<<ceilDiv(db.num_movable_nodes, 512), 512>>>(state.ordered_nodes, db.num_movable_nodes);
         allocateCUDA(state.independent_sets, state.batch_size*state.set_size, int);
         allocateCUDA(state.independent_set_sizes, state.batch_size, int);
         ////allocateCUDA(state.ordered_independent_sets, state.batch_size, int);
@@ -367,16 +366,16 @@ int independentSetMatchingCUDALauncher(DetailedPlaceDB<T> db,
     KMeansState<T> kmeans_state; 
     init_kmeans(db, state, kmeans_state);
 
-    timer_stop = get_globaltime(); 
-    dreamplacePrint(kINFO, "initializing GPU memory takes %g ms\n", get_timer_period()*(timer_stop-timer_start));
+    timer_stop = CPUTimer::getGlobaltime(); 
+    dreamplacePrint(kINFO, "initializing GPU memory takes %g ms\n", CPUTimer::getTimerPeriod()*(timer_stop-timer_start));
 
-    kernel_timer_start = get_globaltime(); 
+    kernel_timer_start = CPUTimer::getGlobaltime(); 
 
     // runtime profiling 
-    hr_clock_rep iter_timer_start, iter_timer_stop; 
+    CPUTimer::hr_clock_rep iter_timer_start, iter_timer_stop; 
     int random_shuffle_runs = 0, maximal_independent_set_runs = 0, collect_independent_sets_runs = 0, 
         cost_matrix_construction_runs = 0, independent_sets_solving_runs = 0, apply_solution_runs = 0; 
-    hr_clock_rep random_shuffle_time = 0, maximal_independent_set_time = 0, collect_independent_sets_time = 0, 
+    CPUTimer::hr_clock_rep random_shuffle_time = 0, maximal_independent_set_time = 0, collect_independent_sets_time = 0, 
                  cost_matrix_construction_time = 0, independent_sets_solving_time = 0, apply_solution_time = 0; 
 
     std::vector<T> hpwls (max_iters+1); 
@@ -384,46 +383,46 @@ int independentSetMatchingCUDALauncher(DetailedPlaceDB<T> db,
     dreamplacePrint(kINFO, "initial hpwl %g\n", hpwls[0]);
     for (int iter = 0; iter < max_iters; ++iter)
     {
-        iter_timer_start = get_globaltime();
+        iter_timer_start = CPUTimer::getGlobaltime();
 
-        timer_start = get_globaltime();
+        timer_start = CPUTimer::getGlobaltime();
         //std::random_shuffle(host_ordered_nodes.begin(), host_ordered_nodes.end()); 
         //checkCUDA(cudaMemcpy(state.ordered_nodes, host_ordered_nodes.data(), sizeof(int)*db.num_movable_nodes, cudaMemcpyHostToDevice));
         shuffler(); 
         checkCUDA(cudaDeviceSynchronize());
-        timer_stop = get_globaltime();
+        timer_stop = CPUTimer::getGlobaltime();
         random_shuffle_time += timer_stop-timer_start; 
         random_shuffle_runs += 1; 
 
-        timer_start = get_globaltime(); 
+        timer_start = CPUTimer::getGlobaltime(); 
         maximal_independent_set(db, state);
         checkCUDA(cudaDeviceSynchronize()); 
-        timer_stop = get_globaltime(); 
+        timer_stop = CPUTimer::getGlobaltime(); 
         maximal_independent_set_time += timer_stop-timer_start; 
         maximal_independent_set_runs += 1; 
 
-        timer_start = get_globaltime();
+        timer_start = CPUTimer::getGlobaltime();
         collect_independent_sets(db, state, kmeans_state, host_db, host_state);
         //collect_independent_sets_cuda2cpu(db, state);
         // better copy here, because state is passed as a copy. 
         // there will not be any effect if copied inside any function 
         ////checkCUDA(cudaMemcpy(&state.num_independent_sets, state.device_num_independent_sets, sizeof(int), cudaMemcpyDeviceToHost));
         checkCUDA(cudaDeviceSynchronize());
-        timer_stop = get_globaltime(); 
+        timer_stop = CPUTimer::getGlobaltime(); 
         collect_independent_sets_time += timer_stop-timer_start; 
         collect_independent_sets_runs += 1; 
 
-        timer_start = get_globaltime();
+        timer_start = CPUTimer::getGlobaltime();
         cost_matrix_construction(db, state);
         checkCUDA(cudaDeviceSynchronize());
-        timer_stop = get_globaltime(); 
+        timer_stop = CPUTimer::getGlobaltime(); 
         cost_matrix_construction_time += timer_stop-timer_start; 
         cost_matrix_construction_runs += 1; 
 
         // solve independent sets 
         //state.num_independent_sets = 4; 
         //print_cost_matrix<<<1, 1>>>(state.cost_matrices + state.cost_matrix_size*3, state.set_size, 0);
-        timer_start = get_globaltime();
+        timer_start = CPUTimer::getGlobaltime();
         linear_assignment_auction(
                 state.cost_matrices, 
                 state.solutions, 
@@ -437,20 +436,20 @@ int independentSetMatchingCUDALauncher(DetailedPlaceDB<T> db,
                 state.auction_max_iterations
                 );
         checkCUDA(cudaDeviceSynchronize());
-        timer_stop = get_globaltime();
+        timer_stop = CPUTimer::getGlobaltime();
         independent_sets_solving_time += timer_stop-timer_start; 
         independent_sets_solving_runs += 1; 
         //print_solution<<<1, 1>>>(state.solutions + state.set_size*3, state.set_size);
 
         // apply solutions 
-        timer_start = get_globaltime();
+        timer_start = CPUTimer::getGlobaltime();
         apply_solution(db, state);
         checkCUDA(cudaDeviceSynchronize());
-        timer_stop = get_globaltime();
+        timer_stop = CPUTimer::getGlobaltime();
         apply_solution_time += timer_stop-timer_start; 
         apply_solution_runs += 1; 
 
-        iter_timer_stop = get_globaltime(); 
+        iter_timer_stop = CPUTimer::getGlobaltime(); 
         hpwls[iter+1] = compute_total_hpwl(db, db.x, db.y, state.net_hpwls); 
         if ((iter%(max(max_iters/10, 1))) == 0 || iter+1 == max_iters)
         {
@@ -459,26 +458,26 @@ int independentSetMatchingCUDALauncher(DetailedPlaceDB<T> db,
                     hpwls[iter+1], hpwls[iter+1]-hpwls[0], (hpwls[iter+1]-hpwls[0])/hpwls[0]*100, 
                     state.num_independent_sets, 
                     state.num_moved/(double)db.num_movable_nodes*100, 
-                    get_timer_period()*(iter_timer_stop-iter_timer_start)
+                    CPUTimer::getTimerPeriod()*(iter_timer_stop-iter_timer_start)
                     );
         }
     }
-    kernel_timer_stop = get_globaltime(); 
+    kernel_timer_stop = CPUTimer::getGlobaltime(); 
     dreamplacePrint(kDEBUG, "random_shuffle takes %g ms, %d runs, average %g ms\n", 
-            get_timer_period()*random_shuffle_time, random_shuffle_runs, get_timer_period()*random_shuffle_time/random_shuffle_runs);
+            CPUTimer::getTimerPeriod()*random_shuffle_time, random_shuffle_runs, CPUTimer::getTimerPeriod()*random_shuffle_time/random_shuffle_runs);
     dreamplacePrint(kDEBUG, "maximal_independent_set takes %g ms, %d runs, average %g ms\n", 
-            get_timer_period()*maximal_independent_set_time, maximal_independent_set_runs, get_timer_period()*maximal_independent_set_time/maximal_independent_set_runs);
+            CPUTimer::getTimerPeriod()*maximal_independent_set_time, maximal_independent_set_runs, CPUTimer::getTimerPeriod()*maximal_independent_set_time/maximal_independent_set_runs);
     dreamplacePrint(kDEBUG, "collect_independent_sets takes %g ms, %d runs, average %g ms\n", 
-            get_timer_period()*collect_independent_sets_time, collect_independent_sets_runs, get_timer_period()*collect_independent_sets_time/collect_independent_sets_runs);
+            CPUTimer::getTimerPeriod()*collect_independent_sets_time, collect_independent_sets_runs, CPUTimer::getTimerPeriod()*collect_independent_sets_time/collect_independent_sets_runs);
     dreamplacePrint(kDEBUG, "cost_matrix_construction takes %g ms, %d runs, average %g ms\n", 
-            get_timer_period()*cost_matrix_construction_time, cost_matrix_construction_runs, get_timer_period()*cost_matrix_construction_time/cost_matrix_construction_runs);
+            CPUTimer::getTimerPeriod()*cost_matrix_construction_time, cost_matrix_construction_runs, CPUTimer::getTimerPeriod()*cost_matrix_construction_time/cost_matrix_construction_runs);
     dreamplacePrint(kDEBUG, "independent_sets_solving takes %g ms, %d runs, average %g ms\n", 
-            get_timer_period()*independent_sets_solving_time, independent_sets_solving_runs, get_timer_period()*independent_sets_solving_time/independent_sets_solving_runs);
+            CPUTimer::getTimerPeriod()*independent_sets_solving_time, independent_sets_solving_runs, CPUTimer::getTimerPeriod()*independent_sets_solving_time/independent_sets_solving_runs);
     dreamplacePrint(kDEBUG, "apply_solution takes %g ms, %d runs, average %g ms\n", 
-            get_timer_period()*apply_solution_time, apply_solution_runs, get_timer_period()*apply_solution_time/apply_solution_runs);
+            CPUTimer::getTimerPeriod()*apply_solution_time, apply_solution_runs, CPUTimer::getTimerPeriod()*apply_solution_time/apply_solution_runs);
 
     // destroy state 
-    timer_start = get_globaltime();
+    timer_start = CPUTimer::getGlobaltime();
     {
         ////destroyCUDA(state.node_size_id);
         destroyCUDA(state.spaces);
@@ -516,13 +515,13 @@ int independentSetMatchingCUDALauncher(DetailedPlaceDB<T> db,
         // destroy kmeans state 
         destroy_kmeans(kmeans_state); 
     }
-    timer_stop = get_globaltime();
-    dreamplacePrint(kINFO, "destroying GPU memory takes %g ms\n", get_timer_period()*(timer_stop-timer_start));
+    timer_stop = CPUTimer::getGlobaltime();
+    dreamplacePrint(kINFO, "destroying GPU memory takes %g ms\n", CPUTimer::getTimerPeriod()*(timer_stop-timer_start));
 
-    total_timer_stop = get_globaltime(); 
+    total_timer_stop = CPUTimer::getGlobaltime(); 
 
-    dreamplacePrint(kINFO, "Kernel time %g ms\n", get_timer_period()*(kernel_timer_stop-kernel_timer_start));
-    dreamplacePrint(kINFO, "Independent set matching time %g ms\n", get_timer_period()*(total_timer_stop-total_timer_start));
+    dreamplacePrint(kINFO, "Kernel time %g ms\n", CPUTimer::getTimerPeriod()*(kernel_timer_stop-kernel_timer_start));
+    dreamplacePrint(kINFO, "Independent set matching time %g ms\n", CPUTimer::getTimerPeriod()*(total_timer_stop-total_timer_start));
 
     return 0; 
 }

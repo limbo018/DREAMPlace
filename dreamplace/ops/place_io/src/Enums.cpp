@@ -175,6 +175,7 @@ std::string SignalDirect::enum2Str(SignalDirect::enum_type const& e) const
         ENUM2STR(mEnum2Str, INPUT);
         ENUM2STR(mEnum2Str, OUTPUT);
         ENUM2STR(mEnum2Str, INOUT);
+        ENUM2STR(mEnum2Str, OUTPUT_TRISTATE); ///< observed from Mentor Graphics benchmarks
         ENUM2STR(mEnum2Str, UNKNOWN);
         init = false;
     }
@@ -192,6 +193,7 @@ SignalDirect::enum_type SignalDirect::str2Enum(std::string const& s) const
         STR2ENUM(mStr2Enum, INPUT);
         STR2ENUM(mStr2Enum, OUTPUT);
         STR2ENUM(mStr2Enum, INOUT);
+        STR2ENUM(mStr2Enum, OUTPUT_TRISTATE); ///< observed from Mentor Graphics benchmarks
         STR2ENUM(mStr2Enum, UNKNOWN);
 
         init = false;

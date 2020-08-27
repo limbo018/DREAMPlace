@@ -3,10 +3,10 @@
 "def_input" : "benchmarks/ispd2015/mgc_superblue12/after_legalized.ntup.fix.def", 
 "verilog_input" : "benchmarks/ispd2015/mgc_superblue12/design.v", 
 "gpu" : 1,
-"num_bins_x" : 512,
-"num_bins_y" : 512,
+"num_bins_x" : 1024,
+"num_bins_y" : 1024,
 "global_place_stages" : [
-    {"num_bins_x" : 512, "num_bins_y" : 512, "iteration" : 1000, "learning_rate" : 0.01, "wirelength" : "weighted_average", "optimizer" : "nesterov"}
+    {"num_bins_x" : 1024, "num_bins_y" : 1024, "iteration" : 1000, "learning_rate" : 0.01, "wirelength" : "weighted_average", "optimizer" : "nesterov"}
 ],
 "target_density" : 0.65,
 "density_weight" : 8e-5,

@@ -28,7 +28,7 @@ bool write(PlaceDB const& db,
         vx = new PlaceDB::coordinate_type [lenx];
         for (PlaceDB::index_type i = 0; i < lenx; ++i)
         {
-            vx[i] = x.at(i); 
+            vx[i] = std::round(x.at(i)); 
         }
     }
     PlaceDB::index_type leny = y.size(); 
@@ -37,7 +37,7 @@ bool write(PlaceDB const& db,
         vy = new PlaceDB::coordinate_type [leny];
         for (PlaceDB::index_type i = 0; i < leny; ++i)
         {
-            vy[i] = y.at(i); 
+            vy[i] = std::round(y.at(i)); 
         }
     }
 
@@ -68,8 +68,8 @@ void apply(PlaceDB& db,
     {
         if (node.status() != PlaceStatusEnum::FIXED)
         {
-            PlaceDB::coordinate_type xx = x.at(node.id()); 
-            PlaceDB::coordinate_type yy = y.at(node.id()); 
+            PlaceDB::coordinate_type xx = std::round(x.at(node.id())); 
+            PlaceDB::coordinate_type yy = std::round(y.at(node.id())); 
             moveTo(node, xx, yy);
 
             // update place status 

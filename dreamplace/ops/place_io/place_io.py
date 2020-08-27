@@ -9,6 +9,7 @@ from torch.autograd import Function
 import dreamplace.ops.place_io.place_io_cpp as place_io_cpp
 from dreamplace.ops.place_io.place_io_cpp import SolutionFileFormat, Direction1DType, Direction2DType, OrientEnum, PlaceStatusEnum, MultiRowAttrEnum, SignalDirectEnum, PlanarDirectEnum, RegionTypeEnum
 
+
 class PlaceIOFunction(Function):
     @staticmethod
     def read(params):
@@ -19,8 +20,8 @@ class PlaceIOFunction(Function):
         if "aux_input" in params.__dict__ and params.aux_input:
             args += " --bookshelf_aux_input %s" % (params.aux_input)
         if "lef_input" in params.__dict__ and params.lef_input:
-            if isinstance(params.lef_input, list): 
-                for lef in params.lef_input: 
+            if isinstance(params.lef_input, list):
+                for lef in params.lef_input:
                     args += " --lef_input %s" % (lef)
             else:
                 args += " --lef_input %s" % (params.lef_input)
@@ -34,14 +35,14 @@ class PlaceIOFunction(Function):
         return place_io_cpp.forward(args.split(' '))
 
     @staticmethod
-    def pydb(raw_db): 
+    def pydb(raw_db):
         """
         @brief convert to python database 
         @param raw_db original placement database 
         """
         return place_io_cpp.pydb(raw_db)
 
-    @staticmethod 
+    @staticmethod
     def write(raw_db, filename, sol_file_format, node_x, node_y):
         """
         @brief write solution in specific format 
@@ -51,9 +52,10 @@ class PlaceIOFunction(Function):
         @param node_x x coordinates of cells, only need movable cells; if none, use original position 
         @param node_y y coordinates of cells, only need movable cells; if none, use original position
         """
-        return place_io_cpp.write(raw_db, filename, sol_file_format, node_x, node_y)
+        return place_io_cpp.write(raw_db, filename, sol_file_format, node_x,
+                                  node_y)
 
-    @staticmethod 
+    @staticmethod
     def apply(raw_db, node_x, node_y):
         """
         @brief apply solution 

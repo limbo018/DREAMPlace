@@ -12,7 +12,7 @@
 #include "Iterators.h"
 #include "LefCbkHelper.h"
 #include "RowMap.h"
-#include "utility/src/utils.h"
+#include "utility/src/defs.h"
 //#include <boost/timer/timer.hpp>
 
 DREAMPLACE_BEGIN_NAMESPACE
@@ -123,7 +123,15 @@ void PlaceDB::lef_pin_cbk(LefParser::lefiPin const& p) {
     return;
   }
   MacroPin& mPin = macro.macroPin(insertMacroPinRet.first);
-  if (p.hasDirection()) mPin.setDirect(std::string(p.direction()));
+  if (p.hasDirection()) {
+    std::string direct = p.direction(); 
+    for (auto& c : direct) {
+      if (c == ' ') {
+        c = '_';
+      }
+    }
+    mPin.setDirect(direct);
+  }
 
   for (int j = 0; j < p.numPorts(); ++j) {
     // create and add port
@@ -156,7 +164,12 @@ void PlaceDB::set_def_version(std::string const& v) { m_defVersion = v; }
 void PlaceDB::set_def_unit(int u) { m_defUnit = u; }
 void PlaceDB::set_def_design(std::string const& d) { m_designName = d; }
 void PlaceDB::set_def_diearea(int xl, int yl, int xh, int yh) {
-  m_dieArea.set(xl, yl, xh, yh);
+  m_dieArea.set(
+      xl * lefDefUnitRatio(), 
+      yl * lefDefUnitRatio(), 
+      xh * lefDefUnitRatio(), 
+      yh * lefDefUnitRatio()
+      );
 }
 void PlaceDB::add_def_row(DefParser::Row const& r) {
   // create and add row
@@ -172,16 +185,27 @@ void PlaceDB::add_def_row(DefParser::Row const& r) {
   // only support N and FS, because I'm not sure what the format should be for
   // other orient
   if (r.orient == "N" || r.orient == "FS") {
-    row.set(r.origin[0], r.origin[1], r.origin[0] + r.repeat[0] * r.step[0],
-            r.origin[1] + site.size(kY));
+    row.set(
+        r.origin[0] * lefDefUnitRatio(), 
+        r.origin[1] * lefDefUnitRatio(), 
+        (r.origin[0] + r.repeat[0] * r.step[0]) * lefDefUnitRatio(),
+        r.origin[1] * lefDefUnitRatio() + site.size(kY)
+        );
   } else {
     dreamplacePrint(kWARN, "unsupported row orientation %s\n",
                     r.orient.c_str());
-    row.set(r.origin[0], r.origin[1], r.origin[0] + r.repeat[0] * r.step[0],
-            r.origin[1] + site.size(kY));
+    row.set(
+        r.origin[0] * lefDefUnitRatio(), 
+        r.origin[1] * lefDefUnitRatio(), 
+        (r.origin[0] + r.repeat[0] * r.step[0]) * lefDefUnitRatio(),
+        r.origin[1] * lefDefUnitRatio() + site.size(kY)
+        );
   }
 
-  row.setStep(r.step[0], r.step[1]);
+  row.setStep(
+      r.step[0] * lefDefUnitRatio(), 
+      r.step[1] * lefDefUnitRatio()
+      );
 
   m_rowBbox.encompass(row);
 }
@@ -215,8 +239,12 @@ void PlaceDB::add_def_component(DefParser::Component const& c) {
   NodeProperty& property = m_vNodeProperty.at(node.id());
   property.setMacroId(m_mMacroName2Index[c.macro_name]);
   Macro const& macro = m_vMacro.at(property.macroId());
-  node.set(c.origin[0], c.origin[1], c.origin[0] + macro.width(),
-           c.origin[1] + macro.height());  // must update width and height
+  node.set(
+      c.origin[0] * lefDefUnitRatio(), 
+      c.origin[1] * lefDefUnitRatio(), 
+      c.origin[0] * lefDefUnitRatio() + macro.width(),
+      c.origin[1] * lefDefUnitRatio() + macro.height()
+      );  // must update width and height
   node.setStatus(c.status);                // update status
   if (macro.className() != "CORE") {
     // always fix cells whose macro class is not CORE
@@ -275,9 +303,16 @@ void PlaceDB::add_def_pin(DefParser::Pin const& p) {
   // indicate this is an IO pin
   macro.setClassName("DREAMPlace.IOPin");
 
-  macro.setInitOrigin(bbox[0], bbox[1]);
-  macro.set(0, 0, bbox[2] - bbox[0],
-            bbox[3] - bbox[1]);  // adjust to origin (0, 0)
+  macro.setInitOrigin(
+      bbox[0] * lefDefUnitRatio(), 
+      bbox[1] * lefDefUnitRatio()
+      );
+  macro.set(
+      0, 
+      0, 
+      (bbox[2] - bbox[0]) * lefDefUnitRatio(),
+      (bbox[3] - bbox[1]) * lefDefUnitRatio()
+      );  // adjust to origin (0, 0)
 
   // create and add io pin
   std::pair<index_type, bool> insertMacroPinRet = macro.addMacroPin(p.pin_name);
@@ -302,7 +337,11 @@ void PlaceDB::add_def_pin(DefParser::Pin const& p) {
     macroPort.layers().push_back(p.vLayer.front());
   } 
   macroPort.boxes().push_back(MacroPort::box_type(
-      0, 0, bbox[2] - bbox[0], bbox[3] - bbox[1]));  // adjust to origin (0, 0)
+      0, 
+      0, 
+      (bbox[2] - bbox[0]) * lefDefUnitRatio(), 
+      (bbox[3] - bbox[1]) * lefDefUnitRatio()
+      ));  // adjust to origin (0, 0)
   deriveMacroPortBbox(macroPort);
   deriveMacroPinBbox(iopin);
 
@@ -324,8 +363,12 @@ void PlaceDB::add_def_pin(DefParser::Pin const& p) {
   if (node.status() == PlaceStatusEnum::FIXED ||
       node.status() == PlaceStatusEnum::DUMMY_FIXED ||
       node.status() == PlaceStatusEnum::PLACED) {
-    node.set(p.origin[0] + bbox[0], p.origin[1] + bbox[1],
-             p.origin[0] + bbox[2], p.origin[1] + bbox[3]);
+    node.set(
+        (p.origin[0] + bbox[0]) * lefDefUnitRatio(), 
+        (p.origin[1] + bbox[1]) * lefDefUnitRatio(),
+        (p.origin[0] + bbox[2]) * lefDefUnitRatio(), 
+        (p.origin[1] + bbox[3]) * lefDefUnitRatio()
+        );
     node.setInitPos(ll(node));
   }
 }
@@ -423,9 +466,16 @@ void PlaceDB::add_def_placement_blockage(
     // indicate this is placement blockage
     macro.setClassName("DREAMPlace.PlaceBlockage");
 
-    macro.setInitOrigin(bbox[0], bbox[1]);
-    macro.set(0, 0, bbox[2] - bbox[0],
-              bbox[3] - bbox[1]);  // adjust to origin (0, 0)
+    macro.setInitOrigin(
+        bbox[0] * lefDefUnitRatio(), 
+        bbox[1] * lefDefUnitRatio()
+        );
+    macro.set(
+        0, 
+        0, 
+        (bbox[2] - bbox[0]) * lefDefUnitRatio(),
+        (bbox[3] - bbox[1]) * lefDefUnitRatio()
+        );  // adjust to origin (0, 0)
 
     // create and add virtual node
     std::pair<index_type, bool> insertNodeRet = addNode(name);
@@ -441,7 +491,12 @@ void PlaceDB::add_def_placement_blockage(
         PlaceStatusEnum::FIXED);  // placement blockages should always be fixed
     node.setOrient(OrientEnum::UNKNOWN);
     deriveMultiRowAttr(node);
-    node.set(bbox[0], bbox[1], bbox[2], bbox[3]);
+    node.set(
+        bbox[0] * lefDefUnitRatio(), 
+        bbox[1] * lefDefUnitRatio(), 
+        bbox[2] * lefDefUnitRatio(), 
+        bbox[3] * lefDefUnitRatio()
+        );
     node.setInitPos(ll(node));
 
     m_vPlaceBlockageIndex.push_back(node.id());
@@ -458,8 +513,12 @@ void PlaceDB::add_def_region(DefParser::Region const& r) {
   boxes.reserve(r.vRectangle.size());
   for (index_type i = 0, ie = r.vRectangle.size(); i < ie; ++i) {
     boxes.push_back(
-        Region::box_type(r.vRectangle[i].at(0), r.vRectangle[i].at(1),
-                         r.vRectangle[i].at(2), r.vRectangle[i].at(3)));
+        Region::box_type(
+          r.vRectangle[i].at(0) * lefDefUnitRatio(), 
+          r.vRectangle[i].at(1) * lefDefUnitRatio(),
+          r.vRectangle[i].at(2) * lefDefUnitRatio(), 
+          r.vRectangle[i].at(3) * lefDefUnitRatio()
+          ));
   }
   // check whether boxes in region overlap with each other
   // as I have the assumption that the boxes should not overlap
@@ -550,6 +609,14 @@ void PlaceDB::end_def_design() {
 }
 
 ///==== Verilog Callbacks ====
+void PlaceDB::verilog_module_declaration_cbk(std::string const& module_name, 
+        std::vector<VerilogParser::GeneralName> const& vPinName) {
+    dreamplaceAssertMsg(module_name == m_designName, 
+            "verilog module name %s must match design name %s", 
+            module_name.c_str(), 
+            m_designName.c_str()
+            );
+} 
 void PlaceDB::verilog_net_declare_cbk(std::string const& netName,
                                       VerilogParser::Range const& range) {
   dreamplaceAssertMsg(range.low == range.high, "do not support bus yet");
@@ -1457,50 +1524,8 @@ void PlaceDB::adjustParams() {
     updateNodePinOffset(node, OrientEnum::N, node.orient());
   }
 
-  dreamplacePrint(kINFO, "group cells for fence regions\n");
-  // set node indices in groups
-  // according to node names
-  WildcardMatch matcher;
-  std::vector<unsigned char> markers(numMovable() + numFixed(), 0);
-  for (index_type i = 0, ie = numMovable() + numFixed(); i < ie; ++i) {
-    Node const& node = this->node(i);
-    std::string const& name = this->nodeName(node);
-
-    for (index_type j = 0, je = m_vGroup.size(); j < je; ++j) {
-      Group& group = m_vGroup[j];
-      for (std::vector<std::string>::const_iterator
-               it = group.nodeNames().begin(),
-               ite = group.nodeNames().end();
-           it != ite; ++it) {
-        std::string const& pattern = *it;
-        if (matcher(name.c_str(), pattern.c_str(), name.size(),
-                    pattern.size())) {
-          if (markers.at(node.id())) {
-            dreamplacePrint(
-                kWARN,
-                "node %u in multiple groups, currently add to group %u\n",
-                node.id(), group.id());
-          }
-          group.nodes().push_back(node.id());
-          markers.at(node.id()) = 1;
-        }
-      }
-    }
-  }
-  dreamplacePrint(kINFO, "fence region done\n");
-#ifdef DEBUG
-  for (index_type i = 0; i < m_vRegion.size(); ++i) {
-    Region const& region = m_vRegion[i];
-    dreamplacePrint(kDEBUG, "region[%u] %s: ", region.id(),
-                    region.name().c_str());
-    for (index_type j = 0; j < region.boxes().size(); ++j) {
-      Region::box_type const& box = region.boxes().at(j);
-      dreamplacePrint(kNONE, "(%d, %d, %d, %d) ", box.xl(), box.yl(), box.xh(),
-                      box.yh());
-    }
-    dreamplacePrint(kNONE, "\n");
-  }
-#endif
+  // process region groups, like fence region 
+  processGroups(); 
 }
 
 PlaceDB::manhattan_distance_type PlaceDB::minMovableNodeWidth() const {
@@ -1886,54 +1911,6 @@ void PlaceDB::sortNodeByPlaceStatus() {
     }
   }
 
-#if 0
-    // 2. now we work on swapping IO pins and placement blockages 
-    if (numPlaceBlockages())
-    {
-        // temporary storage for blockages 
-        std::vector<Node> vTmpBlockageNode (m_vNode.begin() + numMovable() + numFixed() + numIOPin(), m_vNode.end()); 
-        std::vector<NodeProperty> vTmpBlockageProperty (m_vNodeProperty.begin() + numMovable() + numFixed() + numIOPin(), m_vNodeProperty.end()); 
-        // copy IO pins 
-        for (index_type i = 0, ie = numIOPin(); i < ie; ++i)
-        {
-            index_type target = m_vNode.size() - i - 1;
-            index_type source = numMovable() + numFixed() + numIOPin() - i - 1;
-            m_vNode[target] = m_vNode[source];
-            m_vNodeProperty[target] = m_vNodeProperty[source];
-        }
-        // copy blockages 
-        std::copy(vTmpBlockageNode.begin(), vTmpBlockageNode.end(), m_vNode.begin() + numMovable() + numFixed());
-        std::copy(vTmpBlockageProperty.begin(), vTmpBlockageProperty.end(), m_vNodeProperty.begin() + numMovable() + numFixed());
-        // update m_mNodeName2Index
-        for (index_type i = numMovable() + numFixed(), ie = m_vNode.size(); i < ie; ++i)
-        {
-            m_mNodeName2Index[m_vNodeProperty[i].name()] = i; 
-        }
-        // update node id and pin to node id for IO pins 
-        for (index_type i = m_vNode.size() - numIOPin() - numPlaceBlockages(), ie = m_vNode.size(); i < ie; ++i)
-        {
-            Node& node = m_vNode[i]; 
-            for (std::vector<index_type>::const_iterator it = node.pins().begin(), ite = node.pins().end(); it != ite; ++it)
-            {
-                // we have not update the node id yet
-                // so it should be consistent
-                dreamplaceAssert(m_vPin[*it].nodeId() == node.id());
-                m_vPin[*it].setNodeId(i);
-            }
-            node.setId(i);
-        }
-
-        // update blockage indices
-        m_vPlaceBlockageIndex.clear();
-        for (std::vector<Node>::const_iterator it = m_vNode.begin() + numMovable() + numFixed(), ite = m_vNode.begin() + numMovable() + numFixed() + numPlaceBlockages(); it != ite; ++it)
-        {
-            Node const& node = *it; 
-            dreamplaceAssert(node.status() == PlaceStatusEnum::FIXED); 
-            m_vPlaceBlockageIndex.push_back(node.id());
-        }
-    }
-#endif
-
 #ifdef DEBUG
   // check pins, nodes, and nets
   for (std::vector<Node>::const_iterator it = m_vNode.begin(),
@@ -1966,6 +1943,95 @@ void PlaceDB::sortNodeByPlaceStatus() {
   for (unsigned int i = 1; i < m_vPlaceBlockageIndex.size(); ++i) {
     dreamplaceAssert(m_vPlaceBlockageIndex[i - 1] + 1 ==
                      m_vPlaceBlockageIndex[i]);
+  }
+#endif
+}
+
+void PlaceDB::processGroups() {
+  dreamplacePrint(kINFO, "Group cells for fence regions\n");
+  std::vector<unsigned char> markers(numMovable() + numFixed(), 0);
+  // add a node to a group 
+  auto addNode2Group = [&](Group& group, index_type node_id) {
+    Node const& node = this->node(node_id); 
+    if (node.id() >= numMovable() + numFixed()) {
+      dreamplacePrint(kWARN, "node %s in group %s (%u) not movable, ignored\n", 
+          nodeName(node), group.name().c_str(), group.id()); 
+    } else if (markers.at(node.id())) {
+      dreamplacePrint(
+          kWARN, "node %u in multiple groups, currently add to group %u\n",
+          node.id(), group.id());
+    } else {
+      group.nodes().push_back(node.id());
+      markers.at(node.id()) = 1;
+    }
+  };
+  // set node indices in groups
+  // according to node names
+
+  // process non-wildcard patterns with exact names shown 
+  // filter out the wildcard patterns 
+  std::vector<std::pair<index_type, std::string>> vGroupWildcardPatternPair; 
+  // find node from group 
+  for (index_type i = 0, je = m_vGroup.size(); i < je; ++i) {
+    Group& group = m_vGroup[i];
+    for (std::vector<std::string>::const_iterator
+        it = group.nodeNames().begin(),
+        ite = group.nodeNames().end();
+        it != ite; ++it) {
+      std::string const& pattern = *it;
+      // find wildcard characters *, ?
+      auto found_star = pattern.find('*');
+      auto found_question = pattern.find('?'); 
+      // not wildcard pattern
+      if (found_star == std::string::npos && found_question == std::string::npos) {
+        auto found = m_mNodeName2Index.find(pattern); 
+        if (found == m_mNodeName2Index.end()) {
+          dreamplacePrint(kWARN, "Group %s (%u), pattern %s not found, ignored\n", 
+              group.name().c_str(), i, pattern.c_str());
+        } else {
+          addNode2Group(group, found->second); 
+        }
+      } else {
+        // wildcard pattern 
+        vGroupWildcardPatternPair.emplace_back(group.id(), pattern); 
+      }
+    }
+  }
+  // process rest wildcard patterns 
+  // find group from node 
+  WildcardMatch matcher;
+  for (index_type i = 0, ie = numMovable() + numFixed(); i < ie; ++i) {
+    Node const& node = this->node(i);
+    std::string const& name = this->nodeName(node);
+
+    for (auto const& kvp : vGroupWildcardPatternPair) {
+      auto& group = m_vGroup[kvp.first]; 
+      auto const& pattern = kvp.second; 
+      if (matcher(name.c_str(), pattern.c_str(), name.size(),
+            pattern.size())) {
+        addNode2Group(group, node.id()); 
+      }
+    }
+  }
+  dreamplacePrint(kINFO, "Construct %lu groups\n", m_vGroup.size()); 
+  for (auto const& group : m_vGroup) {
+    auto const& region = m_vRegion.at(group.region()); 
+    dreamplacePrint(kINFO, "Group %s (%u), region %s (%u), %lu boxes, contains %lu nodes\n", 
+        group.name().c_str(), group.id(), region.name().c_str(), group.region(), 
+        region.boxes().size(), group.nodes().size()); 
+  }
+  dreamplacePrint(kINFO, "Fence region groups done\n");
+#ifdef DEBUG
+  for (index_type i = 0; i < m_vRegion.size(); ++i) {
+    Region const& region = m_vRegion[i];
+    dreamplacePrint(kDEBUG, "region[%u] %s: ", region.id(),
+                    region.name().c_str());
+    for (index_type j = 0; j < region.boxes().size(); ++j) {
+      Region::box_type const& box = region.boxes().at(j);
+      dreamplacePrint(kNONE, "(%d, %d, %d, %d) ", box.xl(), box.yl(), box.xh(),
+                      box.yh());
+    }
+    dreamplacePrint(kNONE, "\n");
   }
 #endif
 }

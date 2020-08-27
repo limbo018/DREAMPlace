@@ -10,14 +10,6 @@
 
 DREAMPLACE_BEGIN_NAMESPACE
 
-template <typename T>
-inline __host__ __device__ bool adjust_pos(T& x, T width, const Space<T>& space)
-{
-    x = max(x, space.xl);
-    x = min(x, space.xh-width);
-    return width <= space.xh-space.xl; 
-}
-
 /// @brief generate array of spaces for each cell 
 /// This is specifically designed for independent set, as we only consider the whitespace on the right side of a cell. 
 /// It will make it much easier for apply_solution without keeping a structure of row2node_map. 

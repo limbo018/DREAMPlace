@@ -53,12 +53,16 @@ class PlaceDB (object):
 
         self.net_name2id_map = {} # net name to id map
         self.net_names = None # net name 
+        self.net_weights = None # weights for each net
+
         self.net2pin_map = None # array of 1D array, each row stores pin id
         self.flat_net2pin_map = None # flatten version of net2pin_map 
         self.flat_net2pin_start_map = None # starting index of each net in flat_net2pin_map
-        self.net_weights = None # weights for each net
 
         self.node2pin_map = None # array of 1D array, contains pin id of each node 
+        self.flat_node2pin_map = None # flatten version of node2pin_map
+        self.flat_node2pin_start_map = None # starting index of each node in flat_node2pin_map
+
         self.pin2node_map = None # 1D array, contain parent node id of each pin 
         self.pin2net_map = None # 1D array, contain parent net id of each pin 
 
@@ -426,25 +430,25 @@ class PlaceDB (object):
         """
         logging.debug("row %d %s" % (row_id, self.rows[row_id]))
 
-    def flatten_nested_map(self, net2pin_map): 
-        """
-        @brief flatten an array of array to two arrays like CSV format 
-        @param net2pin_map array of array 
-        @return a pair of (elements, cumulative column indices of the beginning element of each row)
-        """
-        # flat netpin map, length of #pins
-        flat_net2pin_map = np.zeros(len(pin2net_map), dtype=np.int32)
-        # starting index in netpin map for each net, length of #nets+1, the last entry is #pins  
-        flat_net2pin_start_map = np.zeros(len(net2pin_map)+1, dtype=np.int32)
-        count = 0
-        for i in range(len(net2pin_map)):
-            flat_net2pin_map[count:count+len(net2pin_map[i])] = net2pin_map[i]
-            flat_net2pin_start_map[i] = count 
-            count += len(net2pin_map[i])
-        assert flat_net2pin_map[-1] != 0
-        flat_net2pin_start_map[len(net2pin_map)] = len(pin2net_map)
-
-        return flat_net2pin_map, flat_net2pin_start_map
+    #def flatten_nested_map(self, net2pin_map): 
+    #    """
+    #    @brief flatten an array of array to two arrays like CSV format 
+    #    @param net2pin_map array of array 
+    #    @return a pair of (elements, cumulative column indices of the beginning element of each row)
+    #    """
+    #    # flat netpin map, length of #pins
+    #    flat_net2pin_map = np.zeros(len(pin2net_map), dtype=np.int32)
+    #    # starting index in netpin map for each net, length of #nets+1, the last entry is #pins  
+    #    flat_net2pin_start_map = np.zeros(len(net2pin_map)+1, dtype=np.int32)
+    #    count = 0
+    #    for i in range(len(net2pin_map)):
+    #        flat_net2pin_map[count:count+len(net2pin_map[i])] = net2pin_map[i]
+    #        flat_net2pin_start_map[i] = count 
+    #        count += len(net2pin_map[i])
+    #    assert flat_net2pin_map[-1] != 0
+    #    flat_net2pin_start_map[len(net2pin_map)] = len(pin2net_map)
+     
+    #    return flat_net2pin_map, flat_net2pin_start_map
 
     def read(self, params): 
         """
@@ -602,8 +606,8 @@ row height = %g, site width = %g
         self.num_bins_x = max(params.num_bins_x, num_bins_x)
         self.num_bins_y = max(params.num_bins_y, num_bins_y)
         # set bin size 
-        self.bin_size_x = (self.xh-self.xl)/params.num_bins_x 
-        self.bin_size_y = (self.yh-self.yl)/params.num_bins_y 
+        self.bin_size_x = (self.xh-self.xl)/self.num_bins_x 
+        self.bin_size_y = (self.yh-self.yl)/self.num_bins_y 
 
         # bin center array 
         self.bin_center_x = self.bin_centers(self.xl, self.xh, self.bin_size_x)
@@ -636,7 +640,7 @@ row height = %g, site width = %g
         if target_density > params.target_density:
             logging.warn("target_density %g is smaller than utilization %g, ignored" % (params.target_density, target_density))
             params.target_density = target_density 
-        content += "target_density = %g\n" % (params.target_density)
+        content += "utilization = %g, target_density = %g\n" % (self.total_movable_node_area / self.total_space_area, params.target_density)
 
         # insert filler nodes 
         if params.enable_fillers: 
