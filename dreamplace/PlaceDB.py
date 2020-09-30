@@ -642,6 +642,10 @@ row height = %g, site width = %g
             params.target_density = target_density 
         content += "utilization = %g, target_density = %g\n" % (self.total_movable_node_area / self.total_space_area, params.target_density)
 
+        self.node_size_order = np.argsort(self.node_size_x[:self.num_movable_nodes])
+        self.std_cell_size_x = np.mean(self.node_size_x[node_size_order[int(self.num_movable_nodes*0.05):int(self.num_movable_nodes*0.95)]])
+        self.std_cell_size_y = self.row_height
+
         # insert filler nodes 
         if params.enable_fillers: 
             # the way to compute this is still tricky; we need to consider place_io together on how to 
@@ -649,8 +653,7 @@ row height = %g, site width = %g
             placeable_area = max(self.area - self.total_fixed_node_area, self.total_space_area)
             content += "use placeable_area = %g to compute fillers\n" % (placeable_area)
             self.total_filler_node_area = max(placeable_area*params.target_density-self.total_movable_node_area, 0.0)
-            node_size_order = np.argsort(self.node_size_x[:self.num_movable_nodes])
-            filler_size_x = np.mean(self.node_size_x[node_size_order[int(self.num_movable_nodes*0.05):int(self.num_movable_nodes*0.95)]])
+            filler_size_x = np.mean(self.node_size_x[self.node_size_order[int(self.num_movable_nodes*0.05):int(self.num_movable_nodes*0.95)]])
             filler_size_y = self.row_height
             self.num_filler_nodes = int(round(self.total_filler_node_area/(filler_size_x*filler_size_y)))
             self.node_size_x = np.concatenate([self.node_size_x, np.full(self.num_filler_nodes, fill_value=filler_size_x, dtype=self.node_size_x.dtype)])
@@ -804,6 +807,215 @@ row height = %g, site width = %g
 
         # update raw database 
         place_io.PlaceIOFunction.apply(self.rawdb, node_x, node_y)
+
+    def is_node_a_standard_cell(self, node_index):
+        return self.node_size_x[node_index] <= 4 * self.std_cell_size_x and self.node_size_y[node_index] <= 4 * self.std_cell_size_y
+    
+    def is_node_a_port(self, node_index):
+        return self.node_size_x[node_index] == 0 and self.node_size_y[node_index] == 0
+    
+    def create_circuit_metagraph(self, filename):
+        with open(filename, "x") as file:
+            
+            def add_input_fields(pin_index):
+                if self.pin_direct[pin_index] == b'OUTPUT':
+                    net_index = self.pin2net_map[pin_index]
+                    net_pins = self.net2pin_map[net_index]
+                    for pin in net_pins:
+                        if self.pin_direct[pin_index] == b'INPUT':
+                            parent_node_index = self.pin2node_map[pin]
+                            if self.is_node_a_standard_cell(parent_node_index) or self.is_node_a_port(parent_node_index):
+                                file.write(f'input: "{self.node_names[parent_node_index]}"\n')
+                            else:                            
+                                file.write(f'input: "pin_{pin}"\n')
+
+            def convert_macro_pin(macro_index, pin_index):
+                file.write('node {\n')
+                file.wirte(f'  name: "pin_{pin_index}"\n')
+
+                add_input_fields(pin_index)
+
+                file.write('  attr {\n')
+                file.write('    key: "type"\n')
+                file.write('    value: {\n')
+                file.write('      placeholder: "macro_pin"\n')
+                file.write('    }\n')
+                file.write('  }\n')
+
+                file.write('  attr {\n')
+                file.write('    key: "macro_name"\n')
+                file.write('    value: {\n')
+                file.write(f'      placeholder: "{self.node_names[macro_index]}"\n')
+                file.write('    }\n')
+                file.write('  }\n')
+
+                file.write('  attr {\n')
+                file.write('    key: "x_offset"\n')
+                file.write('    value: {\n')
+                file.write(f'      f: "{self.pin_offset_x[pin_index] - self.node_size_x[node_index] / 2}"\n')
+                file.write('    }\n')
+                file.write('  }\n')
+
+                file.write('  attr {\n')
+                file.write('    key: "y_offset"\n')
+                file.write('    value: {\n')
+                file.write(f'      f: "{self.pin_offset_y[pin_index] - self.node_size_y[node_index] / 2}"\n')
+                file.write('    }\n')
+                file.write('  }\n')
+
+                file.write('}\n')
+
+            def convert_a_macro(node_index, fixed=False):
+                file.write('node {\n')
+                file.wirte(f'  name: "{self.node_names[node_index]}"\n')
+
+                file.write('  attr {\n')
+                file.write('    key: "type"\n')
+                file.write('    value: {\n')
+                file.write('      placeholder: "macro"\n')
+                file.write('    }\n')
+                file.write('  }\n')
+
+                file.write('  attr {\n')
+                file.write('    key: "width"\n')
+                file.write('    value: {\n')
+                file.write(f'      f: "{self.node_size_x[node_index]}"\n')
+                file.write('    }\n')
+                file.write('  }\n')
+
+                file.write('  attr {\n')
+                file.write('    key: "height"\n')
+                file.write('    value: {\n')
+                file.write(f'      f: "{self.node_size_y[node_index]}"\n')
+                file.write('    }\n')
+                file.write('  }\n')
+
+                file.write('  attr {\n')
+                file.write('    key: "x"\n')
+                file.write('    value: {\n')
+                file.write(f'      f: "{self.node_x[node_index] + self.node_size_x[node_index] / 2}"\n')
+                file.write('    }\n')
+                file.write('  }\n')
+
+                file.write('  attr {\n')
+                file.write('    key: "y"\n')
+                file.write('    value: {\n')
+                file.write(f'      f: "{self.node_y[node_index] + self.node_size_y[node_index] / 2}"\n')
+                file.write('    }\n')
+                file.write('  }\n')
+
+                file.write('  attr {\n')
+                file.write('    key: "orientation"\n')
+                file.write('    value: {\n')
+                file.write(f'      placeholder: "{self.node_orient[node_index].decode("utf-8")}"\n')
+                file.write('    }\n')
+                file.write('  }\n')
+
+                if fixed:
+                    file.write('  attr {\n')
+                    file.write('    key: "fixed"\n')
+                    file.write('    value: {\n')
+                    file.write(f'      b: "true"\n')
+                    file.write('    }\n')
+                    file.write('  }\n')
+
+                file.write('}\n')
+
+                pin_lists = self.node2pin_map[node_index]
+                for pin_index in pin_lists:
+                    convert_macro_pin(node_index, pin_index)
+                
+            def convert_a_standard_cell(node_index):
+                file.write('node {\n')
+                file.wirte(f'  name: "{self.node_names[node_index]}"\n')
+
+                for pin_index in self.node2pin_map[node_index]:
+                    add_input_fields(pin_index)
+
+                file.write('  attr {\n')
+                file.write('    key: "type"\n')
+                file.write('    value: {\n')
+                file.write('      placeholder: "stdcell"\n')
+                file.write('    }\n')
+                file.write('  }\n')
+
+                file.write('  attr {\n')
+                file.write('    key: "width"\n')
+                file.write('    value: {\n')
+                file.write(f'      f: "{self.node_size_x[node_index]}"\n')
+                file.write('    }\n')
+                file.write('  }\n')
+
+                file.write('  attr {\n')
+                file.write('    key: "height"\n')
+                file.write('    value: {\n')
+                file.write(f'      f: "{self.node_size_y[node_index]}"\n')
+                file.write('    }\n')
+                file.write('  }\n')
+
+                file.write('  attr {\n')
+                file.write('    key: "x"\n')
+                file.write('    value: {\n')
+                file.write(f'      f: "{self.node_x[node_index] + self.node_size_x[node_index] / 2}"\n')
+                file.write('    }\n')
+                file.write('  }\n')
+
+                file.write('  attr {\n')
+                file.write('    key: "y"\n')
+                file.write('    value: {\n')
+                file.write(f'      f: "{self.node_y[node_index] + self.node_size_y[node_index] / 2}"\n')
+                file.write('    }\n')
+                file.write('  }\n')
+
+                file.write('}\n')
+
+            def convert_a_port(node_index):
+                file.write('node {\n')
+                file.wirte(f'  name: "{self.node_names[node_index]}"\n')
+
+                for pin_index in self.node2pin_map[node_index]:
+                    add_input_fields(pin_index)
+
+                file.write('  attr {\n')
+                file.write('    key: "type"\n')
+                file.write('    value: {\n')
+                file.write('      placeholder: "port"\n')
+                file.write('    }\n')
+                file.write('  }\n')
+
+                if self.node_x[node_index] == self.xl:
+                    side = "left"
+                elif self.node_x[node_index] == self.xh:
+                    side = "right"
+                elif self.node_y[node_index] == self.yl:
+                    side = "bottom"
+                elif self.node_y[node_index] == self.yh:
+                    side = "top"
+                else:
+                    assert False, f"Port {node_index} is not at the boundary."
+
+                file.write('  attr {\n')
+                file.write('    key: "side"\n')
+                file.write('    value: {\n')
+                file.write(f'      placeholder: "{side}"\n')
+                file.write('    }\n')
+                file.write('  }\n')
+
+                file.write('}\n')
+
+            # Convert movable nodes (standard cells and movable macros)
+            for i in range(self.num_movable_nodes):
+                if self.is_node_a_standard_cell(i):
+                    convert_a_standard_cell(i)
+                else:
+                    convert_a_macro(i, fixed=False)
+            
+            # Convert fixed nodes (fixed macros and IO ports)
+            for i in range(self.num_movable_nodes, self.num_movable_nodes + self.num_terminals):
+                if self.is_node_a_port(i):
+                    convert_a_port(i)
+                else:
+                    convert_a_macro(i, fixed=True)
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
