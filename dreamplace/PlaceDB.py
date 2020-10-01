@@ -642,10 +642,6 @@ row height = %g, site width = %g
             params.target_density = target_density 
         content += "utilization = %g, target_density = %g\n" % (self.total_movable_node_area / self.total_space_area, params.target_density)
 
-        self.node_size_order = np.argsort(self.node_size_x[:self.num_movable_nodes])
-        self.std_cell_size_x = np.mean(self.node_size_x[self.node_size_order[int(self.num_movable_nodes*0.05):int(self.num_movable_nodes*0.95)]])
-        self.std_cell_size_y = self.row_height
-
         # insert filler nodes 
         if params.enable_fillers: 
             # the way to compute this is still tricky; we need to consider place_io together on how to 
@@ -653,7 +649,8 @@ row height = %g, site width = %g
             placeable_area = max(self.area - self.total_fixed_node_area, self.total_space_area)
             content += "use placeable_area = %g to compute fillers\n" % (placeable_area)
             self.total_filler_node_area = max(placeable_area*params.target_density-self.total_movable_node_area, 0.0)
-            filler_size_x = np.mean(self.node_size_x[self.node_size_order[int(self.num_movable_nodes*0.05):int(self.num_movable_nodes*0.95)]])
+            node_size_order = np.argsort(self.node_size_x[:self.num_movable_nodes])
+            filler_size_x = np.mean(self.node_size_x[node_size_order[int(self.num_movable_nodes*0.05):int(self.num_movable_nodes*0.95)]])
             filler_size_y = self.row_height
             self.num_filler_nodes = int(round(self.total_filler_node_area/(filler_size_x*filler_size_y)))
             self.node_size_x = np.concatenate([self.node_size_x, np.full(self.num_filler_nodes, fill_value=filler_size_x, dtype=self.node_size_x.dtype)])
@@ -809,7 +806,7 @@ row height = %g, site width = %g
         place_io.PlaceIOFunction.apply(self.rawdb, node_x, node_y)
 
     def is_node_a_standard_cell(self, node_index):
-        return self.node_size_x[node_index] <= 4 * self.std_cell_size_x and self.node_size_y[node_index] <= 4 * self.std_cell_size_y
+        return self.node_size_y[node_index] <= 2 * self.row_height
     
     def is_node_a_port(self, node_index):
         return self.node_size_x[node_index] == 0 and self.node_size_y[node_index] == 0
