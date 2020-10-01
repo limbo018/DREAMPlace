@@ -913,7 +913,7 @@ row height = %g, site width = %g
                     file.write('  attr {\n')
                     file.write('    key: "fixed"\n')
                     file.write('    value: {\n')
-                    file.write(f'      b: "true"\n')
+                    file.write(f'      b: true\n')
                     file.write('    }\n')
                     file.write('  }\n')
 
