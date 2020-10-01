@@ -643,7 +643,7 @@ row height = %g, site width = %g
         content += "utilization = %g, target_density = %g\n" % (self.total_movable_node_area / self.total_space_area, params.target_density)
 
         self.node_size_order = np.argsort(self.node_size_x[:self.num_movable_nodes])
-        self.std_cell_size_x = np.mean(self.node_size_x[node_size_order[int(self.num_movable_nodes*0.05):int(self.num_movable_nodes*0.95)]])
+        self.std_cell_size_x = np.mean(self.node_size_x[self.node_size_order[int(self.num_movable_nodes*0.05):int(self.num_movable_nodes*0.95)]])
         self.std_cell_size_y = self.row_height
 
         # insert filler nodes 
@@ -815,23 +815,21 @@ row height = %g, site width = %g
         return self.node_size_x[node_index] == 0 and self.node_size_y[node_index] == 0
     
     def create_circuit_metagraph(self, filename):
-        with open(filename, "x") as file:
+        with open(filename, "w") as file:
             
             def add_input_fields(pin_index):
                 if self.pin_direct[pin_index] == b'OUTPUT':
-                    net_index = self.pin2net_map[pin_index]
-                    net_pins = self.net2pin_map[net_index]
-                    for pin in net_pins:
-                        if self.pin_direct[pin_index] == b'INPUT':
+                    for pin in self.net2pin_map[self.pin2net_map[pin_index]]:
+                        if self.pin_direct[pin] == b'INPUT':
                             parent_node_index = self.pin2node_map[pin]
                             if self.is_node_a_standard_cell(parent_node_index) or self.is_node_a_port(parent_node_index):
-                                file.write(f'input: "{self.node_names[parent_node_index]}"\n')
+                                file.write(f'  input: "{self.node_names[parent_node_index].decode("utf-8")}"\n')
                             else:                            
-                                file.write(f'input: "pin_{pin}"\n')
+                                file.write(f'  input: "pin_{pin}"\n')
 
             def convert_macro_pin(macro_index, pin_index):
                 file.write('node {\n')
-                file.wirte(f'  name: "pin_{pin_index}"\n')
+                file.write(f'  name: "pin_{pin_index}"\n')
 
                 add_input_fields(pin_index)
 
@@ -845,21 +843,21 @@ row height = %g, site width = %g
                 file.write('  attr {\n')
                 file.write('    key: "macro_name"\n')
                 file.write('    value: {\n')
-                file.write(f'      placeholder: "{self.node_names[macro_index]}"\n')
+                file.write(f'      placeholder: "{self.node_names[macro_index].decode("utf-8")}"\n')
                 file.write('    }\n')
                 file.write('  }\n')
 
                 file.write('  attr {\n')
                 file.write('    key: "x_offset"\n')
                 file.write('    value: {\n')
-                file.write(f'      f: "{self.pin_offset_x[pin_index] - self.node_size_x[node_index] / 2}"\n')
+                file.write(f'      f: "{self.pin_offset_x[pin_index] - self.node_size_x[macro_index] / 2}"\n')
                 file.write('    }\n')
                 file.write('  }\n')
 
                 file.write('  attr {\n')
                 file.write('    key: "y_offset"\n')
                 file.write('    value: {\n')
-                file.write(f'      f: "{self.pin_offset_y[pin_index] - self.node_size_y[node_index] / 2}"\n')
+                file.write(f'      f: "{self.pin_offset_y[pin_index] - self.node_size_y[macro_index] / 2}"\n')
                 file.write('    }\n')
                 file.write('  }\n')
 
@@ -867,7 +865,7 @@ row height = %g, site width = %g
 
             def convert_a_macro(node_index, fixed=False):
                 file.write('node {\n')
-                file.wirte(f'  name: "{self.node_names[node_index]}"\n')
+                file.write(f'  name: "{self.node_names[node_index].decode("utf-8")}"\n')
 
                 file.write('  attr {\n')
                 file.write('    key: "type"\n')
@@ -927,7 +925,7 @@ row height = %g, site width = %g
                 
             def convert_a_standard_cell(node_index):
                 file.write('node {\n')
-                file.wirte(f'  name: "{self.node_names[node_index]}"\n')
+                file.write(f'  name: "{self.node_names[node_index].decode("utf-8")}"\n')
 
                 for pin_index in self.node2pin_map[node_index]:
                     add_input_fields(pin_index)
@@ -971,7 +969,7 @@ row height = %g, site width = %g
 
             def convert_a_port(node_index):
                 file.write('node {\n')
-                file.wirte(f'  name: "{self.node_names[node_index]}"\n')
+                file.write(f'  name: "{self.node_names[node_index].decode("utf-8")}"\n')
 
                 for pin_index in self.node2pin_map[node_index]:
                     add_input_fields(pin_index)
