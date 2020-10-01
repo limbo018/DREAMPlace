@@ -215,5 +215,9 @@
 "deterministic_flag" : {
     "descripton" : "whether require run-to-run determinism, may have efficiency overhead", 
     "default" : 0
-    }
+    },
+"metagraph_filename" :{
+    "descripton" : "name of exported metagraph file",
+    "default" : ""
+}
 }
