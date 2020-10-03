@@ -809,7 +809,8 @@ row height = %g, site width = %g
         return self.node_size_y[node_index] <= 2 * self.row_height
     
     def is_node_a_port(self, node_index):
-        return self.node_size_x[node_index] == 0 and self.node_size_y[node_index] == 0
+        return (self.node_size_x[node_index] == 0 and (self.node_x[node_index] <= self.xl or self.node_x[node_index] >= self.xh) and
+                self.node_size_y[node_index] == 0 and (self.node_y[node_index] <= self.yl or self.node_y[node_index] >= self.yh))
     
     def create_circuit_metagraph(self, filename):
         with open(filename, "w") as file:
