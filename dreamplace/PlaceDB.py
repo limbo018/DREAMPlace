@@ -888,14 +888,14 @@ row height = %g, site width = %g
                 file.write('  attr {\n')
                 file.write('    key: "x"\n')
                 file.write('    value: {\n')
-                file.write(f'      f: {self.node_x[node_index] + self.node_size_x[node_index] / 2}\n')
+                file.write(f'      f: {self.node_x[node_index] + self.node_size_x[node_index] / 2 - self.xl}\n')
                 file.write('    }\n')
                 file.write('  }\n')
 
                 file.write('  attr {\n')
                 file.write('    key: "y"\n')
                 file.write('    value: {\n')
-                file.write(f'      f: {self.node_y[node_index] + self.node_size_y[node_index] / 2}\n')
+                file.write(f'      f: {self.node_y[node_index] + self.node_size_y[node_index] / 2 - self.yl}\n')
                 file.write('    }\n')
                 file.write('  }\n')
 
@@ -948,17 +948,20 @@ row height = %g, site width = %g
                 file.write('    }\n')
                 file.write('  }\n')
 
+                x_position = min(max(self.node_x[node_index] - self.xl, 0) + self.node_size_x[node_index] / 2, self.xh - self.xl - self.node_size_x[node_index] / 2)
+                y_position = min(max(self.node_y[node_index] - self.yl, 0) + self.node_size_y[node_index] / 2, self.yh - self.yl - self.node_size_y[node_index] / 2)
+                
                 file.write('  attr {\n')
                 file.write('    key: "x"\n')
                 file.write('    value: {\n')
-                file.write(f'      f: {self.node_x[node_index] + self.node_size_x[node_index] / 2}\n')
+                file.write(f'      f: {x_position}\n')
                 file.write('    }\n')
                 file.write('  }\n')
 
                 file.write('  attr {\n')
                 file.write('    key: "y"\n')
                 file.write('    value: {\n')
-                file.write(f'      f: {self.node_y[node_index] + self.node_size_y[node_index] / 2}\n')
+                file.write(f'      f: {y_position}\n')
                 file.write('    }\n')
                 file.write('  }\n')
 
@@ -978,13 +981,30 @@ row height = %g, site width = %g
                 file.write('    }\n')
                 file.write('  }\n')
 
-                if self.node_x[node_index] == self.xl:
+                x_position = min(max(self.node_x[node_index] - self.xl, 0), self.xh - self.xl)
+                y_position = min(max(self.node_y[node_index] - self.yl, 0), self.yh - self.yl)
+                
+                file.write('  attr {\n')
+                file.write('    key: "x"\n')
+                file.write('    value: {\n')
+                file.write(f'      f: {x_position}\n')
+                file.write('    }\n')
+                file.write('  }\n')
+
+                file.write('  attr {\n')
+                file.write('    key: "y"\n')
+                file.write('    value: {\n')
+                file.write(f'      f: {y_position}\n')
+                file.write('    }\n')
+                file.write('  }\n')
+                
+                if x_position == 0:
                     side = "left"
-                elif self.node_x[node_index] == self.xh:
+                elif x_position == self.xh - self.xl:
                     side = "right"
-                elif self.node_y[node_index] == self.yl:
+                elif y_position == 0:
                     side = "bottom"
-                elif self.node_y[node_index] == self.yh:
+                elif y_position == self.yh - self.yl:
                     side = "top"
                 else:
                     assert False, f"Port {node_index} is not at the boundary."
