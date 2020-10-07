@@ -1021,6 +1021,16 @@ row height = %g, site width = %g
                 file.write('}\n')
                 return
 
+            file.write(f'# FP bbox: {{0.0 0.0}} {{{self.canvas_xh} {self.canvas_yh}}}\n')
+            if self.yl > 0:
+                file.write(f'# Blockage : 0.0 0.0 {self.canvas_xh} {self.yl} 1.0\n')
+            if self.canvas_yh > self.yh:
+                file.write(f'# Blockage : 0.0 {self.yh} {self.canvas_xh} {self.canvas_yh} 1.0\n')
+            if self.xl > 0:                
+                file.write(f'# Blockage : 0.0 {self.yl} {self.xl} {self.yh} 1.0\n')
+            if self.canvas_xh > self.xh:
+                file.write(f'# Blockage : {self.xh} {self.yl} {self.canvas_xh} {self.yh} 1.0\n')
+
             # Convert movable nodes (standard cells and movable macros)
             for i in range(self.num_movable_nodes):
                 if self.is_node_a_standard_cell(i):
