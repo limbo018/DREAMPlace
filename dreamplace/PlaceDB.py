@@ -812,11 +812,11 @@ row height = %g, site width = %g
         return self.node_size_x[node_index] == 0 and self.node_size_y[node_index] == 0
     
     def create_circuit_metagraph(self, filename):
-        self.port_xl = self.node_x[self.num_movable_nodes:self.num_movable_nodes + self.num_terminals].min()
-        self.port_yl = self.node_y[self.num_movable_nodes:self.num_movable_nodes + self.num_terminals].min()
         self.port_xh = (self.node_x[self.num_movable_nodes:self.num_movable_nodes + self.num_terminals] + self.node_size_x[self.num_movable_nodes:self.num_movable_nodes + self.num_terminals]).max()
-        self.port_yh = (self.node_y[self.num_movable_nodes:self.num_movable_nodes + self.num_terminals] + self.node_size_y[self.num_movable_nodes:self.num_movable_nodes + self.num_terminals]).max()        
-        logging.info("canvas width is %g, height is %g" %(self.port_xh - self.port_xl, self.port_yh - self.port_yl))
+        self.port_yh = (self.node_y[self.num_movable_nodes:self.num_movable_nodes + self.num_terminals] + self.node_size_y[self.num_movable_nodes:self.num_movable_nodes + self.num_terminals]).max()
+        self.canvas_xh = max(self.port_xh, self.xh)
+        self.canvas_yh = max(self.port_yh, self.yh)
+        logging.info("canvas width is %g, height is %g" %(self.canvas_xh, self.canvas_yh))
 
         with open(filename, "w") as file:
             
@@ -891,24 +891,17 @@ row height = %g, site width = %g
                 file.write('    }\n')
                 file.write('  }\n')
 
-                if fixed:
-                    x_position = self.node_x[node_index] + self.node_size_x[node_index] / 2 - self.port_xl
-                    y_position = self.node_y[node_index] + self.node_size_y[node_index] / 2 - self.port_yl
-                else:
-                    x_position = 0
-                    y_position = 0
-
                 file.write('  attr {\n')
                 file.write('    key: "x"\n')
                 file.write('    value: {\n')
-                file.write(f'      f: {x_position}\n')
+                file.write(f'      f: {self.node_x[node_index] + self.node_size_x[node_index] / 2}\n')
                 file.write('    }\n')
                 file.write('  }\n')
 
                 file.write('  attr {\n')
                 file.write('    key: "y"\n')
                 file.write('    value: {\n')
-                file.write(f'      f: {y_position}\n')
+                file.write(f'      f: {self.node_y[node_index] + self.node_size_y[node_index] / 2}\n')
                 file.write('    }\n')
                 file.write('  }\n')
 
@@ -964,14 +957,14 @@ row height = %g, site width = %g
                 file.write('  attr {\n')
                 file.write('    key: "x"\n')
                 file.write('    value: {\n')
-                file.write(f'      f: 0\n')
+                file.write(f'      f: {self.node_x[node_index] + self.node_size_x[node_index] / 2}\n')
                 file.write('    }\n')
                 file.write('  }\n')
 
                 file.write('  attr {\n')
                 file.write('    key: "y"\n')
                 file.write('    value: {\n')
-                file.write(f'      f: 0\n')
+                file.write(f'      f: {self.node_y[node_index] + self.node_size_y[node_index] / 2}\n')
                 file.write('    }\n')
                 file.write('  }\n')
 
@@ -990,34 +983,31 @@ row height = %g, site width = %g
                 file.write('      placeholder: "port"\n')
                 file.write('    }\n')
                 file.write('  }\n')
-
-                x_position = self.node_x[node_index] - self.port_xl
-                y_position = self.node_y[node_index] - self.port_yl
                 
                 file.write('  attr {\n')
                 file.write('    key: "x"\n')
                 file.write('    value: {\n')
-                file.write(f'      f: {x_position}\n')
+                file.write(f'      f: {self.node_x[node_index]}\n')
                 file.write('    }\n')
                 file.write('  }\n')
 
                 file.write('  attr {\n')
                 file.write('    key: "y"\n')
                 file.write('    value: {\n')
-                file.write(f'      f: {y_position}\n')
+                file.write(f'      f: {self.node_y[node_index]}\n')
                 file.write('    }\n')
                 file.write('  }\n')
                 
-                if x_position == 0:
+                if self.node_x[node_index] == 0:
                     side = "left"
-                elif x_position == self.port_xh - self.port_xl:
+                elif self.node_x[node_index] == self.canvas_xh:
                     side = "right"
-                elif y_position == 0:
+                elif self.node_y[node_index] == 0:
                     side = "bottom"
-                elif y_position == self.port_yh - self.port_yl:
+                elif self.node_y[node_index] == self.canvas_yh:
                     side = "top"
                 else:
-                    logging.info("Port %s with location (%g. %g) is not at the chip boundary" % (self.node_names[node_index].decode("utf-8"), x_position, y_position))
+                    logging.info("Port %s with location (%g. %g) is not at the chip boundary" % (self.node_names[node_index].decode("utf-8"), self.node_x[node_index], self.node_y[node_index]))
                     file.write('}\n')
                     return
 
