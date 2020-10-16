@@ -1007,7 +1007,7 @@ row height = %g, site width = %g
                 elif self.node_y[node_index] == self.canvas_yh:
                     side = "top"
                 else:
-                    logging.info("Port %s with location (%g. %g) is not at the chip boundary" % (self.node_names[node_index].decode("utf-8"), self.node_x[node_index], self.node_y[node_index]))
+                    logging.info("Port %s with location (%g, %g) is not at the chip boundary" % (self.node_names[node_index].decode("utf-8"), self.node_x[node_index], self.node_y[node_index]))
                     file.write('}\n')
                     return
 
