@@ -1,5 +1,5 @@
 {
-"aux_input" : "benchmarks/mms/adaptec4/adaptec4.aux", 
+"aux_input" : "/usr/local/google/home/zixuanjiang/DREAMPlace/install/benchmarks/mms/adaptec4/adaptec4.aux", 
 "gpu" : 0,
 "num_bins_x" : 1024,
 "num_bins_y" : 1024,
