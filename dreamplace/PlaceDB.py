@@ -1044,6 +1044,10 @@ row height = %g, site width = %g
                     convert_a_port(i)
                 else:
                     convert_a_macro(i, fixed=True)
+            
+            # Convert terminal_NIs (treated as zero area ports)
+            for i in range(self.num_movable_nodes + self.num_terminals, self.num_movable_nodes + self.num_terminals + self.num_terminal_NIs):
+                convert_a_port(i)
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
