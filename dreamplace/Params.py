@@ -159,8 +159,6 @@ class Params:
             design_name = os.path.basename(self.verilog_input).replace(".v", "").replace(".V", "")
         elif self.def_input: 
             design_name = os.path.basename(self.def_input).replace(".def", "").replace(".DEF", "")
-        elif self.placedb_binary_input:
-            design_name = os.path.basename(self.placedb_binary_input).replace(".placedb", "")
         return design_name 
 
     def solution_file_suffix(self): 

@@ -19,10 +19,9 @@
     "default" : "", 
     "required" : "optional for LEF/DEF"
     },
-"placedb_binary_input" : {
-    "descripton" : "input placedb binary file", 
-    "default" : "", 
-    "required" : "required for placedb"
+"csv_input" : {
+    "descripton" : "input csv file saving macro information", 
+    "default" : ""
     },
 "gpu" : {
     "descripton" : "enable gpu or not", 

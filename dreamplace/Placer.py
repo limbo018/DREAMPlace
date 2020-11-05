@@ -9,6 +9,7 @@ import matplotlib
 matplotlib.use('Agg')
 import os
 import sys 
+import csv
 import time 
 import numpy as np 
 import logging
@@ -33,15 +34,20 @@ def place(params):
             "CANNOT enable GPU without CUDA compiled"
 
     np.random.seed(params.random_seed)
-    # read database 
-    tt = time.time()
-    if params.placedb_binary_input:
-        with open(params.placedb_binary_input, "rb") as input_file:
-            placedb = pickle.load(input_file)
-        placedb.initialize(params)
-    else:    
-        placedb = PlaceDB.PlaceDB()
-        placedb(params)
+    # read database
+    tt = time.time()  
+    placedb = PlaceDB.PlaceDB()
+    placedb(params)
+
+    if params.csv_input:
+        with open(params.csv_input) as csvfile:
+            for row in csv.reader(csvfile, delimiter=','):
+                name, x, y, orientation = row[0], row[1], row[2], row[3]
+                node_id = placedb.node_name2id_map[name]
+                placedb.node_x[node_id] = x
+                placedb.node_y[node_id] = y
+                placedb.node_orient[node_id] = orientation
+
     logging.info("reading database takes %.2f seconds" % (time.time()-tt))
 
     # solve placement 
@@ -138,7 +144,7 @@ if __name__ == "__main__":
     # load parameters 
     params.load(sys.argv[1])
     if len(sys.argv) == 3:
-        params.placedb_binary_input = sys.argv[2]
+        params.csv_input = sys.argv[2]
     logging.info("parameters = %s" % (params))
     # control numpy multithreading
     os.environ["OMP_NUM_THREADS"] = "%d" % (params.num_threads)
