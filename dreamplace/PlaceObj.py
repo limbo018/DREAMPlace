@@ -532,7 +532,7 @@ class PlaceObj(nn.Module):
 
         def update_density_weight_op(cur_metric, prev_metric, iteration):
             with torch.no_grad():
-                delta_hpwl = cur_metric.hpwl - prev_metric.hpwl
+                delta_hpwl = (cur_metric.hpwl - prev_metric.hpwl) * params.scale_factor
                 if delta_hpwl < 0:
                     mu = UPPER_PCOF * np.maximum(
                         np.power(0.9999, float(iteration)), 0.98)

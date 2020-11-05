@@ -1,8 +1,8 @@
 {
-"lef_input" : ["benchmarks/ispd2015/mgc_matrix_mult_a/tech.lef", "benchmarks/ispd2015/mgc_matrix_mult_a/cells.lef"], 
-"def_input" : "benchmarks/ispd2015/mgc_matrix_mult_a/after_legalized.ntup.fix.def", 
-"verilog_input" : "benchmarks/ispd2015/mgc_matrix_mult_a/design.v", 
-"gpu" : 1,
+"lef_input" : ["/usr/local/google/home/zixuanjiang/DREAMPlace/install/benchmarks/ispd2015/mgc_matrix_mult_a/tech.lef", "/usr/local/google/home/zixuanjiang/DREAMPlace/install/benchmarks/ispd2015/mgc_matrix_mult_a/cells.lef"], 
+"def_input" : "/usr/local/google/home/zixuanjiang/DREAMPlace/install/benchmarks/ispd2015/mgc_matrix_mult_a/floorplan.def", 
+"verilog_input" : "/usr/local/google/home/zixuanjiang/DREAMPlace/install/benchmarks/ispd2015/mgc_matrix_mult_a/design.v", 
+"gpu" : 0,
 "num_bins_x" : 512,
 "num_bins_y" : 512,
 "global_place_stages" : [
@@ -15,8 +15,8 @@
 "ignore_net_degree" : 100,
 "enable_fillers" : 1,
 "gp_noise_ratio" : 0.025,
-"global_place_flag" : 0,
-"legalize_flag" : 0,
+"global_place_flag" : 1,
+"legalize_flag" : 1,
 "detailed_place_flag" : 1,
 "detailed_place_engine" : "thirdparty/ntuplace_4dr", 
 "detailed_place_command" : "-nolegal -nodetail", 

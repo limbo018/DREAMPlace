@@ -19,9 +19,5 @@ install(
     )
 
 install(
-    DIRECTORY placedb DESTINATION ${PROJECT_NAME}
-    )
-
-install(
     DIRECTORY mms DESTINATION ${PROJECT_NAME}
 )
