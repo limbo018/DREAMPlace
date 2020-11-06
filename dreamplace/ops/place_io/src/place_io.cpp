@@ -66,34 +66,31 @@ void apply(PlaceDB& db,
     // this is ensured by PlaceDB::sortNodeByPlaceStatus()
     for (auto& node : db.nodes())
     {
-        if (node.status() != PlaceStatusEnum::FIXED)
-        {
-            PlaceDB::coordinate_type xx = x.at(node.id()); 
-            PlaceDB::coordinate_type yy = y.at(node.id()); 
-            moveTo(node, xx, yy);
+        PlaceDB::coordinate_type xx = x.at(node.id()); 
+        PlaceDB::coordinate_type yy = y.at(node.id()); 
+        moveTo(node, xx, yy);
 
-            // update place status 
-            node.setStatus(PlaceStatusEnum::PLACED); 
-            // update orient 
-            auto rowId = db.getRowIndex(node.yl());
-            auto const& row = db.row(rowId); 
-            if (node.orient() == OrientEnum::UNKNOWN)
+        // update place status 
+        node.setStatus(PlaceStatusEnum::PLACED); 
+        // update orient 
+        auto rowId = db.getRowIndex(node.yl());
+        auto const& row = db.row(rowId); 
+        if (node.orient() == OrientEnum::UNKNOWN)
+        {
+            node.setOrient(row.orient()); 
+        }
+        else 
+        {
+            if (row.orient() == Orient::vflip(node.orient())) // only vertically flipped
             {
                 node.setOrient(row.orient()); 
             }
-            else 
+            else if (row.orient() == Orient::hflip(Orient::vflip(node.orient()))) // both vertically and horizontally flipped
             {
-                if (row.orient() == Orient::vflip(node.orient())) // only vertically flipped
-                {
-                    node.setOrient(row.orient()); 
-                }
-                else if (row.orient() == Orient::hflip(Orient::vflip(node.orient()))) // both vertically and horizontally flipped
-                {
-                    // flip vertically 
-                    node.setOrient(Orient::vflip(node.orient()));
-                }
-                // other cases, no need to change 
+                // flip vertically 
+                node.setOrient(Orient::vflip(node.orient()));
             }
+            // other cases, no need to change 
         }
     }
 }

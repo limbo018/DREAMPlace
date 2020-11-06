@@ -786,8 +786,8 @@ row height = %g, site width = %g
         @brief apply placement solution and update database 
         """
         # assign solution 
-        self.node_x[:self.num_movable_nodes] = node_x[:self.num_movable_nodes]
-        self.node_y[:self.num_movable_nodes] = node_y[:self.num_movable_nodes]
+        self.node_x[:self.num_nodes] = node_x[:self.num_nodes]
+        self.node_y[:self.num_nodes] = node_y[:self.num_nodes]
 
         # unscale locations 
         unscale_factor = 1.0/params.scale_factor

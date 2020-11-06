@@ -56,7 +56,6 @@ def place(params):
     logging.info("non-linear placement initialization takes %.2f seconds" % (time.time()-tt))
     metrics = placer(params, placedb)
     logging.warning("non-linear placement takes %.2f seconds" % (time.time()-tt))
-    return metrics
 
     # write placement solution 
     path = "%s/%s" % (params.result_dir, params.design_name())
@@ -64,6 +63,7 @@ def place(params):
         os.system("mkdir -p %s" % (path))
     gp_out_file = os.path.join(path, "%s.gp.%s" % (params.design_name(), params.solution_file_suffix()))
     placedb.write(params, gp_out_file)
+    return metrics
 
     # call external detailed placement
     # TODO: support more external placers, currently only support 
