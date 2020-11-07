@@ -66,6 +66,10 @@ void apply(PlaceDB& db,
     // this is ensured by PlaceDB::sortNodeByPlaceStatus()
     for (auto& node : db.nodes())
     {
+        if (node.id() >= x.size()) {
+            continue;
+        }
+
         PlaceDB::coordinate_type xx = x.at(node.id()); 
         PlaceDB::coordinate_type yy = y.at(node.id()); 
         moveTo(node, xx, yy);
