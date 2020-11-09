@@ -66,35 +66,40 @@ void apply(PlaceDB& db,
     // this is ensured by PlaceDB::sortNodeByPlaceStatus()
     for (auto& node : db.nodes())
     {
-        if (node.id() >= x.size()) {
-            continue;
-        }
-
-        PlaceDB::coordinate_type xx = x.at(node.id()); 
-        PlaceDB::coordinate_type yy = y.at(node.id()); 
-        moveTo(node, xx, yy);
-
-        // update place status 
-        node.setStatus(PlaceStatusEnum::PLACED); 
-        // update orient 
-        auto rowId = db.getRowIndex(node.yl());
-        auto const& row = db.row(rowId); 
-        if (node.orient() == OrientEnum::UNKNOWN)
+        if (node.status() != PlaceStatusEnum::FIXED)
         {
-            node.setOrient(row.orient()); 
-        }
-        else 
-        {
-            if (row.orient() == Orient::vflip(node.orient())) // only vertically flipped
+            PlaceDB::coordinate_type xx = x.at(node.id()); 
+            PlaceDB::coordinate_type yy = y.at(node.id());
+            moveTo(node, xx, yy);
+
+            // update place status 
+            node.setStatus(PlaceStatusEnum::PLACED); 
+            // update orient 
+            auto rowId = db.getRowIndex(node.yl());
+            auto const& row = db.row(rowId); 
+            if (node.orient() == OrientEnum::UNKNOWN)
             {
                 node.setOrient(row.orient()); 
             }
-            else if (row.orient() == Orient::hflip(Orient::vflip(node.orient()))) // both vertically and horizontally flipped
+            else 
             {
-                // flip vertically 
-                node.setOrient(Orient::vflip(node.orient()));
+                if (row.orient() == Orient::vflip(node.orient())) // only vertically flipped
+                {
+                    node.setOrient(row.orient()); 
+                }
+                else if (row.orient() == Orient::hflip(Orient::vflip(node.orient()))) // both vertically and horizontally flipped
+                {
+                    // flip vertically 
+                    node.setOrient(Orient::vflip(node.orient()));
+                }
+                // other cases, no need to change 
             }
-            // other cases, no need to change 
+        }
+        else
+        {
+            PlaceDB::coordinate_type xx = x.at(node.id()); 
+            PlaceDB::coordinate_type yy = y.at(node.id());
+            moveTo(node, xx, yy);
         }
     }
 }
@@ -189,4 +194,3 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     m.def("pydb", [](DREAMPLACE_NAMESPACE::PlaceDB const& db){return DREAMPLACE_NAMESPACE::PyPlaceDB(db);}, "Convert PlaceDB to PyPlaceDB");
     m.def("forward", &DREAMPLACE_NAMESPACE::place_io_forward, "PlaceDB IO Read");
 }
-

@@ -2,6 +2,7 @@
 "lef_input" : ["/usr/local/google/home/zixuanjiang/DREAMPlace/install/benchmarks/ispd2015/mgc_fft_b/tech.lef", "/usr/local/google/home/zixuanjiang/DREAMPlace/install/benchmarks/ispd2015/mgc_fft_b/cells.lef"], 
 "def_input" : "/usr/local/google/home/zixuanjiang/DREAMPlace/install/benchmarks/ispd2015/mgc_fft_b/floorplan.def", 
 "verilog_input" : "/usr/local/google/home/zixuanjiang/DREAMPlace/install/benchmarks/ispd2015/mgc_fft_b/design.v", 
+"result_dir" : "/usr/local/google/home/zixuanjiang/DREAMPlace/install/results",
 "gpu" : 0,
 "num_bins_x" : 512,
 "num_bins_y" : 512,
