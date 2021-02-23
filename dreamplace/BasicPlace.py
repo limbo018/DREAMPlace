@@ -498,7 +498,7 @@ class BasicPlace(nn.Module):
         """
         return density_overflow.DensityOverflow(
             data_collections.node_size_x,
-            data_collections.node_size_x,
+            data_collections.node_size_y,
             data_collections.bin_center_x,
             data_collections.bin_center_y,
             target_density=data_collections.target_density,
