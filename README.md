@@ -166,9 +166,9 @@ Here are the available options for CMake.
 
 # How to Get Benchmarks
 
-To get ISPD 2005 benchmarks, run the following script from the directory. 
+To get ISPD 2005 and 2015 benchmarks, run the following script from the directory. 
 ```
-python benchmarks/ispd2005.py
+python benchmarks/ispd2005_2015.py
 ```
 
 # How to Run
