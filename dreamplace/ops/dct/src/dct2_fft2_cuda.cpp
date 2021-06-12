@@ -67,7 +67,7 @@ void idct2_fft2_forward(at::Tensor x, at::Tensor expkM, at::Tensor expkN,
         DREAMPLACE_TENSOR_DATA_PTR(expkM, scalar_t),
         DREAMPLACE_TENSOR_DATA_PTR(expkN, scalar_t));
 
-    auto y = at::irfft(buf, 2, false, true, {M, N});
+    auto y = at::irfft(buf, 2, false, true, {{M, N}});
 
     idct2_fft2PostprocessCudaLauncher<scalar_t>(
         DREAMPLACE_TENSOR_DATA_PTR(y, scalar_t),
@@ -99,7 +99,7 @@ void idct_idxst_forward(at::Tensor x, at::Tensor expkM, at::Tensor expkN,
         DREAMPLACE_TENSOR_DATA_PTR(expkM, scalar_t),
         DREAMPLACE_TENSOR_DATA_PTR(expkN, scalar_t));
 
-    auto y = at::irfft(buf, 2, false, true, {M, N});
+    auto y = at::irfft(buf, 2, false, true, {{M, N}});
 
     idct_idxstPostprocessCudaLauncher<scalar_t>(
         DREAMPLACE_TENSOR_DATA_PTR(y, scalar_t),
@@ -131,7 +131,7 @@ void idxst_idct_forward(at::Tensor x, at::Tensor expkM, at::Tensor expkN,
         DREAMPLACE_TENSOR_DATA_PTR(expkM, scalar_t),
         DREAMPLACE_TENSOR_DATA_PTR(expkN, scalar_t));
 
-    auto y = at::irfft(buf, 2, false, true, {M, N});
+    auto y = at::irfft(buf, 2, false, true, {{M, N}});
 
     idxst_idctPostprocessCudaLauncher<scalar_t>(
         DREAMPLACE_TENSOR_DATA_PTR(y, scalar_t),

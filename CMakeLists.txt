@@ -52,7 +52,11 @@ set(LIMBO_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Limbo)
 message(STATUS "LIMBO_SOURCE_DIR ${LIMBO_SOURCE_DIR}")
 set(LIMBO_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/thirdparty/Limbo)
 message(STATUS "LIMBO_BINARY_DIR ${LIMBO_BINARY_DIR}")
-set(CUB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/cub)
+if(${CUDA_VERSION_MAJOR} VERSION_LESS "11")
+    set(CUB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/cub)
+else()
+    set(CUB_DIR ${CUDA_INCLUDE_DIRS})
+endif()
 message(STATUS "CUB_DIR ${CUB_DIR}")
 
 # munkres-cpp for Hungarian algorithm 
