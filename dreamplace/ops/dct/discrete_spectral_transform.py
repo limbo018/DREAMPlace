@@ -10,6 +10,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import pdb
+import dreamplace.ops.dct.torch_fft_api as torch_fft_api
 
 """ Discrete spectral transformation leveraging fast fourier transform engine.
 The math here mainly uses Prosthaphaeresis properties.
@@ -27,7 +28,6 @@ y_{u, v} = \sum_i \sum_j x_{i, j} exp(-j*2*pi*u*i/M) exp(-j*2*pi*v*j/N)
 By mapping the original image from (i, j) to (i, N-j), we can have (u*i/M - v*j/N) inside exp.
 This will enable us to derive various cos/sin transformation by computing FFT twice.
 """
-
 
 def get_expk(N, dtype, device):
     """ Compute 2*exp(-1j*pi*u/(2N)), but not exactly the same.
@@ -79,7 +79,6 @@ def get_perm(N, dtype, device):
 
     return perm
 
-
 def dct_2N(x, expk=None):
     """ Batch Discrete Cosine Transformation without normalization to coefficients.
     Compute y_u = \sum_i  x_i cos(pi*(2i+1)*u/(2N)),
@@ -97,7 +96,7 @@ def dct_2N(x, expk=None):
     x_pad = F.pad(x, (0, N), 'constant', 0)
 
     # the last dimension here becomes -2 because complex numbers introduce a new dimension
-    y = torch.rfft(x_pad, signal_ndim=1, normalized=False, onesided=True)[..., 0:N, :]
+    y = torch_fft_api.rfft(x_pad, signal_ndim=1, normalized=False, onesided=True)[..., 0:N, :]
     y.mul_(1.0/N)
 
     if expk is None:
@@ -138,7 +137,7 @@ def dct_N(x, perm=None, expk=None):
     # switch back
     x_reorder.transpose_(dim0=-2, dim1=-1)
 
-    y = torch.rfft(x_reorder, signal_ndim=1, normalized=False, onesided=False)[..., 0:N, :]
+    y = torch_fft_api.rfft(x_reorder, signal_ndim=1, normalized=False, onesided=False)[..., 0:N, :]
     y.mul_(1.0/N)
 
     if expk is None:
@@ -177,7 +176,7 @@ def idct_2N(x, expk=None):
         x_pad.unsqueeze_(0)
 
     # the last dimension here becomes -2 because complex numbers introduce a new dimension
-    y = torch.irfft(x_pad, signal_ndim=1, normalized=False, onesided=False, signal_sizes=[2*N])[..., 0:N]
+    y = torch_fft_api.irfft(x_pad, signal_ndim=1, normalized=False, onesided=False, signal_sizes=[2*N])[..., 0:N]
     y.mul_(N)
 
     if len(x.size()) == 1:
@@ -205,7 +204,7 @@ def idct_N(x, expk=None):
     # normal way should multiply 0.25
     x_reorder.mul_(0.5)
 
-    y = torch.ifft(x_reorder, signal_ndim=1, normalized=False)
+    y = torch_fft_api.ifft(x_reorder, signal_ndim=1, normalized=False)
     y.mul_(N)
 
     z = torch.empty_like(x)
@@ -232,7 +231,7 @@ def dst(x, expkp1=None):
     x_pad = F.pad(x, (0, N), 'constant', 0)
 
     # the last dimension here becomes -2 because complex numbers introduce a new dimension
-    y = torch.rfft(x_pad, signal_ndim=1, normalized=False, onesided=True)[..., 1:N+1, :]
+    y = torch_fft_api.rfft(x_pad, signal_ndim=1, normalized=False, onesided=True)[..., 1:N+1, :]
 
     if expkp1 is None:
         expkp1 = get_expkp1(N, dtype=x.dtype, device=x.device)
@@ -269,7 +268,7 @@ def idst(x, expkp1=None):
         x_pad.unsqueeze_(0)
 
     # the last dimension here becomes -2 because complex numbers introduce a new dimension
-    y = torch.irfft(x_pad, signal_ndim=1, normalized=False, onesided=False, signal_sizes=[2*N])[..., 1:N+1]
+    y = torch_fft_api.irfft(x_pad, signal_ndim=1, normalized=False, onesided=False, signal_sizes=[2*N])[..., 1:N+1]
     y.mul_(N)
 
     if len(x.size()) == 1:
@@ -309,7 +308,7 @@ def idxt(x, cos_or_sin_flag, expk=None):
 
     # the last dimension here becomes -2 because complex numbers introduce a new dimension
     # Must use IFFT here
-    y = torch.ifft(x_pad, signal_ndim=1, normalized=False)[..., 0:N, cos_or_sin_flag]
+    y = torch_fft_api.ifft(x_pad, signal_ndim=1, normalized=False)[..., 0:N, cos_or_sin_flag]
     y.mul_(N)
 
     if len(x.size()) == 1:
