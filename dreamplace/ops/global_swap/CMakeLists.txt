@@ -9,7 +9,7 @@ if (CUDA_FOUND)
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
     set(CUDA_SEPARABLE_COMPILATION TRUE)
     list(APPEND CUDA_NVCC_FLAGS
-        -O3 -std=c++11 ${CMAKE_CUDA_FLAGS} 
+        -O3 ${CMAKE_CUDA_FLAGS} 
         )
     list(APPEND CUDA_NVCC_FLAGS --compiler-options -fPIC)
 

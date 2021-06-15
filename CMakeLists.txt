@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.14)
 
-project(DREAMPlace)
+project(DREAMPlace C CXX)
 
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set (CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_SOURCE_DIR}/install" CACHE PATH "Prefix prepended to install directories" FORCE )
@@ -13,6 +13,12 @@ if(NOT CMAKE_BUILD_TYPE)
         FORCE)
 endif(NOT CMAKE_BUILD_TYPE)
 message(STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
+
+# This is a dirty fix for CMake on some machines that generates default CXX standard and override the custom settings, 
+# because CUDA does not support C++17 and higher. 
+# You can check the CMAKE_CXX_FLAGS in CMakeCache.txt to verify the issue. 
+string(REGEX REPLACE "-std=c\\+\\+([0-9a-z]+)" "" CMAKE_CXX_FLAGS_INIT ${CMAKE_CXX_FLAGS})
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_INIT}" CACHE STRING "Flags used by the compiler during all build types." FORCE)
 
 if(NOT CMAKE_CXX_ABI)
     set(CMAKE_CXX_ABI 0 CACHE STRING
@@ -30,6 +36,14 @@ set(Boost_NO_BOOST_CMAKE TRUE)
 find_package(Boost 1.55.0 REQUIRED)
 message(STATUS "Boost_INCLUDE_DIRS = ${Boost_INCLUDE_DIRS}")
 find_package(CUDA 9.0)
+if(CUDA_FOUND AND ${CUDA_VERSION_MAJOR} VERSION_GREATER_EQUAL "11")
+  # new CUB requires c++14
+  set(CMAKE_CXX_STANDARD 14)
+  message(STATUS "Use C++14")
+else()
+  set(CMAKE_CXX_STANDARD 11)
+  message(STATUS "Use C++11")
+endif()
 find_package(Cairo)
 message(STATUS "Cairo: ${CAIRO_INCLUDE_DIRS}")
 
@@ -73,13 +87,6 @@ list(APPEND LEMON_INCLUDE_DIRS "${LEMON_BINARY_DIR}")
 set(LEMON_LINK_DIRS ${LEMON_BINARY_DIR}/lemon)
 message(STATUS "LEMON_INCLUDE_DIRS ${LEMON_INCLUDE_DIRS}")
 message(STATUS "LEMON_LINK_DIRS ${LEMON_LINK_DIRS}")
-
-if(CUDA_FOUND AND ${CUDA_VERSION_MAJOR} VERSION_GREATER_EQUAL "11")
-  # new CUB requires c++14
-  set(CMAKE_CXX_STANDARD 14)
-else()
-  set(CMAKE_CXX_STANDARD 11)
-endif()
 
 if (CUDA_FOUND)
 if (NOT CMAKE_CUDA_FLAGS)
