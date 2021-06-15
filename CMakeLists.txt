@@ -17,7 +17,7 @@ message(STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 # This is a dirty fix for CMake on some machines that generates default CXX standard and override the custom settings, 
 # because CUDA does not support C++17 and higher. 
 # You can check the CMAKE_CXX_FLAGS in CMakeCache.txt to verify the issue. 
-string(REGEX REPLACE "-std=c\\+\\+([0-9a-z]+)" "" CMAKE_CXX_FLAGS_INIT ${CMAKE_CXX_FLAGS})
+string(REGEX REPLACE "-std=c\\+\\+([0-9a-z]+)" " " CMAKE_CXX_FLAGS_INIT ${CMAKE_CXX_FLAGS})
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_INIT}" CACHE STRING "Flags used by the compiler during all build types." FORCE)
 
 if(NOT CMAKE_CXX_ABI)
