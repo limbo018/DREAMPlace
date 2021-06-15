@@ -13,10 +13,23 @@
 #include <torch/extension.h>
 
 #if TORCH_MINOR_VERSION >= 3
-#define DREAMPLACE_TENSOR_DATA_PTR(TENSOR, TYPE) TENSOR.data_ptr<TYPE>()
+#define DREAMPLACE_TENSOR_DATA_PTR(TENSOR, TYPE) \
+    ((TENSOR.defined())? TENSOR.data_ptr<TYPE>() : nullptr)
+#define DREAMPLACE_TENSOR_SCALARTYPE(TENSOR) TENSOR.scalar_type()
 #else
-#define DREAMPLACE_TENSOR_DATA_PTR(TENSOR, TYPE) TENSOR.data<TYPE>()
+#define DREAMPLACE_TENSOR_DATA_PTR(TENSOR, TYPE) \
+    ((TENSOR.defined())? TENSOR.data<TYPE>() : nullptr)
+#define DREAMPLACE_TENSOR_SCALARTYPE(TENSOR) TENSOR.type().scalarType()
 #endif
+
+#if TORCH_MAJOR_VERSION > 1 || (TORCH_MAJOR_VERSION == 1 && TORCH_MINOR_VERSION >= 8)
+#define DREAMPLACE_PRIVATE_CASE_TYPE(NAME, enum_type, type, ...) \
+    AT_PRIVATE_CASE_TYPE(NAME, enum_type, type, __VA_ARGS__)
+#else
+#define DREAMPLACE_PRIVATE_CASE_TYPE(NAME, enum_type, type, ...) \
+    AT_PRIVATE_CASE_TYPE(enum_type, type, __VA_ARGS__)
+#endif
+
 #else
 #include <torch/torch.h>
 #endif
@@ -41,33 +54,29 @@
 
 #include "utility/src/torch_fft_api.h"
 
-#if TORCH_MAJOR_VERSION > 1 || (TORCH_MAJOR_VERSION == 1 && TORCH_MINOR_VERSION >= 8)
+#define DREAMPLACE_DISPATCH_FLOATING_TYPES(TENSOR, NAME, ...)                         \
+  [&] {                                                                               \
+    at::ScalarType _st = DREAMPLACE_TENSOR_SCALARTYPE(TENSOR);                        \
+    switch (_st) {                                                                    \
+      DREAMPLACE_PRIVATE_CASE_TYPE(NAME, at::ScalarType::Double, double, __VA_ARGS__) \
+      DREAMPLACE_PRIVATE_CASE_TYPE(NAME, at::ScalarType::Float, float, __VA_ARGS__)   \
+      default:                                                                        \
+        AT_ERROR(#NAME, " not implemented for '", toString(_st), "'");                \
+    }                                                                                 \
+  }()
 
-#define DREAMPLACE_DISPATCH_FLOATING_TYPES(TYPE, NAME, ...)             \
-  [&] {                                                                 \
-    const auto& the_type = TYPE;                                        \
-    (void)the_type;                                                     \
-    at::ScalarType _st = TYPE.scalarType();                             \
-    switch (_st) {                                                      \
-      AT_PRIVATE_CASE_TYPE(NAME, at::ScalarType::Double, double, __VA_ARGS__) \
-      AT_PRIVATE_CASE_TYPE(NAME, at::ScalarType::Float, float, __VA_ARGS__)   \
-      default:                                                          \
-        AT_ERROR(#NAME, " not implemented for '", toString(_st), "'");  \
-    }                                                                   \
+/// I remove the support to Char, since int8_t does not compile for CUDA
+/// char does not compile for ATen either
+#define DREAMPLACE_DISPATCH_INT_FLOAT_TYPES(TENSOR, NAME, ...)                        \
+  [&] {                                                                               \
+    at::ScalarType _st = DREAMPLACE_TENSOR_SCALARTYPE(TENSOR);                        \
+    switch (_st) {                                                                    \
+      DREAMPLACE_PRIVATE_CASE_TYPE(NAME, at::ScalarType::Float, float, __VA_ARGS__)   \
+      DREAMPLACE_PRIVATE_CASE_TYPE(NAME, at::ScalarType::Double, double, __VA_ARGS__) \
+      DREAMPLACE_PRIVATE_CASE_TYPE(NAME, at::ScalarType::Int, int, __VA_ARGS__)       \
+      default:                                                                        \
+        AT_ERROR(#NAME, " not implemented for '", at::toString(_st), "'");            \
+    }                                                                                 \
   }()
-#else
-#define DREAMPLACE_DISPATCH_FLOATING_TYPES(TYPE, NAME, ...)             \
-  [&] {                                                                 \
-    const auto& the_type = TYPE;                                        \
-    (void)the_type;                                                     \
-    at::ScalarType _st = TYPE.scalarType();                             \
-    switch (_st) {                                                      \
-      AT_PRIVATE_CASE_TYPE(at::ScalarType::Double, double, __VA_ARGS__) \
-      AT_PRIVATE_CASE_TYPE(at::ScalarType::Float, float, __VA_ARGS__)   \
-      default:                                                          \
-        AT_ERROR(#NAME, " not implemented for '", toString(_st), "'");  \
-    }                                                                   \
-  }()
-#endif
 
 #endif

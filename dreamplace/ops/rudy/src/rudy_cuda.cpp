@@ -49,7 +49,7 @@ void rudy_forward(at::Tensor pin_pos, at::Tensor netpin_start,
   int num_pins = pin_pos.numel() / 2;
 
   // Call the cuda kernel launcher
-  DREAMPLACE_DISPATCH_FLOATING_TYPES(pin_pos.type(), "rudyCudaLauncher", [&] {
+  DREAMPLACE_DISPATCH_FLOATING_TYPES(pin_pos, "rudyCudaLauncher", [&] {
     rudyCudaLauncher<scalar_t>(
         DREAMPLACE_TENSOR_DATA_PTR(pin_pos, scalar_t),
         DREAMPLACE_TENSOR_DATA_PTR(pin_pos, scalar_t) + num_pins,

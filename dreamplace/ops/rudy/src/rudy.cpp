@@ -118,7 +118,7 @@ void rudy_forward(at::Tensor pin_pos, at::Tensor netpin_start,
   int num_nets = netpin_start.numel() - 1;
   int num_pins = pin_pos.numel() / 2;
 
-  DREAMPLACE_DISPATCH_FLOATING_TYPES(pin_pos.type(), "rudyLauncher", [&] {
+  DREAMPLACE_DISPATCH_FLOATING_TYPES(pin_pos, "rudyLauncher", [&] {
     rudyLauncher<scalar_t>(
         DREAMPLACE_TENSOR_DATA_PTR(pin_pos, scalar_t),
         DREAMPLACE_TENSOR_DATA_PTR(pin_pos, scalar_t) + num_pins,

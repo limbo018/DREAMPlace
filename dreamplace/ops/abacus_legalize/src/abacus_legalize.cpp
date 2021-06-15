@@ -94,7 +94,7 @@ at::Tensor abacus_legalization_forward(
   timer_start = CPUTimer::getGlobaltime();
   // Call the cuda kernel launcher
   DREAMPLACE_DISPATCH_FLOATING_TYPES(
-      pos.type(), "abacusLegalizationLauncher", [&] {
+      pos, "abacusLegalizationLauncher", [&] {
         auto db = make_placedb<scalar_t>(
             init_pos, pos_copy, node_size_x, node_size_y, node_weights,
             flat_region_boxes, flat_region_boxes_start, node2fence_region_map,

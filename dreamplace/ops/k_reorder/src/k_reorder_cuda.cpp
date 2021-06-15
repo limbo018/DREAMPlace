@@ -22,32 +22,6 @@ template <typename T>
 int kreorderCUDALauncher(DetailedPlaceDB<T> db, int K, int max_iters,
                          int num_threads);
 
-/// I remove the support to Char, since int8_t does not compile for CUDA
-/// char does not compile for ATen either
-#if TORCH_MAJOR_VERSION > 1 || (TORCH_MAJOR_VERSION == 1 && TORCH_MINOR_VERSION >= 8)
-#define DISPATCH_CUSTOM_TYPES(TYPE, NAME, ...)                              \
-  [&] {                                                                     \
-    switch (TYPE) {                                                         \
-      AT_PRIVATE_CASE_TYPE(NAME, at::ScalarType::Float, float, __VA_ARGS__)       \
-      AT_PRIVATE_CASE_TYPE(NAME, at::ScalarType::Double, double, __VA_ARGS__)     \
-      AT_PRIVATE_CASE_TYPE(NAME, at::ScalarType::Int, int, __VA_ARGS__)           \
-      default:                                                              \
-        AT_ERROR(#NAME, " not implemented for '", at::toString(TYPE), "'"); \
-    }                                                                       \
-  }()
-#else
-#define DISPATCH_CUSTOM_TYPES(TYPE, NAME, ...)                              \
-  [&] {                                                                     \
-    switch (TYPE) {                                                         \
-      AT_PRIVATE_CASE_TYPE(at::ScalarType::Float, float, __VA_ARGS__)       \
-      AT_PRIVATE_CASE_TYPE(at::ScalarType::Double, double, __VA_ARGS__)     \
-      AT_PRIVATE_CASE_TYPE(at::ScalarType::Int, int, __VA_ARGS__)           \
-      default:                                                              \
-        AT_ERROR(#NAME, " not implemented for '", at::toString(TYPE), "'"); \
-    }                                                                       \
-  }()
-#endif
-
 at::Tensor k_reorder_cuda_forward(
     at::Tensor init_pos, at::Tensor node_size_x, at::Tensor node_size_y,
     at::Tensor flat_region_boxes, at::Tensor flat_region_boxes_start,
@@ -66,7 +40,7 @@ at::Tensor k_reorder_cuda_forward(
   auto pos = init_pos.clone();
 
   // Call the cuda kernel launcher
-  DISPATCH_CUSTOM_TYPES(pos.scalar_type(), "kreorderCUDALauncher", [&] {
+  DREAMPLACE_DISPATCH_INT_FLOAT_TYPES(pos, "kreorderCUDALauncher", [&] {
     auto db = make_placedb<scalar_t>(
         init_pos, pos, node_size_x, node_size_y, flat_region_boxes,
         flat_region_boxes_start, node2fence_region_map, flat_net2pin_map,

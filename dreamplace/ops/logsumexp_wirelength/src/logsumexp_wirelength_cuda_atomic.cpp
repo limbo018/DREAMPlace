@@ -57,11 +57,11 @@ std::vector<at::Tensor> logsumexp_wirelength_atomic_forward(
 
   // log-sum-exp for x, log-sum-exp for -x, log-sum-exp for y, log-sum-exp for
   // -y
-  at::Tensor partial_wl = at::zeros({4, num_nets}, pos.type());
+  at::Tensor partial_wl = at::zeros({4, num_nets}, pos.options());
   at::Tensor exp_xy = at::zeros_like(pos);
   at::Tensor exp_nxy = at::zeros_like(pos);
-  at::Tensor exp_xy_sum = at::zeros({2, num_nets}, pos.type());
-  at::Tensor exp_nxy_sum = at::zeros({2, num_nets}, pos.type());
+  at::Tensor exp_xy_sum = at::zeros({2, num_nets}, pos.options());
+  at::Tensor exp_nxy_sum = at::zeros({2, num_nets}, pos.options());
 
   // it is ok for xy_max and xy_min to be integer
   // we do not really need accurate max/min, just some values to scale x/y
@@ -72,7 +72,7 @@ std::vector<at::Tensor> logsumexp_wirelength_atomic_forward(
                                at::CUDA(at::kInt));
 
   DREAMPLACE_DISPATCH_FLOATING_TYPES(
-      pos.type(), "computeLogSumExpWirelengthCudaAtomicLauncher", [&] {
+      pos, "computeLogSumExpWirelengthCudaAtomicLauncher", [&] {
         computeLogSumExpWirelengthCudaAtomicLauncher<scalar_t, V>(
             DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t),
             DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + num_pins,
@@ -145,7 +145,7 @@ at::Tensor logsumexp_wirelength_atomic_backward(
   int num_pins = pin2net_map.numel();
 
   DREAMPLACE_DISPATCH_FLOATING_TYPES(
-      pos.type(), "computeLogSumExpWirelengthCudaAtomicLauncher", [&] {
+      pos, "computeLogSumExpWirelengthCudaAtomicLauncher", [&] {
         computeLogSumExpWirelengthCudaAtomicLauncher<scalar_t, V>(
             DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t),
             DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + num_pins,

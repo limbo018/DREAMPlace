@@ -58,7 +58,7 @@ std::vector<at::Tensor> weighted_average_wirelength_forward(
   at::Tensor wl = at::zeros({num_nets}, pos.options());
 
   DREAMPLACE_DISPATCH_FLOATING_TYPES(
-      pos.type(), "computeWeightedAverageWirelengthLauncher", [&] {
+      pos, "computeWeightedAverageWirelengthLauncher", [&] {
         computeWeightedAverageWirelengthLauncher<scalar_t>(
             DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t),
             DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + pos.numel() / 2,
@@ -118,7 +118,7 @@ at::Tensor weighted_average_wirelength_backward(
   at::Tensor grad_out = at::zeros_like(pos);
 
   DREAMPLACE_DISPATCH_FLOATING_TYPES(
-      pos.type(), "computeWeightedAverageWirelengthLauncher", [&] {
+      pos, "computeWeightedAverageWirelengthLauncher", [&] {
         computeWeightedAverageWirelengthLauncher<scalar_t>(
             DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t),
             DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + pos.numel() / 2,

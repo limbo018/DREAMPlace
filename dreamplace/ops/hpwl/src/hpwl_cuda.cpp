@@ -44,7 +44,7 @@ at::Tensor hpwl_forward(at::Tensor pos, at::Tensor flat_netpin,
   at::Tensor partial_wl = at::zeros({2, num_nets}, pos.options());
 
   DREAMPLACE_DISPATCH_FLOATING_TYPES(
-      pos.type(), "computeHPWLCudaLauncher", [&] {
+      pos, "computeHPWLCudaLauncher", [&] {
         computeHPWLCudaLauncher<scalar_t>(
             DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t),
             DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + pos.numel() / 2,

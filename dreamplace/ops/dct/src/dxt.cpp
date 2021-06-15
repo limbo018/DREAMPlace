@@ -15,7 +15,7 @@ at::Tensor idxct_forward(at::Tensor x, at::Tensor expk, int num_threads) {
 
   // std::cout << __func__ << " z\n" << z << "\n";
 
-  DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idxct_forward", [&] {
+  DREAMPLACE_DISPATCH_FLOATING_TYPES(x, "idxct_forward", [&] {
     addX0AndScale<scalar_t>(DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t), M, N,
                             DREAMPLACE_TENSOR_DATA_PTR(z, scalar_t),
                             num_threads);
@@ -33,7 +33,7 @@ at::Tensor idxst_forward(at::Tensor x, at::Tensor expk, int num_threads) {
   auto x_reorder = at::empty({M, N}, x.options());
   auto y = at::empty_like(x);
 
-  DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idxst_forward", [&] {
+  DREAMPLACE_DISPATCH_FLOATING_TYPES(x, "idxst_forward", [&] {
     computeFlipAndShift<scalar_t>(
         DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t), M, N,
         DREAMPLACE_TENSOR_DATA_PTR(x_reorder, scalar_t), num_threads);
@@ -70,7 +70,7 @@ at::Tensor idcct2_forward(at::Tensor x, at::Tensor expk0, at::Tensor expk1,
   auto v = at::empty({M * N + std::max(M, N)}, x.options())
                .resize_({M, N / 2 + 1, 2});
 
-  DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idcct2_forward", [&] {
+  DREAMPLACE_DISPATCH_FLOATING_TYPES(x, "idcct2_forward", [&] {
     computeVk<scalar_t>(DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t),
                         DREAMPLACE_TENSOR_DATA_PTR(expk1, scalar_t), M, N,
                         DREAMPLACE_TENSOR_DATA_PTR(v, scalar_t), num_threads);
@@ -143,10 +143,10 @@ at::Tensor idsct2_forward(at::Tensor x, at::Tensor expk0, at::Tensor expk1,
   // vk = 0.5*W_{4N}^{k} (c[k] - c[N-k])
   // vk is hermitian symmetric, only fill in half
   auto v =
-      at::empty({M * N + std::max(M, N)}, x.type()).resize_({M, N / 2 + 1, 2});
+      at::empty({M * N + std::max(M, N)}, x.options()).resize_({M, N / 2 + 1, 2});
   auto z = at::empty({M, N}, x.options());
 
-  DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idsct2_forward", [&] {
+  DREAMPLACE_DISPATCH_FLOATING_TYPES(x, "idsct2_forward", [&] {
     computeVk<scalar_t>(DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t),
                         DREAMPLACE_TENSOR_DATA_PTR(expk1, scalar_t), M, N,
                         DREAMPLACE_TENSOR_DATA_PTR(v, scalar_t), num_threads);
@@ -226,7 +226,7 @@ at::Tensor idcst2_forward(at::Tensor x, at::Tensor expk0, at::Tensor expk1,
   // auto z = at::empty_like(x);
   auto z = at::empty({M, N}, x.options());
 
-  DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idcst2_forward", [&] {
+  DREAMPLACE_DISPATCH_FLOATING_TYPES(x, "idcst2_forward", [&] {
     computeFlipAndShift<scalar_t>(DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t), M, N,
                                   DREAMPLACE_TENSOR_DATA_PTR(z, scalar_t),
                                   num_threads);
@@ -308,10 +308,10 @@ at::Tensor idxst_idct_forward(at::Tensor x, at::Tensor expk0, at::Tensor expk1,
   // vk = 0.5*W_{4N}^{k} (c[k] - c[N-k])
   // vk is hermitian symmetric, only fill in half
   auto v =
-      at::empty({M * N + std::max(M, N)}, x.type()).resize_({M, N / 2 + 1, 2});
+      at::empty({M * N + std::max(M, N)}, x.options()).resize_({M, N / 2 + 1, 2});
   auto z = at::empty({M, N}, x.options());
 
-  DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idsct2_forward", [&] {
+  DREAMPLACE_DISPATCH_FLOATING_TYPES(x, "idsct2_forward", [&] {
     computeVk<scalar_t>(DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t),
                         DREAMPLACE_TENSOR_DATA_PTR(expk1, scalar_t), M, N,
                         DREAMPLACE_TENSOR_DATA_PTR(v, scalar_t), num_threads);
@@ -385,7 +385,7 @@ at::Tensor idct_idxst_forward(at::Tensor x, at::Tensor expk0, at::Tensor expk1,
   // auto z = at::empty_like(x);
   auto z = at::empty({M, N}, x.options());
 
-  DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idcst2_forward", [&] {
+  DREAMPLACE_DISPATCH_FLOATING_TYPES(x, "idcst2_forward", [&] {
     computeFlipAndShift<scalar_t>(DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t), M, N,
                                   DREAMPLACE_TENSOR_DATA_PTR(z, scalar_t),
                                   num_threads);

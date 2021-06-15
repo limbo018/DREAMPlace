@@ -36,11 +36,11 @@ at::Tensor hpwl_atomic_forward(at::Tensor pos, at::Tensor pin2net_map,
 
   int num_nets = net_mask.numel();
   // x then y
-  at::Tensor partial_hpwl_max = at::zeros({2, num_nets}, pos.type());
-  at::Tensor partial_hpwl_min = at::zeros({2, num_nets}, pos.type());
+  at::Tensor partial_hpwl_max = at::zeros({2, num_nets}, pos.options());
+  at::Tensor partial_hpwl_min = at::zeros({2, num_nets}, pos.options());
 
   DREAMPLACE_DISPATCH_FLOATING_TYPES(
-      pos.type(), "computeHPWLAtomicLauncher", [&] {
+      pos, "computeHPWLAtomicLauncher", [&] {
         partial_hpwl_max[0].fill_(std::numeric_limits<scalar_t>::min());
         partial_hpwl_max[1].fill_(std::numeric_limits<scalar_t>::min());
         partial_hpwl_min[0].fill_(std::numeric_limits<scalar_t>::max());

@@ -108,7 +108,7 @@ at::Tensor pin_utilization_map_forward(
       at::zeros({num_bins_x, num_bins_y}, pos.options());
   auto num_nodes = pos.numel() / 2;
 
-  DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "pinDemandMapLauncher", [&] {
+  DREAMPLACE_DISPATCH_FLOATING_TYPES(pos, "pinDemandMapLauncher", [&] {
     pinDemandMapLauncher<scalar_t>(
         DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t),
         DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + num_nodes,

@@ -158,7 +158,7 @@ std::vector<at::Tensor> weighted_average_wirelength_forward(
   at::Tensor grad_intermediate = at::zeros_like(pos);
 
   DREAMPLACE_DISPATCH_FLOATING_TYPES(
-      pos.type(), "computeWeightedAverageWirelengthMergedLauncher", [&] {
+      pos, "computeWeightedAverageWirelengthMergedLauncher", [&] {
         computeWeightedAverageWirelengthMergedLauncher<scalar_t>(
             DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t),
             DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + num_pins,
@@ -214,7 +214,7 @@ at::Tensor weighted_average_wirelength_backward(
   at::Tensor grad_out = grad_intermediate.mul_(grad_pos);
 
   DREAMPLACE_DISPATCH_FLOATING_TYPES(
-      pos.type(), "computeWeightedAverageWirelengthMergedLauncher", [&] {
+      pos, "computeWeightedAverageWirelengthMergedLauncher", [&] {
         if (net_weights.numel()) {
           integrateNetWeightsLauncher<scalar_t>(
               DREAMPLACE_TENSOR_DATA_PTR(flat_netpin, int),

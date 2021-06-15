@@ -62,7 +62,7 @@ at::Tensor pin_utilization_map_forward(
   auto num_nodes = pos.numel() / 2;
 
   DREAMPLACE_DISPATCH_FLOATING_TYPES(
-      pos.type(), "pinDemandMapCudaLauncher", [&] {
+      pos, "pinDemandMapCudaLauncher", [&] {
         pinDemandMapCudaLauncher<scalar_t>(
             DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t),
             DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + num_nodes,
