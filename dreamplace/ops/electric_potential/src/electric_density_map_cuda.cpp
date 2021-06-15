@@ -88,7 +88,7 @@ at::Tensor density_map(
 
   // Call the cuda kernel launcher
   DREAMPLACE_DISPATCH_FLOATING_TYPES(
-      pos.type(), "computeTriangleDensityMapCudaLauncher", [&] {
+      pos, "computeTriangleDensityMapCudaLauncher", [&] {
         computeTriangleDensityMapCudaLauncher<scalar_t>(
             DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t),
             DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + num_nodes,
@@ -109,7 +109,7 @@ at::Tensor density_map(
   if (num_filler_nodes) {
     int num_physical_nodes = num_nodes - num_filler_nodes;
     DREAMPLACE_DISPATCH_FLOATING_TYPES(
-        pos.type(), "computeTriangleDensityMapCudaLauncher", [&] {
+        pos, "computeTriangleDensityMapCudaLauncher", [&] {
           computeTriangleDensityMapCudaLauncher<scalar_t>(
               DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + num_physical_nodes,
               DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + num_nodes +
@@ -156,7 +156,7 @@ at::Tensor fixed_density_map(at::Tensor pos, at::Tensor node_size_x,
   // Call the cuda kernel launcher
   if (num_terminals) {
     DREAMPLACE_DISPATCH_FLOATING_TYPES(
-        pos.type(), "computeExactDensityMapCudaLauncher", [&] {
+        pos, "computeExactDensityMapCudaLauncher", [&] {
           computeExactDensityMapCudaLauncher<scalar_t>(
               DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + num_movable_nodes,
               DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + num_nodes +

@@ -40,7 +40,7 @@ at::Tensor hpwl_forward(at::Tensor pos, at::Tensor flat_netpin,
 
   int num_nets = netpin_start.numel() - 1;
   at::Tensor hpwl = at::zeros(num_nets, pos.options());
-  DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "computeHPWLLauncher", [&] {
+  DREAMPLACE_DISPATCH_FLOATING_TYPES(pos, "computeHPWLLauncher", [&] {
     computeHPWLLauncher<scalar_t>(
         DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t),
         DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + pos.numel() / 2,
