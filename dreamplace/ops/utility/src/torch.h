@@ -13,37 +13,50 @@
 #include <torch/extension.h>
 
 #if TORCH_MINOR_VERSION >= 3
+
 #define DREAMPLACE_TENSOR_DATA_PTR(TENSOR, TYPE) \
-    ((TENSOR.defined())? TENSOR.data_ptr<TYPE>() : nullptr)
+  ((TENSOR.defined())? TENSOR.data_ptr<TYPE>() : nullptr)
 #define DREAMPLACE_TENSOR_SCALARTYPE(TENSOR) TENSOR.scalar_type()
+
 #else
+
 #define DREAMPLACE_TENSOR_DATA_PTR(TENSOR, TYPE) \
-    ((TENSOR.defined())? TENSOR.data<TYPE>() : nullptr)
+  ((TENSOR.defined())? TENSOR.data<TYPE>() : nullptr)
 #define DREAMPLACE_TENSOR_SCALARTYPE(TENSOR) TENSOR.type().scalarType()
+
 #endif
 
 #if TORCH_MAJOR_VERSION > 1 || (TORCH_MAJOR_VERSION == 1 && TORCH_MINOR_VERSION >= 8)
+
 #define DREAMPLACE_PRIVATE_CASE_TYPE(NAME, enum_type, type, ...) \
-    AT_PRIVATE_CASE_TYPE(NAME, enum_type, type, __VA_ARGS__)
+  AT_PRIVATE_CASE_TYPE(NAME, enum_type, type, __VA_ARGS__)
+
 #else
+
 #define DREAMPLACE_PRIVATE_CASE_TYPE(NAME, enum_type, type, ...) \
-    AT_PRIVATE_CASE_TYPE(enum_type, type, __VA_ARGS__)
+  AT_PRIVATE_CASE_TYPE(enum_type, type, __VA_ARGS__)
+
 #endif
 
 #else
+
 #include <torch/torch.h>
+
 #endif
+
 #include <limits>
 
 #define CHECK_CPU(x) AT_ASSERTM(!x.is_cuda(), #x " must be a tensor on CPU")
 #define CHECK_CUDA(x) AT_ASSERTM(x.is_cuda(), #x " must be a tensor on CUDA")
+#define CHECK_FLAT(x) AT_ASSERTM(x.ndimension() == 1, #x "must be a flat tensor")
 
 #define CHECK_FLAT_CPU(x)                         \
-  AT_ASSERTM(!x.is_cuda() && x.ndimension() == 1, \
-             #x " must be a flat tensor on CPU")
-#define CHECK_FLAT_CUDA(x)                       \
-  AT_ASSERTM(x.is_cuda() && x.ndimension() == 1, \
-             #x " must be a flat tensor on CUDA")
+  CHECK_CPU(x);                                   \
+  CHECK_FLAT(x); 
+#define CHECK_FLAT_CUDA(x)                        \
+  CHECK_CUDA(x);                                  \
+  CHECK_FLAT(x); 
+
 #define CHECK_EVEN(x) \
   AT_ASSERTM((x.numel() & 1) == 0, #x "must have even number of elements")
 #define CHECK_CONTIGUOUS(x) \
