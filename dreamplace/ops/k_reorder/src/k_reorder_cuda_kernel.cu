@@ -1199,10 +1199,8 @@ int kreorderCUDALauncher(DetailedPlaceDB<T> db, int K, int max_iters,
 }
 
 #define REGISTER_KERNEL_LAUNCHER(T)                                      \
-  void instantiateKReorderCUDALauncher(DetailedPlaceDB<T> db, int K,     \
-                                       int max_iters, int num_threads) { \
-    kreorderCUDALauncher<T>(db, K, max_iters, num_threads);              \
-  }
+  template int kreorderCUDALauncher<T>(DetailedPlaceDB<T> db, int K,     \
+                                       int max_iters, int num_threads); 
 
 REGISTER_KERNEL_LAUNCHER(int);
 REGISTER_KERNEL_LAUNCHER(float);

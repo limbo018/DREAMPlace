@@ -455,7 +455,7 @@ int computeElectricForceCudaLauncher(
 }
 
 #define REGISTER_KERNEL_LAUNCHER(T)                                            \
-  int instantiateComputeElectricForceLauncher(                                 \
+  template int computeElectricForceCudaLauncher<T>(                            \
       int num_bins_x, int num_bins_y, int num_impacted_bins_x,                 \
       int num_impacted_bins_y, const T *field_map_x_tensor,                    \
       const T *field_map_y_tensor, const T *x_tensor, const T *y_tensor,       \
@@ -464,15 +464,7 @@ int computeElectricForceCudaLauncher(
       const T *offset_y_tensor, const T *ratio_tensor,                         \
       const T *bin_center_x_tensor, const T *bin_center_y_tensor, T xl, T yl,  \
       T xh, T yh, T bin_size_x, T bin_size_y, int num_nodes, T *grad_x_tensor, \
-      T *grad_y_tensor, const int *sorted_node_map) {                          \
-    return computeElectricForceCudaLauncher(                                   \
-        num_bins_x, num_bins_y, num_impacted_bins_x, num_impacted_bins_y,      \
-        field_map_x_tensor, field_map_y_tensor, x_tensor, y_tensor,            \
-        node_size_x_clamped_tensor, node_size_y_clamped_tensor,                \
-        offset_x_tensor, offset_y_tensor, ratio_tensor, bin_center_x_tensor,   \
-        bin_center_y_tensor, xl, yl, xh, yh, bin_size_x, bin_size_y,           \
-        num_nodes, grad_x_tensor, grad_y_tensor, sorted_node_map);             \
-  }
+      T *grad_y_tensor, const int *sorted_node_map); 
 
 REGISTER_KERNEL_LAUNCHER(float);
 REGISTER_KERNEL_LAUNCHER(double);

@@ -1,39 +1,64 @@
-project(dct)
+set(OP_NAME dct)
 
-if (NOT CMAKE_CUDA_FLAGS)
-    set(CMAKE_CUDA_FLAGS "-gencode=arch=compute_60,code=sm_60")
-endif()
+set(INCLUDE_DIRS 
+  ${CMAKE_CURRENT_SOURCE_DIR}/..
+  )
 
-if (PYTHON)
-    set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")
-    set(SETUP_PY    "${CMAKE_CURRENT_BINARY_DIR}/setup.py")
-    file(GLOB SOURCES 
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cu"
-        )
-    set(OUTPUT      "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.stamp")
+set(LINK_LIBS utility_cxx
+  OpenMP::OpenMP_CXX
+  )
 
-    configure_file(${SETUP_PY_IN} ${SETUP_PY})
+add_pytorch_extension(dct_cpp 
+  src/dct.cpp
+  src/dst.cpp
+  src/dxt.cpp
+  src/dct_2N.cpp
+  EXTRA_INCLUDE_DIRS ${INCLUDE_DIRS}
+  EXTRA_LINK_LIBRARIES ${LINK_LIBS})
 
-    add_custom_command(OUTPUT ${OUTPUT}
-        COMMAND ${PYTHON} ${SETUP_PY} build --build-temp=${CMAKE_CURRENT_BINARY_DIR}/build --build-lib=${CMAKE_CURRENT_BINARY_DIR}/lib
-        COMMAND ${CMAKE_COMMAND} -E touch ${OUTPUT}
-        DEPENDS ${SOURCES}
-        )
+add_pytorch_extension(dct_lee_cpp
+  src/dct_lee.cpp 
+  EXTRA_INCLUDE_DIRS ${INCLUDE_DIRS}
+  EXTRA_LINK_LIBRARIES ${LINK_LIBS})
 
-    add_custom_target(clean_${PROJECT_NAME}
-        COMMAND rm -rf ${OUTPUT} ${CMAKE_CURRENT_BINARY_DIR}/build ${CMAKE_CURRENT_BINARY_DIR}/lib
-        )
+add_pytorch_extension(dct2_fft2_cpp
+  src/dct2_fft2.cpp
+  EXTRA_INCLUDE_DIRS ${INCLUDE_DIRS}
+  EXTRA_LINK_LIBRARIES ${LINK_LIBS})
 
-    add_custom_target(${PROJECT_NAME} ALL DEPENDS ${OUTPUT})
+install(TARGETS 
+  dct_cpp dct_lee_cpp dct2_fft2_cpp 
+  DESTINATION dreamplace/ops/${OP_NAME})
 
-    install(
-        DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/ DESTINATION dreamplace/ops/${PROJECT_NAME}
-        )
-    file(GLOB INSTALL_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/*.py")
-    list(FILTER INSTALL_SRCS EXCLUDE REGEX ".*setup.py$")
-    install(
-        FILES ${INSTALL_SRCS} DESTINATION dreamplace/ops/${PROJECT_NAME}
-        )
-endif()
+if(CUDA_FOUND)
+add_pytorch_extension(dct_cuda 
+  src/dct_cuda.cpp
+  src/dct_cuda_kernel.cu
+  src/dst_cuda.cpp
+  src/dst_cuda_kernel.cu
+  src/dxt_cuda.cpp
+  src/dct_2N_cuda.cpp
+  EXTRA_INCLUDE_DIRS ${INCLUDE_DIRS}
+  EXTRA_LINK_LIBRARIES ${LINK_LIBS})
+
+add_pytorch_extension(dct_lee_cuda
+  src/dct_lee_cuda.cpp
+  src/dct_lee_cuda_kernel.cu
+  src/dct_cuda_kernel.cu
+  src/dst_cuda_kernel.cu
+  EXTRA_INCLUDE_DIRS ${INCLUDE_DIRS}
+  EXTRA_LINK_LIBRARIES ${LINK_LIBS})
+
+add_pytorch_extension(dct2_fft2_cuda
+  src/dct2_fft2_cuda.cpp
+  src/dct2_fft2_cuda_kernel.cu
+  EXTRA_INCLUDE_DIRS ${INCLUDE_DIRS}
+  EXTRA_LINK_LIBRARIES ${LINK_LIBS})
+
+install(TARGETS 
+  dct_cuda dct_lee_cuda dct2_fft2_cuda 
+  DESTINATION dreamplace/ops/${OP_NAME})
+endif(CUDA_FOUND)
+
+file(GLOB INSTALL_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/*.py)
+install(FILES ${INSTALL_SRCS} DESTINATION dreamplace/ops/${OP_NAME})

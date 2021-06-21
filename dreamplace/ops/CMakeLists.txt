@@ -10,7 +10,7 @@ add_subdirectory(electric_potential)
 add_subdirectory(hpwl)
 add_subdirectory(move_boundary)
 add_subdirectory(weighted_average_wirelength)
-add_subdirectory(rmst_wl)
+#add_subdirectory(rmst_wl)
 add_subdirectory(place_io)
 # legalization operators 
 add_subdirectory(legality_check)

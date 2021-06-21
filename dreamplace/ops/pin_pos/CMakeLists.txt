@@ -1,35 +1,42 @@
 set(OP_NAME pin_pos)
 
-if (PYTHON)
-    set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")
-    set(SETUP_PY    "${CMAKE_CURRENT_BINARY_DIR}/setup.py")
-    file(GLOB SOURCES 
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cu"
-        )
-    set(OUTPUT      "${CMAKE_CURRENT_BINARY_DIR}/${OP_NAME}.stamp")
+set(TARGET_NAME ${OP_NAME})
 
-    configure_file(${SETUP_PY_IN} ${SETUP_PY})
+set(INCLUDE_DIRS 
+  ${CMAKE_CURRENT_SOURCE_DIR}/..
+  )
 
-    add_custom_command(OUTPUT ${OUTPUT}
-        COMMAND ${PYTHON} ${SETUP_PY} build --build-temp=${CMAKE_CURRENT_BINARY_DIR}/build --build-lib=${CMAKE_CURRENT_BINARY_DIR}/lib
-        COMMAND ${CMAKE_COMMAND} -E touch ${OUTPUT}
-        DEPENDS ${SOURCES}
-        )
+set(LINK_LIBS utility_cxx
+  OpenMP::OpenMP_CXX
+  )
 
-    add_custom_target(clean_${OP_NAME}
-        COMMAND rm -rf ${OUTPUT} ${CMAKE_CURRENT_BINARY_DIR}/build ${CMAKE_CURRENT_BINARY_DIR}/lib
-        )
+add_pytorch_extension(${TARGET_NAME}_cpp 
+  src/pin_pos.cpp
+  EXTRA_INCLUDE_DIRS ${INCLUDE_DIRS}
+  EXTRA_LINK_LIBRARIES ${LINK_LIBS})
 
-    add_custom_target(${OP_NAME} ALL DEPENDS ${OUTPUT})
+install(TARGETS 
+  ${TARGET_NAME}_cpp 
+  DESTINATION dreamplace/ops/${OP_NAME})
 
-    install(
-        DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/ DESTINATION dreamplace/ops/${OP_NAME}
-        )
-    file(GLOB INSTALL_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/*.py")
-    list(FILTER INSTALL_SRCS EXCLUDE REGEX ".*setup.py$")
-    install(
-        FILES ${INSTALL_SRCS} DESTINATION dreamplace/ops/${OP_NAME}
-        )
-endif()
+if(CUDA_FOUND)
+add_pytorch_extension(${TARGET_NAME}_cuda 
+  src/pin_pos_cuda.cpp
+  src/pin_pos_cuda_kernel.cu
+  EXTRA_INCLUDE_DIRS ${INCLUDE_DIRS}
+  EXTRA_LINK_LIBRARIES ${LINK_LIBS})
+
+add_pytorch_extension(${TARGET_NAME}_cuda_segment
+  src/pin_pos_cuda_segment.cpp
+  src/pin_pos_cuda_segment_kernel.cu
+  EXTRA_INCLUDE_DIRS ${INCLUDE_DIRS}
+  EXTRA_LINK_LIBRARIES ${LINK_LIBS})
+
+install(TARGETS 
+  ${TARGET_NAME}_cuda 
+  ${TARGET_NAME}_cuda_segment
+  DESTINATION dreamplace/ops/${OP_NAME})
+endif(CUDA_FOUND)
+
+file(GLOB INSTALL_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/*.py)
+install(FILES ${INSTALL_SRCS} DESTINATION dreamplace/ops/${OP_NAME})

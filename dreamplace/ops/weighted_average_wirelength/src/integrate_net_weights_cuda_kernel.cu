@@ -48,24 +48,14 @@ void integrateNetWeightsCudaLauncher(
 }
 
 #define REGISTER_KERNEL_LAUNCHER(T) \
-    void instantiateIntegrateNetWeightsCudaLauncher(\
+    template void integrateNetWeightsCudaLauncher<T>(\
             const int* pin2net_map, \
             const unsigned char* net_mask, \
             const T* net_weights, \
-            T* partial_wl, \
             T* grad_x_tensor, T* grad_y_tensor, \
             int num_pins\
-            )\
-    {\
-        integrateNetWeightsCudaLauncher(\
-                pin2net_map, \
-                net_mask, \
-                net_weights, \
-                grad_x_tensor, \
-                grad_y_tensor, \
-                num_pins \
-                );\
-    }
+            );
+
 REGISTER_KERNEL_LAUNCHER(float);
 REGISTER_KERNEL_LAUNCHER(double);
 

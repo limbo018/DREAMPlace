@@ -1,35 +1,46 @@
 set(OP_NAME adjust_node_area)
 
-if (PYTHON)
-    set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")
-    set(SETUP_PY    "${CMAKE_CURRENT_BINARY_DIR}/setup.py")
-    file(GLOB SOURCES 
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cu"
-        )
-    set(OUTPUT      "${CMAKE_CURRENT_BINARY_DIR}/${OP_NAME}.stamp")
+set(INCLUDE_DIRS 
+  ${CMAKE_CURRENT_SOURCE_DIR}/..
+  )
 
-    configure_file(${SETUP_PY_IN} ${SETUP_PY})
+set(LINK_LIBS utility_cxx
+  OpenMP::OpenMP_CXX
+  )
 
-    add_custom_command(OUTPUT ${OUTPUT}
-        COMMAND ${PYTHON} ${SETUP_PY} build --build-temp=${CMAKE_CURRENT_BINARY_DIR}/build --build-lib=${CMAKE_CURRENT_BINARY_DIR}/lib
-        COMMAND ${CMAKE_COMMAND} -E touch ${OUTPUT}
-        DEPENDS ${SOURCES}
-        )
+add_pytorch_extension(adjust_node_area_cpp 
+  src/adjust_node_area.cpp
+  EXTRA_INCLUDE_DIRS ${INCLUDE_DIRS}
+  EXTRA_LINK_LIBRARIES ${LINK_LIBS})
 
-    add_custom_target(clean_${OP_NAME}
-        COMMAND rm -rf ${OUTPUT} ${CMAKE_CURRENT_BINARY_DIR}/build ${CMAKE_CURRENT_BINARY_DIR}/lib
-        )
+add_pytorch_extension(update_pin_offset_cpp
+  src/update_pin_offset.cpp
+  EXTRA_INCLUDE_DIRS ${INCLUDE_DIRS}
+  EXTRA_LINK_LIBRARIES ${LINK_LIBS})
 
-    add_custom_target(${OP_NAME} ALL DEPENDS ${OUTPUT})
+install(TARGETS 
+  adjust_node_area_cpp 
+  update_pin_offset_cpp 
+  DESTINATION dreamplace/ops/${OP_NAME})
 
-    install(
-        DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/ DESTINATION dreamplace/ops/${OP_NAME}
-        )
-    file(GLOB INSTALL_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/*.py")
-    list(FILTER INSTALL_SRCS EXCLUDE REGEX ".*setup.py$")
-    install(
-        FILES ${INSTALL_SRCS} DESTINATION dreamplace/ops/${OP_NAME}
-        )
-endif()
+if(CUDA_FOUND)
+add_pytorch_extension(adjust_node_area_cuda
+  src/adjust_node_area_cuda.cpp
+  src/adjust_node_area_cuda_kernel.cu
+  EXTRA_INCLUDE_DIRS ${INCLUDE_DIRS}
+  EXTRA_LINK_LIBRARIES ${LINK_LIBS})
+
+add_pytorch_extension(update_pin_offset_cuda
+  src/update_pin_offset_cuda.cpp
+  src/update_pin_offset_cuda_kernel.cu
+  EXTRA_INCLUDE_DIRS ${INCLUDE_DIRS}
+  EXTRA_LINK_LIBRARIES ${LINK_LIBS})
+
+install(TARGETS 
+  adjust_node_area_cuda 
+  update_pin_offset_cuda
+  DESTINATION dreamplace/ops/${OP_NAME})
+endif(CUDA_FOUND)
+
+file(GLOB INSTALL_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/*.py)
+install(FILES ${INSTALL_SRCS} DESTINATION dreamplace/ops/${OP_NAME})

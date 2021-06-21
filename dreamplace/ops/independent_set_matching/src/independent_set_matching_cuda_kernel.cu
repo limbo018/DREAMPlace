@@ -527,22 +527,13 @@ int independentSetMatchingCUDALauncher(DetailedPlaceDB<T> db,
 }
 
 #define REGISTER_KERNEL_LAUNCHER(T) \
-    void instantiateIndependentSetMatchingCUDALauncher(\
+    template int independentSetMatchingCUDALauncher<T>(\
             DetailedPlaceDB<T> db, \
             int batch_size, \
             int set_size, \
             int max_iters, \
             int num_threads \
-            )\
-    {\
-        independentSetMatchingCUDALauncher<T>(\
-                db, \
-                batch_size, \
-                set_size, \
-                max_iters, \
-                num_threads \
-                );\
-    }
+            ); 
 
 REGISTER_KERNEL_LAUNCHER(float);
 REGISTER_KERNEL_LAUNCHER(double);

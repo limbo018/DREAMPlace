@@ -1481,10 +1481,8 @@ int globalSwapCUDALauncher(DetailedPlaceDB<T> db, int batch_size, int max_iters,
 }
 
 #define REGISTER_KERNEL_LAUNCHER(T)                                            \
-  void instantiateGlobalSwapCUDALauncher(                                      \
-      DetailedPlaceDB<T> db, int batch_size, int max_iters, int num_threads) { \
-    globalSwapCUDALauncher<T>(db, batch_size, max_iters, num_threads);         \
-  }
+  template int globalSwapCUDALauncher<T>(                                      \
+      DetailedPlaceDB<T> db, int batch_size, int max_iters, int num_threads); 
 
 REGISTER_KERNEL_LAUNCHER(int);
 REGISTER_KERNEL_LAUNCHER(float);
