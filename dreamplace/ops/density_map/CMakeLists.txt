@@ -18,7 +18,7 @@ install(TARGETS
   ${TARGET_NAME}_cpp 
   DESTINATION dreamplace/ops/${OP_NAME})
 
-if(CUDA_FOUND)
+if(TORCH_ENABLE_CUDA)
 add_pytorch_extension(${TARGET_NAME}_cuda 
   src/density_map_cuda.cpp
   src/density_map_cuda_kernel.cu 
@@ -27,7 +27,7 @@ add_pytorch_extension(${TARGET_NAME}_cuda
 install(TARGETS 
   ${TARGET_NAME}_cuda 
   DESTINATION dreamplace/ops/${OP_NAME})
-endif(CUDA_FOUND)
+endif(TORCH_ENABLE_CUDA)
 
 file(GLOB INSTALL_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/*.py)
 install(FILES ${INSTALL_SRCS} DESTINATION dreamplace/ops/${OP_NAME})

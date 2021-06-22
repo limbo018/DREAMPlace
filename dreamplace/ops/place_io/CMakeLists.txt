@@ -12,13 +12,15 @@ set(INCLUDE_DIRS
 set(LINK_LIBS 
   #draw_place_cxx
   utility_cxx
-  ${LIMBO_BINARY_DIR}/limbo/parsers/lef/adapt/liblefparseradapt.a
-  ${LIMBO_BINARY_DIR}/limbo/parsers/def/adapt/libdefparseradapt.a
-  ${LIMBO_BINARY_DIR}/limbo/parsers/verilog/bison/libverilogparser.a
-  ${LIMBO_BINARY_DIR}/limbo/parsers/bookshelf/bison/libbookshelfparser.a
-  ${LIMBO_BINARY_DIR}/limbo/parsers/gdsii/stream/libgdsparser.a
-  ${LIMBO_BINARY_DIR}/limbo/programoptions/libprogramoptions.a
-  ${LIMBO_BINARY_DIR}/limbo/thirdparty/gzstream/libgzstream.a
+  # begin targets in Limbo 
+  lefparseradapt
+  defparseradapt
+  verilogparser
+  bookshelfparser
+  gdsparser
+  programoptions
+  gzstream
+  # end targets in Limbo 
   OpenMP::OpenMP_CXX
   ${ZLIB_LIBRARIES}
   )

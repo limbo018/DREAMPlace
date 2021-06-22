@@ -23,7 +23,7 @@ install(TARGETS
   update_pin_offset_cpp 
   DESTINATION dreamplace/ops/${OP_NAME})
 
-if(CUDA_FOUND)
+if(TORCH_ENABLE_CUDA)
 add_pytorch_extension(adjust_node_area_cuda
   src/adjust_node_area_cuda.cpp
   src/adjust_node_area_cuda_kernel.cu
@@ -40,7 +40,7 @@ install(TARGETS
   adjust_node_area_cuda 
   update_pin_offset_cuda
   DESTINATION dreamplace/ops/${OP_NAME})
-endif(CUDA_FOUND)
+endif(TORCH_ENABLE_CUDA)
 
 file(GLOB INSTALL_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/*.py)
 install(FILES ${INSTALL_SRCS} DESTINATION dreamplace/ops/${OP_NAME})

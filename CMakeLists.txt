@@ -54,7 +54,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set_property(GLOBAL PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 
 find_package(OpenMP REQUIRED)
-find_program(PYTHON "python" REQUIRED)
+#find_program(PYTHON "python" REQUIRED)
 find_package(ZLIB REQUIRED)
 set(Boost_NO_BOOST_CMAKE TRUE)
 find_package(Boost 1.55.0 REQUIRED)
