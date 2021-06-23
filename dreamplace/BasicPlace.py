@@ -22,7 +22,7 @@ import dreamplace.ops.move_boundary.move_boundary as move_boundary
 import dreamplace.ops.hpwl.hpwl as hpwl
 import dreamplace.ops.density_overflow.density_overflow as density_overflow
 import dreamplace.ops.electric_potential.electric_overflow as electric_overflow
-import dreamplace.ops.rmst_wl.rmst_wl as rmst_wl
+#import dreamplace.ops.rmst_wl.rmst_wl as rmst_wl
 import dreamplace.ops.macro_legalize.macro_legalize as macro_legalize
 import dreamplace.ops.greedy_legalize.greedy_legalize as greedy_legalize
 import dreamplace.ops.abacus_legalize.abacus_legalize as abacus_legalize
