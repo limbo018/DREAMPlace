@@ -1,5 +1,7 @@
 set(OP_NAME k_reorder)
 
+set(TARGET_NAME ${OP_NAME})
+
 set(INCLUDE_DIRS 
   ${CMAKE_CURRENT_SOURCE_DIR}/..
   ${LIMBO_SOURCE_DIR}
