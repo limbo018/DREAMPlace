@@ -8,8 +8,8 @@
 
 #include <curand.h>
 #include <curand_kernel.h>
-#include <cub/cub.cuh>
 #include "utility/src/utils.cuh"
+#include "utility/src/utils_cub.cuh"
 
 DREAMPLACE_BEGIN_NAMESPACE
 

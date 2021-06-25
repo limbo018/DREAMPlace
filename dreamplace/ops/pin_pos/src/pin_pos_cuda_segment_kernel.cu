@@ -3,7 +3,7 @@
 #include "assert.h"
 #include "cuda_runtime.h"
 #include "utility/src/utils.cuh"
-#include <cub/cub.cuh>
+#include "utility/src/utils_cub.cuh"
 
 DREAMPLACE_BEGIN_NAMESPACE
 

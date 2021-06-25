@@ -66,7 +66,7 @@ struct IndependentSetMatchingState
     ////int* ordered_independent_sets = nullptr; ///< temporary storage for reordering independent sets, forward mapping  
     ////int* reordered_independent_sets = nullptr; ///< temporary storage for reordering independent sets, reverse mapping 
     int* selected_maximal_independent_set = nullptr; ///< storing the selected maximum independent set  
-    char* select_scratch = nullptr; ///< temporary storage for selection kernel 
+    int* select_scratch = nullptr; ///< temporary storage for selection kernel 
     int num_selected; ///< maximum independent set size 
     int* device_num_selected; ///< maximum independent set size 
     ////int* device_num_selected_prefix_sum = nullptr; ///< prefix sum for different sizes of cells in the maximum independent set 
@@ -79,7 +79,7 @@ struct IndependentSetMatchingState
 
     double* net_hpwls; ///< HPWL for each net, use integer to get consistent values 
 
-    unsigned char* selected_markers = nullptr; 
+    int* selected_markers = nullptr; ///< must be int for cub to compute prefix sum
     unsigned char* dependent_markers = nullptr; 
     int* independent_set_empty_flag = nullptr; ///< a stopping flag for maximum independent set 
     ////int* device_num_independent_sets = nullptr; ///< actual number of independent sets 
@@ -341,7 +341,7 @@ int independentSetMatchingCUDALauncher(DetailedPlaceDB<T> db,
         allocateCUDA(state.orig_y, state.batch_size*state.set_size, T); 
         allocateCUDA(state.orig_spaces, state.batch_size*state.set_size, Space<T>); 
 
-        allocateCUDA(state.selected_markers, db.num_nodes, unsigned char);
+        allocateCUDA(state.selected_markers, db.num_nodes, int);
         allocateCUDA(state.dependent_markers, db.num_nodes, unsigned char);
         allocateCUDA(state.independent_set_empty_flag, 1, int); 
 

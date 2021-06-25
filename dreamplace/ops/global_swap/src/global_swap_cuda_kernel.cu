@@ -7,11 +7,11 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <thrust/device_vector.h>
-#include <thrust/functional.h>
-#include <thrust/host_vector.h>
-#include <thrust/reduce.h>
-#include <thrust/swap.h>
+//#include <thrust/device_vector.h>
+//#include <thrust/functional.h>
+//#include <thrust/host_vector.h>
+//#include <thrust/reduce.h>
+//#include <thrust/swap.h>
 #include <time.h>
 #include <chrono>
 #include <cmath>
@@ -21,8 +21,8 @@
 //#define DYNAMIC
 //#define TIMER
 
-#include "cub/cub.cuh"
 #include "utility/src/utils.cuh"
+#include "utility/src/utils_cub.cuh"
 // database dependency
 #include "utility/src/detailed_place_db.cuh"
 
@@ -955,8 +955,8 @@ __global__ void apply_candidates(DetailedPlaceDB<T> db, SwapState<T> state,
             state.bin2node_map(bin_id.bin_id, bin_id.sub_id);
         int& bin2node_map_target_node_id =
             state.bin2node_map(target_bin_id.bin_id, target_bin_id.sub_id);
-        thrust::swap(bin2node_map_node_id, bin2node_map_target_node_id);
-        thrust::swap(bin_id, target_bin_id);
+        host_device_swap(bin2node_map_node_id, bin2node_map_target_node_id);
+        host_device_swap(bin_id, target_bin_id);
 
         // update neighboring spaces
         {
@@ -1016,13 +1016,13 @@ __global__ void apply_candidates(DetailedPlaceDB<T> db, SwapState<T> state,
         } else  // case II: not abutting
         {
           // update spaces
-          thrust::swap(space, target_space);
+          host_device_swap(space, target_space);
         }
 
         // update row2node_map and node2row_map
-        thrust::swap(row2nodes[row_id.sub_id],
+        host_device_swap(row2nodes[row_id.sub_id],
                      target_row2nodes[target_row_id.sub_id]);
-        thrust::swap(row_id, target_row_id);
+        host_device_swap(row_id, target_row_id);
       }
     }
   }
@@ -1272,9 +1272,25 @@ int compute_max_num_nodes_per_bin(const DetailedPlaceDB<T>& db) {
   compute_num_nodes_in_bins<<<ceilDiv(db.num_movable_nodes, 256), 256>>>(
       db, node_count_map);
 
-  int max_num_nodes_per_bin =
-      thrust::reduce(thrust::device, node_count_map, node_count_map + num_bins,
-                     0, thrust::maximum<int>());
+  //int max_num_nodes_per_bin =
+  //    thrust::reduce(thrust::device, node_count_map, node_count_map + num_bins,
+  //                   0, thrust::maximum<int>());
+
+  int* d_out = NULL; 
+  // Determine temporary device storage requirements
+  void     *d_temp_storage = NULL;
+  size_t   temp_storage_bytes = 0;
+  cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes, node_count_map, d_out, num_bins);
+  // Allocate temporary storage
+  checkCUDA(cudaMalloc(&d_temp_storage, temp_storage_bytes));
+  checkCUDA(cudaMalloc(&d_out, sizeof(int))); 
+  // Run max-reduction
+  cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes, node_count_map, d_out, num_bins);
+    // copy d_out to hpwl  
+  int max_num_nodes_per_bin = 0; 
+  checkCUDA(cudaMemcpy(&max_num_nodes_per_bin, d_out, sizeof(int), cudaMemcpyDeviceToHost)); 
+  destroyCUDA(d_temp_storage); 
+  destroyCUDA(d_out); 
 
   destroyCUDA(node_count_map);
 

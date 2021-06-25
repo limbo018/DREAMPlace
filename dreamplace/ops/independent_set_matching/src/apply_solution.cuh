@@ -6,8 +6,8 @@
 #ifndef _DREAMPLACE_INDEPENDENT_SET_MATCHING_APPLY_SOLUTION_CUH
 #define _DREAMPLACE_INDEPENDENT_SET_MATCHING_APPLY_SOLUTION_CUH
 
-#include <cub/cub.cuh>
 #include "utility/src/utils.cuh"
+#include "utility/src/utils_cub.cuh"
 #include "independent_set_matching/src/adjust_pos.h"
 
 //#define DEBUG
