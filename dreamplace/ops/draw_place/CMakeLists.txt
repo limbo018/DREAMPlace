@@ -1,35 +1,33 @@
 set(OP_NAME draw_place)
 
-if (PYTHON)
-    set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")
-    set(SETUP_PY    "${CMAKE_CURRENT_BINARY_DIR}/setup.py")
-    file(GLOB SOURCES 
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cu"
-        )
-    set(OUTPUT      "${CMAKE_CURRENT_BINARY_DIR}/${OP_NAME}.stamp")
+set(TARGET_NAME ${OP_NAME})
 
-    configure_file(${SETUP_PY_IN} ${SETUP_PY})
+set(INCLUDE_DIRS 
+  ${CMAKE_CURRENT_SOURCE_DIR}/..
+  ${LIMBO_SOURCE_DIR}
+  )
 
-    add_custom_command(OUTPUT ${OUTPUT}
-        COMMAND ${PYTHON} ${SETUP_PY} build --build-temp=${CMAKE_CURRENT_BINARY_DIR}/build --build-lib=${CMAKE_CURRENT_BINARY_DIR}/lib
-        COMMAND ${CMAKE_COMMAND} -E touch ${OUTPUT}
-        DEPENDS ${SOURCES} gdsparser gzstream
-        )
+set(LINK_LIBS utility_cxx
+  ${LIMBO_BINARY_DIR}/limbo/parsers/gdsii/stream/libgdsparser.a
+  ${LIMBO_BINARY_DIR}/limbo/thirdparty/gzstream/libgzstream.a
+  ${ZLIB_LIBRARIES}
+  )
 
-    add_custom_target(clean_${OP_NAME}
-        COMMAND rm -rf ${OUTPUT} ${CMAKE_CURRENT_BINARY_DIR}/build ${CMAKE_CURRENT_BINARY_DIR}/lib
-        )
-
-    add_custom_target(${OP_NAME} ALL DEPENDS ${OUTPUT})
-
-    install(
-        DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/ DESTINATION dreamplace/ops/${OP_NAME}
-        )
-    file(GLOB INSTALL_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/*.py")
-    list(FILTER INSTALL_SRCS EXCLUDE REGEX ".*setup.py$")
-    install(
-        FILES ${INSTALL_SRCS} DESTINATION dreamplace/ops/${OP_NAME}
-        )
+if(CAIRO_FOUND)
+  set(INCLUDE_DIRS ${INCLUDE_DIRS} ${CAIRO_INCLUDE_DIRS})
+  set(LINK_LIBS ${LINK_LIBS} ${CAIRO_LIBRARIES})
+  set(DRAWPLACE 1)
+else()
+  set(DRAWPLACE 0)
 endif()
+
+add_pytorch_extension(${TARGET_NAME}_cpp 
+  src/draw_place.cpp 
+  EXTRA_INCLUDE_DIRS ${INCLUDE_DIRS}
+  EXTRA_LINK_LIBRARIES ${LINK_LIBS}
+  EXTRA_DEFINITIONS DRAWPLACE=${DRAWPLACE}
+  )
+
+install(TARGETS ${TARGET_NAME}_cpp DESTINATION dreamplace/ops/${OP_NAME})
+file(GLOB INSTALL_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/*.py)
+install(FILES ${INSTALL_SRCS} DESTINATION dreamplace/ops/${OP_NAME})

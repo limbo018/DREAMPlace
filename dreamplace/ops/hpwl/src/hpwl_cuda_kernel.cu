@@ -99,23 +99,14 @@ int computeHPWLCudaLauncher(
 
 // manually instantiate the template function
 #define REGISTER_KERNEL_LAUNCHER(type) \
-    int instantiateComputeHPWLLauncher(\
+    template int computeHPWLCudaLauncher<type>(\
         const type* x, const type* y, \
         const int* flat_netpin, \
         const int* netpin_start, \
         const unsigned char* net_mask, \
         int num_nets, \
         type* partial_hpwl \
-        ) \
-    { \
-        return computeHPWLCudaLauncher(x, y, \
-                flat_netpin, \
-                netpin_start, \
-                net_mask, \
-                num_nets, \
-                partial_hpwl \
-                ); \
-    }
+        ); 
 
 REGISTER_KERNEL_LAUNCHER(float);
 REGISTER_KERNEL_LAUNCHER(double);

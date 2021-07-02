@@ -569,7 +569,7 @@ int computeExactDensityMapCudaLauncher(
 }
 
 #define REGISTER_KERNEL_LAUNCHER(T)                                            \
-  int instantiateComputeTriangleDensityMapLauncher(                            \
+  template int computeTriangleDensityMapCudaLauncher<T>(                       \
       const T *x_tensor, const T *y_tensor,                                    \
       const T *node_size_x_clamped_tensor,                                     \
       const T *node_size_y_clamped_tensor, const T *offset_x_tensor,           \
@@ -579,31 +579,16 @@ int computeExactDensityMapCudaLauncher(
       const int num_impacted_bins_x, const int num_impacted_bins_y,            \
       const T xl, const T yl, const T xh, const T yh, const T bin_size_x,      \
       const T bin_size_y, bool deterministic_flag, T *density_map_tensor,      \
-      const int *sorted_node_map) {                                            \
-    return computeTriangleDensityMapCudaLauncher(                              \
-        x_tensor, y_tensor, node_size_x_clamped_tensor,                        \
-        node_size_y_clamped_tensor, offset_x_tensor, offset_y_tensor,          \
-        ratio_tensor, bin_center_x_tensor, bin_center_y_tensor, num_nodes,     \
-        num_bins_x, num_bins_y, num_impacted_bins_x, num_impacted_bins_y, xl,  \
-        yl, xh, yh, bin_size_x, bin_size_y, deterministic_flag,                \
-        density_map_tensor, sorted_node_map);                                  \
-  }                                                                            \
+      const int *sorted_node_map);                                             \
                                                                                \
-  int instantiateComputeExactDensityMapLauncher(                               \
+  template int computeExactDensityMapCudaLauncher<T>(                          \
       const T *x_tensor, const T *y_tensor, const T *node_size_x_tensor,       \
       const T *node_size_y_tensor, const T *bin_center_x_tensor,               \
       const T *bin_center_y_tensor, const int num_nodes, const int num_bins_x, \
       const int num_bins_y, const int num_impacted_bins_x,                     \
       const int num_impacted_bins_y, const T xl, const T yl, const T xh,       \
       const T yh, const T bin_size_x, const T bin_size_y,                      \
-      bool fixed_node_flag, bool deterministic_flag, T *density_map_tensor) {  \
-    return computeExactDensityMapCudaLauncher(                                 \
-        x_tensor, y_tensor, node_size_x_tensor, node_size_y_tensor,            \
-        bin_center_x_tensor, bin_center_y_tensor, num_nodes, num_bins_x,       \
-        num_bins_y, num_impacted_bins_x, num_impacted_bins_y, xl, yl, xh, yh,  \
-        bin_size_x, bin_size_y, fixed_node_flag, deterministic_flag,           \
-        density_map_tensor);                                                   \
-  }
+      bool fixed_node_flag, bool deterministic_flag, T *density_map_tensor); 
 
 REGISTER_KERNEL_LAUNCHER(float);
 REGISTER_KERNEL_LAUNCHER(double);

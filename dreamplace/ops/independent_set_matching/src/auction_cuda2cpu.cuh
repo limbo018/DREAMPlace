@@ -14,7 +14,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <cub/cub.cuh>
 #include "utility/src/utils.cuh"
 #include "independent_set_matching/src/auction_cpu.h"
 

@@ -9,6 +9,7 @@
 
 #include <type_traits>
 #include "utility/src/utils.cuh"
+#include "utility/src/utils_cub.cuh"
 #include "legality_check/src/legality_check.h"
 #include "draw_place/src/draw_place.h"
 //#include <thrust/host_vector.h>
@@ -16,7 +17,6 @@
 //#include <thrust/swap.h>
 //#include <thrust/reduce.h>
 //#include <thrust/functional.h>
-#include <cub/cub.cuh>
 
 DREAMPLACE_BEGIN_NAMESPACE
 

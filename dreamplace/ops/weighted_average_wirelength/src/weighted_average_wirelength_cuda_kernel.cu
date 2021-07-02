@@ -83,7 +83,7 @@ int computeWeightedAverageWirelengthCudaLauncher(
 }
 
 #define REGISTER_KERNEL_LAUNCHER(T, V)                       \
-    int instantiateComputeWeightedAverageWirelengthLauncher( \
+    template int computeWeightedAverageWirelengthCudaLauncher<T, V>( \
         const T *x, const T *y,                              \
         const int *pin2net_map,                              \
         const int *flat_netpin,                              \
@@ -98,25 +98,8 @@ int computeWeightedAverageWirelengthCudaLauncher(
         V *xy_max, V *xy_min,                                \
         T *partial_wl,                                       \
         const T *grad_tensor,                                \
-        T *grad_x_tensor, T *grad_y_tensor)                  \
-    {                                                        \
-        return computeWeightedAverageWirelengthCudaLauncher( \
-            x, y,                                            \
-            pin2net_map,                                     \
-            flat_netpin,                                     \
-            netpin_start,                                    \
-            net_mask,                                        \
-            num_nets,                                        \
-            num_pins,                                        \
-            inv_gamma,                                       \
-            exp_xy, exp_nxy,                                 \
-            exp_xy_sum, exp_nxy_sum,                         \
-            xyexp_xy_sum, xyexp_nxy_sum,                     \
-            xy_max, xy_min,                                  \
-            partial_wl,                                      \
-            grad_tensor,                                     \
-            grad_x_tensor, grad_y_tensor);                   \
-    }
+        T *grad_x_tensor, T *grad_y_tensor);
+
 REGISTER_KERNEL_LAUNCHER(float, int);
 REGISTER_KERNEL_LAUNCHER(double, int);
 

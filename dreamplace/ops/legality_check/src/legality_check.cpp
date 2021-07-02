@@ -25,7 +25,7 @@ bool legality_check_forward(
   CPUTimer::hr_clock_rep timer_start, timer_stop;
   timer_start = CPUTimer::getGlobaltime();
   // Call the cuda kernel launcher
-  DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "legalityCheckKernelCPU", [&] {
+  DREAMPLACE_DISPATCH_FLOATING_TYPES(pos, "legalityCheckKernelCPU", [&] {
     legal_flag = legalityCheckKernelCPU<scalar_t>(
         DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t),
         DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + num_nodes,

@@ -40,7 +40,7 @@ at::Tensor adjust_node_area_forward(at::Tensor pos, at::Tensor node_size_x,
 
   // compute routability and density optimziation instance area
   DREAMPLACE_DISPATCH_FLOATING_TYPES(
-      pos.type(), "computeInstanceRoutabilityOptimizationMapCudaLauncher", [&] {
+      pos, "computeInstanceRoutabilityOptimizationMapCudaLauncher", [&] {
         computeInstanceRoutabilityOptimizationMapCudaLauncher<scalar_t>(
             DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t),
             DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + num_nodes,

@@ -94,23 +94,14 @@ int computeHPWLCudaAtomicLauncher(
 
 // manually instantiate the template function
 #define REGISTER_KERNEL_LAUNCHER(type)                          \
-    int instantiateComputeHPWLAtomicLauncher(                   \
+    template int computeHPWLCudaAtomicLauncher<type>(           \
         const type *x, const type *y,                           \
         const int *pin2net_map,                                 \
         const unsigned char *net_mask,                          \
         int num_nets,                                           \
         int num_pins,                                           \
         type *partial_hpwl_max,                                 \
-        type *partial_hpwl_min)                                 \
-    {                                                           \
-        return computeHPWLCudaAtomicLauncher(x, y,              \
-                                             pin2net_map,       \
-                                             net_mask,          \
-                                             num_nets,          \
-                                             num_pins,          \
-                                             partial_hpwl_max,  \
-                                             partial_hpwl_min); \
-    }
+        type *partial_hpwl_min);
 
 REGISTER_KERNEL_LAUNCHER(int);
 REGISTER_KERNEL_LAUNCHER(long long int);
