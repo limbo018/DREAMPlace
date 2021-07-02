@@ -36,10 +36,10 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
 
 # Dependency 
 
-- Python 3.5/3.6/3.7
+- Python 3.5/3.6/3.7/3.8
 
-- [Pytorch](https://pytorch.org/) 1.0.0
-    - Other version around 1.0.0 may also work, but not tested
+- [Pytorch](https://pytorch.org/) 1.6/1.7/1.8
+    - Other versions may also work, but not tested
 
 - [GCC](https://gcc.gnu.org/)
     - Recommend GCC 5.1 or later. 
