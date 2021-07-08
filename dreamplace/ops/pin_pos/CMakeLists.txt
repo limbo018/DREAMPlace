@@ -4,6 +4,7 @@ set(TARGET_NAME ${OP_NAME})
 
 set(INCLUDE_DIRS 
   ${CMAKE_CURRENT_SOURCE_DIR}/..
+  ${CUB_DIR}
   )
 
 set(LINK_LIBS utility_cxx
