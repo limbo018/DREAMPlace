@@ -179,9 +179,9 @@ Go to the **install directory** and run with JSON configuration file for full pl
 python dreamplace/Placer.py test/ispd2005/adaptec1.json
 ```
 
-Test individual pytorch op with the unitest in the root directory. 
+Test individual `pytorch` op with the unit tests in the root directory. 
 ```
-python unitest/ops/hpwl_unitest.py
+python unittest/ops/hpwl_unittest.py
 ```
 
 # Configurations
