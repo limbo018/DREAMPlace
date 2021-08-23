@@ -25,14 +25,19 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
   ACM/IEEE Design Automation Conference (DAC), Las Vegas, NV, Jun 2-6, 2019
   ([preprint](http://yibolin.com/publications/papers/PLACE_DAC2019_Lin.pdf)) ([slides](http://yibolin.com/publications/papers/PLACE_DAC2019_Lin.slides.pptx))
 
-* [Yibo Lin](http://yibolin.com), Zixuan Jiang, Jiaqi Gu, [Wuxi Li](http://wuxili.net), Shounak Dhar, Haoxing Ren, Brucek Khailany and [David Z. Pan](http://users.ece.utexas.edu/~dpan), 
+* [Yibo Lin](http://yibolin.com), Zixuan Jiang, [Jiaqi Gu](https://jeremiemelo.github.io), [Wuxi Li](http://wuxili.net), Shounak Dhar, Haoxing Ren, Brucek Khailany and [David Z. Pan](http://users.ece.utexas.edu/~dpan), 
   "**DREAMPlace: Deep Learning Toolkit-Enabled GPU Acceleration for Modern VLSI Placement**", 
-  IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems (TCAD), 2020 (accepted)
+  IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems (TCAD), 2020 
 
-* [Yibo Lin](http://yibolin.com), [Wuxi Li](http://wuxili.net), Jiaqi Gu, Haoxing Ren, Brucek Khailany and [David Z. Pan](http://users.ece.utexas.edu/~dpan), 
+* [Yibo Lin](http://yibolin.com), [Wuxi Li](http://wuxili.net), [Jiaqi Gu](https://jeremiemelo.github.io), Haoxing Ren, Brucek Khailany and [David Z. Pan](http://users.ece.utexas.edu/~dpan), 
   "**ABCDPlace: Accelerated Batch-based Concurrent Detailed Placement on Multi-threaded CPUs and GPUs**", 
   IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems (TCAD), 2020 
-  ([preprint](http://yibolin.com/publications/papers/ABCDPLACE_TCAD2020_Lin.pdf)) (accepted)
+  ([preprint](http://yibolin.com/publications/papers/ABCDPLACE_TCAD2020_Lin.pdf)) 
+
+* [Jiaqi Gu](https://jeremiemelo.github.io), Zixuan Jiang, [Yibo Lin](http://yibolin.com) and [David Z. Pan](http://users.ece.utexas.edu/~dpan), 
+  "**DREAMPlace 3.0: Multi-Electrostatics Based Robust VLSI Placement with Region Constraints**", 
+  IEEE/ACM International Conference on Computer-Aided Design (ICCAD), Nov 2-5, 2020.
+  ([preprint](http://yibolin.com/publications/papers/PLACE_ICCAD2020_Gu.pdf))
 
 # Dependency 
 
