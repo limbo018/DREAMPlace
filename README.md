@@ -34,9 +34,13 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
   IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems (TCAD), 2020 
   ([preprint](http://yibolin.com/publications/papers/ABCDPLACE_TCAD2020_Lin.pdf)) 
 
+* [Yibo Lin](http://yibolin.com), [David Z. Pan](http://users.ece.utexas.edu/~dpan), Haoxing Ren and Brucek Khailany, 
+  "**DREAMPlace 2.0: Open-Source GPU-Accelerated Global and Detailed Placement for Large-Scale VLSI Designs**", 
+  China Semiconductor Technology International Conference (CSTIC), Shanghai, China, Jun, 2020  ([preprint](http://yibolin.com/publications/papers/PLACE_CSTIC2020_Lin.pdf))(Invited Paper)
+
 * [Jiaqi Gu](https://jeremiemelo.github.io), Zixuan Jiang, [Yibo Lin](http://yibolin.com) and [David Z. Pan](http://users.ece.utexas.edu/~dpan), 
   "**DREAMPlace 3.0: Multi-Electrostatics Based Robust VLSI Placement with Region Constraints**", 
-  IEEE/ACM International Conference on Computer-Aided Design (ICCAD), Nov 2-5, 2020.
+  IEEE/ACM International Conference on Computer-Aided Design (ICCAD), Nov 2-5, 2020
   ([preprint](http://yibolin.com/publications/papers/PLACE_ICCAD2020_Gu.pdf))
 
 # Dependency 
