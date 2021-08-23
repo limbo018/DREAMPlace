@@ -12,12 +12,13 @@ add_subdirectory(hpwl)
 #add_subdirectory(rmst_wl)
 add_subdirectory(weighted_average_wirelength)
 add_subdirectory(logsumexp_wirelength)
-# legalization operators 
+add_subdirectory(fence_region)
+# legalization operators
 add_subdirectory(legality_check)
 add_subdirectory(macro_legalize)
 add_subdirectory(greedy_legalize)
 add_subdirectory(abacus_legalize)
-# detailed placement operators 
+# detailed placement operators
 add_subdirectory(global_swap)
 add_subdirectory(independent_set_matching)
 add_subdirectory(k_reorder)
