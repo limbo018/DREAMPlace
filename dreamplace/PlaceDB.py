@@ -54,19 +54,19 @@ class PlaceDB (object):
         self.pin_offset_y = None # 1D array, pin offset y to its node
 
         self.net_name2id_map = {} # net name to id map
-        self.net_names = None # net name 
+        self.net_names = None # net name
         self.net_weights = None # weights for each net
 
         self.net2pin_map = None # array of 1D array, each row stores pin id
         self.flat_net2pin_map = None # flatten version of net2pin_map
         self.flat_net2pin_start_map = None # starting index of each net in flat_net2pin_map
 
-        self.node2pin_map = None # array of 1D array, contains pin id of each node 
+        self.node2pin_map = None # array of 1D array, contains pin id of each node
         self.flat_node2pin_map = None # flatten version of node2pin_map
         self.flat_node2pin_start_map = None # starting index of each node in flat_node2pin_map
 
-        self.pin2node_map = None # 1D array, contain parent node id of each pin 
-        self.pin2net_map = None # 1D array, contain parent net id of each pin 
+        self.pin2node_map = None # 1D array, contain parent node id of each pin
+        self.pin2net_map = None # 1D array, contain parent net id of each pin
 
         self.rows = None # NumRows x 4 array, stores xl, yl, xh, yh of each row
 
@@ -432,24 +432,24 @@ class PlaceDB (object):
         """
         logging.debug("row %d %s" % (row_id, self.rows[row_id]))
 
-    #def flatten_nested_map(self, net2pin_map): 
+    #def flatten_nested_map(self, net2pin_map):
     #    """
-    #    @brief flatten an array of array to two arrays like CSV format 
-    #    @param net2pin_map array of array 
+    #    @brief flatten an array of array to two arrays like CSV format
+    #    @param net2pin_map array of array
     #    @return a pair of (elements, cumulative column indices of the beginning element of each row)
     #    """
     #    # flat netpin map, length of #pins
     #    flat_net2pin_map = np.zeros(len(pin2net_map), dtype=np.int32)
-    #    # starting index in netpin map for each net, length of #nets+1, the last entry is #pins  
+    #    # starting index in netpin map for each net, length of #nets+1, the last entry is #pins
     #    flat_net2pin_start_map = np.zeros(len(net2pin_map)+1, dtype=np.int32)
     #    count = 0
     #    for i in range(len(net2pin_map)):
     #        flat_net2pin_map[count:count+len(net2pin_map[i])] = net2pin_map[i]
-    #        flat_net2pin_start_map[i] = count 
+    #        flat_net2pin_start_map[i] = count
     #        count += len(net2pin_map[i])
     #    assert flat_net2pin_map[-1] != 0
     #    flat_net2pin_start_map[len(net2pin_map)] = len(pin2net_map)
-     
+
     #    return flat_net2pin_map, flat_net2pin_start_map
 
     def read(self, params):
@@ -677,14 +677,20 @@ row height = %g, site width = %g
 
         # set number of bins
         # derive bin dimensions by keeping the aspect ratio
+        # this bin setting is not for global placement, only for other steps
+        # global placement has its bin settings defined in global_place_stages
         aspect_ratio = (self.yh - self.yl) / (self.xh - self.xl)
         num_bins_x = int(math.pow(2, max(np.ceil(math.log2(math.sqrt(self.num_movable_nodes / aspect_ratio))), 0)))
         num_bins_y = int(math.pow(2, max(np.ceil(math.log2(math.sqrt(self.num_movable_nodes * aspect_ratio))), 0)))
         self.num_bins_x = max(params.num_bins_x, num_bins_x)
+        # self.num_bins_x = params.num_bins_x
         self.num_bins_y = max(params.num_bins_y, num_bins_y)
-        # set bin size 
-        self.bin_size_x = (self.xh-self.xl)/self.num_bins_x 
-        self.bin_size_y = (self.yh-self.yl)/self.num_bins_y 
+        # self.num_bins_y = params.num_bins_y
+        # set bin size based on config file
+        # self.bin_size_x = (self.xh-self.xl)/self.num_bins_x
+        self.bin_size_x = (self.xh-self.xl)/params.num_bins_x
+        # self.bin_size_y = (self.yh-self.yl)/self.num_bins_y
+        self.bin_size_y = (self.yh-self.yl)/params.num_bins_y
 
         # bin center array
         self.bin_center_x = self.bin_centers(self.xl, self.xh, self.bin_size_x)
