@@ -172,19 +172,23 @@ class PlaceObj(nn.Module):
                 dtype=self.data_collections.pos[0].dtype,
                 device=self.data_collections.pos[0].device)
         ### Note: even for multi-electric fields, they use the same gamma
+        num_bins_x = global_place_params["num_bins_x"] if global_place_params[
+            "num_bins_x"] else placedb.num_bins_x
+        num_bins_y = global_place_params["num_bins_y"] if global_place_params[
+            "num_bins_y"] else placedb.num_bins_y
+        self.num_bins_x = num_bins_x
+        self.num_bins_y = num_bins_y
+        self.bin_size_x = (placedb.xh - placedb.xl) / num_bins_x
+        self.bin_size_y = (placedb.yh - placedb.yl) / num_bins_y
         self.gamma = torch.tensor(10 * self.base_gamma(params, placedb),
                                   dtype=self.data_collections.pos[0].dtype,
                                   device=self.data_collections.pos[0].device)
 
         # compute weighted average wirelength from position
-        num_bins_x = global_place_params["num_bins_x"] if global_place_params[
-            "num_bins_x"] else placedb.num_bins_x
-        num_bins_y = global_place_params["num_bins_y"] if global_place_params[
-            "num_bins_y"] else placedb.num_bins_y
+
         name = "%dx%d bins" % (num_bins_x, num_bins_y)
         self.name = name
-        self.num_bins_x = num_bins_x
-        self.num_bins_y = num_bins_y
+
         if global_place_params["wirelength"] == "weighted_average":
             self.op_collections.wirelength_op, self.op_collections.update_gamma_op = self.build_weighted_average_wl(
                 params, placedb, self.data_collections,
@@ -384,7 +388,7 @@ class PlaceObj(nn.Module):
         #self.density.backward()
         #density_grad = pos.grad.data.clone()
 
-        ## overall gradient 
+        ## overall gradient
         #pos.grad.data.copy_(wirelength_grad + self.density_weight * density_grad)
 
         obj.backward()
@@ -393,7 +397,7 @@ class PlaceObj(nn.Module):
         #wirelength_grad_norm = wirelength_grad.norm(p=1)
         #density_grad_norm = density_grad.norm(p=1)
         #precond_alpha = (density_grad_norm / wirelength_grad_norm).clamp_(min=1.0)
-        #self.op_collections.precondition_op.alpha = precond_alpha 
+        #self.op_collections.precondition_op.alpha = precond_alpha
 
         self.op_collections.precondition_op(pos.grad, self.density_weight, self.update_mask)
 
@@ -846,7 +850,8 @@ class PlaceObj(nn.Module):
         @param params parameters
         @param placedb placement database
         """
-        return params.gamma * (placedb.bin_size_x + placedb.bin_size_y)
+        # return params.gamma * (placedb.bin_size_x + placedb.bin_size_y)
+        return params.gamma * (self.bin_size_x + self.bin_size_y)
 
     def update_gamma(self, iteration, overflow, base_gamma):
         """
