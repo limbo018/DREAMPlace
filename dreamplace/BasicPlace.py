@@ -20,8 +20,6 @@ import torch
 import torch.nn as nn
 import dreamplace.ops.move_boundary.move_boundary as move_boundary
 import dreamplace.ops.hpwl.hpwl as hpwl
-import dreamplace.ops.density_overflow.density_overflow as density_overflow
-import dreamplace.ops.electric_potential.electric_overflow as electric_overflow
 #import dreamplace.ops.rmst_wl.rmst_wl as rmst_wl
 import dreamplace.ops.macro_legalize.macro_legalize as macro_legalize
 import dreamplace.ops.greedy_legalize.greedy_legalize as greedy_legalize
@@ -189,11 +187,6 @@ class PlaceDataCollection(object):
             self.pin_mask_ignore_fixed_macros = (self.pin2node_map >=
                                                  placedb.num_movable_nodes)
 
-            self.bin_center_x = torch.from_numpy(
-                placedb.bin_center_x).to(device)
-            self.bin_center_y = torch.from_numpy(
-                placedb.bin_center_y).to(device)
-
             # sort nodes by size, return their sorted indices, designed for memory coalesce in electrical force
             movable_size_x = self.node_size_x[:placedb.num_movable_nodes]
             _, self.sorted_node_map = torch.sort(movable_size_x)
@@ -205,37 +198,31 @@ class PlaceDataCollection(object):
             # logging.debug(self.node_size_x[self.sorted_node_map[0: 10].long()])
             # logging.debug(self.node_size_x[self.sorted_node_map[-10:].long()])
 
-    def bin_center_x_padded(self, placedb, padding):
+    def bin_center_x_padded(self, placedb, padding, num_bins_x):
         """
         @brief compute array of bin center horizontal coordinates with padding
         @param placedb placement database
         @param padding number of bins padding to boundary of placement region
         """
-        if padding == 0:
-            return self.bin_center_x
-        else:
-            xl = placedb.xl - padding * placedb.bin_size_x
-            xh = placedb.xh + padding * placedb.bin_size_x
-            self.bin_center_x_padded = torch.from_numpy(
-                placedb.bin_centers(xl, xh,
-                                    placedb.bin_size_x)).to(self.device)
-            return self.bin_center_x_padded
+        bin_size_x = (placedb.xh - placedb.xl) / num_bins_x
+        xl = placedb.xl - padding * bin_size_x
+        xh = placedb.xh + padding * bin_size_x
+        bin_center_x = torch.from_numpy(
+            placedb.bin_centers(xl, xh, bin_size_x)).to(self.device)
+        return bin_center_x
 
-    def bin_center_y_padded(self, placedb, padding):
+    def bin_center_y_padded(self, placedb, padding, num_bins_y):
         """
         @brief compute array of bin center vertical coordinates with padding
         @param placedb placement database
         @param padding number of bins padding to boundary of placement region
         """
-        if padding == 0:
-            return self.bin_center_y
-        else:
-            yl = placedb.yl - padding * placedb.bin_size_y
-            yh = placedb.yh + padding * placedb.bin_size_y
-            self.bin_center_y_padded = torch.from_numpy(
-                placedb.bin_centers(yl, yh,
-                                    placedb.bin_size_y)).to(self.device)
-            return self.bin_center_y_padded
+        bin_size_y = (placedb.yh - placedb.yl) / num_bins_y
+        yl = placedb.yl - padding * bin_size_y
+        yh = placedb.yh + padding * bin_size_y
+        bin_center_y = torch.from_numpy(
+            placedb.bin_centers(yl, yh, bin_size_y)).to(self.device)
+        return bin_center_y
 
 
 class PlaceOpCollection(object):
@@ -396,9 +383,6 @@ class BasicPlace(nn.Module):
         # rectilinear minimum steiner tree wirelength from flute
         # can only be called once
         #self.op_collections.rmst_wl_op = self.build_rmst_wl(params, placedb, self.op_collections.pin_pos_op, torch.device("cpu"))
-        #self.op_collections.density_overflow_op = self.build_density_overflow(params, placedb, self.data_collections, self.device)
-        self.op_collections.density_overflow_op = self.build_electric_overflow(
-            params, placedb, self.data_collections, self.device)
         # legality check
         self.op_collections.legality_check_op = self.build_legality_check(
             params, placedb, self.data_collections, self.device)
@@ -538,60 +522,6 @@ class BasicPlace(nn.Module):
             return wls
 
         return build_wirelength_op
-
-    def build_density_overflow(self, params, placedb, data_collections,
-                               device):
-        """
-        @brief compute density overflow
-        @param params parameters
-        @param placedb placement database
-        @param data_collections a collection of all data and variables required for constructing the ops
-        @param device cpu or cuda
-        """
-        return density_overflow.DensityOverflow(
-            data_collections.node_size_x,
-            data_collections.node_size_y,
-            data_collections.bin_center_x,
-            data_collections.bin_center_y,
-            target_density=data_collections.target_density,
-            xl=placedb.xl,
-            yl=placedb.yl,
-            xh=placedb.xh,
-            yh=placedb.yh,
-            bin_size_x=placedb.bin_size_x,
-            bin_size_y=placedb.bin_size_y,
-            num_movable_nodes=placedb.num_movable_nodes,
-            num_terminals=placedb.num_terminals,
-            num_filler_nodes=0)
-
-    def build_electric_overflow(self, params, placedb, data_collections,
-                                device):
-        """
-        @brief compute electric density overflow
-        @param params parameters
-        @param placedb placement database
-        @param data_collections a collection of all data and variables required for constructing the ops
-        @param device cpu or cuda
-        """
-        return electric_overflow.ElectricOverflow(
-            node_size_x=data_collections.node_size_x,
-            node_size_y=data_collections.node_size_y,
-            bin_center_x=data_collections.bin_center_x,
-            bin_center_y=data_collections.bin_center_y,
-            target_density=data_collections.target_density,
-            xl=placedb.xl,
-            yl=placedb.yl,
-            xh=placedb.xh,
-            yh=placedb.yh,
-            bin_size_x=placedb.bin_size_x,
-            bin_size_y=placedb.bin_size_y,
-            num_movable_nodes=placedb.num_movable_nodes,
-            num_terminals=placedb.num_terminals,
-            num_filler_nodes=0,
-            padding=0,
-            deterministic_flag=params.deterministic_flag,
-            sorted_node_map=data_collections.sorted_node_map,
-            movable_macro_mask=data_collections.movable_macro_mask)
 
     def build_legality_check(self, params, placedb, data_collections, device):
         """

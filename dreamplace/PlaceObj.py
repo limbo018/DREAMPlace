@@ -23,6 +23,8 @@ else:
     import _pickle as pickle
 import dreamplace.ops.weighted_average_wirelength.weighted_average_wirelength as weighted_average_wirelength
 import dreamplace.ops.logsumexp_wirelength.logsumexp_wirelength as logsumexp_wirelength
+import dreamplace.ops.density_overflow.density_overflow as density_overflow
+import dreamplace.ops.electric_potential.electric_overflow as electric_overflow
 import dreamplace.ops.electric_potential.electric_potential as electric_potential
 import dreamplace.ops.density_potential.density_potential as density_potential
 import dreamplace.ops.rudy.rudy as rudy
@@ -200,14 +202,20 @@ class PlaceObj(nn.Module):
         else:
             assert 0, "unknown wirelength model %s" % (
                 global_place_params["wirelength"])
-        #self.op_collections.density_op = self.build_density_potential(params, placedb, self.data_collections, num_bins_x, num_bins_y, padding=1, name)
+        #self.op_collections.density_overflow_op = self.build_density_overflow(params, placedb, self.data_collections, self.num_bins_x, self.num_bins_y)
+        self.op_collections.density_overflow_op = self.build_electric_overflow(
+            params, 
+            placedb, 
+            self.data_collections, 
+            self.num_bins_x, 
+            self.num_bins_y)
+        #self.op_collections.density_op = self.build_density_potential(params, placedb, self.data_collections, self.num_bins_x, self.num_bins_y, padding=1, name)
         self.op_collections.density_op = self.build_electric_potential(
             params,
             placedb,
             self.data_collections,
-            num_bins_x,
-            num_bins_y,
-            padding=0,
+            self.num_bins_x,
+            self.num_bins_y,
             name=name)
         ### build multiple density op for multi-electric field
         if(len(self.placedb.regions)>0):
@@ -513,6 +521,66 @@ class PlaceObj(nn.Module):
 
         return build_wirelength_op, build_update_gamma_op
 
+    def build_density_overflow(self, params, placedb, data_collections,
+                               num_bins_x, num_bins_y):
+        """
+        @brief compute density overflow
+        @param params parameters
+        @param placedb placement database
+        @param data_collections a collection of all data and variables required for constructing the ops
+        """
+        bin_size_x = (placedb.xh - placedb.xl) / num_bins_x
+        bin_size_y = (placedb.yh - placedb.yl) / num_bins_y
+
+        return density_overflow.DensityOverflow(
+            data_collections.node_size_x,
+            data_collections.node_size_y,
+            bin_center_x=data_collections.bin_center_x_padded(placedb, 0, num_bins_x),
+            bin_center_y=data_collections.bin_center_y_padded(placedb, 0, num_bins_y),
+            target_density=data_collections.target_density,
+            xl=placedb.xl,
+            yl=placedb.yl,
+            xh=placedb.xh,
+            yh=placedb.yh,
+            bin_size_x=bin_size_x,
+            bin_size_y=bin_size_y,
+            num_movable_nodes=placedb.num_movable_nodes,
+            num_terminals=placedb.num_terminals,
+            num_filler_nodes=0)
+
+    def build_electric_overflow(self, params, placedb, data_collections,
+                                num_bins_x, num_bins_y):
+        """
+        @brief compute electric density overflow
+        @param params parameters
+        @param placedb placement database
+        @param data_collections a collection of all data and variables required for constructing the ops
+        @param num_bins_x number of bins in horizontal direction
+        @param num_bins_y number of bins in vertical direction
+        """
+        bin_size_x = (placedb.xh - placedb.xl) / num_bins_x
+        bin_size_y = (placedb.yh - placedb.yl) / num_bins_y
+
+        return electric_overflow.ElectricOverflow(
+            node_size_x=data_collections.node_size_x,
+            node_size_y=data_collections.node_size_y,
+            bin_center_x=data_collections.bin_center_x_padded(placedb, 0, num_bins_x),
+            bin_center_y=data_collections.bin_center_y_padded(placedb, 0, num_bins_y),
+            target_density=data_collections.target_density,
+            xl=placedb.xl,
+            yl=placedb.yl,
+            xh=placedb.xh,
+            yh=placedb.yh,
+            bin_size_x=bin_size_x,
+            bin_size_y=bin_size_y,
+            num_movable_nodes=placedb.num_movable_nodes,
+            num_terminals=placedb.num_terminals,
+            num_filler_nodes=0,
+            padding=0,
+            deterministic_flag=params.deterministic_flag,
+            sorted_node_map=data_collections.sorted_node_map,
+            movable_macro_mask=data_collections.movable_macro_mask)
+
     def build_density_potential(self, params, placedb, data_collections,
                                 num_bins_x, num_bins_y, padding, name):
         """
@@ -621,8 +689,8 @@ class PlaceObj(nn.Module):
             cy=torch.tensor(cy.ravel(),
                             dtype=data_collections.pos[0].dtype,
                             device=data_collections.pos[0].device),
-            bin_center_x=data_collections.bin_center_x_padded(padding),
-            bin_center_y=data_collections.bin_center_y_padded(padding),
+            bin_center_x=data_collections.bin_center_x_padded(placedb, padding, num_bins_x),
+            bin_center_y=data_collections.bin_center_y_padded(placedb, padding, num_bins_y),
             target_density=data_collections.target_density,
             num_movable_nodes=placedb.num_movable_nodes,
             num_terminals=placedb.num_terminals,
@@ -638,7 +706,7 @@ class PlaceObj(nn.Module):
             delta=2.0)
 
     def build_electric_potential(self, params, placedb, data_collections,
-                                 num_bins_x, num_bins_y, padding, name, region_id=None, fence_regions=None):
+                                 num_bins_x, num_bins_y, name, region_id=None, fence_regions=None):
         """
         @brief e-place electrostatic potential
         @param params parameters
@@ -646,19 +714,12 @@ class PlaceObj(nn.Module):
         @param data_collections a collection of data and variables required for constructing ops
         @param num_bins_x number of bins in horizontal direction
         @param num_bins_y number of bins in vertical direction
-        @param padding number of padding bins to left, right, bottom, top of the placement region
         @param name string for printing
         @param fence_regions a [n_subregions, 4] tensor for fence regions potential penalty
         """
         bin_size_x = (placedb.xh - placedb.xl) / num_bins_x
         bin_size_y = (placedb.yh - placedb.yl) / num_bins_y
 
-        xl = placedb.xl - padding * bin_size_x
-        xh = placedb.xh + padding * bin_size_x
-        yl = placedb.yl - padding * bin_size_y
-        yh = placedb.yh + padding * bin_size_y
-        local_num_bins_x = num_bins_x + 2 * padding
-        local_num_bins_y = num_bins_y + 2 * padding
         max_num_bins_x = np.ceil(
             (np.amax(placedb.node_size_x[0:placedb.num_movable_nodes]) +
              2 * bin_size_x) / bin_size_x)
@@ -668,35 +729,33 @@ class PlaceObj(nn.Module):
         max_num_bins = max(int(max_num_bins_x), int(max_num_bins_y))
         logging.info(
             "%s #bins %dx%d, bin sizes %gx%g, max_num_bins = %d, padding = %d"
-            % (name, local_num_bins_x, local_num_bins_y,
+            % (name, num_bins_x, num_bins_y,
                bin_size_x / placedb.row_height,
-               bin_size_y / placedb.row_height, max_num_bins, padding))
-        if local_num_bins_x < max_num_bins:
-            logging.warning("local_num_bins_x (%d) < max_num_bins (%d)" %
-                            (local_num_bins_x, max_num_bins))
-        if local_num_bins_y < max_num_bins:
-            logging.warning("local_num_bins_y (%d) < max_num_bins (%d)" %
-                            (local_num_bins_y, max_num_bins))
+               bin_size_y / placedb.row_height, max_num_bins, 0))
+        if num_bins_x < max_num_bins:
+            logging.warning("num_bins_x (%d) < max_num_bins (%d)" %
+                            (num_bins_x, max_num_bins))
+        if num_bins_y < max_num_bins:
+            logging.warning("num_bins_y (%d) < max_num_bins (%d)" %
+                            (num_bins_y, max_num_bins))
         #### for fence region, the target density is different from different regions
         target_density = data_collections.target_density.item() if fence_regions is None else placedb.target_density_fence_region[region_id]
         return electric_potential.ElectricPotential(
             node_size_x=data_collections.node_size_x,
             node_size_y=data_collections.node_size_y,
-            bin_center_x=data_collections.bin_center_x_padded(
-                placedb, padding),
-            bin_center_y=data_collections.bin_center_y_padded(
-                placedb, padding),
+            bin_center_x=data_collections.bin_center_x_padded(placedb, 0, num_bins_x),
+            bin_center_y=data_collections.bin_center_y_padded(placedb, 0, num_bins_y),
             target_density=target_density,
-            xl=xl,
-            yl=yl,
-            xh=xh,
-            yh=yh,
+            xl=placedb.xl,
+            yl=placedb.yl,
+            xh=placedb.xh,
+            yh=placedb.yh,
             bin_size_x=bin_size_x,
             bin_size_y=bin_size_y,
             num_movable_nodes=placedb.num_movable_nodes,
             num_terminals=placedb.num_terminals,
             num_filler_nodes=placedb.num_filler_nodes,
-            padding=padding,
+            padding=0,
             deterministic_flag=params.deterministic_flag,
             sorted_node_map=data_collections.sorted_node_map,
             movable_macro_mask=data_collections.movable_macro_mask,
@@ -850,7 +909,6 @@ class PlaceObj(nn.Module):
         @param params parameters
         @param placedb placement database
         """
-        # return params.gamma * (placedb.bin_size_x + placedb.bin_size_y)
         return params.gamma * (self.bin_size_x + self.bin_size_y)
 
     def update_gamma(self, iteration, overflow, base_gamma):
@@ -1055,7 +1113,6 @@ class PlaceObj(nn.Module):
             self.data_collections,
             self.num_bins_x,
             self.num_bins_y,
-            padding=0,
             name=self.name,
             fence_regions=fence_region_list[0],
             fence_region_mask=self.data_collections.node2fence_region_map>1e3) # density penalty for inner cells
@@ -1065,7 +1122,6 @@ class PlaceObj(nn.Module):
             self.data_collections,
             self.num_bins_x,
             self.num_bins_y,
-            padding=0,
             name=self.name,
             fence_regions = fence_region_list[1],
             fence_region_mask=self.data_collections.node2fence_region_map<1e3) # density penalty for outer cells
@@ -1081,7 +1137,6 @@ class PlaceObj(nn.Module):
                         self.data_collections,
                         self.num_bins_x,
                         self.num_bins_y,
-                        padding=0,
                         name=self.name,
                         region_id=i,
                         fence_regions=fence_region)
@@ -1093,7 +1148,6 @@ class PlaceObj(nn.Module):
                         self.data_collections,
                         self.num_bins_x,
                         self.num_bins_y,
-                        padding=0,
                         name=self.name,
                         region_id=len(self.placedb.regions),
                         fence_regions=self.data_collections.virtual_macro_fence_region[-1])

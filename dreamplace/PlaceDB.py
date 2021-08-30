@@ -87,8 +87,6 @@ class PlaceDB (object):
         self.bin_size_y = None
         self.num_bins_x = None
         self.num_bins_y = None
-        self.bin_center_x = None
-        self.bin_center_y = None
 
         self.num_movable_pins = None
 
@@ -244,30 +242,6 @@ class PlaceDB (object):
         @return area of layout
         """
         return self.width*self.height
-
-    def bin_index_x(self, x):
-        """
-        @param x horizontal location
-        @return bin index in x direction
-        """
-        if x < self.xl:
-            return 0
-        elif x > self.xh:
-            return int(np.floor((self.xh-self.xl)/self.bin_size_x))
-        else:
-            return int(np.floor((x-self.xl)/self.bin_size_x))
-
-    def bin_index_y(self, y):
-        """
-        @param y vertical location
-        @return bin index in y direction
-        """
-        if y < self.yl:
-            return 0
-        elif y > self.yh:
-            return int(np.floor((self.yh-self.yl)/self.bin_size_y))
-        else:
-            return int(np.floor((y-self.yl)/self.bin_size_y))
 
     def bin_xl(self, id_x):
         """
@@ -683,18 +657,9 @@ row height = %g, site width = %g
         num_bins_x = int(math.pow(2, max(np.ceil(math.log2(math.sqrt(self.num_movable_nodes / aspect_ratio))), 0)))
         num_bins_y = int(math.pow(2, max(np.ceil(math.log2(math.sqrt(self.num_movable_nodes * aspect_ratio))), 0)))
         self.num_bins_x = max(params.num_bins_x, num_bins_x)
-        # self.num_bins_x = params.num_bins_x
         self.num_bins_y = max(params.num_bins_y, num_bins_y)
-        # self.num_bins_y = params.num_bins_y
-        # set bin size based on config file
-        # self.bin_size_x = (self.xh-self.xl)/self.num_bins_x
-        self.bin_size_x = (self.xh-self.xl)/params.num_bins_x
-        # self.bin_size_y = (self.yh-self.yl)/self.num_bins_y
-        self.bin_size_y = (self.yh-self.yl)/params.num_bins_y
-
-        # bin center array
-        self.bin_center_x = self.bin_centers(self.xl, self.xh, self.bin_size_x)
-        self.bin_center_y = self.bin_centers(self.yl, self.yh, self.bin_size_y)
+        self.bin_size_x = (self.xh-self.xl)/self.num_bins_x
+        self.bin_size_y = (self.yh-self.yl)/self.num_bins_y
 
         content += "num_bins = %dx%d, bin sizes = %gx%g\n" % (self.num_bins_x, self.num_bins_y, self.bin_size_x/self.row_height, self.bin_size_y/self.row_height)
 
