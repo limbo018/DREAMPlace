@@ -26,31 +26,31 @@ import matplotlib.pyplot as plt
 class ElectricDensityMapFunction(Function):
     """
     @brief compute density overflow.
-    @param ctx pytorch API to store data for backward proporgation 
+    @param ctx pytorch API to store data for backward proporgation
     @param pos location of cells, x and then y
     @param node_size_x_clamped stretched size, max(bin_size*sqrt2, node_size)
     @param node_size_y_clamped stretched size, max(bin_size*sqrt2, node_size)
     @param offset_x (stretched size - node_size) / 2
     @param offset_y (stretched size - node_size) / 2
-    @param ratio original area / stretched area 
-    @param initial_density_map density_map for fixed cells 
-    @param target_density target density 
-    @param xl left boundary 
-    @param yl lower boundary 
-    @param xh right boundary 
-    @param yh upper boundary 
+    @param ratio original area / stretched area
+    @param initial_density_map density_map for fixed cells
+    @param target_density target density
+    @param xl left boundary
+    @param yl lower boundary
+    @param xh right boundary
+    @param yh upper boundary
     @param bin_size_x bin width
     @param bin_size_x bin height
-    @param num_movable_nodes number of movable cells 
-    @param num_filler_nodes number of filler cells 
-    @param padding bin padding to boundary of placement region 
-    @param padding_mask padding mask with 0 and 1 to indicate padding bins with padding regions to be 1  
+    @param num_movable_nodes number of movable cells
+    @param num_filler_nodes number of filler cells
+    @param padding bin padding to boundary of placement region
+    @param padding_mask padding mask with 0 and 1 to indicate padding bins with padding regions to be 1
     @param num_bins_x number of bins in horizontal direction
     @param num_bins_y number of bins in vertical direction
-    @param num_movable_impacted_bins_x number of impacted bins for any movable cell in x direction 
-    @param num_movable_impacted_bins_y number of impacted bins for any movable cell in y direction 
-    @param num_filler_impacted_bins_x number of impacted bins for any filler cell in x direction 
-    @param num_filler_impacted_bins_y number of impacted bins for any filler cell in y direction 
+    @param num_movable_impacted_bins_x number of impacted bins for any movable cell in x direction
+    @param num_movable_impacted_bins_y number of impacted bins for any movable cell in y direction
+    @param num_filler_impacted_bins_x number of impacted bins for any filler cell in x direction
+    @param num_filler_impacted_bins_y number of impacted bins for any filler cell in y direction
     @param sorted_node_map the indices of the movable node map
     """
     @staticmethod
@@ -132,7 +132,7 @@ class ElectricOverflow(nn.Module):
         num_terminals,
         num_filler_nodes,
         padding,
-        deterministic_flag,  # control whether to use deterministic routine 
+        deterministic_flag,  # control whether to use deterministic routine
         sorted_node_map,
         movable_macro_mask=None):
         super(ElectricOverflow, self).__init__()
@@ -273,9 +273,9 @@ class ElectricOverflow(nn.Module):
             self.deterministic_flag, self.sorted_node_map)
         bin_area = self.bin_size_x * self.bin_size_y
         density_cost = (density_map -
-                        self.target_density * bin_area).clamp_(min=0.0).sum()
+                        self.target_density * bin_area).clamp_(min=0.0).sum().unsqueeze(0)
 
-        return density_cost, density_map.max() / bin_area
+        return density_cost, density_map.max().unsqueeze(0) / bin_area
 
 
 def plot(plot_count, density_map, padding, name):
