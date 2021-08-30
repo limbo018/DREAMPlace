@@ -49,12 +49,12 @@ class EvalMetrics (object):
         if self.wirelength is not None:
             content += ", WL %.3E" % (self.wirelength)
         if self.density is not None:
-            if(self.density.numel() == 1):
+            if self.density.numel() == 1:
                 content += ", Density %.3E" % (self.density)
             else:
                 content += ", Density [%s]" % ", ".join(["%.3E" % i for i in self.density])
         if self.density_weight is not None:
-            if(self.density_weight.numel() == 1):
+            if self.density_weight.numel() == 1:
                 content += ", DensityWeight %.6E" % (self.density_weight)
             else:
                 content += ", DensityWeight [%s]" % ", ".join(["%.3E" % i for i in self.density_weight])
@@ -63,14 +63,14 @@ class EvalMetrics (object):
         if self.rmst_wl is not None:
             content += ", RMSTWL %.3E" % (self.rmst_wl)
         if self.overflow is not None:
-            if(self.overflow.numel()==1):
+            if self.overflow.numel() == 1:
                 content += ", Overflow %.6E" % (self.overflow)
             else:
                 content += ", Overflow [%s]" % ", ".join(["%.3E" % i for i in self.overflow])
         if self.goverflow is not None:
             content += ", Global Overflow %.6E" % (self.goverflow)
         if self.max_density is not None:
-            if(self.max_density.numel()==1):
+            if self.max_density.numel() == 1:
                 content += ", MaxDensity %.3E" % (self.max_density)
             else:
                 content += ", MaxDensity [%s]" % ", ".join(["%.3E" % i for i in self.max_density])
@@ -114,7 +114,7 @@ class EvalMetrics (object):
                 self.rmst_wl = rmst_wls.sum().data
             if "overflow" in ops:
                 overflow, max_density = ops["overflow"](var)
-                if(overflow.numel() == 1):
+                if overflow.numel() == 1:
                     self.overflow = overflow.data / placedb.total_movable_node_area
                     self.max_density = max_density.data
                 else:
@@ -132,4 +132,4 @@ class EvalMetrics (object):
                 pin_utilization_map = ops["pin_utilization"](var)
                 pin_utilization_map_sum = pin_utilization_map.sum()
                 self.pin_utilization = pin_utilization_map.sub_(1).clamp_(min=0).sum() / pin_utilization_map_sum
-        self.eval_time = time.time()-tt
+        self.eval_time = time.time() - tt
