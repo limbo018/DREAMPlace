@@ -277,3 +277,8 @@ The list of options as follows will be shown.
 * [2.2.0](https://github.com/limbo018/DREAMPlace/releases/tag/2.2.0)
     - Integrate routability optimization relying on NCTUgr from TCAD extension
     - Improved robustness on parallel CPU version 
+
+* [3.0.0](https://github.com/limbo018/DREAMPlace/releases/tag/3.0.0)
+    - Support fence regions as published at ICCAD 2020
+    - Add quadratic penalty to accelerate gradient descent at plateau during global placement
+    - Inject noise to escape from saddle points during global placement
