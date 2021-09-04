@@ -28,5 +28,6 @@ RUN pip install \
         pkgconfig>=1.4.0 \
         setuptools>=39.1.0 \
         scipy>=1.1.0 \
-        numpy>=1.15.4 
+        numpy>=1.15.4 \
+        shapely>=1.7.0
 
