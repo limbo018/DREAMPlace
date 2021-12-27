@@ -293,7 +293,7 @@ int computeDensityPotentialMapCudaLauncher(
 }
 
 #define REGISTER_KERNEL_LAUNCHER(T) \
-    int instantiateComputeDensityPotentialMapLauncher(\
+    template int computeDensityPotentialMapCudaLauncher<T>(\
             const T* x_tensor, const T* y_tensor, \
             const T* node_size_x_tensor, const T* node_size_y_tensor, \
             const T* ax_tensor, const T* bx_tensor, const T* cx_tensor, \
@@ -309,26 +309,7 @@ int computeDensityPotentialMapCudaLauncher(
             T* density_map_tensor, \
             const T* grad_tensor, \
             T* grad_x_tensor, T* grad_y_tensor \
-            )\
-    { \
-        return computeDensityPotentialMapCudaLauncher(\
-                x_tensor, y_tensor, \
-                node_size_x_tensor, node_size_y_tensor, \
-                ax_tensor, bx_tensor, cx_tensor, \
-                ay_tensor, by_tensor, cy_tensor, \
-                bin_center_x_tensor, bin_center_y_tensor, \
-                num_impacted_bins_x, num_impacted_bins_y, \
-                mat_size_x, mat_size_y, \
-                num_nodes, \
-                num_bins_x, num_bins_y, padding, \
-                xl, yl, xh, yh, \
-                bin_size_x, bin_size_y, \
-                target_area, \
-                density_map_tensor, \
-                grad_tensor, \
-                grad_x_tensor, grad_y_tensor \
-                );\
-    }
+            ); 
 
 REGISTER_KERNEL_LAUNCHER(float);
 REGISTER_KERNEL_LAUNCHER(double);

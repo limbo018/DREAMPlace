@@ -133,7 +133,7 @@ at::Tensor density_map(
 
   // Call the cuda kernel launcher
   DREAMPLACE_DISPATCH_FLOATING_TYPES(
-      pos.type(), "computeTriangleDensityMapLauncher", [&] {
+      pos, "computeTriangleDensityMapLauncher", [&] {
         if (deterministic_flag) {
           std::vector<long> buf(num_bins, 0);
           AtomicAdd<long> atomic_add_op(scale_factor);
@@ -189,7 +189,7 @@ at::Tensor fixed_density_map(at::Tensor pos, at::Tensor node_size_x,
   // Call the cuda kernel launcher
   if (num_terminals) {
     DREAMPLACE_DISPATCH_FLOATING_TYPES(
-        pos.type(), "computeExactDensityMapLauncher", [&] {
+        pos, "computeExactDensityMapLauncher", [&] {
           if (deterministic_flag) {
             dreamplacePrint(kDEBUG,
                             "deterministic mode: integer %d bits, fraction %d "

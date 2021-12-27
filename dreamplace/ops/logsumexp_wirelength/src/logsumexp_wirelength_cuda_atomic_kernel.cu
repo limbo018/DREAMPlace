@@ -440,7 +440,7 @@ int computeLogSumExpWirelengthCudaAtomicLauncher(
 
 
 #define REGISTER_KERNEL_LAUNCHER(T, V) \
-    int instantiateComputeLogSumExpWirelengthAtomicLauncher(\
+    template int computeLogSumExpWirelengthCudaAtomicLauncher<T, V>(\
             const T* x, const T* y, \
             const int* pin2net_map, \
             const unsigned char* net_mask, \
@@ -453,23 +453,8 @@ int computeLogSumExpWirelengthCudaAtomicLauncher(
             T* partial_wl, \
             const T* grad_tensor, \
             T* grad_x_tensor, T* grad_y_tensor \
-            )\
-    {\
-        return computeLogSumExpWirelengthCudaAtomicLauncher(\
-                x, y, \
-                pin2net_map, \
-                net_mask, \
-                num_nets,\
-                num_pins,\
-                gamma, \
-                exp_xy, exp_nxy, \
-                exp_xy_sum, exp_nxy_sum, \
-                xy_max, xy_min, \
-                partial_wl, \
-                grad_tensor, \
-                grad_x_tensor, grad_y_tensor  \
-                );\
-    }
+            ); 
+
 REGISTER_KERNEL_LAUNCHER(float, int);
 REGISTER_KERNEL_LAUNCHER(double, int);
 

@@ -711,11 +711,11 @@ void PlaceDB::resize_bookshelf_niterminal_layers(int) {}
 void PlaceDB::resize_bookshelf_blockage_layers(int) {}
 void PlaceDB::add_bookshelf_terminal(std::string& name, int w, int h) {
   // it seems no difference
-  add_bookshelf_node(name, w, h);
+  add_bookshelf_node(name, w, h, false);
 }
 void PlaceDB::add_bookshelf_terminal_NI(std::string& name, int w, int h) {
   // it seems no difference
-  add_bookshelf_node(name, w, h);
+  add_bookshelf_node(name, w, h, false);
   // regard terminal_NI as IO pins
   Macro& macro = m_vMacro.back();
   macro.setClassName("DREAMPlace.IOPin");
@@ -724,7 +724,9 @@ void PlaceDB::add_bookshelf_terminal_NI(std::string& name, int w, int h) {
   // I assume IO pins are appended to the list
   m_numIOPin += 1;
 }
-void PlaceDB::add_bookshelf_node(std::string& name, int w, int h) {
+void PlaceDB::add_bookshelf_node(std::string& name, int w, int h, bool /*is_cell*/) {
+  // TODO: is_cell not used yet, wait for Zizheng's fix in another branch 
+
   // create and add node
   std::pair<index_type, bool> insertRet = addNode(name);
   // check duplicate
@@ -1211,6 +1213,8 @@ std::pair<PlaceDB::index_type, bool> PlaceDB::addMacro(std::string const& n) {
     dreamplaceAssertMsg(insertRet.second, "failed to insert macro (%s, %d)",
                         macro.name().c_str(), macro.id());
 
+    // TODO: this may not be correct
+    // wait for Zizheng's fix in another branch
     m_numMacro = m_vMacro.size();  // update number of macros
 
     return std::make_pair(macro.id(), true);

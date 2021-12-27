@@ -654,7 +654,7 @@ at::Tensor global_swap_forward(
   auto pos = init_pos.clone();
 
   // Call the cuda kernel launcher
-  DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "globalSwapCPULauncher", [&] {
+  DREAMPLACE_DISPATCH_FLOATING_TYPES(pos, "globalSwapCPULauncher", [&] {
     auto db = make_placedb<scalar_t>(
         init_pos, pos, node_size_x, node_size_y, flat_region_boxes,
         flat_region_boxes_start, node2fence_region_map, flat_net2pin_map,

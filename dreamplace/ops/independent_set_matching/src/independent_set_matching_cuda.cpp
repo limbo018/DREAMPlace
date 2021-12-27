@@ -23,17 +23,6 @@ int independentSetMatchingCUDALauncher(DetailedPlaceDB<T> db, int batch_size,
                                        int set_size, int max_iters,
                                        int num_threads);
 
-#define DISPATCH_CUSTOM_TYPES(TYPE, NAME, ...)                           \
-  [&] {                                                                  \
-    switch (TYPE.scalarType()) {                                         \
-      AT_PRIVATE_CASE_TYPE(at::ScalarType::Float, float, __VA_ARGS__)    \
-      AT_PRIVATE_CASE_TYPE(at::ScalarType::Double, double, __VA_ARGS__)  \
-      AT_PRIVATE_CASE_TYPE(at::ScalarType::Int, int, __VA_ARGS__)        \
-      default:                                                           \
-        AT_ERROR(#NAME, " not implemented for '", TYPE.toString(), "'"); \
-    }                                                                    \
-  }()
-
 at::Tensor independent_set_matching_cuda_forward(
     at::Tensor init_pos, at::Tensor node_size_x, at::Tensor node_size_y,
     at::Tensor flat_region_boxes, at::Tensor flat_region_boxes_start,
@@ -53,7 +42,7 @@ at::Tensor independent_set_matching_cuda_forward(
 
   // Call the cuda kernel launcher
   DREAMPLACE_DISPATCH_FLOATING_TYPES(
-      pos.type(), "independentSetMatchingCUDALauncher", [&] {
+      pos, "independentSetMatchingCUDALauncher", [&] {
         auto db = make_placedb<scalar_t>(
             init_pos, pos, node_size_x, node_size_y, flat_region_boxes,
             flat_region_boxes_start, node2fence_region_map, flat_net2pin_map,

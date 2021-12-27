@@ -44,7 +44,7 @@ int draw_place_forward(at::Tensor pos, at::Tensor node_size_x,
 
   // Call the kernel launcher
   int ret = 0;
-  DREAMPLACE_DISPATCH_FLOATING_TYPES(pos.type(), "drawPlaceLauncher", [&] {
+  DREAMPLACE_DISPATCH_FLOATING_TYPES(pos, "drawPlaceLauncher", [&] {
     ret = drawPlaceLauncher<scalar_t>(
         DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t),
         DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + num_nodes,

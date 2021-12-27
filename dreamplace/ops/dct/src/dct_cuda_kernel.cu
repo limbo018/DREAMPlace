@@ -407,199 +407,116 @@ void computeTruncationCudaLauncher(
 
 // manually instantiate the template function
 #define REGISTER_MULPEXPK_KERNEL_LAUNCHER(type) \
-    void instantiateComputeMulExpkLauncher(\
+    template void computeMulExpkCudaLauncher<type>(\
         const type* x, \
         const type* expk, \
         const int M, \
         const int N, \
         type* z \
-        ) \
-    { \
-        return computeMulExpkCudaLauncher<type>( \
-                x, \
-                expk, \
-                M, \
-                N, \
-                z \
-                ); \
-    }
-
+        ); 
+    
 REGISTER_MULPEXPK_KERNEL_LAUNCHER(float);
 REGISTER_MULPEXPK_KERNEL_LAUNCHER(double);
 
 #define REGISTER_REORDER_KERNEL_LAUNCHER(type) \
-    void instantiateComputeReorderLauncher(\
+    template void computeReorderCudaLauncher<type>(\
         const type* x, \
         const int M, \
         const int N, \
         type* y \
-        ) \
-    { \
-        return computeReorderCudaLauncher<type>( \
-                x, \
-                M, \
-                N, \
-                y \
-                ); \
-    }
+        ); 
+    
 
 REGISTER_REORDER_KERNEL_LAUNCHER(float);
 REGISTER_REORDER_KERNEL_LAUNCHER(double);
 
 #define REGISTER_VK_KERNEL_LAUNCHER(type) \
-    void instantiateComputeVkLauncher(\
+    template void computeVkCudaLauncher<type>(\
         const type* x, \
         const type* expk, \
         const int M, \
         const int N, \
         type* v \
-        ) \
-    { \
-        return computeVkCudaLauncher<type>( \
-                x, \
-                expk, \
-                M, \
-                N, \
-                v \
-                ); \
-    }
+        ); 
 
 REGISTER_VK_KERNEL_LAUNCHER(float);
 REGISTER_VK_KERNEL_LAUNCHER(double);
 
 #define REGISTER_REORDERREVERSE_KERNEL_LAUNCHER(type) \
-    void instantiateComputeReorderReverseLauncher(\
+    template void computeReorderReverseCudaLauncher<type>(\
         const type* y, \
         const int M, \
         const int N, \
         type* z \
-        ) \
-    { \
-        return computeReorderReverseCudaLauncher<type>( \
-                y, \
-                M, \
-                N, \
-                z \
-                ); \
-    }
+        ); 
 
 REGISTER_REORDERREVERSE_KERNEL_LAUNCHER(float);
 REGISTER_REORDERREVERSE_KERNEL_LAUNCHER(double);
 
 #define REGISTER_ADDX0ANDSCALE_KERNEL_LAUNCHER(type) \
-    void instantiateAddX0AndScaleLauncher(\
+    template void addX0AndScaleCudaLauncher<type>(\
         const type* x, \
         const int M, \
         const int N, \
         type* y \
-        ) \
-    { \
-        return addX0AndScaleCudaLauncher<type>( \
-                x, \
-                M, \
-                N, \
-                y \
-                ); \
-    }
+        ); 
 
 REGISTER_ADDX0ANDSCALE_KERNEL_LAUNCHER(float);
 REGISTER_ADDX0ANDSCALE_KERNEL_LAUNCHER(double);
 
 #define REGISTER_ADDX0ANDSCALEN_KERNEL_LAUNCHER(type) \
-    void instantiateAddX0AndScaleNLauncher(\
+    template void addX0AndScaleNCudaLauncher<type>(\
         const type* x, \
         const int M, \
         const int N, \
         type* y \
-        ) \
-    { \
-        return addX0AndScaleNCudaLauncher<type>( \
-                x, \
-                M, \
-                N, \
-                y \
-                ); \
-    }
+        ); 
 
 REGISTER_ADDX0ANDSCALEN_KERNEL_LAUNCHER(float);
 REGISTER_ADDX0ANDSCALEN_KERNEL_LAUNCHER(double);
 
 #define REGISTER_COMPUTEPAD_KERNEL_LAUNCHER(type) \
-    void instantiateComputePadCudaLauncher(\
+    template void computePadCudaLauncher<type>(\
             const type* x, \
             const int M, \
             const int N, \
             type* z \
-        ) \
-    { \
-        return computePadCudaLauncher<type>( \
-                x, \
-                M, \
-                N, \
-                z \
-                ); \
-    }
+        ); 
 
 REGISTER_COMPUTEPAD_KERNEL_LAUNCHER(float);
 REGISTER_COMPUTEPAD_KERNEL_LAUNCHER(double);
 
 #define REGISTER_COMPUTEMULEXPK_2N_KERNEL_LAUNCHER(type) \
-    void instantiateComputeMulExpk_2N_CudaLauncher(\
+    template void computeMulExpk_2N_CudaLauncher<type>(\
             const type* x, \
             const type* expk, \
             const int M, \
             const int N, \
             type* z \
-        ) \
-    { \
-        return computeMulExpk_2N_CudaLauncher<type>( \
-                x, \
-                expk, \
-                M, \
-                N, \
-                z \
-                ); \
-    }
+        ); 
 
 REGISTER_COMPUTEMULEXPK_2N_KERNEL_LAUNCHER(float);
 REGISTER_COMPUTEMULEXPK_2N_KERNEL_LAUNCHER(double);
 
 #define REGISTER_COMPUTEMULEXPKANDPAD_2N_KERNEL_LAUNCHER(type) \
-    void instantiateComputeMulExpkAndPad_2N_CudaLauncher(\
+    template void computeMulExpkAndPad_2N_CudaLauncher<type>(\
             const type* x, \
             const type* expk, \
             const int M, \
             const int N, \
             type* z \
-        ) \
-    { \
-        return computeMulExpkAndPad_2N_CudaLauncher<type>( \
-                x, \
-                expk, \
-                M, \
-                N, \
-                z \
-                ); \
-    }
+        ); 
 
 REGISTER_COMPUTEMULEXPKANDPAD_2N_KERNEL_LAUNCHER(float);
 REGISTER_COMPUTEMULEXPKANDPAD_2N_KERNEL_LAUNCHER(double);
 
 #define REGISTER_COMPUTETRUNCATION_KERNEL_LAUNCHER(type) \
-    void instantiateComputeTruncationCudaLauncher(\
+    template void computeTruncationCudaLauncher<type>(\
             const type* x, \
             const int M, \
             const int N, \
             type* z \
-        ) \
-    { \
-        return computeTruncationCudaLauncher<type>( \
-                x, \
-                M, \
-                N, \
-                z \
-                ); \
-    }
+        ); 
 
 REGISTER_COMPUTETRUNCATION_KERNEL_LAUNCHER(float);
 REGISTER_COMPUTETRUNCATION_KERNEL_LAUNCHER(double);

@@ -25,21 +25,30 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
   ACM/IEEE Design Automation Conference (DAC), Las Vegas, NV, Jun 2-6, 2019
   ([preprint](http://yibolin.com/publications/papers/PLACE_DAC2019_Lin.pdf)) ([slides](http://yibolin.com/publications/papers/PLACE_DAC2019_Lin.slides.pptx))
 
-* [Yibo Lin](http://yibolin.com), Zixuan Jiang, Jiaqi Gu, [Wuxi Li](http://wuxili.net), Shounak Dhar, Haoxing Ren, Brucek Khailany and [David Z. Pan](http://users.ece.utexas.edu/~dpan), 
+* [Yibo Lin](http://yibolin.com), Zixuan Jiang, [Jiaqi Gu](https://jeremiemelo.github.io), [Wuxi Li](http://wuxili.net), Shounak Dhar, Haoxing Ren, Brucek Khailany and [David Z. Pan](http://users.ece.utexas.edu/~dpan), 
   "**DREAMPlace: Deep Learning Toolkit-Enabled GPU Acceleration for Modern VLSI Placement**", 
-  IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems (TCAD), 2020 (accepted)
+  IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems (TCAD), 2020 
 
-* [Yibo Lin](http://yibolin.com), [Wuxi Li](http://wuxili.net), Jiaqi Gu, Haoxing Ren, Brucek Khailany and [David Z. Pan](http://users.ece.utexas.edu/~dpan), 
+* [Yibo Lin](http://yibolin.com), [Wuxi Li](http://wuxili.net), [Jiaqi Gu](https://jeremiemelo.github.io), Haoxing Ren, Brucek Khailany and [David Z. Pan](http://users.ece.utexas.edu/~dpan), 
   "**ABCDPlace: Accelerated Batch-based Concurrent Detailed Placement on Multi-threaded CPUs and GPUs**", 
   IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems (TCAD), 2020 
-  ([preprint](http://yibolin.com/publications/papers/ABCDPLACE_TCAD2020_Lin.pdf)) (accepted)
+  ([preprint](http://yibolin.com/publications/papers/ABCDPLACE_TCAD2020_Lin.pdf)) 
+
+* [Yibo Lin](http://yibolin.com), [David Z. Pan](http://users.ece.utexas.edu/~dpan), Haoxing Ren and Brucek Khailany, 
+  "**DREAMPlace 2.0: Open-Source GPU-Accelerated Global and Detailed Placement for Large-Scale VLSI Designs**", 
+  China Semiconductor Technology International Conference (CSTIC), Shanghai, China, Jun, 2020  ([preprint](http://yibolin.com/publications/papers/PLACE_CSTIC2020_Lin.pdf))(Invited Paper)
+
+* [Jiaqi Gu](https://jeremiemelo.github.io), Zixuan Jiang, [Yibo Lin](http://yibolin.com) and [David Z. Pan](http://users.ece.utexas.edu/~dpan), 
+  "**DREAMPlace 3.0: Multi-Electrostatics Based Robust VLSI Placement with Region Constraints**", 
+  IEEE/ACM International Conference on Computer-Aided Design (ICCAD), Nov 2-5, 2020
+  ([preprint](http://yibolin.com/publications/papers/PLACE_ICCAD2020_Gu.pdf))
 
 # Dependency 
 
-- Python 3.5/3.6/3.7
+- Python 3.5/3.6/3.7/3.8
 
-- [Pytorch](https://pytorch.org/) 1.0.0
-    - Other version around 1.0.0 may also work, but not tested
+- [Pytorch](https://pytorch.org/) 1.6/1.7/1.8
+    - Other versions may also work, but not tested
 
 - [GCC](https://gcc.gnu.org/)
     - Recommend GCC 5.1 or later. 
@@ -47,6 +56,9 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
 
 - [Boost](https://www.boost.org)
     - Need to install and visible for linking
+  
+- [Bison](https://www.gnu.org/software/bison) >= 3.3
+    - Need to install
 
 - [Limbo](https://github.com/limbo018/Limbo)
     - Integrated as a git submodule
@@ -69,7 +81,6 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
     - Please check the [compatibility](https://developer.nvidia.com/cuda-gpus) of the GPU devices. 
     - The default compilation target is compatibility 6.0. This is the minimum requirement and lower compatibility is not supported for the GPU feature. 
     - For compatibility 7.0, it is necessary to set the CMAKE_CUDA_FLAGS to -gencode=arch=compute_70,code=sm_70. 
-
 - [Cairo](https://github.com/freedesktop/cairo) (Optional)
     - If installed and found, the plotting functions will be faster by using C/C++ implementation. 
     - Otherwise, python implementation is used. 
@@ -142,7 +153,7 @@ To build, go to the root directory.
 ```
 mkdir build 
 cd build 
-cmake .. -DCMAKE_INSTALL_PREFIX=your_install_path
+cmake .. -DCMAKE_INSTALL_PREFIX=your_install_path -DPYTHON_EXECUTABLE=$(which python)
 make 
 make install
 ```
@@ -166,9 +177,9 @@ Here are the available options for CMake.
 
 # How to Get Benchmarks
 
-To get ISPD 2005 benchmarks, run the following script from the directory. 
+To get ISPD 2005 and 2015 benchmarks, run the following script from the directory. 
 ```
-python benchmarks/ispd2005.py
+python benchmarks/ispd2005_2015.py
 ```
 
 # How to Run
@@ -179,9 +190,9 @@ Go to the **install directory** and run with JSON configuration file for full pl
 python dreamplace/Placer.py test/ispd2005/adaptec1.json
 ```
 
-Test individual pytorch op with the unitest in the root directory. 
+Test individual `pytorch` op with the unit tests in the root directory. 
 ```
-python unitest/ops/hpwl_unitest.py
+python unittest/ops/hpwl_unittest.py
 ```
 
 # Configurations
@@ -266,3 +277,8 @@ The list of options as follows will be shown.
 * [2.2.0](https://github.com/limbo018/DREAMPlace/releases/tag/2.2.0)
     - Integrate routability optimization relying on NCTUgr from TCAD extension
     - Improved robustness on parallel CPU version 
+
+* [3.0.0](https://github.com/limbo018/DREAMPlace/releases/tag/3.0.0)
+    - Support fence regions as published at ICCAD 2020
+    - Add quadratic penalty to accelerate gradient descent at plateau during global placement
+    - Inject noise to escape from saddle points during global placement

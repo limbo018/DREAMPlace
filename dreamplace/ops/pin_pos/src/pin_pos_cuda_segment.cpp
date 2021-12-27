@@ -38,7 +38,7 @@ at::Tensor pin_pos_forward(at::Tensor pos, at::Tensor pin_offset_x,
   int num_pins = pin_offset_x.numel();
 
   DREAMPLACE_DISPATCH_FLOATING_TYPES(
-      pos.type(), "computePinPosCudaSegmentLauncher", [&] {
+      pos, "computePinPosCudaSegmentLauncher", [&] {
         computePinPosCudaSegmentLauncher<scalar_t>(
             DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t),
             DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + num_nodes,
@@ -73,7 +73,7 @@ at::Tensor pin_pos_backward(at::Tensor grad_out, at::Tensor pos,
   auto grad_perm_buf = at::empty({2 * num_pins}, pos.options());
 
   DREAMPLACE_DISPATCH_FLOATING_TYPES(
-      pos.type(), "computePinPosGradCudaSegmentLauncher", [&] {
+      pos, "computePinPosGradCudaSegmentLauncher", [&] {
         computePinPosGradCudaSegmentLauncher<scalar_t>(
             DREAMPLACE_TENSOR_DATA_PTR(grad_out, scalar_t),
             DREAMPLACE_TENSOR_DATA_PTR(grad_out, scalar_t) + num_pins,

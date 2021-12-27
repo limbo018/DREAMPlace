@@ -93,7 +93,7 @@ int computeDensityOverflowMapCudaLauncher(
 }
 
 #define REGISTER_KERNEL_LAUNCHER(T) \
-    int instantiateComputeDensityOverflowMapLauncher(\
+    template int computeDensityOverflowMapCudaLauncher<T>(\
             const T* x_tensor, const T* y_tensor, \
             const T* node_size_x_tensor, const T* node_size_y_tensor, \
             const T* bin_center_x_tensor, const T* bin_center_y_tensor, \
@@ -103,20 +103,8 @@ int computeDensityOverflowMapCudaLauncher(
             const T xl, const T yl, const T xh, const T yh, \
             const T bin_size_x, const T bin_size_y, \
             T* density_map_tensor\
-            )\
-    { \
-        return computeDensityOverflowMapCudaLauncher(\
-                x_tensor, y_tensor, \
-                node_size_x_tensor, node_size_y_tensor, \
-                bin_center_x_tensor, bin_center_y_tensor, \
-                num_nodes, \
-                num_bins_x, num_bins_y, \
-                num_impacted_bins_x, num_impacted_bins_y, \
-                xl, yl, xh, yh, \
-                bin_size_x, bin_size_y, \
-                density_map_tensor\
-                );\
-    }
+            ); 
+
 REGISTER_KERNEL_LAUNCHER(float);
 REGISTER_KERNEL_LAUNCHER(double);
 
@@ -159,18 +147,12 @@ int computeGaussianFilterLauncher(
 }
 
 #define REGISTER_GAUSSIAN_FILTER_LAUNCHER(T) \
-    int instantiateComputeGaussianFilterLauncher(\
+    template int computeGaussianFilterLauncher<T>(\
             const int num_bins_x, const int num_bins_y, \
             const T sigma, \
             T* gaussian_filter_tensor\
-            )\
-    { \
-        return computeGaussianFilterLauncher(\
-                num_bins_x, num_bins_y, \
-                sigma, \
-                gaussian_filter_tensor\
-                );\
-    }
+            ); 
+
 REGISTER_GAUSSIAN_FILTER_LAUNCHER(float);
 REGISTER_GAUSSIAN_FILTER_LAUNCHER(double);
 

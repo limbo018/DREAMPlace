@@ -7,11 +7,11 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <thrust/device_vector.h>
-#include <thrust/functional.h>
-#include <thrust/host_vector.h>
-#include <thrust/reduce.h>
-#include <thrust/swap.h>
+//#include <thrust/device_vector.h>
+//#include <thrust/functional.h>
+//#include <thrust/host_vector.h>
+//#include <thrust/reduce.h>
+//#include <thrust/swap.h>
 #include <time.h>
 #include <chrono>
 #include <cmath>
@@ -26,7 +26,6 @@
 // database dependency
 #include "utility/src/detailed_place_db.cuh"
 // local dependency
-#include "cub/cub.cuh"
 #include "k_reorder/src/compute_independent_rows.h"
 #include "k_reorder/src/compute_reorder_instances.h"
 #include "k_reorder/src/quick_perm.h"
@@ -696,7 +695,7 @@ __global__ void unique_instance_nets(DetailedPlaceDB<T> db,
             }
           }
           --instance_nets_size;
-          thrust::swap(instance_nets[k], instance_nets[instance_nets_size]);
+          host_device_swap(instance_nets[k], instance_nets[instance_nets_size]);
         } else {
           ++k;
         }
@@ -1199,10 +1198,8 @@ int kreorderCUDALauncher(DetailedPlaceDB<T> db, int K, int max_iters,
 }
 
 #define REGISTER_KERNEL_LAUNCHER(T)                                      \
-  void instantiateKReorderCUDALauncher(DetailedPlaceDB<T> db, int K,     \
-                                       int max_iters, int num_threads) { \
-    kreorderCUDALauncher<T>(db, K, max_iters, num_threads);              \
-  }
+  template int kreorderCUDALauncher<T>(DetailedPlaceDB<T> db, int K,     \
+                                       int max_iters, int num_threads); 
 
 REGISTER_KERNEL_LAUNCHER(int);
 REGISTER_KERNEL_LAUNCHER(float);

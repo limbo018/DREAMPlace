@@ -75,24 +75,15 @@ int computeMoveBoundaryMapCudaLauncher(
 }
 
 #define REGISTER_KERNEL_LAUNCHER(T) \
-    int instantiateComputeMoveBoundaryMapLauncher(\
+  template int computeMoveBoundaryMapCudaLauncher<T>(\
             T* x_tensor, T* y_tensor, \
             const T* node_size_x_tensor, const T* node_size_y_tensor, \
             const T xl, const T yl, const T xh, const T yh, \
             const int num_nodes, \
             const int num_movable_nodes, \
             const int num_filler_nodes \
-            )\
-    { \
-        return computeMoveBoundaryMapCudaLauncher(\
-                x_tensor, y_tensor, \
-                node_size_x_tensor, node_size_y_tensor, \
-                xl, yl, xh, yh, \
-                num_nodes, \
-                num_movable_nodes, \
-                num_filler_nodes \
-                );\
-    }
+            );
+    
 REGISTER_KERNEL_LAUNCHER(float);
 REGISTER_KERNEL_LAUNCHER(double);
 

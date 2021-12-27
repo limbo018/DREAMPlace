@@ -14,7 +14,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <cub/cub.cuh>
 #include "utility/src/utils.cuh"
 
 DREAMPLACE_BEGIN_NAMESPACE

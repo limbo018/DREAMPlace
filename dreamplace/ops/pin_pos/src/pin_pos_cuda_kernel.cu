@@ -3,7 +3,6 @@
 #include "assert.h"
 #include "cuda_runtime.h"
 #include "utility/src/utils.cuh"
-#include <cub/cub.cuh>
 
 DREAMPLACE_BEGIN_NAMESPACE
 
@@ -105,7 +104,7 @@ int computePinPosGradCudaLauncher(
 
 
 #define REGISTER_KERNEL_LAUNCHER(T) \
-    int instantiateComputePinPosCudaLauncher(\
+    template int computePinPosCudaLauncher<T>(\
     	    const T* x, const T* y, \
     	    const T* pin_offset_x, \
 	        const T* pin_offset_y, \
@@ -114,21 +113,9 @@ int computePinPosGradCudaLauncher(
 	        const int* flat_node2pin_start_map, \
 	        int num_pins, \
 	        T* pin_x, T* pin_y \
-            )\
-    {\
-        return computePinPosCudaLauncher(\
-    	        x, y, \
-    	        pin_offset_x, \
-	            pin_offset_y, \
-	            pin2node_map, \
-	            flat_node2pin_map, \
-	            flat_node2pin_start_map, \
-	            num_pins, \
-	            pin_x, pin_y \
-                );\
-    } \
+            ); \
     \
-    int instantiateComputePinPosGradCudaLauncher(\
+    template int computePinPosGradCudaLauncher<T>(\
         	const T* grad_out_x, const T* grad_out_y, \
 	        const T* x, const T* y, \
 	        const T* pin_offset_x, \
@@ -139,21 +126,8 @@ int computePinPosGradCudaLauncher(
 	        int num_nodes, \
 	        int num_pins, \
 	        T* grad_x, T* grad_y \
-            )\
-    {\
-        return computePinPosGradCudaLauncher(\
-        	    grad_out_x, grad_out_y, \
-	            x, y, \
-	            pin_offset_x, \
-	            pin_offset_y, \
-	            pin2node_map, \
-	            flat_node2pin_map, \
-	            flat_node2pin_start_map, \
-	            num_nodes, \
-	            num_pins, \
-	            grad_x, grad_y \
-                );\
-    }
+            ); 
+
 REGISTER_KERNEL_LAUNCHER(float);
 REGISTER_KERNEL_LAUNCHER(double);
 

@@ -219,7 +219,8 @@ __global__ void init_markers_kernel(DetailedPlaceDBType db, IndependentSetMatchi
 //    }
 //}
 
-__global__ void marker_sum(const unsigned char* selected_markers, int n)
+template <typename T>
+__global__ void marker_sum(const T* selected_markers, int n)
 {
     if (blockIdx.x == 0 && threadIdx.x == 0)
     {

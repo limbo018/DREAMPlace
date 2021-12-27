@@ -33,7 +33,7 @@ class NesterovAcceleratedGradientOptimizer(Optimizer):
 
         # u_k is major solution
         # v_k is reference solution
-        # obj_k is the objective at v_k 
+        # obj_k is the objective at v_k
         # a_k is optimization parameter
         # alpha_k is the step size
         # v_k_1 is previous reference solution
@@ -41,12 +41,12 @@ class NesterovAcceleratedGradientOptimizer(Optimizer):
         # obj_k_1 is the objective at v_k_1
         defaults = dict(lr=lr,
                 u_k=[], v_k=[], g_k=[], obj_k=[], a_k=[], alpha_k=[],
-                v_k_1=[], g_k_1=[], obj_k_1=[], 
+                v_k_1=[], g_k_1=[], obj_k_1=[],
                 v_kp1 = [None],
                 obj_eval_count=0)
         super(NesterovAcceleratedGradientOptimizer, self).__init__(params, defaults)
-        self.obj_and_grad_fn = obj_and_grad_fn 
-        self.constraint_fn = constraint_fn 
+        self.obj_and_grad_fn = obj_and_grad_fn
+        self.constraint_fn = constraint_fn
 
         # I do not know how to get generator's length
         if len(self.param_groups) != 1:
@@ -136,7 +136,7 @@ class NesterovAcceleratedGradientOptimizer(Optimizer):
                         break
                     else:
                         alpha_k.data.copy_(alpha_kp1.data)
-                #if v_k.is_cuda: 
+                #if v_k.is_cuda:
                 #    torch.cuda.synchronize()
                 #logging.debug("\tline search %.3f ms" % ((time.time()-ttt)*1000))
 

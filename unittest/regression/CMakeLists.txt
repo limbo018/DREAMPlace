@@ -3,6 +3,10 @@ install(
     )
 
 install(
+  DIRECTORY ispd2015 DESTINATION unittest/regression
+    )
+
+install(
   DIRECTORY ispd2018 DESTINATION unittest/regression
     )
 

@@ -35,6 +35,13 @@
 //#include "utility/src/make_placedb.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
+/// to replace thrust::swap 
+template<typename Assignable1, typename Assignable2>
+__host__ __device__ inline void host_device_swap(Assignable1 &a, Assignable2 &b) {
+  Assignable1 tmp = a; 
+  a = b; 
+  b = tmp; 
+}
 
 template <typename T>
 __global__ void iota(T* a, int n) {

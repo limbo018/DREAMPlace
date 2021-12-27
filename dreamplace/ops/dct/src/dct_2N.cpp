@@ -18,7 +18,7 @@ at::Tensor dct_2N_forward(at::Tensor x, at::Tensor expk, int num_threads) {
 
   auto x_pad = at::zeros({M, 2 * N}, x.options());
 
-  DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "dct_2N_forward", [&] {
+  DREAMPLACE_DISPATCH_FLOATING_TYPES(x, "dct_2N_forward", [&] {
     computePad<scalar_t>(DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t), M, N,
                          DREAMPLACE_TENSOR_DATA_PTR(x_pad, scalar_t),
                          num_threads);
@@ -47,7 +47,7 @@ at::Tensor idct_2N_forward(at::Tensor x, at::Tensor expk, int num_threads) {
 
   auto x_pad = at::zeros({M, 2 * N, 2}, x.options());
 
-  DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idct_2N_forward", [&] {
+  DREAMPLACE_DISPATCH_FLOATING_TYPES(x, "idct_2N_forward", [&] {
     computeMulExpkAndPad_2N<scalar_t>(
         DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t),
         DREAMPLACE_TENSOR_DATA_PTR(expk, scalar_t), M, N,
@@ -86,7 +86,7 @@ at::Tensor dct2_2N_forward(at::Tensor x, at::Tensor expk0, at::Tensor expk1,
   auto M = x.numel() / N;
   auto x_pad = at::zeros({M, 2 * N}, x.options());
 
-  DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "dct2_2N_forward", [&] {
+  DREAMPLACE_DISPATCH_FLOATING_TYPES(x, "dct2_2N_forward", [&] {
     computePad<scalar_t>(DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t), M, N,
                          DREAMPLACE_TENSOR_DATA_PTR(x_pad, scalar_t),
                          num_threads);
@@ -141,7 +141,7 @@ at::Tensor idct2_2N_forward(at::Tensor x, at::Tensor expk0, at::Tensor expk1,
 
   auto x_pad = at::zeros({M, 2 * N, 2}, x.options());
 
-  DREAMPLACE_DISPATCH_FLOATING_TYPES(x.type(), "idct2_2N_forward", [&] {
+  DREAMPLACE_DISPATCH_FLOATING_TYPES(x, "idct2_2N_forward", [&] {
     computeMulExpkAndPad_2N<scalar_t>(
         DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t),
         DREAMPLACE_TENSOR_DATA_PTR(expk1, scalar_t), M, N,

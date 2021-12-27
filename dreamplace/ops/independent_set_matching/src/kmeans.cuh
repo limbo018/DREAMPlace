@@ -73,7 +73,8 @@ void destroy_kmeans(KMeansState<T>& kmeans_state)
 template <typename DetailedPlaceDBType, typename IndependentSetMatchingStateType>
 void prepare_kmeans(const DetailedPlaceDBType& db, const IndependentSetMatchingStateType& state, KMeansState<typename DetailedPlaceDBType::type>& kmeans_state)
 {
-    kmeans_state.num_seeds = min(state.num_selected / state.set_size, state.batch_size); 
+    // need at least 1 seed; otherwise, it will cause problem in later kernels 
+    kmeans_state.num_seeds = max(min(state.num_selected / state.set_size, state.batch_size), 1); 
     // set weights to 1.0 
     fill_array(kmeans_state.weights, kmeans_state.num_seeds, (typename DetailedPlaceDBType::type)1.0);
 }
@@ -136,7 +137,10 @@ __global__ void kmeans_find_centers_kernel(DetailedPlaceDBType db, IndependentSe
             thread_data.index = center_id; 
         }
     }
-    assert(thread_data.index < kmeans_state.num_seeds);
+    if (threadIdx.x < kmeans_state.num_seeds) 
+    {
+        assert(thread_data.index < kmeans_state.num_seeds);
+    }
 
     __syncthreads(); 
 
