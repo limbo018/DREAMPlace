@@ -333,7 +333,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                     return (np.max(x) - np.min(x)) / np.mean(x) < threshold
 
                 def check_divergence(x, window=50, threshold=0.05):
-                    if len(x) < window:
+                    if len(x) < window or best_metric[0] is None:
                         return False
                     x = np.array(x[-window:])
                     overflow_mean = np.mean(x[:, 1])
