@@ -51,7 +51,7 @@ add_pytorch_extension(${TARGET_NAME}_cuda
   src/independent_set_matching_cuda.cpp
   src/independent_set_matching_cuda_kernel.cu
   EXTRA_INCLUDE_DIRS ${INCLUDE_DIRS}
-  EXTRA_LINK_LIBRARIES ${LINK_LIBS}
+  EXTRA_LINK_LIBRARIES ${LINK_LIBS} ${CUDA_curand_LIBRARY}
   EXTRA_DEFINITIONS DRAWPLACE=${DRAWPLACE})
 install(TARGETS 
   ${TARGET_NAME}_cuda 
