@@ -48,8 +48,7 @@ void distributeMovableAndFixedCells2BinsCPU(
     std::vector<std::vector<int> >& bin_cells) {
   for (int i = 0; i < num_nodes; i += 1) {
     if (i < num_movable_nodes &&
-        node_size_y[i] <=
-            bin_size_y)  // single-row movable nodes only distribute to one bin
+        roundDiv(node_size_y[i], bin_size_y) <= 1)  // single-row movable nodes only distribute to one bin
     {
       int bin_id_x = (x[i] + node_size_x[i] / 2 - xl) / bin_size_x;
       int bin_id_y = (y[i] + node_size_y[i] / 2 - yl) / bin_size_y;
