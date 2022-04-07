@@ -56,6 +56,10 @@
     "descripton" : "scale factor to avoid numerical overflow; 0.0 means not set", 
     "default" : 0.0
     },
+"shift_factor" : {
+    "descripton" : "shift factor to avoid numerical issues when the lower-left origin of rows is not (0, 0);", 
+    "default" : [0.0, 0.0]
+    },
 "ignore_net_degree" : {
     "descripton" : "ignore net degree larger than some value", 
     "default" : 100

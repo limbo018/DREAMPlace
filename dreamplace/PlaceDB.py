@@ -115,37 +115,70 @@ class PlaceDB (object):
 
         self.dtype = None
 
-    def scale_pl(self, scale_factor):
+    def scale_pl(self, shift_factor, scale_factor):
         """
         @brief scale placement solution only
+        @param shift_factor shift factor to make the origin of the layout to (0, 0)
         @param scale_factor scale factor
         """
+        self.node_x -= shift_factor[0]
         self.node_x *= scale_factor
+        self.node_y -= shift_factor[1]
         self.node_y *= scale_factor
 
-    def scale(self, scale_factor):
+    def unscale_pl(self, shift_factor, scale_factor): 
         """
-        @brief scale distances
+        @brief unscale placement solution only
+        @param shift_factor shift factor to make the origin of the layout to (0, 0)
         @param scale_factor scale factor
         """
-        logging.info("scale coordinate system by %g" % (scale_factor))
-        self.scale_pl(scale_factor)
+        unscale_factor = 1.0 / scale_factor
+        if shift_factor[0] == 0 and shift_factor[1] == 0 and unscale_factor == 1.0:
+            node_x = self.node_x
+            node_y = self.node_y
+        else:
+            node_x = self.node_x * unscale_factor + shift_factor[0]
+            node_y = self.node_y * unscale_factor + shift_factor[1]
+
+        return node_x, node_y
+
+    def scale(self, shift_factor, scale_factor):
+        """
+        @brief shift and scale coordinates
+        @param shift_factor shift factor to make the origin of the layout to (0, 0)
+        @param scale_factor scale factor
+        """
+        logging.info("shift coordinate system by (%g, %g), scale coordinate system by %g" 
+                % (shift_factor[0], shift_factor[1], scale_factor))
+        self.scale_pl(shift_factor, scale_factor)
         self.node_size_x *= scale_factor
         self.node_size_y *= scale_factor
         self.pin_offset_x *= scale_factor
         self.pin_offset_y *= scale_factor
+        self.xl -= shift_factor[0]
         self.xl *= scale_factor
+        self.yl -= shift_factor[1]
         self.yl *= scale_factor
+        self.xh -= shift_factor[0]
         self.xh *= scale_factor
+        self.yh -= shift_factor[1]
         self.yh *= scale_factor
         self.row_height *= scale_factor
         self.site_width *= scale_factor
+
+        # shift factor for rectangle 
+        box_shift_factor = np.array([shift_factor, shift_factor]).reshape(1, -1)
+        self.rows -= box_shift_factor
         self.rows *= scale_factor
         self.total_space_area *= scale_factor * scale_factor # this is area
-        self.flat_region_boxes *= scale_factor
+
+        if len(self.flat_region_boxes): 
+            self.flat_region_boxes -= box_shift_factor
+            self.flat_region_boxes *= scale_factor
         # may have performance issue
         # I assume there are not many boxes
         for i in range(len(self.regions)):
+            self.regions[i] -= box_shift_factor
             self.regions[i] *= scale_factor
 
     def sort(self):
@@ -644,12 +677,16 @@ class PlaceDB (object):
         @param params parameters
         """
 
-        # scale
-        # adjust scale_factor if not set
+        # shift and scale
+        # adjust shift_factor and scale_factor if not set
+        params.shift_factor[0] = self.xl
+        params.shift_factor[1] = self.yl
+        logging.info("set shift_factor = (%g, %g), as original row bbox = (%g, %g, %g, %g)" 
+                % (params.shift_factor[0], params.shift_factor[1], self.xl, self.yl, self.xh, self.yh))
         if params.scale_factor == 0.0 or self.site_width != 1.0:
             params.scale_factor = 1.0 / self.site_width
-            logging.info("set scale_factor = %g, as site_width = %g" % (params.scale_factor, self.site_width))
-        self.scale(params.scale_factor)
+        logging.info("set scale_factor = %g, as site_width = %g" % (params.scale_factor, self.site_width))
+        self.scale(params.shift_factor, params.scale_factor)
 
         content = """
 ================================= Benchmark Statistics =================================
@@ -671,6 +708,7 @@ row height = %g, site width = %g
         num_bins_y = int(math.pow(2, max(np.ceil(math.log2(math.sqrt(self.num_movable_nodes * aspect_ratio))), 0)))
         self.num_bins_x = max(params.num_bins_x, num_bins_x)
         self.num_bins_y = max(params.num_bins_y, num_bins_y)
+        # set bin size 
         self.bin_size_x = (self.xh - self.xl) / self.num_bins_x
         self.bin_size_y = (self.yh - self.yl) / self.num_bins_y
 
@@ -866,13 +904,7 @@ row height = %g, site width = %g
                 sol_file_format = place_io.SolutionFileFormat.BOOKSHELF
 
         # unscale locations
-        unscale_factor = 1.0/params.scale_factor
-        if unscale_factor == 1.0:
-            node_x = self.node_x
-            node_y = self.node_y
-        else:
-            node_x = self.node_x * unscale_factor
-            node_y = self.node_y * unscale_factor
+        node_x, node_y = self.unscale_pl(params.shift_factor, params.scale_factor)
 
         # Global placement may have floating point positions.
         # Currently only support BOOKSHELF format.
@@ -904,8 +936,8 @@ row height = %g, site width = %g
                     self.node_y[node_id] = float(pos.group(6))
                     self.node_orient[node_id] = pos.group(10)
                     orient = pos.group(4)
-        if params.scale_factor != 1.0:
-            self.scale_pl(params.scale_factor)
+        if params.shift_factor[0] != 0 or params.shift_factor[1] != 0 or params.scale_factor != 1.0:
+            self.scale_pl(params.shift_factor, params.scale_factor)
         logging.info("read_pl takes %.3f seconds" % (time.time()-tt))
 
     def write_pl(self, params, pl_file, node_x, node_y):
@@ -977,13 +1009,7 @@ row height = %g, site width = %g
         self.node_y[:self.num_movable_nodes] = node_y[:self.num_movable_nodes]
 
         # unscale locations
-        unscale_factor = 1.0/params.scale_factor
-        if unscale_factor == 1.0:
-            node_x = self.node_x
-            node_y = self.node_y
-        else:
-            node_x = self.node_x * unscale_factor
-            node_y = self.node_y * unscale_factor
+        node_x, node_y = self.unscale_pl(params.shift_factor, params.scale_factor)
 
         # update raw database
         place_io.PlaceIOFunction.apply(self.rawdb, node_x, node_y)
