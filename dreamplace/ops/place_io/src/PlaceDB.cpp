@@ -74,7 +74,11 @@ void PlaceDB::lef_site_cbk(LefParser::lefiSite const& s) {
   if (limbo::iequals(site.className(), "CORE")) {
     dreamplacePrint(kINFO, "set CORE site to %s, %d x %d\n",
                     site.name().c_str(), site.width(), site.height());
-    m_coreSiteId = site.id();
+    // a heuristic to set core site 
+    // we only update if the recorded core site is not named "core" 
+    if (!limbo::iequals(m_vSite[m_coreSiteId].name(), "CORE")) {
+      m_coreSiteId = site.id();
+    }
   }
 }
 void PlaceDB::lef_macrobegin_cbk(std::string const& n) {
