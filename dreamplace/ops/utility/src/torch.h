@@ -7,6 +7,16 @@
 #ifndef _DREAMPLACE_UTILITY_TORCH_H
 #define _DREAMPLACE_UTILITY_TORCH_H
 
+#if TORCH_MAJOR_VERSION > 1 || (TORCH_MAJOR_VERSION == 1 && TORCH_MINOR_VERSION >= 13)
+
+#define AT_PRIVATE_CASE_TYPE(NAME, enum_type, type, ...) \
+  case enum_type: {                                      \
+    using scalar_t = type;                               \
+    return __VA_ARGS__();                                \
+  }
+
+#endif
+
 /// As torch may change the header inclusion conventions, it is better to manage
 /// it in a consistent way.
 #if TORCH_MAJOR_VERSION >= 1
