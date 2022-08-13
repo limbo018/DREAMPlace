@@ -1963,7 +1963,7 @@ void PlaceDB::processGroups() {
     Node const& node = this->node(node_id); 
     if (node.id() >= numMovable() + numFixed()) {
       dreamplacePrint(kWARN, "node %s in group %s (%u) not movable, ignored\n", 
-          nodeName(node), group.name().c_str(), group.id()); 
+          nodeName(node).c_str(), group.name().c_str(), group.id()); 
     } else if (markers.at(node.id())) {
       dreamplacePrint(
           kWARN, "node %u in multiple groups, currently add to group %u\n",
