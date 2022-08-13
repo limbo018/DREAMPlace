@@ -26,7 +26,20 @@
 
 #endif
 
+// torch version 1.8 or later 
 #if TORCH_MAJOR_VERSION > 1 || (TORCH_MAJOR_VERSION == 1 && TORCH_MINOR_VERSION >= 8)
+
+// torch version 1.13 or later 
+#if TORCH_MAJOR_VERSION > 1 || (TORCH_MAJOR_VERSION == 1 && TORCH_MINOR_VERSION >= 13)
+
+// AT_PRIVATE_CASE_TYPE was recently removed from the public dispatch API (look in the Dispatch.h)
+#define AT_PRIVATE_CASE_TYPE(NAME, enum_type, type, ...) \
+  case enum_type: {                                      \
+    using scalar_t = type;                               \
+    return __VA_ARGS__();                                \
+  }
+
+#endif
 
 #define DREAMPLACE_PRIVATE_CASE_TYPE(NAME, enum_type, type, ...) \
   AT_PRIVATE_CASE_TYPE(NAME, enum_type, type, __VA_ARGS__)
