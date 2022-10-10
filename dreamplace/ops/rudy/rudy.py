@@ -30,6 +30,7 @@ class Rudy(nn.Module):
                  num_bins_y,
                  unit_horizontal_capacity,
                  unit_vertical_capacity,
+                 deterministic_flag, 
                  initial_horizontal_utilization_map=None,
                  initial_vertical_utilization_map=None):
         super(Rudy, self).__init__()
@@ -49,6 +50,8 @@ class Rudy(nn.Module):
         self.unit_horizontal_capacity = unit_horizontal_capacity
         self.unit_vertical_capacity = unit_vertical_capacity
 
+        self.deterministic_flag = deterministic_flag
+
         self.initial_horizontal_utilization_map = initial_horizontal_utilization_map
         self.initial_vertical_utilization_map = initial_vertical_utilization_map
 
@@ -66,7 +69,7 @@ class Rudy(nn.Module):
             func = rudy_cpp.forward
         func(pin_pos, self.netpin_start, self.flat_netpin, self.net_weights,
              self.bin_size_x, self.bin_size_y, self.xl, self.yl, self.xh,
-             self.yh, self.num_bins_x, self.num_bins_y,
+             self.yh, self.num_bins_x, self.num_bins_y, self.deterministic_flag, 
              horizontal_utilization_map, vertical_utilization_map)
 
         # convert demand to utilization in each bin

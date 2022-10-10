@@ -23,6 +23,7 @@ int rudyCudaLauncher(const T *pin_pos_x, const T *pin_pos_y,
                      T yl, T xh, T yh,
 
                      int num_bins_x, int num_bins_y, int num_nets,
+                     bool deterministic_flag, 
                      T *horizontal_utilization_map,
                      T *vertical_utilization_map);
 
@@ -30,6 +31,7 @@ void rudy_forward(at::Tensor pin_pos, at::Tensor netpin_start,
                   at::Tensor flat_netpin, at::Tensor net_weights,
                   double bin_size_x, double bin_size_y, double xl, double yl,
                   double xh, double yh, int num_bins_x, int num_bins_y,
+                  int deterministic_flag, 
                   at::Tensor horizontal_utilization_map,
                   at::Tensor vertical_utilization_map) {
   CHECK_FLAT_CUDA(pin_pos);
@@ -61,6 +63,7 @@ void rudy_forward(at::Tensor pin_pos, at::Tensor netpin_start,
         bin_size_x, bin_size_y, xl, yl, xh, yh,
 
         num_bins_x, num_bins_y, num_nets,
+        (bool)deterministic_flag, 
         DREAMPLACE_TENSOR_DATA_PTR(horizontal_utilization_map, scalar_t),
         DREAMPLACE_TENSOR_DATA_PTR(vertical_utilization_map, scalar_t));
   });

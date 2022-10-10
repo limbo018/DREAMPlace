@@ -22,6 +22,8 @@
 #include "utility/src/box.h"
 #include "utility/src/complex_number.h"
 #include "utility/src/diamond_search.h"
+// atomic ops
+#include "utility/src/atomic_ops.h"
 
 // placement database
 //#include "utility/src/detailed_place_db.h"

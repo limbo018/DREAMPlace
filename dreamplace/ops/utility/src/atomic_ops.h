@@ -44,4 +44,13 @@ struct AtomicAdd<T, true> {
   }
 };
 
+/// @brief Perform a += b * scale_factor
+template <typename T, typename V, typename W>
+void scaleAdd(T* dst, const V* src, W scale_factor, int n, int num_threads) {
+#pragma omp parallel for num_threads(num_threads)
+  for (int i = 0; i < n; ++i) {
+    dst[i] += src[i] * scale_factor;
+  }
+}
+
 DREAMPLACE_END_NAMESPACE
