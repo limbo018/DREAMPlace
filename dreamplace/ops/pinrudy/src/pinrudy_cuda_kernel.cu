@@ -115,7 +115,7 @@ int pinRudyCudaLauncher(const T *pin_pos_x,
     unsigned long long int *horizontal_buf_map = buf_map;
     unsigned long long int *vertical_buf_map = buf_map + num_bins;
 
-    AtomicAdd<unsigned long long int> atomic_add_op(scale_factor);
+    AtomicAddCUDA<unsigned long long int> atomic_add_op(scale_factor);
 
     int thread_count = 512;
     int block_count = ceilDiv(num_bins, thread_count);
@@ -124,7 +124,7 @@ int pinRudyCudaLauncher(const T *pin_pos_x,
     copyScaleArray<<<block_count, thread_count>>>(
         vertical_buf_map, vertical_utilization_map, scale_factor, num_bins);
 
-    int block_count = ceilDiv(num_nets, thread_count);
+    block_count = ceilDiv(num_nets, thread_count);
     pinRudy<<<block_count, thread_count>>>(
             pin_pos_x,
             pin_pos_y,
@@ -148,7 +148,7 @@ int pinRudyCudaLauncher(const T *pin_pos_x,
 
     destroyCUDA(buf_map);
   } else {
-    AtomicAdd<T> atomic_add_op;
+    AtomicAddCUDA<T> atomic_add_op;
     int thread_count = 512;
     int block_count = ceilDiv(num_nets, thread_count);
     pinRudy<<<block_count, thread_count>>>(

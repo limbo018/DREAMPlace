@@ -285,7 +285,6 @@ __global__ void computeTriangleDensityMapSimpleLikeCPU(
             triangle_density_function(node_y, node_size_y, yl, h, bin_size_y);
         T area = px_by_ratio * py;
 
-        // atomicAdd(&density_map_tensor[k * num_bins_y + h], area);
         atomic_add_op(&density_map_tensor[k * num_bins_y + h], area);
       }
     }
@@ -421,14 +420,6 @@ int computeTriangleDensityMapCallKernel(
   return 0;
 }
 
-template <typename T, typename V>
-__global__ void copyScaleArray(T *dst, V *src, T scale_factor, int n) {
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < n) {
-    dst[i] = src[i] * scale_factor;
-  }
-}
-
 template <typename T>
 int computeTriangleDensityMapCudaLauncher(
     const T *x_tensor, const T *y_tensor, const T *node_size_x_clamped_tensor,
@@ -451,7 +442,7 @@ int computeTriangleDensityMapCudaLauncher(
     unsigned long long int *scaled_density_map_tensor = NULL;
     allocateCUDA(scaled_density_map_tensor, num_bins, unsigned long long int);
 
-    AtomicAdd<unsigned long long int> atomic_add_op(scale_factor);
+    AtomicAddCUDA<unsigned long long int> atomic_add_op(scale_factor);
 
     int thread_count = 512;
     copyScaleArray<<<(num_bins + thread_count - 1) / thread_count,
@@ -471,7 +462,7 @@ int computeTriangleDensityMapCudaLauncher(
 
     destroyCUDA(scaled_density_map_tensor);
   } else {
-    AtomicAdd<T> atomic_add_op;
+    AtomicAddCUDA<T> atomic_add_op;
 
     computeTriangleDensityMapCallKernel<T, decltype(atomic_add_op)>(
         x_tensor, y_tensor, node_size_x_clamped_tensor,
@@ -535,7 +526,7 @@ int computeExactDensityMapCudaLauncher(
     unsigned long long int *scaled_density_map_tensor = NULL;
     allocateCUDA(scaled_density_map_tensor, num_bins, unsigned long long int);
 
-    AtomicAdd<unsigned long long int> atomic_add_op(scale_factor);
+    AtomicAddCUDA<unsigned long long int> atomic_add_op(scale_factor);
 
     int thread_count = 512;
     copyScaleArray<<<(num_bins + thread_count - 1) / thread_count,
@@ -554,7 +545,7 @@ int computeExactDensityMapCudaLauncher(
 
     destroyCUDA(scaled_density_map_tensor);
   } else {
-    AtomicAdd<T> atomic_add_op;
+    AtomicAddCUDA<T> atomic_add_op;
 
     computeExactDensityMapCallKernel<T, decltype(atomic_add_op)>(
         x_tensor, y_tensor, node_size_x_tensor, node_size_y_tensor,

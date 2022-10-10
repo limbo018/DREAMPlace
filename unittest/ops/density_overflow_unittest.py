@@ -64,33 +64,27 @@ class DensityOverflowOpTest(unittest.TestCase):
         yl = 1.0 
         xh = 5.0
         yh = 5.0
+        num_bins_x = 2
+        num_bins_y = 2 
         bin_size_x = 2.0
         bin_size_y = 2.0
         target_density = 0.1
-        num_bins_x = int(np.ceil((xh-xl)/bin_size_x))
-        num_bins_y = int(np.ceil((yh-yl)/bin_size_y))
+        bin_size_x = (xh - xl) / num_bins_x
+        bin_size_y = (yh - yl) / num_bins_y
         num_movable_nodes = len(xx) - 1
         num_terminals = 1 
         num_filler_nodes = 0
 
-        bin_center_x = np.zeros(num_bins_x, dtype=dtype)
-        for id_x in range(num_bins_x): 
-            bin_center_x[id_x] = (bin_xl(id_x, xl, bin_size_x)+bin_xh(id_x, xl, xh, bin_size_x))/2
-
-        bin_center_y = np.zeros(num_bins_y, dtype=dtype)
-        for id_y in range(num_bins_y): 
-            bin_center_y[id_y] = (bin_yl(id_y, yl, bin_size_y)+bin_yh(id_y, yl, yh, bin_size_y))/2
-
         # test cpu 
         custom = density_overflow.DensityOverflow(
                     torch.from_numpy(node_size_x), torch.from_numpy(node_size_y), 
-                    torch.from_numpy(bin_center_x), torch.from_numpy(bin_center_y), 
-                    target_density=target_density, 
                     xl=xl, yl=yl, xh=xh, yh=yh, 
-                    bin_size_x=bin_size_x, bin_size_y=bin_size_y, 
+                    num_bins_x=num_bins_x, num_bins_y=num_bins_y, 
                     num_movable_nodes=num_movable_nodes, 
                     num_terminals=num_terminals, 
-                    num_filler_nodes=num_filler_nodes)
+                    num_filler_nodes=num_filler_nodes,
+                    target_density=target_density, 
+                    deterministic_flag=1)
 
         pos = Variable(torch.from_numpy(np.concatenate([xx, yy])))
         result, max_density = custom.forward(pos)
@@ -101,14 +95,13 @@ class DensityOverflowOpTest(unittest.TestCase):
         if torch.cuda.device_count(): 
             custom_cuda = density_overflow.DensityOverflow(
                         torch.from_numpy(node_size_x).cuda(), torch.from_numpy(node_size_y).cuda(), 
-                        torch.from_numpy(bin_center_x).cuda(), torch.from_numpy(bin_center_y).cuda(), 
-                        target_density=target_density, 
                         xl=xl, yl=yl, xh=xh, yh=yh, 
-                        bin_size_x=bin_size_x, bin_size_y=bin_size_y, 
+                        num_bins_x=num_bins_x, num_bins_y=num_bins_y, 
                         num_movable_nodes=num_movable_nodes, 
                         num_terminals=num_terminals, 
                         num_filler_nodes=num_filler_nodes, 
-                        )
+                        target_density=target_density, 
+                        deterministic_flag=1)
 
             pos = Variable(torch.from_numpy(np.concatenate([xx, yy]))).cuda()
             result_cuda, max_density_cuda = custom_cuda.forward(pos)
@@ -120,19 +113,18 @@ class DensityOverflowOpTest(unittest.TestCase):
 
 def eval_runtime(design):
     with gzip.open(design, "rb") as f:
-        node_size_x, node_size_y, bin_center_x, bin_center_y, target_density, xl, yl, xh, yh, bin_size_x, bin_size_y, num_movable_nodes, num_terminals, num_filler_nodes = pickle.load(f)
+        node_size_x, node_size_y, bin_center_x, bin_center_y, target_density, xl, yl, xh, yh, num_bins_x, num_bins_y, num_movable_nodes, num_terminals, num_filler_nodes = pickle.load(f)
 
     pos_var = Variable(torch.empty(len(node_size_x)*2, dtype=torch.float64).uniform_(xl, xh), requires_grad=True).cuda()
     custom_cuda = density_overflow.DensityOverflow(
                 torch.from_numpy(node_size_x).cuda(), torch.from_numpy(node_size_y).cuda(), 
-                torch.from_numpy(bin_center_x).cuda(), torch.from_numpy(bin_center_y).cuda(), 
-                target_density=target_density, 
                 xl=xl, yl=yl, xh=xh, yh=yh, 
-                bin_size_x=bin_size_x, bin_size_y=bin_size_y, 
+                num_bins_x=num_bins_x, num_bins_y=num_bins_y, 
                 num_movable_nodes=num_movable_nodes, 
                 num_terminals=num_terminals, 
                 num_filler_nodes=num_filler_nodes, 
-                )
+                target_density=target_density, 
+                deterministic_flag=0)
 
     torch.cuda.synchronize()
     iters = 10 

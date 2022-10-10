@@ -14,7 +14,6 @@ DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T, typename AtomicOp>
 inline __device__ void distributeBox2Bin(
-        const T* bin_center_x_tensor, const T* bin_center_y_tensor, 
         const int num_bins_x, const int num_bins_y, 
         const T xl, const T yl, const T xh, const T yh, 
         const T bin_size_x, const T bin_size_y, 
@@ -74,8 +73,8 @@ __global__ void computeDensityMap(
     const int num_nodes,
     const int num_bins_x, const int num_bins_y,
     const T xl, const T yl, const T xh, const T yh,
-    int num_threads, AtomicAdd atomic_add_op
-    typename AtomicAdd::type* buf_map
+    AtomicOp atomic_add_op,
+    typename AtomicOp::type* buf_map
     )
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -137,7 +136,7 @@ int computeDensityMapCudaLauncher(
         unsigned long long int *buf_map = NULL;
         allocateCUDA(buf_map, num_bins, unsigned long long int);
 
-        AtomicAdd<unsigned long long int> atomic_add_op(scale_factor);
+        AtomicAddCUDA<unsigned long long int> atomic_add_op(scale_factor);
 
         int thread_count = 512;
         int block_count = ceilDiv(num_bins, thread_count);
@@ -160,7 +159,7 @@ int computeDensityMapCudaLauncher(
 
         destroyCUDA(buf_map);
     } else {
-        AtomicAdd<T> atomic_add_op;
+        AtomicAddCUDA<T> atomic_add_op;
         int thread_count = 512;
         int block_count = ceilDiv(num_nodes, thread_count);
         computeDensityMap<<<block_count, thread_count>>>(

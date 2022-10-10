@@ -55,8 +55,6 @@ at::Tensor density_map_forward(at::Tensor pos, at::Tensor node_size_x,
   CHECK_EVEN(pos);
   CHECK_CONTIGUOUS(pos);
 
-  int num_bins_x = int(ceil((xh - xl) / bin_size_x));
-  int num_bins_y = int(ceil((yh - yl) / bin_size_y));
   at::Tensor density_map = initial_density_map.clone();
 
   DREAMPLACE_DISPATCH_FLOATING_TYPES(

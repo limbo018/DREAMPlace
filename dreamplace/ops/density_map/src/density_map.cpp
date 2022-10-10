@@ -80,9 +80,9 @@ int computeDensityMapLauncher(const T* x_tensor, const T* y_tensor,
                               const int num_nodes,
                               const int num_bins_x, const int num_bins_y,
                               const T xl, const T yl, const T xh, const T yh,
-                              int num_threads, AtomicAdd atomic_add_op
-                              typename AtomicAdd::type* buf_map) {
-// density_map_tensor should be initialized outside
+                              int num_threads, AtomicOp atomic_add_op,
+                              typename AtomicOp::type* buf_map) {
+  // density_map_tensor should be initialized outside
 
   T bin_size_x = (xh - xl) / num_bins_x; 
   T bin_size_y = (yh - yl) / num_bins_y; 
@@ -142,7 +142,7 @@ at::Tensor density_map_forward(at::Tensor pos, at::Tensor node_size_x,
             std::vector<long> buf_map(num_bins, 0);
             AtomicAdd<long> atomic_add_op(scale_factor);
 
-            computeDensityMapLauncher<scalar_t, decltype<atomic_add_op>>(
+            computeDensityMapLauncher<scalar_t, decltype(atomic_add_op)>(
                 DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + range_begin,
                 DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + pos.numel() / 2 + range_begin,
                 DREAMPLACE_TENSOR_DATA_PTR(node_size_x, scalar_t) + range_begin,
@@ -158,7 +158,7 @@ at::Tensor density_map_forward(at::Tensor pos, at::Tensor node_size_x,
                      at::get_num_threads());
         } else {
             AtomicAdd<scalar_t> atomic_add_op;
-            computeDensityMapLauncher<scalar_t, decltype<atomic_add_op>>(
+            computeDensityMapLauncher<scalar_t, decltype(atomic_add_op)>(
                 DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + range_begin,
                 DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + pos.numel() / 2 + range_begin,
                 DREAMPLACE_TENSOR_DATA_PTR(node_size_x, scalar_t) + range_begin,

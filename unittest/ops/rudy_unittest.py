@@ -63,7 +63,8 @@ class RudyUnittest(unittest.TestCase):
                             num_bins_x=num_bins_x,
                             num_bins_y=num_bins_y,
                             unit_horizontal_capacity=unit_horizontal_capacity,
-                            unit_vertical_capacity=unit_vertical_capacity)
+                            unit_vertical_capacity=unit_vertical_capacity,
+                            deterministic_flag=1)
 
         result_cpu = rudy_op.forward(pin_pos.t().contiguous().view(-1))
         print("Test on CPU. rudy map = ", result_cpu)
@@ -81,7 +82,8 @@ class RudyUnittest(unittest.TestCase):
                 num_bins_x=num_bins_x,
                 num_bins_y=num_bins_y,
                 unit_horizontal_capacity=unit_horizontal_capacity,
-                unit_vertical_capacity=unit_vertical_capacity)
+                unit_vertical_capacity=unit_vertical_capacity,
+                deterministic_flag=1)
 
             result_cuda = rudy_op_cuda.forward(
                 pin_pos.t().contiguous().view(-1).cuda())

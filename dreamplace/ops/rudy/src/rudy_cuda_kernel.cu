@@ -118,7 +118,7 @@ int rudyCudaLauncher(const T *pin_pos_x,
     unsigned long long int *horizontal_buf_map = buf_map;
     unsigned long long int *vertical_buf_map = buf_map + num_bins;
 
-    AtomicAdd<unsigned long long int> atomic_add_op(scale_factor);
+    AtomicAddCUDA<unsigned long long int> atomic_add_op(scale_factor);
 
     int thread_count = 512;
     int block_count = ceilDiv(num_bins, thread_count);
@@ -151,7 +151,7 @@ int rudyCudaLauncher(const T *pin_pos_x,
 
     destroyCUDA(buf_map);
   } else {
-    AtomicAdd<T> atomic_add_op;
+    AtomicAddCUDA<T> atomic_add_op;
     int thread_count = 512;
     int block_count = ceilDiv(num_nets, thread_count);
     rudy<<<block_count, thread_count>>>(

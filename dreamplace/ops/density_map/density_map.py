@@ -32,7 +32,8 @@ class DensityMapFunction(Function):
     def forward(pos, node_size_x, node_size_y, 
                 initial_density_map, xl, yl, xh, yh, 
                 num_bins_x, num_bins_y, 
-                range_begin, range_end):
+                range_begin, range_end, 
+                deterministic_flag):
         if pos.is_cuda:
             func = density_map_cuda.forward
         else:
@@ -40,7 +41,8 @@ class DensityMapFunction(Function):
         output = func(pos.view(pos.numel()), node_size_x, node_size_y,
                       initial_density_map, xl, yl, xh, yh, 
                       num_bins_x, num_bins_y, 
-                      range_begin, range_end)
+                      range_begin, range_end, 
+                      deterministic_flag)
         return output
 
 
@@ -50,7 +52,7 @@ class DensityMap(object):
     """
     def __init__(self, node_size_x, node_size_y, 
                  xl, yl, xh, yh, num_bins_x, num_bins_y, 
-                 range_begin, range_end, 
+                 range_list, 
                  deterministic_flag, 
                  initial_density_map=None):
         """
@@ -64,8 +66,7 @@ class DensityMap(object):
         @param num_bins_x number of bins in x direction 
         @param num_bins_y number of bins in y direction  
         @param num_movable_nodes number of movable cells 
-        @param range_begin begin index of the range [range_begin, range_end)
-        @param range_end end index of the range [range_begin, range_end)
+        @param range_list array of [begin, end) index range 
         @param deterministic_flag whether ensure run-to-run determinism 
         @param initial_density_map initial density map 
         """
@@ -78,8 +79,8 @@ class DensityMap(object):
         self.yh = yh
         self.num_bins_x = num_bins_x
         self.num_bins_y = num_bins_y
-        self.range_begin = range_begin 
-        self.range_end = range_end 
+        self.range_list = range_list
+        self.deterministic_flag = deterministic_flag
         self.initial_density_map = initial_density_map
 
     def forward(self, pos):
@@ -91,19 +92,23 @@ class DensityMap(object):
             self.initial_density_map = torch.zeros(self.num_bins_x, self.num_bins_y, dtype=pos.dtype, device=pos.device)
             #plot(self.initial_density_map.clone().div(self.bin_size_x*self.bin_size_y).cpu().numpy(), 'initial_density_map')
 
-        density_map = DensityMapFunction.forward(
-            pos=pos,
-            node_size_x=self.node_size_x,
-            node_size_y=self.node_size_y,
-            initial_density_map=self.initial_density_map,
-            xl=self.xl,
-            yl=self.yl,
-            xh=self.xh,
-            yh=self.yh,
-            num_bins_x=self.num_bins_x,
-            num_bins_y=self.num_bins_y,
-            range_begin=self.range_begin,
-            range_end=self.range_end)
+        density_map = self.initial_density_map
+        for index_range in self.range_list: 
+            if index_range[0] < index_range[1]: 
+                density_map = DensityMapFunction.forward(
+                    pos=pos,
+                    node_size_x=self.node_size_x,
+                    node_size_y=self.node_size_y,
+                    initial_density_map=density_map,
+                    xl=self.xl,
+                    yl=self.yl,
+                    xh=self.xh,
+                    yh=self.yh,
+                    num_bins_x=self.num_bins_x,
+                    num_bins_y=self.num_bins_y,
+                    range_begin=index_range[0],
+                    range_end=index_range[1], 
+                    deterministic_flag=self.deterministic_flag)
 
         return density_map
 

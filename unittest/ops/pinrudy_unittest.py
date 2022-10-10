@@ -1,7 +1,7 @@
 ##
-# @file   rudy_unitest.py
-# @author Zixuan Jiang, Jiaqi Gu
-# @date   Dec 2019
+# @file   pinrudy_unitest.py
+# @author Siting Liu
+# @date   Oct 2022
 #
 
 import os
@@ -17,7 +17,7 @@ from dreamplace.ops.pinrudy import pinrudy
 sys.path.pop()
 
 
-class RudyUnittest(unittest.TestCase):
+class PinRudyUnittest(unittest.TestCase):
     def test_pin_rudy(self):
         # the data of net and pin are from unitest/ops/weighted_average_wirelength_unitest.py
         dtype = torch.float32
@@ -63,7 +63,8 @@ class RudyUnittest(unittest.TestCase):
                             num_bins_x=num_bins_x,
                             num_bins_y=num_bins_y,
                             unit_horizontal_capacity=unit_horizontal_capacity,
-                            unit_vertical_capacity=unit_vertical_capacity)
+                            unit_vertical_capacity=unit_vertical_capacity,
+                            deterministic_flag=1)
 
         result_cpu = pinrudy_op.forward(pin_pos.t().contiguous().view(-1))
         print("Test on CPU. pinrudy map = ", result_cpu)
@@ -81,7 +82,8 @@ class RudyUnittest(unittest.TestCase):
                 num_bins_x=num_bins_x,
                 num_bins_y=num_bins_y,
                 unit_horizontal_capacity=unit_horizontal_capacity,
-                unit_vertical_capacity=unit_vertical_capacity)
+                unit_vertical_capacity=unit_vertical_capacity,
+                deterministic_flag=1)
 
             result_cuda = pinrudy_op_cuda.forward(
                 pin_pos.t().contiguous().view(-1).cuda())

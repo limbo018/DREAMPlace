@@ -128,7 +128,7 @@ void rudy_forward(at::Tensor pin_pos, at::Tensor netpin_start,
           std::vector<long> vertical_buf_map(num_bins, 0);
           AtomicAdd<long> atomic_add_op(scale_factor);
 
-          rudyLauncher<scalar_t, decltype<atomic_add_op>>(
+          rudyLauncher<scalar_t, decltype(atomic_add_op)>(
               DREAMPLACE_TENSOR_DATA_PTR(pin_pos, scalar_t),
               DREAMPLACE_TENSOR_DATA_PTR(pin_pos, scalar_t) + num_pins,
               DREAMPLACE_TENSOR_DATA_PTR(netpin_start, int),
@@ -149,7 +149,7 @@ void rudy_forward(at::Tensor pin_pos, at::Tensor netpin_start,
                    at::get_num_threads());
       } else {
           AtomicAdd<scalar_t> atomic_add_op;
-          rudyLauncher<scalar_t, decltype<atomic_add_op>>(
+          rudyLauncher<scalar_t, decltype(atomic_add_op)>(
               DREAMPLACE_TENSOR_DATA_PTR(pin_pos, scalar_t),
               DREAMPLACE_TENSOR_DATA_PTR(pin_pos, scalar_t) + num_pins,
               DREAMPLACE_TENSOR_DATA_PTR(netpin_start, int),
