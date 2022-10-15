@@ -63,6 +63,7 @@ class PinUtilizationUnittest(unittest.TestCase):
         pin_weights = None
         unit_pin_capacity = 0.5
         pin_stretch_ratio = math.sqrt(2)
+        deterministic_flag = 1
 
         # test cpu
         pin_utilization_op = pin_utilization.PinUtilization(
@@ -79,7 +80,8 @@ class PinUtilizationUnittest(unittest.TestCase):
             num_bins_x=num_bins_x,
             num_bins_y=num_bins_y,
             unit_pin_capacity=unit_pin_capacity,
-            pin_stretch_ratio=pin_stretch_ratio)
+            pin_stretch_ratio=pin_stretch_ratio,
+            deterministic_flag=deterministic_flag)
 
         result_cpu = pin_utilization_op.forward(pos.t().contiguous().view(-1))
         print("Test on CPU. pin_utilization map = ", result_cpu)
@@ -101,7 +103,7 @@ class PinUtilizationUnittest(unittest.TestCase):
                 num_bins_y=num_bins_y,
                 unit_pin_capacity=unit_pin_capacity,
                 pin_stretch_ratio=pin_stretch_ratio,
-            )
+                deterministic_flag=deterministic_flag)
 
             result_cuda = pin_utilization_op_cuda.forward(
                 pos.t().contiguous().view(-1).cuda())
