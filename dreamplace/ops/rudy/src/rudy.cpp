@@ -20,13 +20,14 @@ template <typename T>
 inline DEFINE_NET_WIRING_DISTRIBUTION_MAP_WEIGHT;
 
 // fill the demand map net by net
-template <typename T>
+template <typename T, typename AtomicOp>
 int rudyLauncher(const T *pin_pos_x, const T *pin_pos_y,
                  const int *netpin_start, const int *flat_netpin,
                  const T *net_weights, const T bin_size_x, const T bin_size_y,
                  T xl, T yl, T xh, T yh, int num_bins_x, int num_bins_y,
-                 int num_nets, int num_threads, T *horizontal_utilization_map,
-                 T *vertical_utilization_map) {
+                 int num_nets, int num_threads, AtomicOp atomic_add_op,
+                 typename AtomicOp::type* horizontal_buf_map, 
+                 typename AtomicOp::type* vertical_buf_map) {
   const T inv_bin_size_x = 1.0 / bin_size_x;
   const T inv_bin_size_y = 1.0 / bin_size_y;
 
@@ -82,14 +83,10 @@ int rudyLauncher(const T *pin_pos_x, const T *pin_pos_y,
                         (T)0);
         overlap *= wt;
         int index = x * num_bins_y + y;
-// Following Wuxi's implementation, a tolerance is added to avoid 0-size
-// bounding box
-#pragma omp atomic update
-        horizontal_utilization_map[index] +=
-            overlap / (y_max - y_min + std::numeric_limits<T>::epsilon());
-#pragma omp atomic update
-        vertical_utilization_map[index] +=
-            overlap / (x_max - x_min + std::numeric_limits<T>::epsilon());
+        // Following Wuxi's implementation, a tolerance is added to avoid 0-size
+        // bounding box
+        atomic_add_op(&horizontal_buf_map[index], overlap / (y_max - y_min + std::numeric_limits<T>::epsilon()));
+        atomic_add_op(&vertical_buf_map[index], overlap / (x_max - x_min + std::numeric_limits<T>::epsilon())); 
       }
     }
   }
@@ -100,6 +97,7 @@ void rudy_forward(at::Tensor pin_pos, at::Tensor netpin_start,
                   at::Tensor flat_netpin, at::Tensor net_weights,
                   double bin_size_x, double bin_size_y, double xl, double yl,
                   double xh, double yh, int num_bins_x, int num_bins_y,
+                  int deterministic_flag,
                   at::Tensor horizontal_utilization_map,
                   at::Tensor vertical_utilization_map) {
   CHECK_FLAT_CPU(pin_pos);
@@ -119,19 +117,53 @@ void rudy_forward(at::Tensor pin_pos, at::Tensor netpin_start,
   int num_pins = pin_pos.numel() / 2;
 
   DREAMPLACE_DISPATCH_FLOATING_TYPES(pin_pos, "rudyLauncher", [&] {
-    rudyLauncher<scalar_t>(
-        DREAMPLACE_TENSOR_DATA_PTR(pin_pos, scalar_t),
-        DREAMPLACE_TENSOR_DATA_PTR(pin_pos, scalar_t) + num_pins,
-        DREAMPLACE_TENSOR_DATA_PTR(netpin_start, int),
-        DREAMPLACE_TENSOR_DATA_PTR(flat_netpin, int),
-        (net_weights.numel())
-            ? DREAMPLACE_TENSOR_DATA_PTR(net_weights, scalar_t)
-            : nullptr,
-        bin_size_x, bin_size_y, xl, yl, xh, yh,
+      if (deterministic_flag) {
+          double diearea = (xh - xl) * (yh - yl);
+          int integer_bits = DREAMPLACE_STD_NAMESPACE::max((int)ceil(log2(diearea)) + 1, 32);
+          int fraction_bits = DREAMPLACE_STD_NAMESPACE::max(64 - integer_bits, 0);
+          long scale_factor = (1L << fraction_bits);
+          int num_bins = num_bins_x * num_bins_y;
 
-        num_bins_x, num_bins_y, num_nets, at::get_num_threads(),
-        DREAMPLACE_TENSOR_DATA_PTR(horizontal_utilization_map, scalar_t),
-        DREAMPLACE_TENSOR_DATA_PTR(vertical_utilization_map, scalar_t));
+          std::vector<long> horizontal_buf_map(num_bins, 0);
+          std::vector<long> vertical_buf_map(num_bins, 0);
+          AtomicAdd<long> atomic_add_op(scale_factor);
+
+          rudyLauncher<scalar_t, decltype(atomic_add_op)>(
+              DREAMPLACE_TENSOR_DATA_PTR(pin_pos, scalar_t),
+              DREAMPLACE_TENSOR_DATA_PTR(pin_pos, scalar_t) + num_pins,
+              DREAMPLACE_TENSOR_DATA_PTR(netpin_start, int),
+              DREAMPLACE_TENSOR_DATA_PTR(flat_netpin, int),
+              (net_weights.numel())
+                  ? DREAMPLACE_TENSOR_DATA_PTR(net_weights, scalar_t)
+                  : nullptr,
+              bin_size_x, bin_size_y, xl, yl, xh, yh,
+
+              num_bins_x, num_bins_y, num_nets, at::get_num_threads(),
+              atomic_add_op, horizontal_buf_map.data(), vertical_buf_map.data());
+
+          scaleAdd(DREAMPLACE_TENSOR_DATA_PTR(horizontal_utilization_map, scalar_t),
+                   horizontal_buf_map.data(), 1.0 / scale_factor, num_bins,
+                   at::get_num_threads());
+          scaleAdd(DREAMPLACE_TENSOR_DATA_PTR(vertical_utilization_map, scalar_t),
+                   vertical_buf_map.data(), 1.0 / scale_factor, num_bins,
+                   at::get_num_threads());
+      } else {
+          AtomicAdd<scalar_t> atomic_add_op;
+          rudyLauncher<scalar_t, decltype(atomic_add_op)>(
+              DREAMPLACE_TENSOR_DATA_PTR(pin_pos, scalar_t),
+              DREAMPLACE_TENSOR_DATA_PTR(pin_pos, scalar_t) + num_pins,
+              DREAMPLACE_TENSOR_DATA_PTR(netpin_start, int),
+              DREAMPLACE_TENSOR_DATA_PTR(flat_netpin, int),
+              (net_weights.numel())
+                  ? DREAMPLACE_TENSOR_DATA_PTR(net_weights, scalar_t)
+                  : nullptr,
+              bin_size_x, bin_size_y, xl, yl, xh, yh,
+
+              num_bins_x, num_bins_y, num_nets, at::get_num_threads(),
+              atomic_add_op, 
+              DREAMPLACE_TENSOR_DATA_PTR(horizontal_utilization_map, scalar_t),
+              DREAMPLACE_TENSOR_DATA_PTR(vertical_utilization_map, scalar_t));
+      }
   });
 }
 

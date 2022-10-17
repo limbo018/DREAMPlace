@@ -28,8 +28,9 @@ class EvalMetrics (object):
         self.rmst_wl = None
         self.overflow = None
         self.goverflow = None
-        self.route_utilization = None
+        self.rudy_utilization = None
         self.pin_utilization = None
+        self.ml_congestion = None
         self.max_density = None
         self.gmax_density = None
         self.gamma = None
@@ -74,10 +75,12 @@ class EvalMetrics (object):
                 content += ", MaxDensity %.3E" % (self.max_density)
             else:
                 content += ", MaxDensity [%s]" % ", ".join(["%.3E" % i for i in self.max_density])
-        if self.route_utilization is not None:
-            content += ", RouteOverflow %.6E" % (self.route_utilization)
+        if self.rudy_utilization is not None:
+            content += ", RUDYOverflow %.6E" % (self.rudy_utilization)
         if self.pin_utilization is not None:
             content += ", PinOverflow %.6E" % (self.pin_utilization)
+        if self.ml_congestion is not None:
+            content += ", MLOverflow %.6E" % (self.ml_congestion)
         if self.gamma is not None:
             content += ", gamma %.6E" % (self.gamma)
         if self.eval_time is not None:
@@ -124,12 +127,16 @@ class EvalMetrics (object):
                 overflow, max_density = ops["goverflow"](var)
                 self.goverflow = overflow.data / placedb.total_movable_node_area
                 self.gmax_density = max_density.data
-            if "route_utilization" in ops:
-                route_utilization_map = ops["route_utilization"](var)
-                route_utilization_map_sum = route_utilization_map.sum()
-                self.route_utilization = route_utilization_map.sub_(1).clamp_(min=0).sum() / route_utilization_map_sum
+            if "rudy_utilization" in ops:
+                rudy_utilization_map = ops["rudy_utilization"](var)
+                rudy_utilization_map_sum = rudy_utilization_map.sum()
+                self.rudy_utilization = rudy_utilization_map.sub_(1).clamp_(min=0).sum() / rudy_utilization_map_sum
             if "pin_utilization" in ops:
                 pin_utilization_map = ops["pin_utilization"](var)
                 pin_utilization_map_sum = pin_utilization_map.sum()
                 self.pin_utilization = pin_utilization_map.sub_(1).clamp_(min=0).sum() / pin_utilization_map_sum
+            if "ml_congestion" in ops:
+                ml_congestion_map = ops["ml_congestion"](var)
+                ml_congestion_map_sum = ml_congestion_map.sum()
+                self.ml_congestion = ml_congestion_map.sub_(1).clamp_(min=0).sum() / ml_congestion_map_sum
         self.eval_time = time.time() - tt

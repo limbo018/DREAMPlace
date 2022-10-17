@@ -248,9 +248,11 @@ class PlaceOpCollection(object):
         self.precondition_op = None
         self.noise_op = None
         self.draw_place_op = None
-        self.route_utilization_map_op = None
+        self.rudy_utilization_map_op = None
+        self.pinrudy_utilization_map_op = None
         self.pin_utilization_map_op = None
         self.nctugr_congestion_map_op = None
+        self.ml_congestion_map_op = None
         self.adjust_node_area_op = None
 
 

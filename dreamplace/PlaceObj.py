@@ -23,13 +23,16 @@ else:
     import _pickle as pickle
 import dreamplace.ops.weighted_average_wirelength.weighted_average_wirelength as weighted_average_wirelength
 import dreamplace.ops.logsumexp_wirelength.logsumexp_wirelength as logsumexp_wirelength
+import dreamplace.ops.density_map.density_map as density_map
 import dreamplace.ops.density_overflow.density_overflow as density_overflow
 import dreamplace.ops.electric_potential.electric_overflow as electric_overflow
 import dreamplace.ops.electric_potential.electric_potential as electric_potential
 import dreamplace.ops.density_potential.density_potential as density_potential
 import dreamplace.ops.rudy.rudy as rudy
+import dreamplace.ops.pinrudy.pinrudy as pinrudy
 import dreamplace.ops.pin_utilization.pin_utilization as pin_utilization
 import dreamplace.ops.nctugr_binary.nctugr_binary as nctugr_binary
+import dreamplace.ops.ml_congestion.ml_congestion as ml_congestion
 import dreamplace.ops.adjust_node_area.adjust_node_area as adjust_node_area
 
 
@@ -245,12 +248,19 @@ class PlaceObj(nn.Module):
             params, placedb, self.data_collections)
         if params.routability_opt_flag:
             # compute congestion map, RISA/RUDY congestion map
-            self.op_collections.route_utilization_map_op = self.build_route_utilization_map(
+            self.op_collections.rudy_utilization_map_op = self.build_rudy_utilization_map(
+                params, placedb, self.data_collections)
+            self.op_collections.pinrudy_utilization_map_op = self.build_pinrudy_utilization_map(
                 params, placedb, self.data_collections)
             self.op_collections.pin_utilization_map_op = self.build_pin_utilization_map(
                 params, placedb, self.data_collections)
-            self.op_collections.nctugr_congestion_map_op = self.build_nctugr_congestion_map(
-                params, placedb, self.data_collections)
+            if params.adjust_nctugr_area_flag: 
+                self.op_collections.nctugr_congestion_map_op = self.build_nctugr_congestion_map(
+                    params, placedb, self.data_collections)
+            # require rudy_utilization_map_op and pinrudy_utilization_map_op defined first 
+            if params.adjust_ml_congestion_area_flag: 
+                self.op_collections.ml_congestion_map_op = self.build_ml_congestion_map(
+                    params, placedb, self.data_collections)
             # adjust instance area with congestion map
             self.op_collections.adjust_node_area_op = self.build_adjust_node_area(
                 params, placedb, self.data_collections)
@@ -510,21 +520,16 @@ class PlaceObj(nn.Module):
         @param placedb placement database
         @param data_collections a collection of all data and variables required for constructing the ops
         """
-        bin_size_x = (placedb.xh - placedb.xl) / num_bins_x
-        bin_size_y = (placedb.yh - placedb.yl) / num_bins_y
-
         return density_overflow.DensityOverflow(
             data_collections.node_size_x,
             data_collections.node_size_y,
-            bin_center_x=data_collections.bin_center_x_padded(placedb, 0, num_bins_x),
-            bin_center_y=data_collections.bin_center_y_padded(placedb, 0, num_bins_y),
             target_density=data_collections.target_density,
             xl=placedb.xl,
             yl=placedb.yl,
             xh=placedb.xh,
             yh=placedb.yh,
-            bin_size_x=bin_size_x,
-            bin_size_y=bin_size_y,
+            num_bins_x=num_bins_x,
+            num_bins_y=num_bins_y,
             num_movable_nodes=placedb.num_movable_nodes,
             num_terminals=placedb.num_terminals,
             num_filler_nodes=0)
@@ -931,9 +936,9 @@ class PlaceObj(nn.Module):
 
         return PreconditionOp(placedb, data_collections)
 
-    def build_route_utilization_map(self, params, placedb, data_collections):
+    def build_rudy_utilization_map(self, params, placedb, data_collections):
         """
-        @brief routing congestion map based on current cell locations
+        @brief RUDY map based on current cell locations
         @param params parameters
         @param placedb placement database
         @param data_collections a collection of all data and variables required for constructing the ops
@@ -950,16 +955,48 @@ class PlaceObj(nn.Module):
             num_bins_y=placedb.num_routing_grids_y,
             unit_horizontal_capacity=placedb.unit_horizontal_capacity,
             unit_vertical_capacity=placedb.unit_vertical_capacity,
+            deterministic_flag=params.deterministic_flag, 
             initial_horizontal_utilization_map=data_collections.
             initial_horizontal_utilization_map,
             initial_vertical_utilization_map=data_collections.
             initial_vertical_utilization_map)
 
-        def route_utilization_map_op(pos):
+        def rudy_utilization_map_op(pos):
             pin_pos = self.op_collections.pin_pos_op(pos)
             return congestion_op(pin_pos)
 
-        return route_utilization_map_op
+        return rudy_utilization_map_op
+
+    def build_pinrudy_utilization_map(self, params, placedb, data_collections):
+        """
+        @brief pin RUDY map based on current cell locations
+        @param params parameters
+        @param placedb placement database
+        @param data_collections a collection of all data and variables required for constructing the ops
+        """
+        congestion_op = pinrudy.PinRudy(
+            netpin_start=data_collections.flat_net2pin_start_map,
+            flat_netpin=data_collections.flat_net2pin_map,
+            net_weights=data_collections.net_weights,
+            xl=placedb.routing_grid_xl,
+            yl=placedb.routing_grid_yl,
+            xh=placedb.routing_grid_xh,
+            yh=placedb.routing_grid_yh,
+            num_bins_x=placedb.num_routing_grids_x,
+            num_bins_y=placedb.num_routing_grids_y,
+            unit_horizontal_capacity=placedb.unit_horizontal_capacity,
+            unit_vertical_capacity=placedb.unit_vertical_capacity,
+            deterministic_flag=params.deterministic_flag, 
+            initial_horizontal_utilization_map=data_collections.
+            initial_horizontal_utilization_map,
+            initial_vertical_utilization_map=data_collections.
+            initial_vertical_utilization_map)
+
+        def pinrudy_utilization_map_op(pos):
+            pin_pos = self.op_collections.pin_pos_op(pos)
+            return congestion_op(pin_pos)
+
+        return pinrudy_utilization_map_op
 
     def build_pin_utilization_map(self, params, placedb, data_collections):
         """
@@ -982,7 +1019,8 @@ class PlaceObj(nn.Module):
             num_bins_x=placedb.num_routing_grids_x,
             num_bins_y=placedb.num_routing_grids_y,
             unit_pin_capacity=data_collections.unit_pin_capacity,
-            pin_stretch_ratio=params.pin_stretch_ratio)
+            pin_stretch_ratio=params.pin_stretch_ratio,
+            deterministic_flag=params.deterministic_flag)
 
     def build_nctugr_congestion_map(self, params, placedb, data_collections):
         """
@@ -1006,6 +1044,15 @@ class PlaceObj(nn.Module):
             params=params,
             placedb=placedb)
 
+    def build_ml_congestion_map(self, params, placedb, data_collections):
+        """
+        @brief call machine learning model for congestion estimation
+        """
+        ############## Your code block begins here ##############
+        # hint: You can use the density_map op for fixed_node_map_op
+        return None 
+        ############## Your code block ends here ################
+
     def build_adjust_node_area(self, params, placedb, data_collections):
         """
         @brief adjust cell area according to routing congestion and pin utilization map
@@ -1018,6 +1065,7 @@ class PlaceObj(nn.Module):
             data_collections.node_size_y[-placedb.num_filler_nodes:]).sum()
         total_place_area = (total_movable_area + total_filler_area
                             ) / data_collections.target_density
+        ############## Your code block begins here ##############
         adjust_node_area_op = adjust_node_area.AdjustNodeArea(
             flat_node2pin_map=data_collections.flat_node2pin_map,
             flat_node2pin_start_map=data_collections.flat_node2pin_start_map,
@@ -1041,6 +1089,7 @@ class PlaceObj(nn.Module):
             route_area_adjust_stop_ratio=params.route_area_adjust_stop_ratio,
             pin_area_adjust_stop_ratio=params.pin_area_adjust_stop_ratio,
             unit_pin_capacity=data_collections.unit_pin_capacity)
+        ############## Your code block ends here ################
 
         def build_adjust_node_area_op(pos, route_utilization_map,
                                       pin_utilization_map):

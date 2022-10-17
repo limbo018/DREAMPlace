@@ -10,7 +10,6 @@
 #include "cuda_runtime.h"
 #include "utility/src/utils.cuh"
 // local dependency
-#include "electric_potential/src/atomic_ops.cuh"
 #include "electric_potential/src/density_function.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
@@ -31,7 +30,7 @@ __global__ void __launch_bounds__(1024, 8) computeTriangleDensityMap(
     const int num_nodes, const int num_bins_x, const int num_bins_y, const T xl,
     const T yl, const T xh, const T yh, const T half_bin_size_x,
     const T half_bin_size_y, const T bin_size_x, const T bin_size_y,
-    const T inv_bin_size_x, const T inv_bin_size_y, AtomicOp atomicAddOp,
+    const T inv_bin_size_x, const T inv_bin_size_y, AtomicOp atomic_add_op,
     typename AtomicOp::type *density_map_tensor,
     const int *sorted_node_map  ///< can be NULL if not sorted
 ) {
@@ -69,7 +68,7 @@ __global__ void __launch_bounds__(1024, 8) computeTriangleDensityMap(
         T py =
             triangle_density_function(node_y, node_size_y, yl, h, bin_size_y);
         T area = px_by_ratio * py;
-        atomicAddOp(&density_map_tensor[k * num_bins_y + h], area);
+        atomic_add_op(&density_map_tensor[k * num_bins_y + h], area);
       }
     }
   }
@@ -249,7 +248,7 @@ __global__ void computeTriangleDensityMapSimpleLikeCPU(
     const int num_nodes, const int num_bins_x, const int num_bins_y, const T xl,
     const T yl, const T xh, const T yh, const T bin_size_x, const T bin_size_y,
     // T* density_map_tensor
-    AtomicOp atomicAddOp, typename AtomicOp::type *density_map_tensor) {
+    AtomicOp atomic_add_op, typename AtomicOp::type *density_map_tensor) {
   // density_map_tensor should be initialized outside
 
   T inv_bin_size_x = 1.0 / bin_size_x;
@@ -286,8 +285,7 @@ __global__ void computeTriangleDensityMapSimpleLikeCPU(
             triangle_density_function(node_y, node_size_y, yl, h, bin_size_y);
         T area = px_by_ratio * py;
 
-        // atomicAdd(&density_map_tensor[k * num_bins_y + h], area);
-        atomicAddOp(&density_map_tensor[k * num_bins_y + h], area);
+        atomic_add_op(&density_map_tensor[k * num_bins_y + h], area);
       }
     }
   }
@@ -300,7 +298,7 @@ __global__ void computeExactDensityMap(
     const T *bin_center_y_tensor, const int num_nodes, const int num_bins_x,
     const int num_bins_y, const T xl, const T yl, const T xh, const T yh,
     const T bin_size_x, const T bin_size_y, const int num_impacted_bins_x,
-    const int num_impacted_bins_y, bool fixed_node_flag, AtomicOp atomicAddOp,
+    const int num_impacted_bins_y, bool fixed_node_flag, AtomicOp atomic_add_op,
     typename AtomicOp::type *density_map_tensor) {
   int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
   int64_t bound = int64_t(num_nodes) * num_impacted_bins_x * num_impacted_bins_y;
@@ -333,7 +331,7 @@ __global__ void computeExactDensityMap(
     T py = exact_density_function(byl, byh - byl, bin_center_y_tensor[h],
                                   bin_size_y, yl, yh, fixed_node_flag);
     // still area
-    atomicAddOp(&density_map_tensor[k * num_bins_y + h], px * py);
+    atomic_add_op(&density_map_tensor[k * num_bins_y + h], px * py);
   }
 }
 
@@ -345,7 +343,7 @@ __global__ void computeExactDensityMapCellByCell(
     const T *bin_center_y_tensor, const int num_nodes, const int num_bins_x,
     const int num_bins_y, const T xl, const T yl, const T xh, const T yh,
     const T bin_size_x, const T bin_size_y, const int num_impacted_bins_x,
-    const int num_impacted_bins_y, bool fixed_node_flag, AtomicOp atomicAddOp,
+    const int num_impacted_bins_y, bool fixed_node_flag, AtomicOp atomic_add_op,
     typename AtomicOp::type *density_map_tensor) {
   auto box2bin = [&](T bxl, T byl, T bxh, T byh) {
     // x direction
@@ -368,7 +366,7 @@ __global__ void computeExactDensityMapCellByCell(
                                       bin_size_y, yl, yh, fixed_node_flag);
 
         // still area
-        atomicAddOp(&density_map_tensor[k * num_bins_y + h], px * py);
+        atomic_add_op(&density_map_tensor[k * num_bins_y + h], px * py);
       }
     }
   };
@@ -391,7 +389,7 @@ int computeTriangleDensityMapCallKernel(
     const T *bin_center_x_tensor, const T *bin_center_y_tensor, int num_nodes,
     const int num_bins_x, const int num_bins_y, int num_impacted_bins_x,
     int num_impacted_bins_y, const T xl, const T yl, const T xh, const T yh,
-    const T bin_size_x, const T bin_size_y, AtomicOp atomicAddOp,
+    const T bin_size_x, const T bin_size_y, AtomicOp atomic_add_op,
     typename AtomicOp::type *density_map_tensor, const int *sorted_node_map) {
   int thread_count = 64;
   dim3 blockSize(2, 2, thread_count);
@@ -402,7 +400,7 @@ int computeTriangleDensityMapCallKernel(
       node_size_y_clamped_tensor, offset_x_tensor, offset_y_tensor,
       ratio_tensor, bin_center_x_tensor, bin_center_y_tensor, num_nodes,
       num_bins_x, num_bins_y, xl, yl, xh, yh, bin_size_x / 2, bin_size_y / 2,
-      bin_size_x, bin_size_y, 1 / bin_size_x, 1 / bin_size_y, atomicAddOp,
+      bin_size_x, bin_size_y, 1 / bin_size_x, 1 / bin_size_y, atomic_add_op,
       density_map_tensor, sorted_node_map);
 
   // computeTriangleDensityMapSimpleLikeCPU<<<block_count, thread_count>>>(
@@ -415,19 +413,11 @@ int computeTriangleDensityMapCallKernel(
   //    num_bins_x, num_bins_y,
   //    xl, yl, xh, yh,
   //    bin_size_x, bin_size_y,
-  //    atomicAddOp,
+  //    atomic_add_op,
   //    density_map_tensor
   //    );
 
   return 0;
-}
-
-template <typename T, typename V>
-__global__ void copyScaleArray(T *dst, V *src, T scale_factor, int n) {
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < n) {
-    dst[i] = src[i] * scale_factor;
-  }
 }
 
 template <typename T>
@@ -452,18 +442,18 @@ int computeTriangleDensityMapCudaLauncher(
     unsigned long long int *scaled_density_map_tensor = NULL;
     allocateCUDA(scaled_density_map_tensor, num_bins, unsigned long long int);
 
-    AtomicAdd<unsigned long long int> atomicAddOp(scale_factor);
+    AtomicAddCUDA<unsigned long long int> atomic_add_op(scale_factor);
 
     int thread_count = 512;
     copyScaleArray<<<(num_bins + thread_count - 1) / thread_count,
                      thread_count>>>(
         scaled_density_map_tensor, density_map_tensor, scale_factor, num_bins);
-    computeTriangleDensityMapCallKernel<T, decltype(atomicAddOp)>(
+    computeTriangleDensityMapCallKernel<T, decltype(atomic_add_op)>(
         x_tensor, y_tensor, node_size_x_clamped_tensor,
         node_size_y_clamped_tensor, offset_x_tensor, offset_y_tensor,
         ratio_tensor, bin_center_x_tensor, bin_center_y_tensor, num_nodes,
         num_bins_x, num_bins_y, num_impacted_bins_x, num_impacted_bins_y, xl,
-        yl, xh, yh, bin_size_x, bin_size_y, atomicAddOp,
+        yl, xh, yh, bin_size_x, bin_size_y, atomic_add_op,
         scaled_density_map_tensor, sorted_node_map);
     copyScaleArray<<<(num_bins + thread_count - 1) / thread_count,
                      thread_count>>>(density_map_tensor,
@@ -472,14 +462,14 @@ int computeTriangleDensityMapCudaLauncher(
 
     destroyCUDA(scaled_density_map_tensor);
   } else {
-    AtomicAdd<T> atomicAddOp;
+    AtomicAddCUDA<T> atomic_add_op;
 
-    computeTriangleDensityMapCallKernel<T, decltype(atomicAddOp)>(
+    computeTriangleDensityMapCallKernel<T, decltype(atomic_add_op)>(
         x_tensor, y_tensor, node_size_x_clamped_tensor,
         node_size_y_clamped_tensor, offset_x_tensor, offset_y_tensor,
         ratio_tensor, bin_center_x_tensor, bin_center_y_tensor, num_nodes,
         num_bins_x, num_bins_y, num_impacted_bins_x, num_impacted_bins_y, xl,
-        yl, xh, yh, bin_size_x, bin_size_y, atomicAddOp, density_map_tensor,
+        yl, xh, yh, bin_size_x, bin_size_y, atomic_add_op, density_map_tensor,
         sorted_node_map);
   }
 
@@ -494,7 +484,7 @@ int computeExactDensityMapCallKernel(
     const int num_bins_y, const int num_impacted_bins_x,
     const int num_impacted_bins_y, const T xl, const T yl, const T xh,
     const T yh, const T bin_size_x, const T bin_size_y, bool fixed_node_flag,
-    AtomicOp atomicAddOp, typename AtomicOp::type *density_map_tensor) {
+    AtomicOp atomic_add_op, typename AtomicOp::type *density_map_tensor) {
   int thread_count = 512;
   //int block_count = (num_nodes * num_impacted_bins_x * num_impacted_bins_y - 1 + thread_count) / thread_count;
   // dreamplaceAssert(block_count >= 0); // avoid overflow 
@@ -504,7 +494,7 @@ int computeExactDensityMapCallKernel(
       x_tensor, y_tensor, node_size_x_tensor, node_size_y_tensor,
       bin_center_x_tensor, bin_center_y_tensor, num_nodes, num_bins_x,
       num_bins_y, xl, yl, xh, yh, bin_size_x, bin_size_y, num_impacted_bins_x,
-      num_impacted_bins_y, fixed_node_flag, atomicAddOp, density_map_tensor);
+      num_impacted_bins_y, fixed_node_flag, atomic_add_op, density_map_tensor);
 
   return 0;
 }
@@ -536,17 +526,17 @@ int computeExactDensityMapCudaLauncher(
     unsigned long long int *scaled_density_map_tensor = NULL;
     allocateCUDA(scaled_density_map_tensor, num_bins, unsigned long long int);
 
-    AtomicAdd<unsigned long long int> atomicAddOp(scale_factor);
+    AtomicAddCUDA<unsigned long long int> atomic_add_op(scale_factor);
 
     int thread_count = 512;
     copyScaleArray<<<(num_bins + thread_count - 1) / thread_count,
                      thread_count>>>(
         scaled_density_map_tensor, density_map_tensor, scale_factor, num_bins);
-    computeExactDensityMapCallKernel<T, decltype(atomicAddOp)>(
+    computeExactDensityMapCallKernel<T, decltype(atomic_add_op)>(
         x_tensor, y_tensor, node_size_x_tensor, node_size_y_tensor,
         bin_center_x_tensor, bin_center_y_tensor, num_nodes, num_bins_x,
         num_bins_y, num_impacted_bins_x, num_impacted_bins_y, xl, yl, xh, yh,
-        bin_size_x, bin_size_y, fixed_node_flag, atomicAddOp,
+        bin_size_x, bin_size_y, fixed_node_flag, atomic_add_op,
         scaled_density_map_tensor);
     copyScaleArray<<<(num_bins + thread_count - 1) / thread_count,
                      thread_count>>>(density_map_tensor,
@@ -555,13 +545,13 @@ int computeExactDensityMapCudaLauncher(
 
     destroyCUDA(scaled_density_map_tensor);
   } else {
-    AtomicAdd<T> atomicAddOp;
+    AtomicAddCUDA<T> atomic_add_op;
 
-    computeExactDensityMapCallKernel<T, decltype(atomicAddOp)>(
+    computeExactDensityMapCallKernel<T, decltype(atomic_add_op)>(
         x_tensor, y_tensor, node_size_x_tensor, node_size_y_tensor,
         bin_center_x_tensor, bin_center_y_tensor, num_nodes, num_bins_x,
         num_bins_y, num_impacted_bins_x, num_impacted_bins_y, xl, yl, xh, yh,
-        bin_size_x, bin_size_y, fixed_node_flag, atomicAddOp,
+        bin_size_x, bin_size_y, fixed_node_flag, atomic_add_op,
         density_map_tensor);
   }
 

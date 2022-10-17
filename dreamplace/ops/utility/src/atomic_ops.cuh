@@ -11,12 +11,12 @@ DREAMPLACE_BEGIN_NAMESPACE
 /// @brief A class generalized scaled atomic addition for floating point number and integers. 
 /// For integer, we use it as a fixed point number with the LSB part for fractions. 
 template <typename T, bool = std::is_integral<T>::value>
-struct AtomicAdd 
+struct AtomicAddCUDA 
 {
     typedef T type; 
 
     /// @brief constructor 
-    AtomicAdd(type = 1)
+    AtomicAddCUDA(type = 1)
     {
     }
 
@@ -29,7 +29,7 @@ struct AtomicAdd
 
 /// @brief For atomic addition of fixed point number using integers. 
 template <typename T>
-struct AtomicAdd<T, true>
+struct AtomicAddCUDA<T, true>
 {
     typedef T type; 
 
@@ -37,7 +37,7 @@ struct AtomicAdd<T, true>
 
     /// @brief constructor 
     /// @param sf scale factor 
-    AtomicAdd(type sf = 1)
+    AtomicAddCUDA(type sf = 1)
         : scale_factor(sf)
     {
     }
@@ -49,5 +49,13 @@ struct AtomicAdd<T, true>
         return atomicAdd(dst, sv); 
     }
 };
+
+template <typename T, typename V>
+__global__ void copyScaleArray(T *dst, V *src, T scale_factor, int n) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < n) {
+    dst[i] = src[i] * scale_factor;
+  }
+}
 
 DREAMPLACE_END_NAMESPACE

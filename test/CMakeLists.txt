@@ -22,3 +22,7 @@ install(
     DIRECTORY iccad2014 DESTINATION ${PROJECT_NAME}
     )
 
+install(
+    DIRECTORY mlcong DESTINATION ${PROJECT_NAME}
+    )
+

@@ -114,10 +114,16 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                 if params.routability_opt_flag:
                     eval_ops.update(
                         {
-                            "route_utilization": self.op_collections.route_utilization_map_op,
+                            "rudy_utilization": self.op_collections.rudy_utilization_map_op,
                             "pin_utilization": self.op_collections.pin_utilization_map_op,
                         }
                     )
+                    if params.adjust_ml_congestion_area_flag:
+                        eval_ops.update(
+                            {
+                                "ml_congestion": self.op_collections.ml_congestion_map_op
+                            }
+                        )
                 if len(placedb.regions) > 0:
                     eval_ops.update(
                         {
@@ -349,7 +355,8 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         0
                     ].overflow.item()
                     if wl_ratio > threshold * 1.2:
-                        if overflow_ratio > threshold:
+                        # this condition is not suitable for routability-driven opt with cell inflation
+                        if (not params.routability_opt_flag) and overflow_ratio > threshold:
                             logging.warn(
                                 f"Divergence detected: overflow increases too much than best overflow ({overflow_ratio:.4f} > {threshold:.4f})"
                             )
@@ -408,7 +415,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
 
                 if params.routability_opt_flag:
                     adjust_area_flag = True
-                    adjust_route_area_flag = params.adjust_nctugr_area_flag or params.adjust_rudy_area_flag
+                    adjust_route_area_flag = params.adjust_nctugr_area_flag or params.adjust_ml_congestion_area_flag or params.adjust_rudy_area_flag
                     adjust_pin_area_flag = params.adjust_pin_area_flag
                     num_area_adjust = 0
 
@@ -433,7 +440,8 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                             ## only detect divergence when overflow is relatively low but not too low
                             if (
                                 len(placedb.regions) == 0
-                                and params.stop_overflow * 1.1 < overflow_list[-1] < params.stop_overflow * 4
+                                and params.stop_overflow * 1.1 < overflow_list[-1] 
+                                and overflow_list[-1] < params.stop_overflow * 4
                                 and check_divergence(
                                     divergence_list, window=3, threshold=0.01 * overflow_list[-1]
                                 )
@@ -529,8 +537,10 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                             if adjust_route_area_flag:
                                 if params.adjust_nctugr_area_flag:
                                     route_utilization_map = model.op_collections.nctugr_congestion_map_op(pos)
+                                elif params.adjust_ml_congestion_area_flag:
+                                    route_utilization_map = model.op_collections.ml_congestion_map_op(pos)
                                 else:
-                                    route_utilization_map = model.op_collections.route_utilization_map_op(pos)
+                                    route_utilization_map = model.op_collections.rudy_utilization_map_op(pos)
                                 if params.plot_flag:
                                     path = "%s/%s" % (params.result_dir, params.design_name())
                                     figname = "%s/plot/route%d.png" % (path, num_area_adjust)

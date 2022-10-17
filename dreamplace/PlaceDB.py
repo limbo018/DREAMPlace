@@ -181,6 +181,21 @@ class PlaceDB (object):
             self.regions[i] -= box_shift_factor
             self.regions[i] *= scale_factor
 
+        # routability related 
+        self.routing_grid_xl -= shift_factor[0]
+        self.routing_grid_xl *= scale_factor 
+        self.routing_grid_yl -= shift_factor[1]
+        self.routing_grid_yl *= scale_factor 
+        self.routing_grid_xh -= shift_factor[0]
+        self.routing_grid_xh *= scale_factor 
+        self.routing_grid_yh -= shift_factor[1]
+        self.routing_grid_yh *= scale_factor 
+        if self.unit_horizontal_capacity:
+            self.unit_horizontal_capacity /= scale_factor 
+            self.unit_vertical_capacity /= scale_factor 
+            self.unit_horizontal_capacities /= scale_factor
+            self.unit_vertical_capacities /= scale_factor
+
     def sort(self):
         """
         @brief Sort net by degree.
@@ -525,9 +540,10 @@ class PlaceDB (object):
         self.pin2node_map = np.array(pydb.pin2node_map, dtype=np.int32)
         self.pin2net_map = np.array(pydb.pin2net_map, dtype=np.int32)
         self.rows = np.array(pydb.rows, dtype=self.dtype)
-        self.regions = pydb.regions
-        for i in range(len(self.regions)):
-            self.regions[i] = np.array(self.regions[i], dtype=self.dtype)
+        self.regions = [] 
+        for i in range(len(pydb.regions)):
+            if len(pydb.regions[i]): # only add regions with valid boxes 
+                self.regions.append(np.array(pydb.regions[i], dtype=self.dtype))
         self.flat_region_boxes = np.array(pydb.flat_region_boxes, dtype=self.dtype)
         self.flat_region_boxes_start = np.array(pydb.flat_region_boxes_start, dtype=np.int32)
         self.node2fence_region_map = np.array(pydb.node2fence_region_map, dtype=np.int32)
@@ -561,9 +577,21 @@ class PlaceDB (object):
         else:
             self.num_routing_grids_x = params.route_num_bins_x
             self.num_routing_grids_y = params.route_num_bins_y
-            self.num_routing_layers = 1
-            self.unit_horizontal_capacity = params.unit_horizontal_capacity
-            self.unit_vertical_capacity = params.unit_vertical_capacity
+            self.num_routing_layers = params.num_routing_layers
+            self.unit_horizontal_capacities = np.zeros(self.num_routing_layers, dtype=self.dtype)
+            if len(params.unit_horizontal_capacities): 
+                self.unit_horizontal_capacities[:len(params.unit_horizontal_capacities)] = params.unit_horizontal_capacities
+                self.unit_horizontal_capacity = self.unit_horizontal_capacities.sum()
+            else:
+                self.unit_horizontal_capacity = params.unit_horizontal_capacity
+                self.unit_horizontal_capacities = np.array([self.unit_horizontal_capacity / self.num_routing_layers] * self.num_routing_layers, dtype=self.dtype)
+            self.unit_vertical_capacities = np.zeros(self.num_routing_layers, dtype=self.dtype)
+            if len(params.unit_vertical_capacities): 
+                self.unit_vertical_capacities[:len(params.unit_vertical_capacities)] = params.unit_vertical_capacities
+                self.unit_vertical_capacity = self.unit_vertical_capacities.sum()
+            else:
+                self.unit_vertical_capacity = params.unit_vertical_capacity
+                self.unit_vertical_capacities = np.array([self.unit_vertical_capacity / self.num_routing_layers] * self.num_routing_layers, dtype=self.dtype)
 
         # convert node2pin_map to array of array
         for i in range(len(self.node2pin_map)):
@@ -884,6 +912,8 @@ row height = %g, site width = %g
             content += "================================== routing information =================================\n"
             content += "routing grids (%d, %d)\n" % (self.num_routing_grids_x, self.num_routing_grids_y)
             content += "routing grid sizes (%g, %g)\n" % (self.routing_grid_size_x, self.routing_grid_size_y)
+            content += "unit routing capacities H/V (%s, %s) per tile\n" % (self.unit_horizontal_capacities, self.unit_vertical_capacities)
+            content += "routing capacities H/V (%s, %s) per tile\n" % (self.unit_horizontal_capacities * self.routing_grid_size_y, self.unit_vertical_capacities * self.routing_grid_size_x)
             content += "routing capacity H/V (%g, %g) per tile\n" % (self.unit_horizontal_capacity * self.routing_grid_size_y, self.unit_vertical_capacity * self.routing_grid_size_x)
         content += "========================================================================================"
 
