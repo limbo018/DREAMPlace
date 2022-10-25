@@ -219,5 +219,9 @@
 "deterministic_flag" : {
     "descripton" : "whether require run-to-run determinism, may have efficiency overhead", 
     "default" : 0
+    },
+"use_dp_for_circuit_training" : {
+    "descripton" : "whether use Dreamplace for circuit training", 
+    "default" : 0
     }
 }

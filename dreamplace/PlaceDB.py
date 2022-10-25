@@ -87,6 +87,11 @@ class PlaceDB (object):
         self.bin_size_y = None
         self.num_bins_x = None
         self.num_bins_y = None
+        
+        # add bin center and non movable macros info for circuit training
+        self.bin_center_x = None
+        self.bin_center_y = None
+        self.num_non_movable_macros = None
 
         self.num_movable_pins = None
 
@@ -439,25 +444,26 @@ class PlaceDB (object):
         """
         logging.debug("row %d %s" % (row_id, self.rows[row_id]))
 
-    #def flatten_nested_map(self, net2pin_map):
-    #    """
-    #    @brief flatten an array of array to two arrays like CSV format
-    #    @param net2pin_map array of array
-    #    @return a pair of (elements, cumulative column indices of the beginning element of each row)
-    #    """
-    #    # flat netpin map, length of #pins
-    #    flat_net2pin_map = np.zeros(len(pin2net_map), dtype=np.int32)
-    #    # starting index in netpin map for each net, length of #nets+1, the last entry is #pins
-    #    flat_net2pin_start_map = np.zeros(len(net2pin_map)+1, dtype=np.int32)
-    #    count = 0
-    #    for i in range(len(net2pin_map)):
-    #        flat_net2pin_map[count:count+len(net2pin_map[i])] = net2pin_map[i]
-    #        flat_net2pin_start_map[i] = count
-    #        count += len(net2pin_map[i])
-    #    assert flat_net2pin_map[-1] != 0
-    #    flat_net2pin_start_map[len(net2pin_map)] = len(pin2net_map)
+    ## add this func for circuit training.
+    def flatten_nested_map(self, pin2net_map, net2pin_map):
+       """
+       @brief flatten an array of array to two arrays like CSV format
+       @param net2pin_map array of array
+       @return a pair of (elements, cumulative column indices of the beginning element of each row)
+       """
+       # flat netpin map, length of #pins
+       flat_net2pin_map = np.zeros(len(pin2net_map), dtype=np.int32)
+       # starting index in netpin map for each net, length of #nets+1, the last entry is #pins
+       flat_net2pin_start_map = np.zeros(len(net2pin_map)+1, dtype=np.int32)
+       count = 0
+       for i in range(len(net2pin_map)):
+           flat_net2pin_map[count:count+len(net2pin_map[i])] = net2pin_map[i]
+           flat_net2pin_start_map[i] = count
+           count += len(net2pin_map[i])
+       assert flat_net2pin_map[-1] != 0
+       flat_net2pin_start_map[len(net2pin_map)] = len(pin2net_map)
 
-    #    return flat_net2pin_map, flat_net2pin_start_map
+       return flat_net2pin_map, flat_net2pin_start_map
 
     def read(self, params):
         """
@@ -582,7 +588,9 @@ class PlaceDB (object):
         """
         tt = time.time()
 
-        self.read(params)
+        # circuit training will not read local design.
+        if not params.use_dp_for_circuit_training:
+            self.read(params)
         self.initialize(params)
 
         logging.info("reading benchmark takes %g seconds" % (time.time()-tt))
@@ -679,14 +687,17 @@ class PlaceDB (object):
 
         # shift and scale
         # adjust shift_factor and scale_factor if not set
-        params.shift_factor[0] = self.xl
-        params.shift_factor[1] = self.yl
-        logging.info("set shift_factor = (%g, %g), as original row bbox = (%g, %g, %g, %g)" 
-                % (params.shift_factor[0], params.shift_factor[1], self.xl, self.yl, self.xh, self.yh))
-        if params.scale_factor == 0.0 or self.site_width != 1.0:
-            params.scale_factor = 1.0 / self.site_width
-        logging.info("set scale_factor = %g, as site_width = %g" % (params.scale_factor, self.site_width))
-        self.scale(params.shift_factor, params.scale_factor)
+        if not params.use_dp_for_circuit_training:
+            params.shift_factor[0] = self.xl
+            params.shift_factor[1] = self.yl
+            logging.info("set shift_factor = (%g, %g), as original row bbox = (%g, %g, %g, %g)" 
+                    % (params.shift_factor[0], params.shift_factor[1], self.xl, self.yl, self.xh, self.yh))
+            if params.scale_factor == 0.0 or self.site_width != 1.0:
+                params.scale_factor = 1.0 / self.site_width
+            logging.info("set scale_factor = %g, as site_width = %g" % (params.scale_factor, self.site_width))
+            self.scale(params.shift_factor, params.scale_factor)
+        else:
+            params.scale_factor = 1.0
 
         content = """
 ================================= Benchmark Statistics =================================
@@ -711,6 +722,9 @@ row height = %g, site width = %g
         # set bin size 
         self.bin_size_x = (self.xh - self.xl) / self.num_bins_x
         self.bin_size_y = (self.yh - self.yl) / self.num_bins_y
+        #set bin center
+        self.bin_center_x = self.bin_centers(self.xl, self.xh, self.bin_size_x)
+        self.bin_center_y = self.bin_centers(self.yl, self.yh, self.bin_size_y)
 
         content += "num_bins = %dx%d, bin sizes = %gx%g\n" % (self.num_bins_x, self.num_bins_y, self.bin_size_x / self.row_height, self.bin_size_y / self.row_height)
 

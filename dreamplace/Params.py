@@ -169,3 +169,70 @@ class Params:
             return "def"
         else: # Bookshelf
             return "pl"
+
+def get_bin_size(width, height, num_bins=128*128):
+    """
+    @brief find the power two bin size closest to the canvas ratio.
+    """
+    num_bins_x = math.sqrt(num_bins * width / height)
+    num_bins_x = int(math.pow(2, round(math.log(num_bins_x) / math.log(2))))
+    num_bins_x = max(min(num_bins_x, num_bins), 1) # constrain num_bins_x between 1 and num_bins
+    num_bins_y = int(num_bins / num_bins_x)
+    
+    return num_bins_x, num_bins_y
+
+def get_dreamplace_params(
+    iteration, 
+    target_density,
+    learning_rate,
+    canvas_width=None,
+    canvas_height=None,
+    num_bins_x=None,
+    num_bins_y=None,
+    gpu=False,
+    result_dir='results',
+    legalize_flag=False,
+    stop_overflow=0.1,
+    routability_opt_flag=False):
+    """"
+    @brief return the parameters to config Dreamplace in circuit training.
+    """
+    params = Params()
+    params.use_dp_for_circuit_training = True
+    
+    # set number of bins
+    if num_bins_x and num_bins_y:
+        params.num_bins_x = num_bins_x
+        params.num_bins_y = num_bins_y
+    elif canvas_width and canvas_height:
+        # extract #bins from canvas info
+        params.num_bins_x, params.num_bins_y = get_bin_size(canvas_width,
+                                                            canvas_height)
+    else:
+        num_bins_x = 128
+        num_bins_y = 128
+    
+    params.global_place_stages = [{
+        'num_bins_x': params.num_bins_x,
+        'num_bins_y': params.num_bins_y,
+        'iteration': iteration,
+        'learning_rate': learning_rate,
+        'wirelength': 'weighted_average',
+        'optimizer': 'nesterov',
+    }]
+    params.legalize_flag = legalize_flag
+    params.detailed_place_flag = False
+    params.target_density = target_density
+    params.density_weight = 8e-5
+    params.gpu = gpu
+    params.result_dir = result_dir
+    params.stop_overflow = stop_overflow
+    
+    # disable regioning
+    params.regioning = False
+    
+    # routability related flag
+    params.routability_opt_flag = routability_opt_flag
+    params.adjust_nctugr_area_flag = False
+    
+    return params
