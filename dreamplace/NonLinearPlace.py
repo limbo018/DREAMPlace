@@ -349,18 +349,19 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         0
                     ].overflow.item()
                     if wl_ratio > threshold * 1.2:
-                        if overflow_ratio > threshold:
-                            logging.warn(
+                        # this condition is not suitable for routability-driven opt with cell inflation
+                        if (not params.routability_opt_flag) and overflow_ratio > threshold:
+                            logging.warning(
                                 f"Divergence detected: overflow increases too much than best overflow ({overflow_ratio:.4f} > {threshold:.4f})"
                             )
                             return True
                         elif overflow_range / overflow_mean < threshold:
-                            logging.warn(
+                            logging.warning(
                                 f"Divergence detected: overflow plateau ({overflow_range/overflow_mean:.4f} < {threshold:.4f})"
                             )
                             return True
                         elif overflow_diff > 0.6:
-                            logging.warn(
+                            logging.warning(
                                 f"Divergence detected: overflow fluctuate too frequently ({overflow_diff:.2f} > 0.6)"
                             )
                             return True

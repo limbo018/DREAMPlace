@@ -737,7 +737,7 @@ row height = %g, site width = %g
 
         target_density = min(self.total_movable_node_area / self.total_space_area, 1.0)
         if target_density > params.target_density:
-            logging.warn("target_density %g is smaller than utilization %g, ignored" % (params.target_density, target_density))
+            logging.warning("target_density %g is smaller than utilization %g, ignored" % (params.target_density, target_density))
             params.target_density = target_density
         content += "utilization = %g, target_density = %g\n" % (self.total_movable_node_area / self.total_space_area, params.target_density)
 

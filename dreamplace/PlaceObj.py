@@ -861,10 +861,10 @@ class PlaceObj(nn.Module):
                 self.density_weight_step_size *= rate
 
         if not self.quad_penalty and algo == "overflow":
-            logging.warn("quadratic density penalty is disabled, density weight update is forced to be based on HPWL")
+            logging.warning("quadratic density penalty is disabled, density weight update is forced to be based on HPWL")
             algo = "hpwl"
         if len(self.placedb.regions) == 0 and algo == "overflow":
-            logging.warn("for benchmark without fence region, density weight update is forced to be based on HPWL")
+            logging.warning("for benchmark without fence region, density weight update is forced to be based on HPWL")
             algo = "hpwl"
 
         update_density_weight_op = {"hpwl":update_density_weight_op_hpwl,

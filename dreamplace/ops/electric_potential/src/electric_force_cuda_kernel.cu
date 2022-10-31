@@ -421,35 +421,36 @@ int computeElectricForceCudaLauncher(
     const T *node_size_x_clamped_tensor, const T *node_size_y_clamped_tensor,
     const T *offset_x_tensor, const T *offset_y_tensor, const T *ratio_tensor,
     const T *bin_center_x_tensor, const T *bin_center_y_tensor, T xl, T yl,
-    T xh, T yh, T bin_size_x, T bin_size_y, int num_nodes, T *grad_x_tensor,
-    T *grad_y_tensor, const int *sorted_node_map) {
+    T xh, T yh, T bin_size_x, T bin_size_y, int num_nodes, bool deterministic_flag, 
+    T *grad_x_tensor, T *grad_y_tensor, const int *sorted_node_map) {
   int thread_count = 64;
-  dim3 blockSize(2, 2, thread_count);
-  size_t shared_mem_size = sizeof(T) * thread_count * 2;
+  int block_count_nodes = ceilDiv(num_nodes, thread_count);
 
-  int block_count_nodes = (num_nodes + thread_count - 1) / thread_count;
-  computeElectricForce<<<block_count_nodes, blockSize, shared_mem_size>>>(
-      num_bins_x, num_bins_y, field_map_x_tensor, field_map_y_tensor, x_tensor,
-      y_tensor, node_size_x_clamped_tensor, node_size_y_clamped_tensor,
-      offset_x_tensor, offset_y_tensor, ratio_tensor, bin_center_x_tensor,
-      bin_center_y_tensor, xl, yl, xh, yh, bin_size_x / 2, bin_size_y / 2,
-      bin_size_x, bin_size_y, 1 / bin_size_x, 1 / bin_size_y, num_nodes,
-      grad_x_tensor, grad_y_tensor, sorted_node_map);
-
-  // computeElectricForceSimpleLikeCPU<<<block_count_nodes, thread_count>>>(
-  //    num_bins_x, num_bins_y,
-  //    num_impacted_bins_x, num_impacted_bins_y,
-  //    field_map_x_tensor, field_map_y_tensor,
-  //    x_tensor, y_tensor,
-  //    node_size_x_clamped_tensor, node_size_y_clamped_tensor,
-  //    offset_x_tensor, offset_y_tensor,
-  //    ratio_tensor,
-  //    bin_center_x_tensor, bin_center_y_tensor,
-  //    xl, yl, xh, yh,
-  //    bin_size_x, bin_size_y,
-  //    num_nodes,
-  //    grad_x_tensor, grad_y_tensor
-  //    );
+  if (deterministic_flag) {
+    computeElectricForceSimpleLikeCPU<<<block_count_nodes, thread_count>>>(
+        num_bins_x, num_bins_y,
+        num_impacted_bins_x, num_impacted_bins_y,
+        field_map_x_tensor, field_map_y_tensor,
+        x_tensor, y_tensor,
+        node_size_x_clamped_tensor, node_size_y_clamped_tensor,
+        offset_x_tensor, offset_y_tensor,
+        ratio_tensor,
+        bin_center_x_tensor, bin_center_y_tensor,
+        xl, yl, xh, yh,
+        bin_size_x, bin_size_y,
+        num_nodes,
+        grad_x_tensor, grad_y_tensor);
+  } else {
+    dim3 blockSize(2, 2, thread_count);
+    size_t shared_mem_size = sizeof(T) * thread_count * 2;
+    computeElectricForce<<<block_count_nodes, blockSize, shared_mem_size>>>(
+        num_bins_x, num_bins_y, field_map_x_tensor, field_map_y_tensor, x_tensor,
+        y_tensor, node_size_x_clamped_tensor, node_size_y_clamped_tensor,
+        offset_x_tensor, offset_y_tensor, ratio_tensor, bin_center_x_tensor,
+        bin_center_y_tensor, xl, yl, xh, yh, bin_size_x / 2, bin_size_y / 2,
+        bin_size_x, bin_size_y, 1 / bin_size_x, 1 / bin_size_y, num_nodes,
+        grad_x_tensor, grad_y_tensor, sorted_node_map);
+  }
 
   return 0;
 }
@@ -463,8 +464,8 @@ int computeElectricForceCudaLauncher(
       const T *node_size_y_clamped_tensor, const T *offset_x_tensor,           \
       const T *offset_y_tensor, const T *ratio_tensor,                         \
       const T *bin_center_x_tensor, const T *bin_center_y_tensor, T xl, T yl,  \
-      T xh, T yh, T bin_size_x, T bin_size_y, int num_nodes, T *grad_x_tensor, \
-      T *grad_y_tensor, const int *sorted_node_map); 
+      T xh, T yh, T bin_size_x, T bin_size_y, int num_nodes, bool deterministic_flag, \
+      T *grad_x_tensor, T *grad_y_tensor, const int *sorted_node_map); 
 
 REGISTER_KERNEL_LAUNCHER(float);
 REGISTER_KERNEL_LAUNCHER(double);

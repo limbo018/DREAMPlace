@@ -223,7 +223,7 @@ at::Tensor electric_force(
     at::Tensor offset_x, at::Tensor offset_y, at::Tensor ratio,
     at::Tensor bin_center_x, at::Tensor bin_center_y, double xl, double yl,
     double xh, double yh, double bin_size_x, double bin_size_y,
-    int num_movable_nodes, int num_filler_nodes, at::Tensor sorted_node_map);
+    int num_movable_nodes, int num_filler_nodes, int deterministic_flag, at::Tensor sorted_node_map);
 
 DREAMPLACE_END_NAMESPACE
 
