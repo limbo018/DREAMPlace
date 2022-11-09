@@ -953,7 +953,8 @@ class PlaceObj(nn.Module):
             initial_horizontal_utilization_map=data_collections.
             initial_horizontal_utilization_map,
             initial_vertical_utilization_map=data_collections.
-            initial_vertical_utilization_map)
+            initial_vertical_utilization_map,
+            deterministic_flag=params.deterministic_flag)
 
         def route_utilization_map_op(pos):
             pin_pos = self.op_collections.pin_pos_op(pos)
@@ -982,7 +983,8 @@ class PlaceObj(nn.Module):
             num_bins_x=placedb.num_routing_grids_x,
             num_bins_y=placedb.num_routing_grids_y,
             unit_pin_capacity=data_collections.unit_pin_capacity,
-            pin_stretch_ratio=params.pin_stretch_ratio)
+            pin_stretch_ratio=params.pin_stretch_ratio,
+            deterministic_flag=params.deterministic_flag)
 
     def build_nctugr_congestion_map(self, params, placedb, data_collections):
         """
