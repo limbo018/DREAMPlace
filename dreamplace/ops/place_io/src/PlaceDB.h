@@ -455,7 +455,8 @@ class PlaceDB : public DefParser::DefDataBase
         std::vector<Macro> m_vMacro; ///< macros for standard cells, for io pins, virtual macros are appended  
         std::vector<Row> m_vRow; ///< placement rows 
         std::vector<Site> m_vSite; ///< all sites defined 
-        index_type m_coreSiteId; ///< id of core placement site 
+        std::vector<std::size_t> m_vSiteUsedCount; ///< count how many macros in LEF refer each site 
+        index_type m_coreSiteId; ///< id of core placement site, determine by m_vSiteUsedCount
         diearea_type m_dieArea; ///< die area, it can be larger than actual placement area 
         std::vector<bool> m_vNetIgnoreFlag; ///< whether the net should be ignored due to pins belonging to the same cell 
         std::vector<std::string> m_vDuplicateNet; ///< name of duplicate nets found in verilog file 

@@ -57,27 +57,34 @@ void PlaceDB::lef_via_cbk(LefParser::lefiVia const&) {}
 void PlaceDB::lef_viarule_cbk(LefParser::lefiViaRule const&) {}
 void PlaceDB::lef_spacing_cbk(LefParser::lefiSpacing const&) {}
 void PlaceDB::lef_site_cbk(LefParser::lefiSite const& s) {
-  m_vSite.push_back(Site());
-  Site& site = m_vSite.back();
-  site.setId(m_vSite.size() - 1);
-  site.setName(s.name());
-  if (s.hasClass()) site.setClassName(s.siteClass());
-  if (s.hasSize()) {
-    site.setSize(kX, round(s.sizeX() * m_lefUnit));
-    site.setSize(kY, round(s.sizeY() * m_lefUnit));
-  }
-  dreamplaceAssertMsg(
-      m_mSiteName2Index.find(site.name()) == m_mSiteName2Index.end(),
-      "Site %s has already been defined", site.name().c_str());
-  m_mSiteName2Index[site.name()] = site.id();
+  if (m_mSiteName2Index.find(s.name()) != m_mSiteName2Index.end()) {
+    dreamplacePrint(kERROR, "Site %s has already been defined, ignored", s.name()); 
+  } else {
+    m_vSite.push_back(Site());
+    Site& site = m_vSite.back();
+    site.setId(m_vSite.size() - 1);
+    site.setName(s.name());
+    if (s.hasClass()) site.setClassName(s.siteClass());
+    if (s.hasSize()) {
+      site.setSize(kX, round(s.sizeX() * m_lefUnit));
+      site.setSize(kY, round(s.sizeY() * m_lefUnit));
+    }
+    m_mSiteName2Index[site.name()] = site.id();
+    m_vSiteUsedCount.push_back(0); 
 
-  if (limbo::iequals(site.className(), "CORE")) {
-    dreamplacePrint(kINFO, "set CORE site to %s, %d x %d\n",
-                    site.name().c_str(), site.width(), site.height());
-    // a heuristic to set core site 
-    // we only update if the recorded core site is not named "core" 
-    if (!limbo::iequals(m_vSite[m_coreSiteId].name(), "CORE")) {
-      m_coreSiteId = site.id();
+    if (limbo::iequals(site.className(), "CORE")) {
+      // a heuristic to guess core site, may change later after reading LEF 
+      // we only update if the recorded core site is not named "core" 
+      // choose the site with the lowest height and smallest area  
+      Site const& coreSite = m_vSite[m_coreSiteId];
+      if (m_coreSiteId != site.id()) {
+        if (coreSite.height() > site.height() 
+            || (coreSite.height() == site.height() && coreSite.width() > site.width())) {
+          m_coreSiteId = site.id();
+          dreamplacePrint(kINFO, "set smallest CORE site to %s, %d x %d, id = %u\n",
+              site.name().c_str(), site.width(), site.height(), m_coreSiteId);
+        }
+      }
     }
   }
 }
@@ -95,6 +102,16 @@ void PlaceDB::lef_macro_cbk(LefParser::lefiMacro const& m) {
   Macro& macro = m_vMacro.back();
 
   if (m.hasClass()) macro.setClassName(m.macroClass());
+  if (m.hasSiteName()) {
+    if (m_mSiteName2Index.find(m.siteName()) != m_mSiteName2Index.end()) {
+      index_type siteId = m_mSiteName2Index.at(m.siteName());
+      m_vSiteUsedCount[siteId] += 1; 
+    } else {
+      dreamplacePrint(kWARN, "Macro site name %s is NOT DEFINED in site names, add to default site %s", 
+          m.siteName(), m_vSite[m_coreSiteId].name().c_str());
+      m_vSiteUsedCount[m_coreSiteId] += 1; 
+    }
+  }
   // all other coordinates corresponding to origins are mapped to that
   if (m.hasOrigin())
     macro.setInitOrigin(round(m.originX() * m_lefUnit),
@@ -166,7 +183,18 @@ void PlaceDB::set_def_busbitchars(std::string const&) {}
 void PlaceDB::set_def_dividerchar(std::string const&) {}
 void PlaceDB::set_def_version(std::string const& v) { m_defVersion = v; }
 void PlaceDB::set_def_unit(int u) { m_defUnit = u; }
-void PlaceDB::set_def_design(std::string const& d) { m_designName = d; }
+void PlaceDB::set_def_design(std::string const& d) { 
+  m_designName = d; 
+
+  // A heuristic to set core site according to number of occurrence in macro definitions 
+  std::vector<std::size_t>::const_iterator itMax = std::max_element(m_vSiteUsedCount.begin(), m_vSiteUsedCount.end()); 
+  if (itMax != m_vSiteUsedCount.end()) {
+    m_coreSiteId = itMax - m_vSiteUsedCount.begin(); 
+  }
+  Site const& site = m_vSite[m_coreSiteId]; 
+  dreamplacePrint(kINFO, "set CORE site to %s, %d x %d, id = %u\n",
+      site.name().c_str(), site.width(), site.height(), m_coreSiteId);
+}
 void PlaceDB::set_def_diearea(int xl, int yl, int xh, int yh) {
   m_dieArea.set(
       xl * lefDefUnitRatio(), 
@@ -249,7 +277,11 @@ void PlaceDB::add_def_component(DefParser::Component const& c) {
       c.origin[0] * lefDefUnitRatio() + macro.width(),
       c.origin[1] * lefDefUnitRatio() + macro.height()
       );  // must update width and height
-  node.setStatus(c.status);                // update status
+  // update status
+  node.setStatus(PlaceStatusEnum::UNPLACED); 
+  if (!c.status.empty()) {
+    node.setStatus(c.status); 
+  }
   if (macro.className() != "CORE") {
     // always fix cells whose macro class is not CORE
     dreamplaceAssertMsg(node.status() == PlaceStatusEnum::FIXED ||

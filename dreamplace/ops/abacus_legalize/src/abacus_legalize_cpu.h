@@ -192,13 +192,17 @@ bool abacusPlaceRowCPU(const T* init_x, const T* node_size_x,
       range_xh = std::min(next_cluster.x, range_xh);
       break;
     } else {
-      dreamplaceAssert(std::abs(node_size_y[row_nodes[j]] - row_height) < 1e-6);
+      dreamplaceAssertMsg(std::abs(node_size_y[row_nodes[j]] - row_height) < 1e-6, 
+          "node_size_y[row_nodes[%d] = %d] = %g, row_height = %g", 
+          j, row_nodes[j], node_size_y[row_nodes[j]], row_height);
     }
   }
   for (int i = 0; i < num_row_nodes; ++i) {
     const AbacusCluster<T>& cluster = clusters[i];
     if (cluster.e < M) {
-      dreamplaceAssert(std::abs(node_size_y[row_nodes[i]] - row_height) < 1e-6);
+      dreamplaceAssertMsg(std::abs(node_size_y[row_nodes[i]] - row_height) < 1e-6, 
+          "node_size_y[row_nodes[%d] = %d] = %g, row_height = %g", 
+          i, row_nodes[i], node_size_y[row_nodes[i]], row_height);
       collapse(i, range_xl, range_xh);
     } else  // set range xl/xh according to fixed nodes
     {
