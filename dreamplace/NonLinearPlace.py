@@ -269,6 +269,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         for Lsub_step in range(model.Lsub_iteration):
                             one_descent_step(Lgamma_step, Llambda_density_weight_step, Lsub_step, iteration, Lsub_metrics)
                             iteration += 1
+                            model.op_collections.dump_boxes_op(self.pos[0].data)
                             # stopping criteria
                             if Lsub_stop_criterion(Lgamma_step, Llambda_density_weight_step, Lsub_step, Lsub_metrics):
                                 break

@@ -32,6 +32,7 @@ import dreamplace.ops.pin_pos.pin_pos as pin_pos
 import dreamplace.ops.global_swap.global_swap as global_swap
 import dreamplace.ops.k_reorder.k_reorder as k_reorder
 import dreamplace.ops.independent_set_matching.independent_set_matching as independent_set_matching
+import dreamplace.ops.dump_boxes.dump_boxes as dump_boxes
 import pdb
 
 
@@ -255,6 +256,7 @@ class PlaceOpCollection(object):
         self.pin_utilization_map_op = None
         self.nctugr_congestion_map_op = None
         self.adjust_node_area_op = None
+        self.dump_boxes_op = None 
 
 
 class BasicPlace(nn.Module):
@@ -363,6 +365,26 @@ class BasicPlace(nn.Module):
         # draw placement
         self.op_collections.draw_place_op = self.build_draw_placement(
             params, placedb)
+        # dump boxes 
+        dump_boxes_obj = dump_boxes.DumpBoxes(
+                node_size_x=self.data_collections.node_size_x, 
+                node_size_y=self.data_collections.node_size_y, 
+                flat_netpin=self.data_collections.flat_net2pin_map,
+                netpin_start=self.data_collections.flat_net2pin_start_map,
+                net_weights=self.data_collections.net_weights,
+                net_mask=self.data_collections.net_mask_ignore_large_degrees,
+                xl=placedb.xl, 
+                yl=placedb.yl, 
+                xh=placedb.xh, 
+                yh=placedb.yh, 
+                num_bins_x=placedb.num_bins_x, 
+                num_bins_y=placedb.num_bins_y, 
+                num_movable_nodes=placedb.num_movable_nodes, 
+                num_terminals=placedb.num_physical_nodes - placedb.num_movable_nodes
+                )
+        def dump_boxes_func(pos): 
+            dump_boxes_obj(pos, self.op_collections.pin_pos_op(pos))
+        self.op_collections.dump_boxes_op = dump_boxes_func
 
         # flag for rmst_wl_op
         # can only read once

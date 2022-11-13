@@ -26,6 +26,8 @@ add_subdirectory(pin_utilization)
 add_subdirectory(rudy)
 add_subdirectory(adjust_node_area)
 add_subdirectory(nctugr_binary)
+# dump temporary box data for fast density map 
+add_subdirectory(dump_boxes)
 
 file(GLOB INSTALL_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/*.py")
 install(
