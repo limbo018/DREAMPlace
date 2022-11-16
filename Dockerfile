@@ -9,7 +9,7 @@ RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/
 RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1804/x86_64/7fa2af80.pub
 
 
-# Installs system dependencies .
+# Installs system dependencies.
 RUN apt-get update \
         && apt-get install -y \
             flex \
@@ -20,14 +20,14 @@ RUN apt-get update \
 # Installs system dependencies from conda.
 RUN conda install -y -c conda-forge bison
 
-# Install cmake
+# Installs cmake.
 ADD https://cmake.org/files/v3.21/cmake-3.21.0-linux-x86_64.sh /cmake-3.21.0-linux-x86_64.sh
 RUN mkdir /opt/cmake \
         && sh /cmake-3.21.0-linux-x86_64.sh --prefix=/opt/cmake --skip-license \
         && ln -s /opt/cmake/bin/cmake /usr/local/bin/cmake \
         && cmake --version
 
-# installs python dependencies. 
+# Installs python dependencies. 
 RUN pip install \
         pyunpack>=0.1.2 \
         patool>=1.12 \
