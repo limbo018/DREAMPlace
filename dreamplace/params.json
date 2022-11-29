@@ -220,7 +220,7 @@
     "descripton" : "whether require run-to-run determinism, may have efficiency overhead", 
     "default" : 0
     },
-"use_dp_for_circuit_training" : {
+"circuit_training_mode" : {
     "descripton" : "whether use Dreamplace for circuit training", 
     "default" : 0
     }

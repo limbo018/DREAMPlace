@@ -88,9 +88,6 @@ class PlaceDB (object):
         self.num_bins_x = None
         self.num_bins_y = None
         
-        # add bin center and non movable macros info for circuit training
-        self.bin_center_x = None
-        self.bin_center_y = None
         self.num_non_movable_macros = None
 
         self.num_movable_pins = None
@@ -589,7 +586,7 @@ class PlaceDB (object):
         tt = time.time()
 
         # circuit training will not read local design.
-        if not params.use_dp_for_circuit_training:
+        if not params.circuit_training_mode:
             self.read(params)
         self.initialize(params)
 
@@ -687,7 +684,7 @@ class PlaceDB (object):
 
         # shift and scale
         # adjust shift_factor and scale_factor if not set
-        if not params.use_dp_for_circuit_training:
+        if not params.circuit_training_mode:
             params.shift_factor[0] = self.xl
             params.shift_factor[1] = self.yl
             logging.info("set shift_factor = (%g, %g), as original row bbox = (%g, %g, %g, %g)" 
@@ -722,9 +719,6 @@ row height = %g, site width = %g
         # set bin size 
         self.bin_size_x = (self.xh - self.xl) / self.num_bins_x
         self.bin_size_y = (self.yh - self.yl) / self.num_bins_y
-        #set bin center
-        self.bin_center_x = self.bin_centers(self.xl, self.xh, self.bin_size_x)
-        self.bin_center_y = self.bin_centers(self.yl, self.yh, self.bin_size_y)
 
         content += "num_bins = %dx%d, bin sizes = %gx%g\n" % (self.num_bins_x, self.num_bins_y, self.bin_size_x / self.row_height, self.bin_size_y / self.row_height)
 

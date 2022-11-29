@@ -198,7 +198,7 @@ def get_dreamplace_params(
     @brief return the parameters to config Dreamplace in circuit training.
     """
     params = Params()
-    params.use_dp_for_circuit_training = True
+    params.circuit_training_mode = True
     
     # set number of bins
     if num_bins_x and num_bins_y:
