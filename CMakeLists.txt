@@ -132,5 +132,6 @@ add_subdirectory(dreamplace)
 add_subdirectory(unittest)
 add_subdirectory(benchmarks)
 add_subdirectory(test)
+add_subdirectory(weights)
 
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/dreamplace/configure.py DESTINATION dreamplace)
