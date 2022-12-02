@@ -1050,7 +1050,35 @@ class PlaceObj(nn.Module):
         """
         ############## Your code block begins here ##############
         # hint: You can use the density_map op for fixed_node_map_op
-        return None 
+        fixed_node_map_op = density_map.DensityMap(
+            node_size_x=data_collections.node_size_x,
+            node_size_y=data_collections.node_size_y,
+            xl=placedb.routing_grid_xl,
+            yl=placedb.routing_grid_yl,
+            xh=placedb.routing_grid_xh,
+            yh=placedb.routing_grid_yh,
+            num_bins_x=placedb.num_routing_grids_x,
+            num_bins_y=placedb.num_routing_grids_y,
+            range_list=[[0, placedb.num_movable_nodes], 
+                        [data_collections.node_size_x.numel()-0, data_collections.node_size_x.numel()]],
+            deterministic_flag=params.deterministic_flag
+        )
+        return ml_congestion.MLCongestion(
+            fixed_node_map_op=fixed_node_map_op,
+            rudy_utilization_map_op=self.op_collections.rudy_utilization_map_op,
+            pinrudy_utilization_map_op=self.op_collections.pinrudy_utilization_map_op,
+            pin_pos_op=self.op_collections.pin_pos_op,
+            xl=placedb.routing_grid_xl,
+            yl=placedb.routing_grid_yl,
+            xh=placedb.routing_grid_xh,
+            yh=placedb.routing_grid_yh,
+            num_bins_x=placedb.num_routing_grids_x,
+            num_bins_y=placedb.num_routing_grids_y,
+            unit_horizontal_capacity=placedb.unit_horizontal_capacity,
+            unit_vertical_capacity=placedb.unit_vertical_capacity,
+            pretrained_ml_congestion_weight_file=params.pretrained_ml_congestion_weight_file
+        )
+        # return None
         ############## Your code block ends here ################
 
     def build_adjust_node_area(self, params, placedb, data_collections):
