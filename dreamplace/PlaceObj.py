@@ -113,12 +113,7 @@ class PreconditionOp:
             self.iteration += 1
 
             # only work in benchmarks without fence region, assume overflow has been updated
-            if (
-                len(self.placedb.regions) > 0
-                and self.overflows
-                and self.overflows[-1] < 0.3
-                and self.alpha < 1024
-            ):
+            if len(self.placedb.regions) > 0 and self.overflows and self.overflows[-1].max() < 0.3 and self.alpha < 1024:
                 if (self.iteration % 20) == 0:
                     self.alpha *= 2
                     logging.info(
@@ -833,7 +828,7 @@ class PlaceObj(nn.Module):
                 self.density_weight *= mu
 
         def update_density_weight_op_overflow(cur_metric, prev_metric, iteration):
-            assert self.quad_penalty == True, "[Error] density weight update based on overflow only works for quadratic density penalty"
+            assert self.quad_penalty == True, logging.error("density weight update based on overflow only works for quadratic density penalty")
             ### based on overflow
             ### stop updating if a region has lower overflow than stop overflow
             with torch.no_grad():

@@ -317,18 +317,47 @@ void PlaceDB::resize_def_pin(int s) {
   m_numIOPin = s;
 }
 void PlaceDB::add_def_pin(DefParser::Pin const& p) {
-  if (p.vLayer.empty()) {
+  bool hasLayer = false; 
+  // check pin layer
+  if (!p.vLayer.empty()) {
+    hasLayer = true; 
+  } else if (!p.vPinPort.empty()) {
+    // check pin port 
+    for (std::size_t i = 0; i < p.vPinPort.size(); ++i) {
+      // check pin port has box 
+      if (!p.vPinPort[i].vLayer.empty()) {
+        hasLayer = true; 
+        break; 
+      }
+    }
+  }
+  if (!hasLayer) {
     dreamplacePrint(kWARN, "no layer specified by pin %s\n",
                     p.pin_name.c_str());
   }
   std::vector<int> bbox = {0, 0, 0, 0}; 
-  if (p.vBbox.empty()) {
-    dreamplacePrint(
-        kWARN, "no position or bounding box specified by pin %s, set to (%d, %d, %d, %d)\n",
-        p.pin_name.c_str(), bbox[0], bbox[1], bbox[2], bbox[3]);
-  } else {
+  bool hasBox = false; 
+  // check pin box 
+  if (!p.vBbox.empty()) {
     // only read the first layer of pins
     bbox = p.vBbox.front();
+    hasBox = true; 
+  } else if (!p.vPinPort.empty()) { 
+    // check pin port 
+    for (std::size_t i = 0; i < p.vPinPort.size(); ++i) {
+      // check pin port has box 
+      if (!p.vPinPort[i].vBbox.empty()) {
+        // only read the first layer of pins 
+        bbox = p.vPinPort[i].vBbox.front();
+        hasBox = true; 
+        break; 
+      }
+    }
+  }
+  if (!hasBox) {
+    dreamplacePrint(
+        kWARN, "no bounding box specified by pin %s, set to (%d, %d, %d, %d)\n",
+        p.pin_name.c_str(), bbox[0], bbox[1], bbox[2], bbox[3]);
   }
   // create virtual macro
   std::pair<index_type, bool> insertMacroRet = addMacro(p.pin_name);
@@ -371,7 +400,14 @@ void PlaceDB::add_def_pin(DefParser::Pin const& p) {
   macroPort.setId(iopin.macroPorts().size() - 1);
   if (!p.vLayer.empty()) {
     macroPort.layers().push_back(p.vLayer.front());
-  } 
+  } else if (!p.vPinPort.empty()) {
+    for (std::size_t i = 0; i < p.vPinPort.size(); ++i) {
+      if (!p.vPinPort[i].vLayer.empty()) {
+        macroPort.layers().push_back(p.vPinPort[i].vLayer.front());
+        break; 
+      }
+    }
+  }
   macroPort.boxes().push_back(MacroPort::box_type(
       0, 
       0, 
@@ -391,21 +427,49 @@ void PlaceDB::add_def_pin(DefParser::Pin const& p) {
 
   property.setMacroId(macro.id());
   node.setStatus(PlaceStatusEnum::FIXED);  // io pin should always be fixed
-  if (p.orient.empty())
-    node.setOrient(OrientEnum::N);
-  else
+  if (!p.orient.empty()) {
     node.setOrient(p.orient);
+  } else if (!p.vPinPort.empty()) {
+    node.setOrient(p.vPinPort.front().orient); 
+  } else {
+    node.setOrient(OrientEnum::N);
+  }
   deriveMultiRowAttr(node);
   if (node.status() == PlaceStatusEnum::FIXED ||
       node.status() == PlaceStatusEnum::DUMMY_FIXED ||
       node.status() == PlaceStatusEnum::PLACED) {
-    node.set(
-        (p.origin[0] + bbox[0]) * lefDefUnitRatio(), 
-        (p.origin[1] + bbox[1]) * lefDefUnitRatio(),
-        (p.origin[0] + bbox[2]) * lefDefUnitRatio(), 
-        (p.origin[1] + bbox[3]) * lefDefUnitRatio()
-        );
+    // check pin origin initialized 
+    bool hasOrigin = false; 
+    if (!(p.origin[0] == -1 && p.origin[1] == -1)) {
+      node.set(
+          (p.origin[0] + bbox[0]) * lefDefUnitRatio(), 
+          (p.origin[1] + bbox[1]) * lefDefUnitRatio(),
+          (p.origin[0] + bbox[2]) * lefDefUnitRatio(), 
+          (p.origin[1] + bbox[3]) * lefDefUnitRatio()
+          );
+      hasOrigin = true; 
+    } else {
+      // check pin port 
+      for (std::size_t i = 0; i < p.vPinPort.size(); ++i) {
+        // check pin port origin initialized 
+        if (!(p.vPinPort[i].origin[0] == -1 && p.vPinPort[i].origin[1] == -1)) {
+          node.set(
+              (p.vPinPort[i].origin[0] + bbox[0]) * lefDefUnitRatio(), 
+              (p.vPinPort[i].origin[1] + bbox[1]) * lefDefUnitRatio(),
+              (p.vPinPort[i].origin[0] + bbox[2]) * lefDefUnitRatio(), 
+              (p.vPinPort[i].origin[1] + bbox[3]) * lefDefUnitRatio()
+              );
+          hasOrigin = true; 
+          break; 
+        }
+      }
+    }
     node.setInitPos(ll(node));
+    if (!hasOrigin) {
+      dreamplacePrint(
+          kWARN, "no position specified by pin %s, set to (%d, %d, %d, %d)\n",
+          p.pin_name.c_str(), node.xl(), node.yl(), node.xh(), node.yh());
+    }
   }
 }
 void PlaceDB::resize_def_net(int s) {
