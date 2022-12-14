@@ -317,6 +317,7 @@ void PlaceDB::resize_def_pin(int s) {
   m_numIOPin = s;
 }
 void PlaceDB::add_def_pin(DefParser::Pin const& p) {
+  // containing dirty processing to consider various situations
   bool hasLayer = false; 
   // check pin layer
   if (!p.vLayer.empty()) {
@@ -332,90 +333,17 @@ void PlaceDB::add_def_pin(DefParser::Pin const& p) {
     }
   }
   if (!hasLayer) {
-    dreamplacePrint(kWARN, "no layer specified by pin %s\n",
+    dreamplacePrint(kWARN, "IO pin %s: no layer specified\n",
                     p.pin_name.c_str());
-  }
-  std::vector<int> bbox = {0, 0, 0, 0}; 
-  bool hasBox = false; 
-  // check pin box 
-  if (!p.vBbox.empty()) {
-    // only read the first layer of pins
-    bbox = p.vBbox.front();
-    hasBox = true; 
-  } else if (!p.vPinPort.empty()) { 
-    // check pin port 
-    for (std::size_t i = 0; i < p.vPinPort.size(); ++i) {
-      // check pin port has box 
-      if (!p.vPinPort[i].vBbox.empty()) {
-        // only read the first layer of pins 
-        bbox = p.vPinPort[i].vBbox.front();
-        hasBox = true; 
-        break; 
-      }
-    }
-  }
-  if (!hasBox) {
-    dreamplacePrint(
-        kWARN, "no bounding box specified by pin %s, set to (%d, %d, %d, %d)\n",
-        p.pin_name.c_str(), bbox[0], bbox[1], bbox[2], bbox[3]);
   }
   // create virtual macro
   std::pair<index_type, bool> insertMacroRet = addMacro(p.pin_name);
   dreamplaceAssertMsg(insertMacroRet.second,
-                      "failed to create virtual macro for io pin: %s",
+                      "IO pin %s: failed to create virtual macro",
                       p.pin_name.c_str());
   Macro& macro = m_vMacro.at(insertMacroRet.first);
   // indicate this is an IO pin
   macro.setClassName("DREAMPlace.IOPin");
-
-  macro.setInitOrigin(
-      bbox[0] * lefDefUnitRatio(), 
-      bbox[1] * lefDefUnitRatio()
-      );
-  macro.set(
-      0, 
-      0, 
-      (bbox[2] - bbox[0]) * lefDefUnitRatio(),
-      (bbox[3] - bbox[1]) * lefDefUnitRatio()
-      );  // adjust to origin (0, 0)
-
-  // create and add io pin
-  std::pair<index_type, bool> insertMacroPinRet = macro.addMacroPin(p.pin_name);
-  dreamplaceAssertMsg(insertMacroPinRet.second,
-                      "failed to create virtual io pin: %s.%s",
-                      macro.name().c_str(), p.pin_name.c_str());
-  MacroPin& iopin = macro.macroPin(insertMacroPinRet.first);
-  // reverse direction for primary input and output
-  // I hope this will not cause incompatible issues with writer of other formats
-  if (limbo::iequals(p.direct, "INPUT"))
-    iopin.setDirect(std::string("OUTPUT"));
-  else if (limbo::iequals(p.direct, "OUTPUT"))
-    iopin.setDirect(std::string("INPUT"));
-  else
-    iopin.setDirect(p.direct);
-
-  // create and add port for io pin
-  iopin.macroPorts().push_back(MacroPort());
-  MacroPort& macroPort = iopin.macroPorts().back();
-  macroPort.setId(iopin.macroPorts().size() - 1);
-  if (!p.vLayer.empty()) {
-    macroPort.layers().push_back(p.vLayer.front());
-  } else if (!p.vPinPort.empty()) {
-    for (std::size_t i = 0; i < p.vPinPort.size(); ++i) {
-      if (!p.vPinPort[i].vLayer.empty()) {
-        macroPort.layers().push_back(p.vPinPort[i].vLayer.front());
-        break; 
-      }
-    }
-  }
-  macroPort.boxes().push_back(MacroPort::box_type(
-      0, 
-      0, 
-      (bbox[2] - bbox[0]) * lefDefUnitRatio(), 
-      (bbox[3] - bbox[1]) * lefDefUnitRatio()
-      ));  // adjust to origin (0, 0)
-  deriveMacroPortBbox(macroPort);
-  deriveMacroPinBbox(iopin);
 
   // create and add virtual node
   std::pair<index_type, bool> insertNodeRet = addNode(p.pin_name);
@@ -440,37 +368,142 @@ void PlaceDB::add_def_pin(DefParser::Pin const& p) {
       node.status() == PlaceStatusEnum::PLACED) {
     // check pin origin initialized 
     bool hasOrigin = false; 
+    // construct an invalid box 
+    node.set(
+        std::numeric_limits<coordinate_type>::max(), 
+        std::numeric_limits<coordinate_type>::max(), 
+        std::numeric_limits<coordinate_type>::min(), 
+        std::numeric_limits<coordinate_type>::min()
+        );
+    if (!p.vBbox.empty()) {
+      for (std::size_t i = 0; i < p.vLayer.size(); ++i) {
+        if (!(p.origin[0] == -1 && p.origin[1] == -1)) {
+          node.encompass(MacroPort::box_type(
+                (p.origin[0] + p.vBbox[i][0]) * lefDefUnitRatio(), 
+                (p.origin[1] + p.vBbox[i][1]) * lefDefUnitRatio(), 
+                (p.origin[0] + p.vBbox[i][2]) * lefDefUnitRatio(),
+                (p.origin[1] + p.vBbox[i][3]) * lefDefUnitRatio()
+                )); 
+          hasOrigin = true; 
+        }
+      }
+    } else if (!p.vPinPort.empty()) {
+      for (std::size_t i = 0; i < p.vPinPort.size(); ++i) {
+        DefParser::PinPort const& pport = p.vPinPort[i]; 
+        for (std::size_t j = 0; j < pport.vLayer.size(); ++j) {
+          if (!(pport.origin[0] == -1 && pport.origin[1] == -1)) {
+            node.encompass(MacroPort::box_type(
+                  (pport.origin[0] + pport.vBbox[i][0]) * lefDefUnitRatio(), 
+                  (pport.origin[1] + pport.vBbox[i][1]) * lefDefUnitRatio(), 
+                  (pport.origin[0] + pport.vBbox[i][2]) * lefDefUnitRatio(),
+                  (pport.origin[1] + pport.vBbox[i][3]) * lefDefUnitRatio()
+                  ));
+            hasOrigin = true; 
+          }
+        }
+      }
+    }
+    /*
     if (!(p.origin[0] == -1 && p.origin[1] == -1)) {
       node.set(
-          (p.origin[0] + bbox[0]) * lefDefUnitRatio(), 
-          (p.origin[1] + bbox[1]) * lefDefUnitRatio(),
-          (p.origin[0] + bbox[2]) * lefDefUnitRatio(), 
-          (p.origin[1] + bbox[3]) * lefDefUnitRatio()
+          p.origin[0] * lefDefUnitRatio(), 
+          p.origin[1] * lefDefUnitRatio(),
+          p.origin[0] * lefDefUnitRatio(), 
+          p.origin[1] * lefDefUnitRatio()
           );
       hasOrigin = true; 
     } else {
       // check pin port 
       for (std::size_t i = 0; i < p.vPinPort.size(); ++i) {
         // check pin port origin initialized 
-        if (!(p.vPinPort[i].origin[0] == -1 && p.vPinPort[i].origin[1] == -1)) {
+        DefParser::PinPort const& pport = p.vPinPort[i]; 
+        if (!(pport.origin[0] == -1 && pport.origin[1] == -1)) {
           node.set(
-              (p.vPinPort[i].origin[0] + bbox[0]) * lefDefUnitRatio(), 
-              (p.vPinPort[i].origin[1] + bbox[1]) * lefDefUnitRatio(),
-              (p.vPinPort[i].origin[0] + bbox[2]) * lefDefUnitRatio(), 
-              (p.vPinPort[i].origin[1] + bbox[3]) * lefDefUnitRatio()
-              );
+              pport.origin[0] * lefDefUnitRatio(), 
+              pport.origin[1] * lefDefUnitRatio(),
+              pport.origin[0] * lefDefUnitRatio(), 
+              pport.origin[1] * lefDefUnitRatio()
+              ); 
           hasOrigin = true; 
+          // only consider first port 
           break; 
         }
       }
     }
-    node.setInitPos(ll(node));
+    */
     if (!hasOrigin) {
+      node.set(0, 0, 0, 0);
       dreamplacePrint(
-          kWARN, "no position specified by pin %s, set to (%d, %d, %d, %d)\n",
+          kWARN, "IO pin: no position specified, set to (%d, %d, %d, %d)\n",
           p.pin_name.c_str(), node.xl(), node.yl(), node.xh(), node.yh());
+    } else {
+      node.set(
+          center(node).x(), 
+          center(node).y(), 
+          center(node).x(), 
+          center(node).y()
+          ); 
+    }
+    node.setInitPos(ll(node));
+  }
+
+  // initialize macro bounding box 
+  macro.setInitOrigin(0, 0);
+  macro.set(0, 0, node.width(), node.height());  
+
+  // create and add io pin
+  std::pair<index_type, bool> insertMacroPinRet = macro.addMacroPin(p.pin_name);
+  dreamplaceAssertMsg(insertMacroPinRet.second,
+                      "failed to create virtual io pin: %s.%s",
+                      macro.name().c_str(), p.pin_name.c_str());
+  MacroPin& iopin = macro.macroPin(insertMacroPinRet.first);
+  // reverse direction for primary input and output
+  // I hope this will not cause incompatible issues with writer of other formats
+  if (limbo::iequals(p.direct, "INPUT"))
+    iopin.setDirect(std::string("OUTPUT"));
+  else if (limbo::iequals(p.direct, "OUTPUT"))
+    iopin.setDirect(std::string("INPUT"));
+  else
+    iopin.setDirect(p.direct);
+
+  // create and add port for io pin
+  if (!p.vLayer.empty()) {
+    iopin.macroPorts().push_back(MacroPort());
+    MacroPort& macroPort = iopin.macroPorts().back();
+    macroPort.setId(iopin.macroPorts().size() - 1);
+    for (std::size_t i = 0; i < p.vLayer.size(); ++i) {
+      if (!(p.origin[0] == -1 && p.origin[1] == -1)) {
+        macroPort.layers().push_back(p.vLayer[i]);
+        macroPort.boxes().push_back(MacroPort::box_type(
+              (p.origin[0] + p.vBbox[i][0] - node.xl()) * lefDefUnitRatio(), 
+              (p.origin[1] + p.vBbox[i][1] - node.yl()) * lefDefUnitRatio(), 
+              (p.origin[0] + p.vBbox[i][2] - node.xl()) * lefDefUnitRatio(),
+              (p.origin[1] + p.vBbox[i][3] - node.yl()) * lefDefUnitRatio()
+              )); 
+      }
+    }
+    deriveMacroPortBbox(macroPort);
+  } else if (!p.vPinPort.empty()) {
+    for (std::size_t i = 0; i < p.vPinPort.size(); ++i) {
+      iopin.macroPorts().push_back(MacroPort());
+      MacroPort& macroPort = iopin.macroPorts().back();
+      macroPort.setId(iopin.macroPorts().size() - 1);
+      DefParser::PinPort const& pport = p.vPinPort[i]; 
+      for (std::size_t j = 0; j < pport.vLayer.size(); ++j) {
+        if (!(pport.origin[0] == -1 && pport.origin[1] == -1)) {
+          macroPort.layers() .push_back(pport.vLayer[i]); 
+          macroPort.boxes().push_back(MacroPort::box_type(
+                (pport.origin[0] + pport.vBbox[i][0] - node.xl()) * lefDefUnitRatio(), 
+                (pport.origin[1] + pport.vBbox[i][1] - node.yl()) * lefDefUnitRatio(), 
+                (pport.origin[0] + pport.vBbox[i][2] - node.xl()) * lefDefUnitRatio(),
+                (pport.origin[1] + pport.vBbox[i][3] - node.yl()) * lefDefUnitRatio()
+                ));
+        }
+      }
+      deriveMacroPortBbox(macroPort);
     }
   }
+  deriveMacroPinBbox(iopin);
 }
 void PlaceDB::resize_def_net(int s) {
   if ((long)m_vNet.capacity() < s)  // only if PlaceDB::prepare() is not called
