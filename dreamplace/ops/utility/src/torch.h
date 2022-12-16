@@ -9,10 +9,10 @@
 
 /// As torch may change the header inclusion conventions, it is better to manage
 /// it in a consistent way.
-#if TORCH_MAJOR_VERSION >= 1
+#if TORCH_VERSION_MAJOR >= 1
 #include <torch/extension.h>
 
-#if TORCH_MINOR_VERSION >= 3
+#if TORCH_VERSION_MINOR >= 3
 
 #define DREAMPLACE_TENSOR_DATA_PTR(TENSOR, TYPE) \
   ((TENSOR.defined())? TENSOR.data_ptr<TYPE>() : nullptr)
@@ -27,10 +27,10 @@
 #endif
 
 // torch version 1.8 or later 
-#if TORCH_MAJOR_VERSION > 1 || (TORCH_MAJOR_VERSION == 1 && TORCH_MINOR_VERSION >= 8)
+#if TORCH_VERSION_MAJOR > 1 || (TORCH_VERSION_MAJOR == 1 && TORCH_VERSION_MINOR >= 8)
 
 // torch version 1.13 or later 
-#if TORCH_MAJOR_VERSION > 1 || (TORCH_MAJOR_VERSION == 1 && TORCH_MINOR_VERSION >= 13)
+#if TORCH_VERSION_MAJOR > 1 || (TORCH_VERSION_MAJOR == 1 && TORCH_VERSION_MINOR >= 13)
 
 // AT_PRIVATE_CASE_TYPE was recently removed from the public dispatch API (look in the Dispatch.h)
 #define AT_PRIVATE_CASE_TYPE(NAME, enum_type, type, ...) \

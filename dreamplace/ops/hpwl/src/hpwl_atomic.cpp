@@ -58,7 +58,7 @@ at::Tensor hpwl_atomic_forward(at::Tensor pos, at::Tensor pin2net_map,
   // std::cout << "partial_hpwl_max = " << partial_hpwl_max << "\n";
   // std::cout << "partial_hpwl_min = " << partial_hpwl_min << "\n";
   // std::cout << "partial_hpwl = \n" <<
-  // (partial_hpwl_max-partial_hpwl_min)._cast_double().mul(1.0/1000) << "\n";
+  // (partial_hpwl_max-partial_hpwl_min).to(torch::kDouble).mul(1.0/1000) << "\n";
 
   auto hpwl = (partial_hpwl_max - partial_hpwl_min);
   if (net_weights.numel()) {
