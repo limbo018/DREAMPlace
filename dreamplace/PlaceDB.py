@@ -859,30 +859,35 @@ row height = %g, site width = %g
                 )
             else:
                 node_size_order = np.argsort(self.node_size_x[: self.num_movable_nodes])
-                filler_size_x = np.mean(
-                    self.node_size_x[
-                        node_size_order[int(self.num_movable_nodes * 0.05) : int(self.num_movable_nodes * 0.95)]
-                    ]
-                )
+                range_lb = int(self.num_movable_nodes*0.05)
+                range_ub = int(self.num_movable_nodes*0.95)
+                if range_lb >= range_ub: # when there are too few cells, i.e., <= 1
+                    filler_size_x = 0
+                else:
+                    filler_size_x = np.mean(self.node_size_x[node_size_order[range_lb:range_ub]])
                 filler_size_y = self.row_height
                 placeable_area = max(self.area - self.total_fixed_node_area, self.total_space_area)
                 content += "use placeable_area = %g to compute fillers\n" % (placeable_area)
                 self.total_filler_node_area = max(
                     placeable_area * params.target_density - self.total_movable_node_area, 0.0
                 )
-                self.num_filler_nodes = int(round(self.total_filler_node_area / (filler_size_x * filler_size_y)))
-                self.node_size_x = np.concatenate(
-                    [
-                        self.node_size_x,
-                        np.full(self.num_filler_nodes, fill_value=filler_size_x, dtype=self.node_size_x.dtype),
-                    ]
-                )
-                self.node_size_y = np.concatenate(
-                    [
-                        self.node_size_y,
-                        np.full(self.num_filler_nodes, fill_value=filler_size_y, dtype=self.node_size_y.dtype),
-                    ]
-                )
+                filler_area = filler_size_x * filler_size_y
+                if filler_area == 0: 
+                    self.num_filler_nodes = 0
+                else:
+                    self.num_filler_nodes = int(round(self.total_filler_node_area / filler_area))
+                    self.node_size_x = np.concatenate(
+                        [
+                            self.node_size_x,
+                            np.full(self.num_filler_nodes, fill_value=filler_size_x, dtype=self.node_size_x.dtype),
+                        ]
+                    )
+                    self.node_size_y = np.concatenate(
+                        [
+                            self.node_size_y,
+                            np.full(self.num_filler_nodes, fill_value=filler_size_y, dtype=self.node_size_y.dtype),
+                        ]
+                    )
                 content += "total_filler_node_area = %g, #fillers = %d, filler sizes = %gx%g\n" % (
                     self.total_filler_node_area,
                     self.num_filler_nodes,
