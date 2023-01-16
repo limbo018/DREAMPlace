@@ -10,6 +10,10 @@
 
 DREAMPLACE_BEGIN_NAMESPACE
 
+namespace gtl = boost::polygon;
+using namespace gtl::operators;
+typedef gtl::polygon_90_set_data<PlaceDB::coordinate_type> PolygonSet;
+
 bool readLef(PlaceDB& db)
 {
 	// read lef
@@ -156,25 +160,21 @@ bool readBookshelf(PlaceDB& db)
 
 void PyPlaceDB::set(PlaceDB const& db)
 {
-    namespace gtl = boost::polygon;
-    using namespace gtl::operators;
-    typedef gtl::polygon_90_set_data<PlaceDB::coordinate_type> PolygonSet;
-
     num_terminal_NIs = db.numIOPin();  // IO pins
-    double total_fixed_node_area = 0; // compute total area of fixed cells, which is an upper bound
+    //double total_fixed_node_area = 0; // compute total area of fixed cells, which is an upper bound
     // collect boxes for fixed cells and put in a polygon set to remove overlap later
-    std::vector<gtl::rectangle_data<PlaceDB::coordinate_type>> fixed_boxes;
+    //std::vector<gtl::rectangle_data<PlaceDB::coordinate_type>> fixed_boxes;
     // record original node to new node mapping
     std::vector<std::vector<PlaceDB::index_type> > mNode2NewNodes (db.nodes().size());
 
-    // add a node to a bin
-    auto addNode2Bin = [&](Box<PlaceDB::coordinate_type> const& box) {
-        fixed_boxes.emplace_back(box.xl(), box.yl(), box.xh(), box.yh());
-    };
+    //// add a node to a bin
+    //auto addNode2Bin = [&](Box<PlaceDB::coordinate_type> const& box) {
+    //    fixed_boxes.emplace_back(box.xl(), box.yl(), box.xh(), box.yh());
+    //};
     // general add a node
     auto addNode = [&](Node const& node,
             std::string const& name, Orient orient,
-            Box<PlaceDB::coordinate_type> const& box, bool dist2map) {
+            Box<PlaceDB::coordinate_type> const& box, bool /*dist2map*/) {
         // this id may be different from node id
         int id = node_names.size();
         node_name2id_map[pybind11::str(name)] = id;
@@ -188,11 +188,11 @@ void PyPlaceDB::set(PlaceDB const& db)
         node2orig_node_map.append(node.id());
         // record original node to new node mapping
         mNode2NewNodes.at(node.id()).push_back(id);
-        if (dist2map)
-        {
-            //dreamplacePrint(kDEBUG, "node %s\n", db.nodeName(node).c_str());
-            addNode2Bin(box);
-        }
+        //if (dist2map)
+        //{
+        //    //dreamplacePrint(kDEBUG, "node %s\n", db.nodeName(node).c_str());
+        //    addNode2Bin(box);
+        //}
     };
     // add obstruction boxes for fixed nodes
     // initialize node shapes from obstruction
@@ -214,10 +214,10 @@ void PyPlaceDB::set(PlaceDB const& db)
             bbox.encompass(box);
         }
         // compute the upper bound of fixed cell area
-        if (dist2map)
-        {
-            total_fixed_node_area += bbox.area();
-        }
+        //if (dist2map)
+        //{
+        //    total_fixed_node_area += bbox.area();
+        //}
     };
 
     num_terminals = 0; // regard only fixed macros as macros, placement blockages are ignored
@@ -285,7 +285,7 @@ void PyPlaceDB::set(PlaceDB const& db)
                 addNode(node, db.nodeName(node), Orient(node.orient()), node, true);
                 num_terminals += 1;
                 // compute upper bound of total fixed cell area
-                total_fixed_node_area += node.area();
+                //total_fixed_node_area += node.area();
             }
         }
     }
@@ -297,19 +297,19 @@ void PyPlaceDB::set(PlaceDB const& db)
         "%u != %lu, db.nodes().size = %lu, num_terminals = %d, numFixed = %u, numPlaceBlockages = %u, num_terminal_NIs = %d", 
         num_nodes, node_x.size(), db.nodes().size(), num_terminals, db.numFixed(), db.numPlaceBlockages(), num_terminal_NIs);
 
-    // this is different from simply summing up the area of all fixed nodes
-    double total_fixed_node_overlap_area = 0;
-    // compute total area uniquely
-    {
-        PolygonSet ps (gtl::HORIZONTAL, fixed_boxes.begin(), fixed_boxes.end());
-        // critical to make sure only overlap with the die area is computed
-        ps &= gtl::rectangle_data<PlaceDB::coordinate_type>(db.rowXL(), db.rowYL(), db.rowXH(), db.rowYH());
-        total_fixed_node_overlap_area = gtl::area(ps);
-    }
-    // the total overlap area should not exceed the upper bound; 
-    // current estimation may exceed if there are many overlapping fixed cells or boxes 
-    total_space_area = db.rowBbox().area() - std::min(total_fixed_node_overlap_area, total_fixed_node_area); 
-    dreamplacePrint(kDEBUG, "fixed area overlap: %g fixed area total: %g, space area = %g\n", total_fixed_node_overlap_area, total_fixed_node_area, total_space_area);
+    //// this is different from simply summing up the area of all fixed nodes
+    //double total_fixed_node_overlap_area = 0;
+    //// compute total area uniquely
+    //{
+    //    PolygonSet ps (gtl::HORIZONTAL, fixed_boxes.begin(), fixed_boxes.end());
+    //    // critical to make sure only overlap with the die area is computed
+    //    ps &= gtl::rectangle_data<PlaceDB::coordinate_type>(db.rowXL(), db.rowYL(), db.rowXH(), db.rowYH());
+    //    total_fixed_node_overlap_area = gtl::area(ps);
+    //}
+    //// the total overlap area should not exceed the upper bound; 
+    //// current estimation may exceed if there are many overlapping fixed cells or boxes 
+    //total_space_area = db.rowBbox().area() - std::min(total_fixed_node_overlap_area, total_fixed_node_area); 
+    //dreamplacePrint(kDEBUG, "fixed area overlap: %g fixed area total: %g, space area = %g\n", total_fixed_node_overlap_area, total_fixed_node_area, total_space_area);
 
     // construct node2pin_map and flat_node2pin_map
     int count = 0;
@@ -531,6 +531,235 @@ void PyPlaceDB::set(PlaceDB const& db)
             initial_vertical_demand_map.append(item);
         }
     }
+
+    convertOrient(); 
+
+    // must be called after conversion of orientations
+    computeAreaStatistics();
+}
+
+std::pair<int32_t, int32_t> PyPlaceDB::getOrientDegreeFlip(std::string const& orient) const
+{
+  int32_t degree = 0; 
+  int32_t flip = 0; 
+  if (orient == "N") 
+  {
+    degree = 0; 
+    flip = 0; 
+  }
+  else if (orient == "S")
+  {
+    degree = 180; 
+    flip = 0; 
+  }
+  else if (orient == "W")
+  {
+    degree = 90; 
+    flip = 0; 
+  }
+  else if (orient == "E")
+  {
+    degree = 270; 
+    flip = 0; 
+  } 
+  else if (orient == "FN") 
+  {
+    degree = 0; 
+    flip = 1; 
+  }
+  else if (orient == "FS")
+  {
+    degree = 180; 
+    flip = 1; 
+  }
+  else if (orient == "FW")
+  {
+    degree = 90; 
+    flip = 1; 
+  }
+  else if (orient == "FE")
+  {
+    degree = 270; 
+    flip = 1; 
+  } 
+  else // asssume UNKNOWN is N 
+  {
+    degree = 0; 
+    flip = 0; 
+  }
+  return std::make_pair(degree, flip); 
+}
+
+
+std::pair<PyPlaceDB::coordinate_type, PyPlaceDB::coordinate_type> PyPlaceDB::getRotatedSizes(int32_t rot_degree, 
+    PyPlaceDB::coordinate_type src_width, PyPlaceDB::coordinate_type src_height) const
+{
+  coordinate_type dst_width = std::numeric_limits<coordinate_type>::max(); 
+  coordinate_type dst_height = std::numeric_limits<coordinate_type>::max(); 
+  // apply rotation 
+  // compute width and height 
+  switch (rot_degree) 
+  {
+    default:
+      dreamplacePrint(kWARN, "Unknown rotation degree %d, regarded as 0\n", rot_degree); 
+    case 0: 
+    case 180:
+      dst_width = src_width; 
+      dst_height = src_height; 
+      break; 
+    case 90:
+    case 270:
+      dst_width = src_height; 
+      dst_height = src_width; 
+      break; 
+  }
+
+  return std::make_pair(dst_width, dst_height); 
+}
+std::pair<PyPlaceDB::coordinate_type, PyPlaceDB::coordinate_type> PyPlaceDB::getRotatedPinOffsets(int32_t rot_degree, 
+    PyPlaceDB::coordinate_type src_width, PyPlaceDB::coordinate_type src_height, 
+    PyPlaceDB::coordinate_type src_pin_offset_x, PyPlaceDB::coordinate_type src_pin_offset_y) const 
+{
+  coordinate_type dst_pin_offset_x = std::numeric_limits<coordinate_type>::max(); 
+  coordinate_type dst_pin_offset_y = std::numeric_limits<coordinate_type>::max(); 
+  // compute pin offsets 
+  switch (rot_degree) 
+  {
+    default:
+      dreamplacePrint(kWARN, "Unknown rotation degree %d, regarded as 0\n", rot_degree); 
+    case 0: 
+      dst_pin_offset_x = src_pin_offset_x; 
+      dst_pin_offset_y = src_pin_offset_y; 
+      break; 
+    case 180:
+      dst_pin_offset_x = src_width - src_pin_offset_x; 
+      dst_pin_offset_y = src_height - src_pin_offset_y; 
+      break; 
+    case 90:
+      dst_pin_offset_x = src_height - src_pin_offset_y; 
+      dst_pin_offset_y = src_pin_offset_x; 
+      break; 
+    case 270:
+      dst_pin_offset_x = src_pin_offset_y; 
+      dst_pin_offset_y = src_width - src_pin_offset_x; 
+      break; 
+  }
+
+  return std::make_pair(dst_pin_offset_x, dst_pin_offset_y); 
+}
+
+std::pair<PyPlaceDB::coordinate_type, PyPlaceDB::coordinate_type> PyPlaceDB::getFlipYPinOffsets(
+    PyPlaceDB::coordinate_type src_width, PyPlaceDB::coordinate_type src_height, 
+    PyPlaceDB::coordinate_type src_pin_offset_x, PyPlaceDB::coordinate_type src_pin_offset_y) const
+{
+  // apply flipping about Y axis 
+  // assume the src values here are after rotation 
+  coordinate_type dst_pin_offset_x = src_width - src_pin_offset_x;
+  coordinate_type dst_pin_offset_y = src_pin_offset_y; 
+
+  return std::make_pair(dst_pin_offset_x, dst_pin_offset_y); 
+}
+
+void PyPlaceDB::convertOrient() 
+{
+  dreamplacePrint(kINFO, "-- Converting Node Orientation --\n"); 
+  std::map<std::string, int32_t> orient_count; 
+  for (unsigned int node_id = 0; node_id < node_orient.size(); ++node_id)
+  {
+    std::string src_orient = node_orient[node_id].cast<std::string>(); 
+    if (src_orient != "N" && src_orient != "UNKNOWN")
+    {
+      // count how many nodes converted 
+      if (orient_count.find(src_orient) == orient_count.end())
+      {
+        orient_count[src_orient] = 0; 
+      }
+      orient_count[src_orient]++; 
+
+      // convert orientation to rotation degree and flipping Y
+      std::pair<int32_t, int32_t> dst_degree_flip = getOrientDegreeFlip("N"); 
+      std::pair<int32_t, int32_t> src_degree_flip = getOrientDegreeFlip(src_orient); 
+
+      // compute rotation degree and flipping Y
+      int32_t rot_degree = (dst_degree_flip.first - src_degree_flip.first + 360) % 360; 
+      bool flip = (dst_degree_flip.second != src_degree_flip.second); 
+
+      // apply rotation to get new width and height 
+      std::pair<coordinate_type, coordinate_type> sizes = getRotatedSizes(rot_degree, node_size_x[node_id].cast<coordinate_type>(), node_size_y[node_id].cast<coordinate_type>()); 
+
+      pybind11::list pins = node2pin_map[node_id].cast<pybind11::list>();
+      for (unsigned int j = 0; j < pins.size(); ++j)
+      {
+        unsigned int pin_id = pins[j].cast<index_type>(); 
+
+        // apply rotations to get new pin offsets 
+        std::pair<coordinate_type, coordinate_type> pin_offsets = getRotatedPinOffsets(rot_degree, 
+            node_size_x[node_id].cast<coordinate_type>(), node_size_y[node_id].cast<coordinate_type>(), pin_offset_x[pin_id].cast<coordinate_type>(), pin_offset_y[pin_id].cast<coordinate_type>()); 
+
+        // apply changes 
+        pin_offset_x[pin_id] = pin_offsets.first; 
+        pin_offset_y[pin_id] = pin_offsets.second; 
+      }
+
+      // apply changes 
+      node_size_x[node_id] = sizes.first; 
+      node_size_y[node_id] = sizes.second; 
+
+      // apply flipping 
+      if (flip) 
+      {
+        pins = node2pin_map[node_id].cast<pybind11::list>();
+        for (unsigned int j = 0; j < pins.size(); ++j)
+        {
+          unsigned int pin_id = pins[j].cast<index_type>(); 
+
+          // apply rotations to get new pin offsets 
+          std::pair<coordinate_type, coordinate_type> pin_offsets = getFlipYPinOffsets(
+              node_size_x[node_id].cast<coordinate_type>(), node_size_y[node_id].cast<coordinate_type>(), pin_offset_x[pin_id].cast<coordinate_type>(), pin_offset_y[pin_id].cast<coordinate_type>()); 
+
+          // apply changes 
+          pin_offset_x[pin_id] = pin_offsets.first; 
+          pin_offset_y[pin_id] = pin_offsets.second; 
+        }
+      }
+    }
+  }
+
+  for (std::map<std::string, int32_t>::const_iterator it = orient_count.begin(); it != orient_count.end(); ++it)
+  {
+    dreamplacePrint(kINFO, "%s -> N: %d nodes\n", it->first.c_str(), it->second);
+  }
+  dreamplacePrint(kINFO, "---------------------------------\n"); 
+}
+
+void PyPlaceDB::computeAreaStatistics() 
+{
+  double total_fixed_node_area = 0; // compute total area of fixed cells, which is an upper bound
+  std::vector<gtl::rectangle_data<PlaceDB::coordinate_type>> fixed_boxes;
+
+  for (index_type i = num_nodes - num_terminals - num_terminal_NIs; i < num_nodes - num_terminal_NIs; ++i)
+  {
+    total_fixed_node_area += node_size_x[i].cast<double>() * node_size_y[i].cast<double>(); 
+    fixed_boxes.emplace_back(node_x[i].cast<coordinate_type>(), node_y[i].cast<coordinate_type>(), node_x[i].cast<coordinate_type>() + node_size_x[i].cast<coordinate_type>(), node_y[i].cast<coordinate_type>() + node_size_y[i].cast<coordinate_type>());
+  }
+
+  // this is different from simply summing up the area of all fixed nodes
+  double total_fixed_node_overlap_area = 0;
+  // compute total area uniquely
+  {
+    PolygonSet ps (gtl::HORIZONTAL, fixed_boxes.begin(), fixed_boxes.end());
+    // critical to make sure only overlap with the die area is computed
+    ps &= gtl::rectangle_data<PlaceDB::coordinate_type>(xl, yl, xh, yh);
+    total_fixed_node_overlap_area = gtl::area(ps);
+  }
+  // the total overlap area should not exceed the upper bound; 
+  // current estimation may exceed if there are many overlapping fixed cells or boxes 
+  total_space_area = (double)(xh - xl) * (yh - yl) - std::min(total_fixed_node_overlap_area, total_fixed_node_area); 
+  dreamplacePrint(kINFO, "-------- Area Statistics --------\n"); 
+  dreamplacePrint(kINFO, "fixed area overlap = %g\n", total_fixed_node_overlap_area);
+  dreamplacePrint(kINFO, "fixed area total = %g\n", total_fixed_node_area);
+  dreamplacePrint(kINFO, "space area = %g\n", total_space_area);
+  dreamplacePrint(kINFO, "---------------------------------\n"); 
 }
 
 DREAMPLACE_END_NAMESPACE

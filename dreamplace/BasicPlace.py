@@ -933,6 +933,11 @@ class BasicPlace(nn.Module):
         # wirelength for position
         def build_detailed_placement_op(pos):
             logging.info("Start ABCDPlace for refinement")
+
+            if placedb.num_movable_nodes < 2: 
+                logging.info("Too few movable cells, skip detailed placement")
+                return pos 
+
             pos1 = pos
             legal = self.op_collections.legality_check_op(pos1)
             logging.info("ABCDPlace input legal flag = %d" %

@@ -1,7 +1,7 @@
 ##
-# @file   rudy_unitest.py
-# @author Zixuan Jiang, Jiaqi Gu
-# @date   Dec 2019
+# @file   pinrudy_unitest.py
+# @author Siting Liu
+# @date   Oct 2022
 #
 
 import os
@@ -13,12 +13,12 @@ import numpy as np
 sys.path.append(
     os.path.dirname(os.path.dirname(os.path.dirname(
         os.path.abspath(__file__)))))
-from dreamplace.ops.rudy import rudy
+from dreamplace.ops.pinrudy import pinrudy
 sys.path.pop()
 
 
-class RudyUnittest(unittest.TestCase):
-    def test_rudy(self):
+class PinRudyUnittest(unittest.TestCase):
+    def test_pin_rudy(self):
         # the data of net and pin are from unitest/ops/weighted_average_wirelength_unitest.py
         dtype = torch.float32
         pin_pos = torch.Tensor([[0.0, 0.0], [1.0, 2.0], [1.5, 0.2], [0.5, 3.1],
@@ -53,7 +53,7 @@ class RudyUnittest(unittest.TestCase):
         unit_vertical_capacity = 0.2
 
         # test cpu
-        rudy_op = rudy.Rudy(netpin_start=flat_net2pin_start_map,
+        pinrudy_op = pinrudy.PinRudy(netpin_start=flat_net2pin_start_map,
                             flat_netpin=flat_net2pin_map,
                             net_weights=net_weights,
                             xl=xl,
@@ -66,12 +66,12 @@ class RudyUnittest(unittest.TestCase):
                             unit_vertical_capacity=unit_vertical_capacity,
                             deterministic_flag=1)
 
-        result_cpu = rudy_op.forward(pin_pos.t().contiguous().view(-1))
-        print("Test on CPU. rudy map = ", result_cpu)
+        result_cpu = pinrudy_op.forward(pin_pos.t().contiguous().view(-1))
+        print("Test on CPU. pinrudy map = ", result_cpu)
 
         if torch.cuda.device_count():
             # test gpu
-            rudy_op_cuda = rudy.Rudy(
+            pinrudy_op_cuda = pinrudy.PinRudy(
                 netpin_start=flat_net2pin_start_map.cuda(),
                 flat_netpin=flat_net2pin_map.cuda(),
                 net_weights=net_weights.cuda(),
@@ -85,9 +85,9 @@ class RudyUnittest(unittest.TestCase):
                 unit_vertical_capacity=unit_vertical_capacity,
                 deterministic_flag=1)
 
-            result_cuda = rudy_op_cuda.forward(
+            result_cuda = pinrudy_op_cuda.forward(
                 pin_pos.t().contiguous().view(-1).cuda())
-            print("Test on GPU. rudy map = ", result_cuda)
+            print("Test on GPU. pinrudy map = ", result_cuda)
 
             np.testing.assert_allclose(result_cpu, result_cuda.cpu())
 

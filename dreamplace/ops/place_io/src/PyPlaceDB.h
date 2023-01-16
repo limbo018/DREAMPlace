@@ -28,6 +28,9 @@ bool readBookshelf(PlaceDB& db);
 /// database for python 
 struct PyPlaceDB
 {
+    typedef PlaceDB::coordinate_type coordinate_type; 
+    typedef PlaceDB::index_type index_type; 
+
     unsigned int num_nodes; ///< number of nodes, including terminals and terminal_NIs 
     unsigned int num_terminals; ///< number of terminals, essentially fixed macros  
     unsigned int num_terminal_NIs; ///< number of terminal_NIs, essentially IO pins 
@@ -101,6 +104,30 @@ struct PyPlaceDB
     }
 
     void set(PlaceDB const& db);
+
+    /// @brief Convert orientation to (degree, flip) pair. 
+    /// N, S, W, E correspond to degree = 0, 180, 90, 270, flip = 0; 
+    /// FN, FS, FW, FE correspond to degree = 0, 180, 90, 270, flip = 1. 
+    /// The operation is rotation and then flipping. 
+    /// Note flip means flipping about Y axis.  
+    std::pair<int32_t, int32_t> getOrientDegreeFlip(std::string const& orient) const; 
+
+    /// @brief Get rotated width and height. 
+    std::pair<coordinate_type, coordinate_type> getRotatedSizes(int32_t rot_degree, coordinate_type src_width, coordinate_type src_height) const; 
+    /// @brief Get rotated pin offsets. 
+    std::pair<coordinate_type, coordinate_type> getRotatedPinOffsets(int32_t rot_degree, 
+        coordinate_type src_width, coordinate_type src_height, 
+        coordinate_type src_pin_offset_x, coordinate_type src_pin_offset_y) const; 
+    /// @brief Get flipped pin offsets about Y axis. 
+    std::pair<coordinate_type, coordinate_type> getFlipYPinOffsets(coordinate_type src_width, coordinate_type src_height, 
+        coordinate_type src_pin_offset_x, coordinate_type src_pin_offset_y) const; 
+
+    /// @brief Top function to convert orientations of all nodes to N 
+    /// and change the width, height, and pin offsets accordingly. 
+    /// Note lower left corner dost noe change.  
+    void convertOrient(); 
+
+    void computeAreaStatistics();
 };
 
 DREAMPLACE_END_NAMESPACE

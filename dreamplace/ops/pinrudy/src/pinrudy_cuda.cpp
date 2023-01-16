@@ -17,7 +17,7 @@ DREAMPLACE_BEGIN_NAMESPACE
 
 // fill the demand map net by net
 template <typename T>
-int rudyCudaLauncher(const T *pin_pos_x, const T *pin_pos_y,
+int pinRudyCudaLauncher(const T *pin_pos_x, const T *pin_pos_y,
                      const int *netpin_start, const int *flat_netpin,
                      const T *net_weights, T bin_size_x, T bin_size_y, T xl,
                      T yl, T xh, T yh,
@@ -27,7 +27,7 @@ int rudyCudaLauncher(const T *pin_pos_x, const T *pin_pos_y,
                      T *horizontal_utilization_map,
                      T *vertical_utilization_map);
 
-void rudy_forward(at::Tensor pin_pos, at::Tensor netpin_start,
+void pin_rudy_forward(at::Tensor pin_pos, at::Tensor netpin_start,
                   at::Tensor flat_netpin, at::Tensor net_weights,
                   double bin_size_x, double bin_size_y, double xl, double yl,
                   double xh, double yh, int num_bins_x, int num_bins_y,
@@ -51,8 +51,8 @@ void rudy_forward(at::Tensor pin_pos, at::Tensor netpin_start,
   int num_pins = pin_pos.numel() / 2;
 
   // Call the cuda kernel launcher
-  DREAMPLACE_DISPATCH_FLOATING_TYPES(pin_pos, "rudyCudaLauncher", [&] {
-    rudyCudaLauncher<scalar_t>(
+  DREAMPLACE_DISPATCH_FLOATING_TYPES(pin_pos, "pinRudyCudaLauncher", [&] {
+    pinRudyCudaLauncher<scalar_t>(
         DREAMPLACE_TENSOR_DATA_PTR(pin_pos, scalar_t),
         DREAMPLACE_TENSOR_DATA_PTR(pin_pos, scalar_t) + num_pins,
         DREAMPLACE_TENSOR_DATA_PTR(netpin_start, int),
@@ -72,6 +72,6 @@ void rudy_forward(at::Tensor pin_pos, at::Tensor netpin_start,
 DREAMPLACE_END_NAMESPACE
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-  m.def("forward", &DREAMPLACE_NAMESPACE::rudy_forward,
-        "compute RUDY map (CUDA)");
+  m.def("forward", &DREAMPLACE_NAMESPACE::pin_rudy_forward,
+        "compute pin RUDY map (CUDA)");
 }

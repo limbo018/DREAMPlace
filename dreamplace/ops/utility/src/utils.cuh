@@ -28,6 +28,8 @@
 #include "utility/src/diamond_search.h"
 #include "utility/src/flat_nested_vector.cuh"
 #include "utility/src/pitch_nested_vector.cuh"
+// atomic ops
+#include "utility/src/atomic_ops.cuh"
 
 // placement database
 //#include "utility/src/detailed_place_db.h"

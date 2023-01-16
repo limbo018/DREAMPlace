@@ -17,8 +17,8 @@ int computeElectricForceCudaLauncher(
     const T* node_size_x_clamped_tensor, const T* node_size_y_clamped_tensor,
     const T* offset_x_tensor, const T* offset_y_tensor, const T* ratio_tensor,
     const T* bin_center_x_tensor, const T* bin_center_y_tensor, T xl, T yl,
-    T xh, T yh, T bin_size_x, T bin_size_y, int num_nodes, T* grad_x_tensor,
-    T* grad_y_tensor, const int* sorted_node_map);
+    T xh, T yh, T bin_size_x, T bin_size_y, int num_nodes, bool deterministic_flag, 
+    T* grad_x_tensor, T* grad_y_tensor, const int* sorted_node_map);
 
 /// @brief compute electric force for movable and filler cells
 /// @param grad_pos input gradient from backward propagation
@@ -62,7 +62,7 @@ at::Tensor electric_force(
     at::Tensor offset_x, at::Tensor offset_y, at::Tensor ratio,
     at::Tensor bin_center_x, at::Tensor bin_center_y, double xl, double yl,
     double xh, double yh, double bin_size_x, double bin_size_y,
-    int num_movable_nodes, int num_filler_nodes, at::Tensor sorted_node_map) {
+    int num_movable_nodes, int num_filler_nodes, int deterministic_flag, at::Tensor sorted_node_map) {
   CHECK_FLAT_CUDA(pos);
   CHECK_EVEN(pos);
   CHECK_CONTIGUOUS(pos);
@@ -90,7 +90,7 @@ at::Tensor electric_force(
             DREAMPLACE_TENSOR_DATA_PTR(ratio, scalar_t),
             DREAMPLACE_TENSOR_DATA_PTR(bin_center_x, scalar_t),
             DREAMPLACE_TENSOR_DATA_PTR(bin_center_y, scalar_t), xl, yl, xh, yh,
-            bin_size_x, bin_size_y, num_movable_nodes,
+            bin_size_x, bin_size_y, num_movable_nodes, (bool)deterministic_flag,
             DREAMPLACE_TENSOR_DATA_PTR(grad_out, scalar_t),
             DREAMPLACE_TENSOR_DATA_PTR(grad_out, scalar_t) + num_nodes,
             DREAMPLACE_TENSOR_DATA_PTR(sorted_node_map, int));
@@ -106,24 +106,17 @@ at::Tensor electric_force(
               DREAMPLACE_TENSOR_DATA_PTR(field_map_x, scalar_t),
               DREAMPLACE_TENSOR_DATA_PTR(field_map_y, scalar_t),
               DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + num_physical_nodes,
-              DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + num_nodes +
-                  num_physical_nodes,
-              DREAMPLACE_TENSOR_DATA_PTR(node_size_x_clamped, scalar_t) +
-                  num_physical_nodes,
-              DREAMPLACE_TENSOR_DATA_PTR(node_size_y_clamped, scalar_t) +
-                  num_physical_nodes,
-              DREAMPLACE_TENSOR_DATA_PTR(offset_x, scalar_t) +
-                  num_physical_nodes,
-              DREAMPLACE_TENSOR_DATA_PTR(offset_y, scalar_t) +
-                  num_physical_nodes,
+              DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + num_nodes + num_physical_nodes,
+              DREAMPLACE_TENSOR_DATA_PTR(node_size_x_clamped, scalar_t) + num_physical_nodes,
+              DREAMPLACE_TENSOR_DATA_PTR(node_size_y_clamped, scalar_t) + num_physical_nodes,
+              DREAMPLACE_TENSOR_DATA_PTR(offset_x, scalar_t) + num_physical_nodes,
+              DREAMPLACE_TENSOR_DATA_PTR(offset_y, scalar_t) + num_physical_nodes,
               DREAMPLACE_TENSOR_DATA_PTR(ratio, scalar_t) + num_physical_nodes,
               DREAMPLACE_TENSOR_DATA_PTR(bin_center_x, scalar_t),
               DREAMPLACE_TENSOR_DATA_PTR(bin_center_y, scalar_t), xl, yl, xh,
-              yh, bin_size_x, bin_size_y, num_filler_nodes,
-              DREAMPLACE_TENSOR_DATA_PTR(grad_out, scalar_t) +
-                  num_physical_nodes,
-              DREAMPLACE_TENSOR_DATA_PTR(grad_out, scalar_t) + num_nodes +
-                  num_physical_nodes,
+              yh, bin_size_x, bin_size_y, num_filler_nodes, (bool)deterministic_flag,
+              DREAMPLACE_TENSOR_DATA_PTR(grad_out, scalar_t) + num_physical_nodes,
+              DREAMPLACE_TENSOR_DATA_PTR(grad_out, scalar_t) + num_nodes + num_physical_nodes,
               NULL);
         });
   }

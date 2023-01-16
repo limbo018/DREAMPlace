@@ -25,6 +25,7 @@ add_subdirectory(k_reorder)
 # routing congestion operator
 add_subdirectory(pin_utilization)
 add_subdirectory(rudy)
+add_subdirectory(pinrudy)
 add_subdirectory(nctugr_binary)
 add_subdirectory(adjust_node_area)
 

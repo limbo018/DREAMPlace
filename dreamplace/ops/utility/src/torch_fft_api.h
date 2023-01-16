@@ -8,7 +8,7 @@
 
 #pragma once 
 
-#if TORCH_MAJOR_VERSION > 1 || (TORCH_MAJOR_VERSION == 1 && TORCH_MINOR_VERSION >= 8)
+#if TORCH_VERSION_MAJOR > 1 || (TORCH_VERSION_MAJOR == 1 && TORCH_VERSION_MINOR >= 8)
 
 namespace at {
   static inline Tensor rfft(const Tensor & input, int signal_ndim, bool normalized = false, bool onesided = true) {

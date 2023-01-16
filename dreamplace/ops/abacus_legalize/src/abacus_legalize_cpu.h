@@ -90,7 +90,7 @@ void distributeMovableAndFixedCells2BinsCPU(
 template <typename T>
 bool abacusPlaceRowCPU(const T* init_x, const T* node_size_x,
                        const T* node_size_y, const T* node_weights, T* x,
-                       const T row_height, const T xl, const T xh,
+                       const T site_width, const T row_height, const T xl, const T xh,
                        const int num_nodes, const int num_movable_nodes,
                        int* row_nodes, AbacusCluster<T>* clusters,
                        const int num_row_nodes) {
@@ -143,8 +143,11 @@ bool abacusPlaceRowCPU(const T* init_x, const T* node_size_x,
       // We can collect failed clusters later
       cluster->x =
           std::max(std::min(cluster->x, range_xh - cluster->w), range_xl);
-      dreamplaceAssert(cluster->x >= range_xl &&
-                       cluster->x + cluster->w <= range_xh);
+      // there may be numeric precision issues
+      dreamplaceAssertMsg(cluster->x + site_width * DREAMPLACE_RTOL >= range_xl 
+          && cluster->x + cluster->w <= range_xh + site_width * DREAMPLACE_RTOL, 
+          "%.6f >= %.6f && %.6f + %.6f <= %.6f", 
+          cluster->x, range_xl, cluster->x, cluster->w, range_xh);
 
       prev_cluster_id = cluster->prev_cluster_id;
       if (prev_cluster_id >= 0) {
@@ -192,13 +195,17 @@ bool abacusPlaceRowCPU(const T* init_x, const T* node_size_x,
       range_xh = std::min(next_cluster.x, range_xh);
       break;
     } else {
-      dreamplaceAssert(std::abs(node_size_y[row_nodes[j]] - row_height) < 1e-6);
+      dreamplaceAssertMsg(std::abs(node_size_y[row_nodes[j]] - row_height) < 1e-6, 
+          "node_size_y[row_nodes[%d] = %d] = %g, row_height = %g", 
+          j, row_nodes[j], node_size_y[row_nodes[j]], row_height);
     }
   }
   for (int i = 0; i < num_row_nodes; ++i) {
     const AbacusCluster<T>& cluster = clusters[i];
     if (cluster.e < M) {
-      dreamplaceAssert(std::abs(node_size_y[row_nodes[i]] - row_height) < 1e-6);
+      dreamplaceAssertMsg(std::abs(node_size_y[row_nodes[i]] - row_height) < 1e-6, 
+          "node_size_y[row_nodes[%d] = %d] = %g, row_height = %g", 
+          i, row_nodes[i], node_size_y[row_nodes[i]], row_height);
       collapse(i, range_xl, range_xh);
     } else  // set range xl/xh according to fixed nodes
     {
@@ -248,8 +255,8 @@ bool abacusPlaceRowCPU(const T* init_x, const T* node_size_x,
 template <typename T>
 void abacusLegalizeRowCPU(
     const T* init_x, const T* node_size_x, const T* node_size_y,
-    const T* node_weights, T* x, const T xl, const T xh, const T bin_size_x,
-    const T bin_size_y, const int num_bins_x, const int num_bins_y,
+    const T* node_weights, T* x, const T xl, const T xh, const T site_width, 
+    const T bin_size_x, const T bin_size_y, const int num_bins_x, const int num_bins_y,
     const int num_nodes, const int num_movable_nodes,
     std::vector<std::vector<int> >& bin_cells,
     std::vector<std::vector<AbacusCluster<T> > >& bin_clusters) {
@@ -314,7 +321,7 @@ void abacusLegalizeRowCPU(
     T bin_xh = std::min(bin_xl + bin_size_x, xh);
 
     abacusPlaceRowCPU(init_x, node_size_x, node_size_y, node_weights, x,
-                      bin_size_y,  // must be equal to row_height
+                      site_width, bin_size_y,  // must be equal to row_height
                       bin_xl, bin_xh, num_nodes, num_movable_nodes,
                       row2nodes.data(), clusters.data(), num_row_nodes);
   }
@@ -354,7 +361,7 @@ void abacusLegalizationCPU(const T* init_x, const T* init_y,
   }
 
   abacusLegalizeRowCPU(init_x, node_size_x, node_size_y, node_weights, x, xl,
-                       xh, bin_size_x, bin_size_y, num_bins_x, num_bins_y,
+                       xh, site_width, bin_size_x, bin_size_y, num_bins_x, num_bins_y,
                        num_nodes, num_movable_nodes, bin_cells, bin_clusters);
   // need to align nodes to sites
   // this also considers cell width which is not integral times of site_width

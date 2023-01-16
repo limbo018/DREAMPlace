@@ -1,8 +1,8 @@
 ##
-# @file   rudy.py
-# @author Jake Gu
-# @date   Dec 2019
-# @brief  Compute Rudy map
+# @file   pinrudy.py
+# @author Siting Liu
+# @date   Sept 2022
+# @brief  Compute Pin Rudy map for each pin
 #
 import math
 import torch
@@ -11,13 +11,13 @@ from torch.autograd import Function
 import matplotlib.pyplot as plt
 import pdb
 
-import dreamplace.ops.rudy.rudy_cpp as rudy_cpp
+import dreamplace.ops.pinrudy.pinrudy_cpp as pinrudy_cpp
 import dreamplace.configure as configure
 if configure.compile_configurations["CUDA_FOUND"] == "TRUE":
-    import dreamplace.ops.rudy.rudy_cuda as rudy_cuda
+    import dreamplace.ops.pinrudy.pinrudy_cuda as pinrudy_cuda
 
 
-class Rudy(nn.Module):
+class PinRudy(nn.Module):
     def __init__(self,
                  netpin_start,
                  flat_netpin,
@@ -33,7 +33,7 @@ class Rudy(nn.Module):
                  deterministic_flag, 
                  initial_horizontal_utilization_map=None,
                  initial_vertical_utilization_map=None):
-        super(Rudy, self).__init__()
+        super(PinRudy, self).__init__()
         self.netpin_start = netpin_start
         self.flat_netpin = flat_netpin
         self.net_weights = net_weights
@@ -64,20 +64,13 @@ class Rudy(nn.Module):
             device=pin_pos.device)
         vertical_utilization_map = torch.zeros_like(horizontal_utilization_map)
         if pin_pos.is_cuda:
-            func = rudy_cuda.forward
+            func = pinrudy_cuda.forward
         else:
-            func = rudy_cpp.forward
+            func = pinrudy_cpp.forward
         func(pin_pos, self.netpin_start, self.flat_netpin, self.net_weights,
              self.bin_size_x, self.bin_size_y, self.xl, self.yl, self.xh,
              self.yh, self.num_bins_x, self.num_bins_y, self.deterministic_flag, 
              horizontal_utilization_map, vertical_utilization_map)
-
-        # convert demand to utilization in each bin
-        bin_area = self.bin_size_x * self.bin_size_y
-        horizontal_utilization_map.mul_(
-            1 / (bin_area * self.unit_horizontal_capacity))
-        vertical_utilization_map.mul_(1 /
-                                      (bin_area * self.unit_vertical_capacity))
 
         if self.initial_horizontal_utilization_map is not None:
             horizontal_utilization_map.add_(
@@ -86,8 +79,6 @@ class Rudy(nn.Module):
             vertical_utilization_map.add_(
                 self.initial_vertical_utilization_map)
 
-        # infinity norm
-        route_utilization_map = torch.max(horizontal_utilization_map.abs_(),
-                                          vertical_utilization_map.abs_())
+        route_utilization_map = horizontal_utilization_map.abs_() + vertical_utilization_map.abs_()
 
         return route_utilization_map

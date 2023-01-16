@@ -22,16 +22,17 @@ int pinDemandMapCudaLauncher(const T *node_x, const T *node_y,
                              const T *half_node_size_stretch_x,
                              const T *half_node_size_stretch_y,
                              const T *pin_weights, T xl, T yl, T xh, T yh,
-                             T bin_size_x, T bin_size_y, int num_bins_x,
+                             int num_bins_x,
                              int num_bins_y, int num_nodes,
+                             bool deterministic_flag, 
                              T *pin_utilization_map);
 
 at::Tensor pin_utilization_map_forward(
     at::Tensor pos, at::Tensor node_size_x, at::Tensor node_size_y,
     at::Tensor half_node_size_stretch_x, at::Tensor half_node_size_stretch_y,
     at::Tensor pin_weights, double xl, double yl, double xh, double yh,
-    double bin_size_x, double bin_size_y, int num_physical_nodes,
-    int num_bins_x, int num_bins_y) {
+    int num_physical_nodes,
+    int num_bins_x, int num_bins_y, int deterministic_flag) {
   CHECK_FLAT_CUDA(pos);
   CHECK_EVEN(pos);
   CHECK_CONTIGUOUS(pos);
@@ -71,7 +72,8 @@ at::Tensor pin_utilization_map_forward(
             DREAMPLACE_TENSOR_DATA_PTR(half_node_size_stretch_x, scalar_t),
             DREAMPLACE_TENSOR_DATA_PTR(half_node_size_stretch_y, scalar_t),
             DREAMPLACE_TENSOR_DATA_PTR(pin_weights, scalar_t), xl, yl, xh, yh,
-            bin_size_x, bin_size_y, num_bins_x, num_bins_y, num_physical_nodes,
+            num_bins_x, num_bins_y, num_physical_nodes,
+            (bool)deterministic_flag,
             DREAMPLACE_TENSOR_DATA_PTR(pin_utilization_map, scalar_t));
       });
 

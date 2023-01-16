@@ -9,7 +9,7 @@
  */
 
 #include "utility/src/utils.cuh"
-#include "rudy/src/parameters.h"
+#include "pinrudy/src/parameters.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
 
@@ -17,7 +17,7 @@ template <typename T>
 inline __device__ DEFINE_NET_WIRING_DISTRIBUTION_MAP_WEIGHT;
 
 template <typename T, typename AtomicOp>
-__global__ void rudy(const T *pin_pos_x,
+__global__ void pinRudy(const T *pin_pos_x,
                               const T *pin_pos_y,
                               const int *netpin_start,
                               const int *flat_netpin,
@@ -69,29 +69,26 @@ __global__ void rudy(const T *pin_pos_x,
             wt *= net_weights[i];
         }
 
-        for (int x = bin_index_xl; x < bin_index_xh; ++x)
-        {
-            for (int y = bin_index_yl; y < bin_index_yh; ++y)
-            {
-                T bin_xl = xl + x * bin_size_x; 
-                T bin_yl = yl + y * bin_size_y; 
-                T bin_xh = bin_xl + bin_size_x; 
-                T bin_yh = bin_yl + bin_size_y; 
-                T overlap = DREAMPLACE_STD_NAMESPACE::max(DREAMPLACE_STD_NAMESPACE::min(x_max, bin_xh) - DREAMPLACE_STD_NAMESPACE::max(x_min, bin_xl), (T)0) *
-                            DREAMPLACE_STD_NAMESPACE::max(DREAMPLACE_STD_NAMESPACE::min(y_max, bin_yh) - DREAMPLACE_STD_NAMESPACE::max(y_min, bin_yl), (T)0);
-                overlap *= wt; 
-                int index = x * num_bins_y + y;
-                // Following Wuxi's implementation, a tolerance is added to avoid 0-size bounding box
-                atomic_add_op(&horizontal_utilization_map[index], overlap / (y_max - y_min + cuda::numeric_limits<T>::epsilon()));
-                atomic_add_op(&vertical_utilization_map[index], overlap / (x_max - x_min + cuda::numeric_limits<T>::epsilon()));
-            }
+        for (int j = start; j < end; ++j) {
+            int pin_id = flat_netpin[j];
+            const T xx = pin_pos_x[pin_id];
+            const T yy = pin_pos_y[pin_id];
+
+            int bin_index_x = int((xx - xl) / bin_size_x);
+            int bin_index_y = int((yy - yl) / bin_size_y);
+
+            
+            int index = bin_index_x * num_bins_y + bin_index_y;
+
+            atomic_add_op(&horizontal_utilization_map[index], wt / (bin_index_xh - bin_index_xl + cuda::numeric_limits<T>::epsilon()));
+            atomic_add_op(&vertical_utilization_map[index], wt / (bin_index_yh - bin_index_yl + cuda::numeric_limits<T>::epsilon()));
         }
     }
 }
 
 // fill the demand map net by net
 template <typename T>
-int rudyCudaLauncher(const T *pin_pos_x,
+int pinRudyCudaLauncher(const T *pin_pos_x,
                               const T *pin_pos_y,
                               const int *netpin_start,
                               const int *flat_netpin,
@@ -128,7 +125,7 @@ int rudyCudaLauncher(const T *pin_pos_x,
         vertical_buf_map, vertical_utilization_map, scale_factor, num_bins);
 
     block_count = ceilDiv(num_nets, thread_count);
-    rudy<<<block_count, thread_count>>>(
+    pinRudy<<<block_count, thread_count>>>(
             pin_pos_x,
             pin_pos_y,
             netpin_start,
@@ -154,7 +151,7 @@ int rudyCudaLauncher(const T *pin_pos_x,
     AtomicAddCUDA<T> atomic_add_op;
     int thread_count = 512;
     int block_count = ceilDiv(num_nets, thread_count);
-    rudy<<<block_count, thread_count>>>(
+    pinRudy<<<block_count, thread_count>>>(
             pin_pos_x,
             pin_pos_y,
             netpin_start,
@@ -173,7 +170,7 @@ int rudyCudaLauncher(const T *pin_pos_x,
 }
 
 #define REGISTER_KERNEL_LAUNCHER(T)                                           \
-    template int rudyCudaLauncher<T>(const T *pin_pos_x,             \
+    template int pinRudyCudaLauncher<T>(const T *pin_pos_x,             \
                                               const T *pin_pos_y,             \
                                               const int *netpin_start,        \
                                               const int *flat_netpin,         \

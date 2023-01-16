@@ -16,6 +16,7 @@ void test_row()
     std::vector<double> node_size_y = {10, 10, 10, 10, 10, 10};
     std::vector<double> node_weights = {1, 1, 1, 1, 1, 1};
     std::vector<double> x = {20, 1, 300, 25, 10, 70};
+    double site_width = 1; 
     double row_height = 10; 
     int num_nodes = 6; 
     int num_movable_nodes = 5;
@@ -30,6 +31,7 @@ void test_row()
             node_size_y.data(), 
             node_weights.data(), 
             x.data(), 
+            site_width, 
             row_height, 
             xl, xh, 
             num_nodes, 

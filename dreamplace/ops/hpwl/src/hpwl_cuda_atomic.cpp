@@ -39,7 +39,7 @@ at::Tensor hpwl_atomic_forward(at::Tensor pos, at::Tensor pin2net_map,
 
   int num_nets = net_mask.numel();
   // x then y
-  at::Tensor scaled_pos = at::_cast_Int(pos.mul(1000), false);
+  at::Tensor scaled_pos = pos.mul(1000).to(torch::kInt);
   at::Tensor partial_hpwl_max = at::zeros({2, num_nets}, scaled_pos.options());
   at::Tensor partial_hpwl_min = at::zeros({2, num_nets}, scaled_pos.options());
   partial_hpwl_max[0].fill_(std::numeric_limits<T>::min());
@@ -58,17 +58,17 @@ at::Tensor hpwl_atomic_forward(at::Tensor pos, at::Tensor pin2net_map,
   // std::cout << "partial_hpwl_max = " << partial_hpwl_max << "\n";
   // std::cout << "partial_hpwl_min = " << partial_hpwl_min << "\n";
   // std::cout << "partial_hpwl = \n" <<
-  // (partial_hpwl_max-partial_hpwl_min)._cast_double().mul(1.0/1000) << "\n";
+  // (partial_hpwl_max-partial_hpwl_min).to(torch::kDouble).mul(1.0/1000) << "\n";
 
   auto delta = partial_hpwl_max - partial_hpwl_min;
 
   at::Tensor hpwl;
   switch (pos.scalar_type()) {
     case at::ScalarType::Double:
-      hpwl = at::_cast_Double(delta, false);
+      hpwl = delta.to(torch::kDouble);
       break;
     case at::ScalarType::Float:
-      hpwl = at::_cast_Float(delta, false);
+      hpwl = delta.to(torch::kFloat);
       break;
     default:
       AT_ERROR("hpwl_atomic_forward", " not implemented for '",

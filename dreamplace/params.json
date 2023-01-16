@@ -24,16 +24,16 @@
     "default" : 1
     },
 "num_bins_x" : {
-    "descripton" : "number of bins in horizontal direction", 
-    "default" : 512
+    "descripton" : "number of bins in horizontal direction; computed by internal heuristic if not specified", 
+    "default" : 0
     },
 "num_bins_y" : {
-    "descripton" : "number of bins in vertical direction", 
-    "default" : 512
+    "descripton" : "number of bins in vertical direction; computed by internal heuristic if not specified", 
+    "default" : 0
     },
 "global_place_stages" : {
     "descripton" : "global placement configurations of each stage, a dictionary of {\"num_bins_x\", \"num_bins_y\", \"iteration\", \"learning_rate\", \"learning_rate_decay\", \"wirelength\", \"optimizer\", \"Llambda_density_weight_iteration\", \"Lsub_iteration\"}", 
-    "default" : "", 
+    "default" : [{"num_bins_x" : 0, "num_bins_y" : 0, "iteration" : 1000, "learning_rate" : 0.01, "wirelength" : "weighted_average", "optimizer" : "nesterov", "Llambda_density_weight_iteration" : 1, "Lsub_iteration" : 1}], 
     "required" : "required"
     },
 "target_density" : {

@@ -12,9 +12,8 @@
 #include <float.h>
 #include "cuda_runtime.h"
 
-#include "dct_lee_cuda.h"
+// #include "dct_lee_cuda.h"
 #include "dct_lee_cuda_kernel.h"
-#include "utility/src/utils.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
 

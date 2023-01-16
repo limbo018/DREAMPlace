@@ -10,7 +10,7 @@
  * ICCAD'94
  */
 
-#include "rudy/src/parameters.h"
+#include "pinrudy/src/parameters.h"
 #include "utility/src/torch.h"
 #include "utility/src/utils.h"
 
@@ -21,7 +21,7 @@ inline DEFINE_NET_WIRING_DISTRIBUTION_MAP_WEIGHT;
 
 // fill the demand map net by net
 template <typename T, typename AtomicOp>
-int rudyLauncher(const T *pin_pos_x, const T *pin_pos_y,
+int pinRudyLauncher(const T *pin_pos_x, const T *pin_pos_y,
                  const int *netpin_start, const int *flat_netpin,
                  const T *net_weights, const T bin_size_x, const T bin_size_y,
                  T xl, T yl, T xh, T yh, int num_bins_x, int num_bins_y,
@@ -35,6 +35,7 @@ int rudyLauncher(const T *pin_pos_x, const T *pin_pos_y,
       DREAMPLACE_STD_NAMESPACE::max(int(num_nets / num_threads / 16), 1);
 #pragma omp parallel for num_threads(num_threads) schedule(dynamic, chunk_size)
   for (int i = 0; i < num_nets; ++i) {
+
     T x_max = -std::numeric_limits<T>::max();
     T x_min = std::numeric_limits<T>::max();
     T y_max = -std::numeric_limits<T>::max();
@@ -67,37 +68,27 @@ int rudyLauncher(const T *pin_pos_x, const T *pin_pos_y,
       wt *= net_weights[i];
     }
 
-    for (int x = bin_index_xl; x < bin_index_xh; ++x) {
-      for (int y = bin_index_yl; y < bin_index_yh; ++y) {
-        T bin_xl = xl + x * bin_size_x;
-        T bin_yl = yl + y * bin_size_y;
-        T bin_xh = bin_xl + bin_size_x;
-        T bin_yh = bin_yl + bin_size_y;
-        T overlap = DREAMPLACE_STD_NAMESPACE::max(
-                        DREAMPLACE_STD_NAMESPACE::min(x_max, bin_xh) -
-                            DREAMPLACE_STD_NAMESPACE::max(x_min, bin_xl),
-                        (T)0) *
-                    DREAMPLACE_STD_NAMESPACE::max(
-                        DREAMPLACE_STD_NAMESPACE::min(y_max, bin_yh) -
-                            DREAMPLACE_STD_NAMESPACE::max(y_min, bin_yl),
-                        (T)0);
-        overlap *= wt;
-        int index = x * num_bins_y + y;
-        // Following Wuxi's implementation, a tolerance is added to avoid 0-size
-        // bounding box
-        atomic_add_op(&horizontal_buf_map[index], overlap / (y_max - y_min + std::numeric_limits<T>::epsilon()));
-        atomic_add_op(&vertical_buf_map[index], overlap / (x_max - x_min + std::numeric_limits<T>::epsilon())); 
-      }
+    for (int j = netpin_start[i]; j < netpin_start[i + 1]; ++j) {
+      int pin_id = flat_netpin[j];
+      const T xx = pin_pos_x[pin_id];
+      const T yy = pin_pos_y[pin_id];
+
+      int bin_index_x = int((xx - xl) * inv_bin_size_x);
+      int bin_index_y = int((yy - yl) * inv_bin_size_y);
+      
+      int index = bin_index_x * num_bins_y + bin_index_y;
+      atomic_add_op(&horizontal_buf_map[index], wt / (bin_index_xh - bin_index_xl + std::numeric_limits<T>::epsilon()));
+      atomic_add_op(&vertical_buf_map[index], wt / (bin_index_yh - bin_index_yl + std::numeric_limits<T>::epsilon())); 
     }
   }
   return 0;
 }
 
-void rudy_forward(at::Tensor pin_pos, at::Tensor netpin_start,
+void pin_rudy_forward(at::Tensor pin_pos, at::Tensor netpin_start,
                   at::Tensor flat_netpin, at::Tensor net_weights,
                   double bin_size_x, double bin_size_y, double xl, double yl,
                   double xh, double yh, int num_bins_x, int num_bins_y,
-                  int deterministic_flag,
+                  int deterministic_flag, 
                   at::Tensor horizontal_utilization_map,
                   at::Tensor vertical_utilization_map) {
   CHECK_FLAT_CPU(pin_pos);
@@ -116,7 +107,7 @@ void rudy_forward(at::Tensor pin_pos, at::Tensor netpin_start,
   int num_nets = netpin_start.numel() - 1;
   int num_pins = pin_pos.numel() / 2;
 
-  DREAMPLACE_DISPATCH_FLOATING_TYPES(pin_pos, "rudyLauncher", [&] {
+  DREAMPLACE_DISPATCH_FLOATING_TYPES(pin_pos, "pinRudyLauncher", [&] {
       if (deterministic_flag) {
           double diearea = (xh - xl) * (yh - yl);
           int integer_bits = DREAMPLACE_STD_NAMESPACE::max((int)ceil(log2(diearea)) + 1, 32);
@@ -128,7 +119,7 @@ void rudy_forward(at::Tensor pin_pos, at::Tensor netpin_start,
           std::vector<long> vertical_buf_map(num_bins, 0);
           AtomicAdd<long> atomic_add_op(scale_factor);
 
-          rudyLauncher<scalar_t, decltype(atomic_add_op)>(
+          pinRudyLauncher<scalar_t, decltype(atomic_add_op)>(
               DREAMPLACE_TENSOR_DATA_PTR(pin_pos, scalar_t),
               DREAMPLACE_TENSOR_DATA_PTR(pin_pos, scalar_t) + num_pins,
               DREAMPLACE_TENSOR_DATA_PTR(netpin_start, int),
@@ -149,7 +140,7 @@ void rudy_forward(at::Tensor pin_pos, at::Tensor netpin_start,
                    at::get_num_threads());
       } else {
           AtomicAdd<scalar_t> atomic_add_op;
-          rudyLauncher<scalar_t, decltype(atomic_add_op)>(
+          pinRudyLauncher<scalar_t, decltype(atomic_add_op)>(
               DREAMPLACE_TENSOR_DATA_PTR(pin_pos, scalar_t),
               DREAMPLACE_TENSOR_DATA_PTR(pin_pos, scalar_t) + num_pins,
               DREAMPLACE_TENSOR_DATA_PTR(netpin_start, int),
@@ -170,5 +161,5 @@ void rudy_forward(at::Tensor pin_pos, at::Tensor netpin_start,
 DREAMPLACE_END_NAMESPACE
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-  m.def("forward", &DREAMPLACE_NAMESPACE::rudy_forward, "compute RUDY map");
+  m.def("forward", &DREAMPLACE_NAMESPACE::pin_rudy_forward, "compute pin RUDY map");
 }
