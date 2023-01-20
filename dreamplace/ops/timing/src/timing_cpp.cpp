@@ -160,7 +160,7 @@ int timingCppLauncher(
     auto emplace_rc_node =
       [&](int index) -> std::string {
         auto name = net_names[i] + ":" + std::to_string(index - degree + 1);
-        if (index < degree) {        
+        if (index < degree) {
           name = pin_names[flat_netpin[index + netpin_start[i]]];
           if (!tree.node(name)) tree.insert_node(name, 0);
           // Set the inner pin pointer of this rc node.

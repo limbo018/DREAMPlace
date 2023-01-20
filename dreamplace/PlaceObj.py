@@ -70,9 +70,13 @@ class PreconditionOp:
         It is tricky for this parameter to increase.
         """
         with torch.no_grad():
+            # The preconditioning step in python is time-consuming, as in each gradient
+            # pass, the total net weight should be re-calculated.
+            sum_pin_weights_in_nodes = self.data_collections.sum_pin_weights_in_nodes
+            self.placedb.sum_pin_weights(sum_pin_weights_in_nodes)
+            sum_pin_weights_in_nodes = torch.tensor(sum_pin_weights_in_nodes, device=self.placedb.device)
             if density_weight.size(0) == 1:
-                precond = (
-                    self.data_collections.num_pins_in_nodes
+                precond = (sum_pin_weights_in_nodes
                     + self.alpha * density_weight * self.data_collections.node_areas
                 )
             else:
@@ -93,7 +97,7 @@ class PreconditionOp:
                     - self.placedb.num_filler_nodes
                     + filler_end
                 ] *= density_weight[-1]
-                precond = self.data_collections.num_pins_in_nodes + self.alpha * node_areas
+                precond = sum_pin_weights_in_nodes + self.alpha * node_areas
 
             precond.clamp_(min=1.0)
             grad[0 : self.placedb.num_nodes].div_(precond)

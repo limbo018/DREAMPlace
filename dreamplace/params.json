@@ -82,7 +82,7 @@
     },
 "detailed_place_flag" : {
     "descripton" : "whether use internal detailed placement", 
-    "default" : 1
+    "default" : 0
     },
 "stop_overflow" : {
     "descripton" : "stopping criteria, consider stop when the overflow reaches to a ratio", 
@@ -219,5 +219,54 @@
 "deterministic_flag" : {
     "descripton" : "whether require run-to-run determinism, may have efficiency overhead", 
     "default" : 0
+    },
+"timing_driven_flag" : {
+    "description" : "whether to turn on timing-driven flag",
+    "default" : 1
+    },
+"early_lib_input" : {
+    "descripton" : "input cell library file (early)", 
+    "default" : "", 
+    "required" : "required for timing-driven mode (together with late lib)"
+    },
+"late_lib_input" : {
+    "descripton" : "input cell library file (late)", 
+    "default" : "", 
+    "required" : "required for timing-driven mode (together with early lib)"
+    },
+"lib_input" : {
+    "description" : "input cell library file (early & late)",
+    "default" : "",
+    "required" : "required for timing-driven mode (or separate early/late libs)"
+    },
+"sdc_input" : {
+    "descripton" : "input SDC file", 
+    "default" : "", 
+    "required" : "required for timing-driven mode"
+    },
+"wire_resistance_per_micron" : {
+    "description" : "unit-length resistance",
+    "default" : 0,
+    "required" : "required for timing-driven mode"
+    },
+"wire_capacitance_per_micron" : {
+    "description" : "unit-length capacitance",
+    "default" : 0,
+    "required" : "required for timing-driven mode"
+    },
+"net_weighting_scheme" : {
+    "description" : "the net-weighting scheme",
+    "default" : "lilith",
+    "required" : "required for timing-driven mode"
+    },
+"momentum_decay_factor" : {
+    "description" : "the decay factor used in momemtum iteration",
+    "default" : 0.5,
+    "required" : "required for timing-driven mode"
+    },
+"enable_net_weighting" : {
+    "description" : "enable net weighting during global placement",
+    "default" : 1,
+    "required" : "required for timing-driven mode"
     }
 }

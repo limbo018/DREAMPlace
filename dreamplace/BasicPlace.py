@@ -30,6 +30,7 @@ import dreamplace.ops.pin_pos.pin_pos as pin_pos
 import dreamplace.ops.global_swap.global_swap as global_swap
 import dreamplace.ops.k_reorder.k_reorder as k_reorder
 import dreamplace.ops.independent_set_matching.independent_set_matching as independent_set_matching
+import dreamplace.ops.timing.timing as timing
 import pdb
 
 
@@ -137,13 +138,18 @@ class PlaceDataCollection(object):
                 placedb.flat_net2pin_map).to(device)
             self.flat_net2pin_start_map = torch.from_numpy(
                 placedb.flat_net2pin_start_map).to(device)
-            if np.amin(placedb.net_weights) != np.amax(
-                    placedb.net_weights):  # weights are meaningful
-                self.net_weights = torch.from_numpy(
-                    placedb.net_weights).to(device)
-            else:  # an empty tensor
-                logging.warning("net weights are all the same, ignored")
-                self.net_weights = torch.Tensor().to(device)
+            if params.timing_driven_flag:
+                # In timing-driven placement, the net-weighting should always be
+                # considered as it should be updated in every timing iteration.
+                self.net_weights = torch.from_numpy(placedb.net_weights).to(device)
+            else:
+                if np.amin(placedb.net_weights) != np.amax(
+                        placedb.net_weights):  # weights are meaningful
+                    self.net_weights = torch.from_numpy(
+                        placedb.net_weights).to(device)
+                else:  # an empty tensor
+                    logging.warning("net weights are all the same, ignored")
+                    self.net_weights = torch.Tensor().to(device)
 
             # regions
             self.flat_region_boxes = torch.from_numpy(
@@ -181,6 +187,13 @@ class PlaceDataCollection(object):
             self.num_pins_in_nodes = torch.tensor(num_pins_in_nodes,
                                                   dtype=self.pos[0].dtype,
                                                   device=device)
+
+            # sum of pin weights for each node.
+            sum_pin_weights_in_nodes = np.zeros(placedb.num_nodes)
+            self.sum_pin_weights_in_nodes = \
+                torch.tensor(sum_pin_weights_in_nodes,
+                             dtype=self.net_weights.dtype,
+                             device="cpu")
 
             # avoid computing gradient for fixed macros
             # 1 is for fixed macros
@@ -259,11 +272,12 @@ class BasicPlace(nn.Module):
     @brief Base placement class.
     All placement engines should be derived from this class.
     """
-    def __init__(self, params, placedb):
+    def __init__(self, params, placedb, timer):
         """
         @brief initialization
         @param params parameter
         @param placedb placement database
+        @param timer the timing analysis engine
         """
         torch.manual_seed(params.random_seed)
         super(BasicPlace, self).__init__()
@@ -405,6 +419,7 @@ class BasicPlace(nn.Module):
         # rectilinear minimum steiner tree wirelength from flute
         # can only be called once
         #self.op_collections.rmst_wl_op = self.build_rmst_wl(params, placedb, self.op_collections.pin_pos_op, torch.device("cpu"))
+        self.op_collections.timing_op = self.build_timing_op(params, placedb, timer)
         # legality check
         self.op_collections.legality_check_op = self.build_legality_check(
             params, placedb, self.data_collections, self.device)
@@ -544,6 +559,35 @@ class BasicPlace(nn.Module):
             return wls
 
         return build_wirelength_op
+
+    def build_timing_op(self, params, placedb, timer=None):
+        """
+        @brief build the operator for timing analysis and feedbacks.
+        @param placedb the placement database
+        @param timer the timer object used in timing-driven mode
+        """
+        return timing.TimingFeedback(
+            timer, # The timer should be at the same level as placedb.
+            placedb.net_names, # The net names are required by OpenTimer.
+            placedb.pin_names, # The pin names are required by OpenTimer.
+            placedb.flat_net2pin_map,
+            placedb.flat_net2pin_start_map,
+            placedb.net_name2id_map,
+            placedb.pin_name2id_map,
+            placedb.pin2node_map,
+            placedb.pin_offset_x,
+            placedb.pin_offset_y,
+            placedb.net_criticality,
+            placedb.net_criticality_deltas,
+            placedb.net_weights,
+            placedb.net_weight_deltas,
+            wire_resistance_per_micron=params.wire_resistance_per_micron,
+            wire_capacitance_per_micron=params.wire_capacitance_per_micron,
+            net_weighting_scheme=params.net_weighting_scheme,
+            momentum_decay_factor=params.momentum_decay_factor,
+            scale_factor=params.scale_factor,
+            lef_unit=placedb.rawdb.lefUnit(),
+            def_unit=placedb.rawdb.defUnit())
 
     def build_legality_check(self, params, placedb, data_collections, device):
         """

@@ -7,6 +7,44 @@
 
 #include "PyPlaceDB.h"
 
+namespace _pybind {
+
+template<typename T>
+void sumPinWeightsLauncher(
+    const DREAMPLACE_NAMESPACE::PyPlaceDB& db,
+    const T* net_weights, T* node_weights) {
+  // We assume that weights array has enough memory space.
+  for (auto i = 0u; i < db.num_nodes; ++i) {
+    node_weights[i] = 0;
+    const auto& pins = db.node2pin_map[i];
+    for (const auto& pin : pins)
+      node_weights[i] += net_weights[db.pin2net_map[pin].cast<int>()];
+  }
+}
+
+/// \brief sum up pin weights inside a node.
+/// \param db the placement database interface.
+/// \param weights result array.
+void sum_pin_weights(
+    const DREAMPLACE_NAMESPACE::PyPlaceDB& db,
+    at::Tensor net_weights,
+    at::Tensor node_weights) {
+  // Check torch tensors.
+  CHECK_FLAT_CPU(net_weights);
+  CHECK_FLAT_CPU(node_weights);
+  CHECK_CONTIGUOUS(net_weights);
+  CHECK_CONTIGUOUS(node_weights);
+  DREAMPLACE_DISPATCH_FLOATING_TYPES(
+    net_weights, "sumPinWeightsLauncher",
+    [&] {
+      sumPinWeightsLauncher<scalar_t>(db,
+        DREAMPLACE_TENSOR_DATA_PTR(net_weights, scalar_t),
+        DREAMPLACE_TENSOR_DATA_PTR(node_weights, scalar_t));
+    });
+}
+
+} // namespace _pybind
+
 void bind_PyPlaceDB(pybind11::module& m) 
 {
     pybind11::class_<DREAMPLACE_NAMESPACE::PyPlaceDB>(m, "PyPlaceDB")
@@ -25,12 +63,17 @@ void bind_PyPlaceDB(pybind11::module& m)
         .def_readwrite("pin_direct", &DREAMPLACE_NAMESPACE::PyPlaceDB::pin_direct)
         .def_readwrite("pin_offset_x", &DREAMPLACE_NAMESPACE::PyPlaceDB::pin_offset_x)
         .def_readwrite("pin_offset_y", &DREAMPLACE_NAMESPACE::PyPlaceDB::pin_offset_y)
+        .def_readwrite("pin_names", &DREAMPLACE_NAMESPACE::PyPlaceDB::pin_names)
         .def_readwrite("net_name2id_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::net_name2id_map)
+        .def_readwrite("pin_name2id_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::pin_name2id_map)
         .def_readwrite("net_names", &DREAMPLACE_NAMESPACE::PyPlaceDB::net_names)
         .def_readwrite("net2pin_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::net2pin_map)
         .def_readwrite("flat_net2pin_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::flat_net2pin_map)
         .def_readwrite("flat_net2pin_start_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::flat_net2pin_start_map)
         .def_readwrite("net_weights", &DREAMPLACE_NAMESPACE::PyPlaceDB::net_weights)
+        .def_readwrite("net_weight_deltas", &DREAMPLACE_NAMESPACE::PyPlaceDB::net_weight_deltas)
+        .def_readwrite("net_criticality", &DREAMPLACE_NAMESPACE::PyPlaceDB::net_criticality)
+        .def_readwrite("net_criticality_deltas", &DREAMPLACE_NAMESPACE::PyPlaceDB::net_criticality_deltas)
         .def_readwrite("node2pin_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::node2pin_map)
         .def_readwrite("flat_node2pin_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::flat_node2pin_map)
         .def_readwrite("flat_node2pin_start_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::flat_node2pin_start_map)
@@ -59,6 +102,7 @@ void bind_PyPlaceDB(pybind11::module& m)
         .def_readwrite("unit_vertical_capacities", &DREAMPLACE_NAMESPACE::PyPlaceDB::unit_vertical_capacities)
         .def_readwrite("initial_horizontal_demand_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::initial_horizontal_demand_map)
         .def_readwrite("initial_vertical_demand_map", &DREAMPLACE_NAMESPACE::PyPlaceDB::initial_vertical_demand_map)
+        .def("sum_pin_weights", &_pybind::sum_pin_weights)
         ;
 
 }
