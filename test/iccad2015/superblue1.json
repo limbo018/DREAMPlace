@@ -35,13 +35,9 @@
 "num_threads" : 8,
 "deterministic_flag" : 1,
 "timing_driven_flag" : 1,
-"timing_driven_detailed_place_flag" : 1,
 "wire_resistance_per_micron" : 2.535,
 "wire_capacitance_per_micron" : 0.16e-15,
 "net_weighting_scheme": "lilith",
 "momentum_decay_factor" : 0.5,
-"enable_net_weighting" : 1,
-"timing_driven_detailed_place_stages" : {
-    "max_iter" : 20, "window_size" : 63, "check_legality" : 0, "stride" : 1
-}
+"enable_net_weighting" : 1
 }
