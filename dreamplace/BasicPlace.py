@@ -30,6 +30,7 @@ import dreamplace.ops.pin_pos.pin_pos as pin_pos
 import dreamplace.ops.global_swap.global_swap as global_swap
 import dreamplace.ops.k_reorder.k_reorder as k_reorder
 import dreamplace.ops.independent_set_matching.independent_set_matching as independent_set_matching
+import dreamplace.ops.pin_weight_sum.pin_weight_sum as pws
 import dreamplace.ops.timing.timing as timing
 import pdb
 
@@ -416,6 +417,7 @@ class BasicPlace(nn.Module):
         self.op_collections.hpwl_op = self.build_hpwl(
             params, placedb, self.data_collections,
             self.op_collections.pin_pos_op, self.device)
+        self.op_collections.pws_op = self.build_pws(placedb, self.data_collections)
         # rectilinear minimum steiner tree wirelength from flute
         # can only be called once
         #self.op_collections.rmst_wl_op = self.build_rmst_wl(params, placedb, self.op_collections.pin_pos_op, torch.device("cpu"))
@@ -523,6 +525,22 @@ class BasicPlace(nn.Module):
             return wirelength_for_pin_op(pin_pos_op(pos))
 
         return build_wirelength_op
+    
+    def build_pws(self, placedb, data_collections):
+        """
+        @brief accumulate pin weights of a node
+        @param placedb placement database
+        @param data_collections a collection of all data and variables required for constructing the ops
+        """
+        # CPU version by default...
+        pws_op = pws.PinWeightSum(
+            flat_nodepin=data_collections.flat_node2pin_map.cpu(),
+            nodepin_start=data_collections.flat_node2pin_start_map.cpu(),
+            pin2net_map=data_collections.pin2net_map.cpu(),
+            num_nodes=placedb.num_nodes,
+            algorithm='node-by-node')
+
+        return pws_op
 
     def build_rmst_wl(self, params, placedb, pin_pos_op, device):
         """

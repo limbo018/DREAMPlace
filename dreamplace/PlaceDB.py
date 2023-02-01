@@ -590,12 +590,12 @@ class PlaceDB (object):
         # convert node2pin_map to array of array
         for i in range(len(self.node2pin_map)):
             self.node2pin_map[i] = np.array(self.node2pin_map[i], dtype=np.int32)
-        self.node2pin_map = np.array(self.node2pin_map)
+        self.node2pin_map = np.array(self.node2pin_map, dtype=object)
 
         # convert net2pin_map to array of array
         for i in range(len(self.net2pin_map)):
             self.net2pin_map[i] = np.array(self.net2pin_map[i], dtype=np.int32)
-        self.net2pin_map = np.array(self.net2pin_map)
+        self.net2pin_map = np.array(self.net2pin_map, dtype=object)
 
     def initialize_num_bins(self, params):
         """
