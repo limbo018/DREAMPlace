@@ -155,7 +155,7 @@ bool fenceRegionCheck(const T* node_size_x, const T* node_size_y,
 
 template <typename T>
 bool overlapCheck(const T* node_size_x, const T* node_size_y, const T* x,
-                  const T* y, T row_height, T scale_factor, T xl, T yl, T xh,
+                  const T* y, T site_width, T row_height, T scale_factor, T xl, T yl, T xh,
                   T yh, const int num_nodes, const int num_movable_nodes) {
   bool legal_flag = true;
   int num_rows = ceilDiv(yh - yl, row_height);
@@ -167,6 +167,13 @@ bool overlapCheck(const T* node_size_x, const T* node_size_y, const T* x,
   auto getYL = [&](int id) { return y[id]; };
   auto getXH = [&](int id) { return x[id] + node_size_x[id]; };
   auto getYH = [&](int id) { return y[id] + node_size_y[id]; };
+
+  // potential numerical issue (fix from cpp branch)
+  auto getSiteXL = [&](T xx) { return int(floorDiv(xx - xl, site_width)); };
+  auto getSiteYL = [&](T yy) { return int(floorDiv(yy - yl, row_height)); };
+  auto getSiteXH = [&](T xx) { return int(ceilDiv(xx - xl, site_width)); };
+  auto getSiteYH = [&](T yy) { return int(ceilDiv(yy - yl, row_height)); };
+
   // add a box to row
   auto addBox2Row = [&](int id, T bxl, T byl, T bxh, T byh) {
     int row_idxl = floorDiv(byl - yl, row_height);
@@ -233,9 +240,9 @@ bool overlapCheck(const T* node_size_x, const T* node_size_y, const T* x,
 
   // check overlap
   // use scale factor to control the precision
-  auto scaleBack2Integer = [&](T value) {
-    return (scale_factor == 1.0)? value : std::round(value / scale_factor); 
-  };
+  // auto scaleBack2Integer = [&](T value) {
+  //   return (scale_factor == 1.0)? value : std::round(value / scale_factor); 
+  // };
   for (int i = 0; i < num_rows; ++i) {
     for (unsigned int j = 0; j < row_nodes.at(i).size(); ++j) {
       if (j > 0) {
@@ -253,15 +260,21 @@ bool overlapCheck(const T* node_size_x, const T* node_size_y, const T* x,
           T cur_yl = getYL(node_id);
           T cur_xh = getXH(node_id);
           T cur_yh = getYH(node_id);
+          int prev_site_xl = getSiteXL(prev_xl); 
+          int prev_site_xh = getSiteXH(prev_xh); 
+          int cur_site_xl = getSiteXL(cur_xl); 
+          int cur_site_xh = getSiteXH(cur_xh); 
           // detect overlap
-          if (scaleBack2Integer(prev_xh) > scaleBack2Integer(cur_xl)) {
+          // original criteria: scaleBack2Integer(prev_xh) > scaleBack2Integer(cur_xl)
+          // the floating point comparison may introduce incorrect result
+          if (prev_site_xh > cur_site_xl) {
             dreamplacePrint(
                 kERROR,
                 "row %d (%g, %g), overlap node %d (%g, %g, %g, %g) with "
-                "node %d (%g, %g, %g, %g), gap %g\n",
+                "node %d (%g, %g, %g, %g) site (%d, %d), gap %g\n",
                 i, yl + i * row_height, yl + (i + 1) * row_height, prev_node_id,
                 prev_xl, prev_yl, prev_xh, prev_yh, node_id, cur_xl, cur_yl,
-                cur_xh, cur_yh, 
+                cur_xh, cur_yh, cur_site_xl, cur_site_xh,
                 prev_xh - cur_xl);
             legal_flag = false;
           }
@@ -300,7 +313,7 @@ bool legalityCheckKernelCPU(const T* x, const T* y, const T* node_size_x,
     legal_flag = false;
   }
 
-  if (!overlapCheck(node_size_x, node_size_y, x, y, row_height, scale_factor,
+  if (!overlapCheck(node_size_x, node_size_y, x, y, site_width, row_height, scale_factor,
                     xl, yl, xh, yh, num_nodes, num_movable_nodes)) {
     legal_flag = false;
   }
