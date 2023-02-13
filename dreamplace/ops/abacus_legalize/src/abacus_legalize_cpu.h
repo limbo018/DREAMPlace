@@ -19,6 +19,18 @@
 
 DREAMPLACE_BEGIN_NAMESPACE
 
+// The tolerance setting is used only in this file, to prevent other operators
+// from being affected. It may be different from math.h, as the settings in
+// math.h is usually global.
+template <typename T>
+struct AbacusNumericTolerance {
+  static constexpr T rtol = 0.001; 
+};
+template <>
+struct AbacusNumericTolerance<float> {
+  static constexpr float rtol = 0.005; 
+};
+
 /// A cluster recording abutting cells
 /// behave liked a linked list but allocated on a continuous memory
 template <typename T>
@@ -144,8 +156,11 @@ bool abacusPlaceRowCPU(const T* init_x, const T* node_size_x,
       cluster->x =
           std::max(std::min(cluster->x, range_xh - cluster->w), range_xl);
       // there may be numeric precision issues
-      dreamplaceAssertMsg(cluster->x + site_width * DREAMPLACE_RTOL >= range_xl 
-          && cluster->x + cluster->w <= range_xh + site_width * DREAMPLACE_RTOL, 
+      // using larger tolerance for floating values may pass the assert,
+      // but cannot guarantee the correct results for all cases
+      dreamplaceAssertMsg(
+          cluster->x + site_width * AbacusNumericTolerance<T>::rtol >= range_xl &&
+          cluster->x + cluster->w <= range_xh + site_width * AbacusNumericTolerance<T>::rtol, 
           "%.6f >= %.6f && %.6f + %.6f <= %.6f", 
           cluster->x, range_xl, cluster->x, cluster->w, range_xh);
 
