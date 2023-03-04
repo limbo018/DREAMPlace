@@ -646,9 +646,16 @@ class BasicPlace(nn.Module):
             pos2 = gl(pos1, pos1)
             legal = self.op_collections.legality_check_op(pos2)
             if not legal:
-                logging.error("legality check failed in greedy legalization")
+                logging.error("legality check failed in greedy legalization, " \
+                    "return illegal results after greedy legalization.")
                 return pos2
-            return al(pos1, pos2)
+            pos3 = al(pos1, pos2)
+            legal = self.op_collections.legality_check_op(pos3)
+            if not legal:
+                logging.error("legality check failed in abacus legalization, " \
+                    "return legal results after greedy legalization.")
+                return pos2
+            return pos3
 
         return build_legalization_op
 
