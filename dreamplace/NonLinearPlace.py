@@ -274,7 +274,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                                 % ", ".join(["%.3E" % i for i in model.density_weight.cpu().numpy().tolist()])
                             )
 
-                    optimizer.zero_grad()
+                    optimizer.zero_grad(set_to_none=False)
 
                     # t1 = time.time()
                     cur_metric.evaluate(placedb, eval_ops, pos, model.data_collections)
