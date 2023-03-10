@@ -208,9 +208,9 @@ void PyPlaceDB::set(PlaceDB const& db)
                     box.xh() + node.xl(),
                     box.yh() + node.yl()
                    );
-            char buf[128];
-            dreamplaceSPrint(kNONE, buf, "%s.DREAMPlace.Shape%u", db.nodeName(node).c_str(), i);
-            addNode(node, std::string(buf), Orient(node.orient()), box, dist2map);
+            std::ostringstream oss; 
+            oss << db.nodeName(node) << ".DREAMPlace.Shape" << i; 
+            addNode(node, oss.str(), Orient(node.orient()), box, dist2map);
             bbox.encompass(box);
         }
         // compute the upper bound of fixed cell area
