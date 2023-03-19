@@ -107,7 +107,7 @@ void PlaceDB::lef_macro_cbk(LefParser::lefiMacro const& m) {
       index_type siteId = m_mSiteName2Index.at(m.siteName());
       m_vSiteUsedCount[siteId] += 1; 
     } else {
-      dreamplacePrint(kWARN, "Macro site name %s is NOT DEFINED in site names, add to default site %s", 
+      dreamplacePrint(kWARN, "Macro site name %s is NOT DEFINED in site names, add to default site %s\n", 
           m.siteName(), m_vSite[m_coreSiteId].name().c_str());
       m_vSiteUsedCount[m_coreSiteId] += 1; 
     }

@@ -2,9 +2,13 @@
 # @author Zizheng Guo
 # @brief Use CMake to compile PyTorch extensions
 
+# Activate new FindPython mode, specified in pybind11Config.cmake.in...
+# This one is recommended from CMake 3.12+.
+# It should try to find the Python associated with the environment variable.
+find_package(Python COMPONENTS Interpreter Development)
 add_subdirectory(thirdparty/pybind11)
 
-execute_process(COMMAND ${PYTHON_EXECUTABLE} -c 
+execute_process(COMMAND ${Python_EXECUTABLE} -c 
   "import torch; print(torch.__path__[0]); print(int(torch.cuda.is_available())); print(torch.__version__);" 
   OUTPUT_VARIABLE TORCH_OUTPUT OUTPUT_STRIP_TRAILING_WHITESPACE)
 string(REPLACE "\n" ";" TORCH_OUTPUT_LIST ${TORCH_OUTPUT})

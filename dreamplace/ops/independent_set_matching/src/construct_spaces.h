@@ -37,6 +37,8 @@ void construct_spaces(
           left_bound = host_x[node_id];
         }
         space.xl = left_bound;
+        // make sure space aligns to site 
+        space.xl = ceilDiv(space.xl - db.xl, db.site_width) * db.site_width + db.xl;
 
         auto right_bound = db.xh;
         if (j + 1 < row2nodes.size()) {
@@ -44,6 +46,8 @@ void construct_spaces(
           right_bound = std::min(right_bound, host_x[right_node_id]);
         }
         space.xh = right_bound;
+        // make sure space aligns to site 
+        space.xh = floorDiv(space.xh - db.xl, db.site_width) * db.site_width + db.xl; 
 
 #ifdef DEBUG
         dreamplaceAssert(space.xl <= db.x[node_id]);
