@@ -6,6 +6,7 @@
  ************************************************************************/
 
 #include "Enums.h"
+#include <typeinfo>
 
 DREAMPLACE_BEGIN_NAMESPACE
 
