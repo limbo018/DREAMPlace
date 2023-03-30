@@ -1,5 +1,6 @@
-#include <flute.hpp>
 #include "timing_cpp.h"
+
+#include <flute.hpp>
 
 DREAMPLACE_BEGIN_NAMESPACE
 
@@ -9,7 +10,7 @@ DREAMPLACE_BEGIN_NAMESPACE
 /// \param y the vertical coordinates of cell locations.
 /// \param net_names the vector of strings indicating the names of nets.
 /// \param pin_names the vector of strings indicating the names of pins.
-/// \param flat_netpin flatten version of net2pin_map which stores 
+/// \param flat_netpin flatten version of net2pin_map which stores
 ///  pins contained in specific nets.
 /// \param net2pin_start the 1d array with each entry specifying the
 ///  starting index of a specific net in flat_net2pin_map.
@@ -20,7 +21,7 @@ DREAMPLACE_BEGIN_NAMESPACE
 /// \param wire_capacitance_per_micron unit-length capacitance value.
 /// \param scale_factor the scaling factor to be applied to the design.
 /// \param lef_unit the unit distance microns defined in the LEF file.
-/// \param def_unit the unit distance microns defined in the DEF file. 
+/// \param def_unit the unit distance microns defined in the DEF file.
 ///
 template <typename T>
 int timingCppLauncher(
@@ -66,25 +67,25 @@ void TimingCpp::forward(
   CHECK_CONTIGUOUS(pin_offset_y);
 
   DREAMPLACE_DISPATCH_FLOATING_TYPES(
-    pos, "timingCppLauncher",
-    [&] {
-      timingCppLauncher<scalar_t>(
-          timer,
-          DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t),
-          DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + pos.numel() / 2,
-          net_names, // Net names array (required by OpenTimer).
-          pin_names, // Pin names array (required by OpenTimer).
-          DREAMPLACE_TENSOR_DATA_PTR(flat_netpin, int),
-          DREAMPLACE_TENSOR_DATA_PTR(netpin_start, int),
-          DREAMPLACE_TENSOR_DATA_PTR(pin2node, int),
-          DREAMPLACE_TENSOR_DATA_PTR(pin_offset_x, scalar_t),
-          DREAMPLACE_TENSOR_DATA_PTR(pin_offset_y, scalar_t),
-          wire_resistance_per_micron,
-          wire_capacitance_per_micron,
-          scale_factor,
-          lef_unit,
-          def_unit);
-    });
+      pos, "timingCppLauncher",
+      [&] {
+        timingCppLauncher<scalar_t>(
+            timer,
+            DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t),
+            DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + pos.numel() / 2,
+            net_names,  // Net names array (required by OpenTimer).
+            pin_names,  // Pin names array (required by OpenTimer).
+            DREAMPLACE_TENSOR_DATA_PTR(flat_netpin, int),
+            DREAMPLACE_TENSOR_DATA_PTR(netpin_start, int),
+            DREAMPLACE_TENSOR_DATA_PTR(pin2node, int),
+            DREAMPLACE_TENSOR_DATA_PTR(pin_offset_x, scalar_t),
+            DREAMPLACE_TENSOR_DATA_PTR(pin_offset_y, scalar_t),
+            wire_resistance_per_micron,
+            wire_capacitance_per_micron,
+            scale_factor,
+            lef_unit,
+            def_unit);
+      });
 }
 
 ///
@@ -103,7 +104,7 @@ auto& retrieve_pins_from_pos(
     return pos2pins_map[point];
   // If a Steiner point is not taken by a pin, then it should be
   // added as a virtual pin with a new id.
-  pos2pins_map.emplace(point, std::set<int> { index++ });
+  pos2pins_map.emplace(point, std::set<int>{index++});
   return pos2pins_map[point];
 }
 
@@ -126,17 +127,17 @@ int timingCppLauncher(
   double unit_to_micron = scale_factor * def_unit;
   auto res_unit = timer.resistance_unit()->value();
   auto cap_unit = timer.capacitance_unit()->value();
-  T rf = static_cast<T>(wire_resistance_per_micron)  / res_unit;
+  T rf = static_cast<T>(wire_resistance_per_micron) / res_unit;
   T cf = static_cast<T>(wire_capacitance_per_micron) / cap_unit;
 
   // TODO: this LUT read may be done only once.
   // We must read LUT first before calling FLUTE, otherwise you will face
   // a tedious segmentation fault.
   using Point2i = ::DreamPlace::Point<int>;
-  dreamplacePrint(kINFO, "launch rc tree generation...\n");
+  dreamplacePrint(kINFO, "launch rc tree construction...\n");
   flute::readLUT(
-    "thirdparty/flute/lut.ICCAD2015/POWV9.dat",
-    "thirdparty/flute/lut.ICCAD2015/POST9.dat");
+      "thirdparty/flute/lut.ICCAD2015/POWV9.dat",
+      "thirdparty/flute/lut.ICCAD2015/POST9.dat");
   auto beg = std::chrono::steady_clock::now();
 
   // TODO: check the template argument, integers or not?
@@ -144,8 +145,13 @@ int timingCppLauncher(
   // done because FLUTE only supports integer inputs, so we have to perform
   // a scaling to convert the input data types into integers.
   constexpr const int scale = 1000;  // flute only supports integers.
+  int num_nets = net_names.size();
+
   // We traverse all the nets in the netlist.
-  for (int i = 0, num_nets = net_names.size(); i < num_nets; ++i) {
+  omp_lock_t lock;
+  omp_init_lock(&lock);
+#pragma omp parallel for
+  for (int i = 0; i < num_nets; ++i) {
     // The reference to the net instance in the timer.
     // We are goint to add RC nodes and RC edges into the RC tree stored
     // as the instance variable in this net.
@@ -158,25 +164,26 @@ int timingCppLauncher(
     // and insert node into the rc tree if the node has not been inserted yet.
     // The name of rc node will be returned.
     auto emplace_rc_node =
-      [&](int index) -> std::string {
-        auto name = net_names[i] + ":" + std::to_string(index - degree + 1);
-        if (index < degree) {
-          name = pin_names[flat_netpin[index + netpin_start[i]]];
-          if (!tree.node(name)) tree.insert_node(name, 0);
-          // Set the inner pin pointer of this rc node.
-          tree.node(name)->pin(timer.pins().at(name));
-        } else { // This rc node is a Steiner point.
-          if (!tree.node(name)) tree.insert_node(name, 0);
-        }
-        return name;
-      };
+        [&](int index) -> std::string {
+      auto name = net_names[i] + ":" + std::to_string(index - degree + 1);
+      if (index < degree) {
+        name = pin_names[flat_netpin[index + netpin_start[i]]];
+        if (!tree.node(name)) tree.insert_node(name, 0);
+        // Set the inner pin pointer of this rc node.
+        tree.node(name)->pin(timer.pins().at(name));
+      } else {  // This rc node is a Steiner point.
+        if (!tree.node(name)) tree.insert_node(name, 0);
+      }
+      return name;
+    };
 
     std::map<Point2i, std::set<int> > pos2pins_map;
     // Note that some pins may have duplicate coordinates, so we have to
     // do a filtering and feed clean data without superposition into FLUTE
     // to generate Steiner trees.
     std::vector<int> vx, vy;
-    vx.reserve(degree); vy.reserve(degree);
+    vx.reserve(degree);
+    vy.reserve(degree);
 
     // We have a inner id for each pin and Steiner node, which should be
     // distinguished from the global id.
@@ -191,15 +198,16 @@ int timingCppLauncher(
       auto x_ = static_cast<int>((x[node] + offset_x) * scale);
       auto y_ = static_cast<int>((y[node] + offset_y) * scale);
       global2inner_map[pin] = j;
-      
+
       // Add a new key-value pair into pos-pin map.
       // Here we always assume that a position can only be taken by
       // exactly one pin.
       if (pos2pins_map.find(Point2i(x_, y_)) != pos2pins_map.end())
         pos2pins_map[Point2i(x_, y_)].insert(j);
-      else { // Emplace a new key-value pair.
-        pos2pins_map.emplace(Point2i(x_, y_), std::set<int> { j });
-        vx.emplace_back(x_); vy.emplace_back(y_);
+      else {  // Emplace a new key-value pair.
+        pos2pins_map.emplace(Point2i(x_, y_), std::set<int>{j});
+        vx.emplace_back(x_);
+        vy.emplace_back(y_);
       }
     }
     // A temporary store of degree value of the current net.
@@ -214,7 +222,7 @@ int timingCppLauncher(
     // larger than 2 so that the tree is not degraded.
     if (valid_size > 1) {
       flute::Tree flutetree = flute::flute(
-        valid_size, vx.data(), vy.data(), ACCURACY);
+          valid_size, vx.data(), vy.data(), ACCURACY);
       for (int bid = 0, ub = 2 * flutetree.deg - 2; bid < ub; ++bid) {
         flute::Branch& branch1 = flutetree.branch[bid];
         flute::Branch& branch2 = flutetree.branch[branch1.n];
@@ -249,7 +257,7 @@ int timingCppLauncher(
             auto to = emplace_rc_node(*base2);
             tree.insert_segment(from, to, rf * wl);
             tree.increase_cap(from, cf * wl * 0.5);
-            tree.increase_cap(to,   cf * wl * 0.5);
+            tree.increase_cap(to, cf * wl * 0.5);
           }
           // Record if a pin set contains multiple pins.
           if (id1.size() > 1) multipin_pos.insert(p1);
@@ -296,13 +304,16 @@ int timingCppLauncher(
     // --------------------------------------------
     // The frontier insertion is very IMPORTANT!
     // Otherwise you will not get updated timing report each time.
+    omp_set_lock(&lock);
     timer.insert_frontier(*net.root());
+    omp_unset_lock(&lock);
   }
-  dreamplacePrint(kINFO, "rc tree generation is done.\n");
+  omp_destroy_lock(&lock);
+  dreamplacePrint(kINFO, "rc tree construction is done.\n");
   auto end = std::chrono::steady_clock::now();
-  dreamplacePrint(kINFO, "finish rc tree generation (%f s)\n",
-    std::chrono::duration_cast<std::chrono::milliseconds>(
-      end - beg).count() * 0.001);
+  auto trc = std::chrono::duration_cast<std::chrono::milliseconds>(end - beg);
+  dreamplacePrint(kINFO, "finish rc tree construction (%f s)\n",
+                  trc.count() * 0.001);
 
   // Remember to call update_states!
   // The normal update_timing will check _lineage first, so if we don't
@@ -341,16 +352,20 @@ void updateNetWeightCppLauncher(
     T* net_weights, T* net_weight_deltas,
     int net_weighting_scheme, T momentum_decay_factor,
     int num_threads) {
-#define SELECT_SCHEME(angel)                          \
-  NetWeighting<T, NetWeightingScheme::angel>::apply(  \
-      timer, n, net_name2id_map,                      \
-        net_criticality, net_criticality_deltas,      \
-      net_weights, net_weight_deltas,                 \
+#define SELECT_SCHEME(angel)                         \
+  NetWeighting<T, NetWeightingScheme::angel>::apply( \
+      timer, n, net_name2id_map,                     \
+      net_criticality, net_criticality_deltas,       \
+      net_weights, net_weight_deltas,                \
       momentum_decay_factor, num_threads)
   // Apply the net-weighting algorithm.
   switch (net_weighting_scheme) {
-    case 0: SELECT_SCHEME(ADAMS); break;
-    case 1: SELECT_SCHEME(LILITH); break;
+    case 0:
+      SELECT_SCHEME(ADAMS);
+      break;
+    case 1:
+      SELECT_SCHEME(LILITH);
+      break;
     default:
       // WARNING: unsupported net-weighting scheme. Do nothing.
       // Do not report a warning since it has been done in python.
@@ -377,25 +392,25 @@ void TimingCpp::update_net_weights(
   CHECK_CONTIGUOUS(net_weight_deltas);
 
   DREAMPLACE_DISPATCH_FLOATING_TYPES(
-    net_weights, "updateNetWeightCppLauncher",
-    [&] {
-      updateNetWeightCppLauncher<scalar_t>(
-          timer, n,
-          net_name2id_map,
-          DREAMPLACE_TENSOR_DATA_PTR(net_criticality, scalar_t),
-          DREAMPLACE_TENSOR_DATA_PTR(net_criticality_deltas, scalar_t),
-          DREAMPLACE_TENSOR_DATA_PTR(net_weights, scalar_t),
-          DREAMPLACE_TENSOR_DATA_PTR(net_weight_deltas, scalar_t),
-          net_weighting_scheme,
-          static_cast<scalar_t>(momentum_decay_factor),
-          at::get_num_threads());
-    });
+      net_weights, "updateNetWeightCppLauncher",
+      [&] {
+        updateNetWeightCppLauncher<scalar_t>(
+            timer, n,
+            net_name2id_map,
+            DREAMPLACE_TENSOR_DATA_PTR(net_criticality, scalar_t),
+            DREAMPLACE_TENSOR_DATA_PTR(net_criticality_deltas, scalar_t),
+            DREAMPLACE_TENSOR_DATA_PTR(net_weights, scalar_t),
+            DREAMPLACE_TENSOR_DATA_PTR(net_weight_deltas, scalar_t),
+            net_weighting_scheme,
+            static_cast<scalar_t>(momentum_decay_factor),
+            at::get_num_threads());
+      });
 }
 
 ///
 /// \brief Compute hpwl given cell locations.
 /// \param pos the cell locations in each iteration.
-/// \param flat_netpin flatten version of net2pin_map which stores 
+/// \param flat_netpin flatten version of net2pin_map which stores
 ///  pins contained in specific nets.
 /// \param net2pin_start the 1d array with each entry specifying the
 ///  starting index of a specific net in flat_net2pin_map.
@@ -404,7 +419,7 @@ void TimingCpp::update_net_weights(
 /// \param pin_offset_x the 1d array indicating pin offset x to its node.
 /// \param pin_offset_y the 1d array indicating pin offset y to its node.
 /// \param wlv the wirelength vector to be written.
-/// 
+///
 template <typename T>
 void netsWireLengthCppLauncher(
     const T* x, const T* y,
@@ -412,7 +427,7 @@ void netsWireLengthCppLauncher(
     const int* pin2node, int num_nets,
     const T* pin_offset_x, const T* pin_offset_y,
     T* wlv) {
-  auto pinf =  std::numeric_limits<T>::max();
+  auto pinf = std::numeric_limits<T>::max();
   auto ninf = -std::numeric_limits<T>::max();
 
   for (int i = 0; i < num_nets; ++i) {
@@ -426,8 +441,10 @@ void netsWireLengthCppLauncher(
       xh = std::max(xh, x[node_id] + pin_offset_x[pin_id]);
       yh = std::max(yh, y[node_id] + pin_offset_y[pin_id]);
     }
-    if (xl == pinf || yl == ninf) wlv[i] = 0;
-    else wlv[i] = (xh - xl) + (yh - yl);
+    if (xl == pinf || yl == ninf)
+      wlv[i] = 0;
+    else
+      wlv[i] = (xh - xl) + (yh - yl);
   }
 }
 
@@ -453,19 +470,19 @@ void TimingCpp::evaluate_nets_hpwl(
   CHECK_CONTIGUOUS(wlv);
 
   DREAMPLACE_DISPATCH_FLOATING_TYPES(
-    pos, "netsWireLengthCppLauncher",
-    [&] {
-      netsWireLengthCppLauncher<scalar_t>(
-          DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t),
-          DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + pos.numel() / 2,
-          DREAMPLACE_TENSOR_DATA_PTR(flat_netpin, int),
-          DREAMPLACE_TENSOR_DATA_PTR(netpin_start, int),
-          DREAMPLACE_TENSOR_DATA_PTR(pin2node, int),
-          num_nets,
-          DREAMPLACE_TENSOR_DATA_PTR(pin_offset_x, scalar_t),
-          DREAMPLACE_TENSOR_DATA_PTR(pin_offset_y, scalar_t),
-          DREAMPLACE_TENSOR_DATA_PTR(wlv, scalar_t));
-    });
+      pos, "netsWireLengthCppLauncher",
+      [&] {
+        netsWireLengthCppLauncher<scalar_t>(
+            DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t),
+            DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + pos.numel() / 2,
+            DREAMPLACE_TENSOR_DATA_PTR(flat_netpin, int),
+            DREAMPLACE_TENSOR_DATA_PTR(netpin_start, int),
+            DREAMPLACE_TENSOR_DATA_PTR(pin2node, int),
+            num_nets,
+            DREAMPLACE_TENSOR_DATA_PTR(pin_offset_x, scalar_t),
+            DREAMPLACE_TENSOR_DATA_PTR(pin_offset_y, scalar_t),
+            DREAMPLACE_TENSOR_DATA_PTR(wlv, scalar_t));
+      });
 }
 
 ///
@@ -474,21 +491,21 @@ void TimingCpp::evaluate_nets_hpwl(
 /// \param pin_name2id_map the pin name to id map.
 /// \param slack the result array.
 ///
-template<typename T>
+template <typename T>
 void pinSlackCppLauncher(
     ot::Timer& timer,
     const _timing_impl::string2index_map_type& pin_name2id_map,
     T* slack) {
   auto report_pin_slack = /* Calculate the pin slack. */
       [&](const std::string& name) -> float {
-        using namespace ot;
-        float ps = std::numeric_limits<float>::max();
-        FOR_EACH_EL_RF (el, rf) {
-          auto s = timer.report_slack(name, el, rf);
-          if (s) ps = std::min(ps, *s);
-        }
-        return ps;
-      };
+    using namespace ot;
+    float ps = std::numeric_limits<float>::max();
+    FOR_EACH_EL_RF(el, rf) {
+      auto s = timer.report_slack(name, el, rf);
+      if (s) ps = std::min(ps, *s);
+    }
+    return ps;
+  };
   for (const auto& [name, pin] : timer.pins()) {
     if (pin_name2id_map.find(name) == pin_name2id_map.end()) continue;
     auto id = pin_name2id_map.at(name);
@@ -507,12 +524,12 @@ void TimingCpp::evaluate_slack(
   CHECK_CONTIGUOUS(slack);
 
   DREAMPLACE_DISPATCH_FLOATING_TYPES(
-    slack, "pinSlackCppLauncher",
-    [&] {
-      pinSlackCppLauncher<scalar_t>(
-          timer, pin_name2id_map,
-          DREAMPLACE_TENSOR_DATA_PTR(slack, scalar_t));
-    });
+      slack, "pinSlackCppLauncher",
+      [&] {
+        pinSlackCppLauncher<scalar_t>(
+            timer, pin_name2id_map,
+            DREAMPLACE_TENSOR_DATA_PTR(slack, scalar_t));
+      });
 }
 
 DREAMPLACE_END_NAMESPACE
