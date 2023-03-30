@@ -15,6 +15,7 @@ import torch
 import gzip
 import copy
 import matplotlib.pyplot as plt
+import inspect
 
 if sys.version_info[0] < 3:
     import cPickle as pickle
@@ -278,7 +279,13 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                                 % ", ".join(["%.3E" % i for i in model.density_weight.cpu().numpy().tolist()])
                             )
 
-                    optimizer.zero_grad()
+                    # For backward compatibility
+                    # PyTorch 1.7 introduced zero_grad(set_to_none=False)
+                    # PyTorch 2.0 changed set_to_none=True
+                    if "set_to_none" in inspect.signature(optimizer.zero_grad).parameters: 
+                        optimizer.zero_grad(set_to_none=False)
+                    else:
+                        optimizer.zero_grad()
 
                     # t1 = time.time()
                     cur_metric.evaluate(placedb, eval_ops, pos, model.data_collections)
