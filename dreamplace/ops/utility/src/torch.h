@@ -12,17 +12,17 @@
 #if TORCH_VERSION_MAJOR >= 1
 #include <torch/extension.h>
 
-#if TORCH_VERSION_MINOR >= 3
-
-#define DREAMPLACE_TENSOR_DATA_PTR(TENSOR, TYPE) \
-  ((TENSOR.defined())? TENSOR.data_ptr<TYPE>() : nullptr)
-#define DREAMPLACE_TENSOR_SCALARTYPE(TENSOR) TENSOR.scalar_type()
-
-#else
+#if TORCH_VERSION_MAJOR == 1 && TORCH_VERSION_MINOR < 3
 
 #define DREAMPLACE_TENSOR_DATA_PTR(TENSOR, TYPE) \
   ((TENSOR.defined())? TENSOR.data<TYPE>() : nullptr)
 #define DREAMPLACE_TENSOR_SCALARTYPE(TENSOR) TENSOR.type().scalarType()
+
+#else
+
+#define DREAMPLACE_TENSOR_DATA_PTR(TENSOR, TYPE) \
+  ((TENSOR.defined())? TENSOR.data_ptr<TYPE>() : nullptr)
+#define DREAMPLACE_TENSOR_SCALARTYPE(TENSOR) TENSOR.scalar_type()
 
 #endif
 
