@@ -319,7 +319,12 @@ int timingCppLauncher(
   // The normal update_timing will check _lineage first, so if we don't
   // explicitly speficy a new .spef file via read_spef, the _lineage will not
   // be updated add the update_timing will definitely do nothing.
+  beg = std::chrono::steady_clock::now();
   timer.update_states();
+  end = std::chrono::steady_clock::now();
+  auto usc = std::chrono::duration_cast<std::chrono::milliseconds>(end - beg);
+  dreamplacePrint(kINFO, "finish state updates (%f s)\n",
+                  usc.count() * 0.001);
 
   // Probably you may consider to dump the timer or spef into files.
   // File IO will cost a lot of time. It will be useful sometimes because
