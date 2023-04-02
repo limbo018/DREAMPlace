@@ -255,7 +255,7 @@
     "required" : "required for timing-driven mode"
     },
 "net_weighting_scheme" : {
-    "description" : "the net-weighting scheme",
+    "description" : "the net-weighting scheme, adam|lilith",
     "default" : "lilith",
     "required" : "required for timing-driven mode"
     },
