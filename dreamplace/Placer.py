@@ -43,7 +43,7 @@ def place(params):
     # Read timing constraints provided in the benchmarks into out timing analysis
     # engine and then pass the timer into the placement core.
     timer = None
-    if params.timing_driven_flag:
+    if params.timing_opt_flag:
         tt = time.time()
         timer = Timer.Timer()
         timer(params, placedb)

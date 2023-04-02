@@ -53,7 +53,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
         iteration = 0
         all_metrics = []
         timing_op = self.op_collections.timing_op
-        if params.timing_driven_flag:
+        if params.timing_opt_flag:
             time_unit = timing_op.timer.time_unit()
 
         # global placement
@@ -322,7 +322,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                     logging.info("optimizer step %.3f ms" % ((time.time() - t3) * 1000))
 
                     # Perform timing-opt.
-                    if params.global_place_flag and params.timing_driven_flag and \
+                    if params.global_place_flag and params.timing_opt_flag and \
                         params.enable_net_weighting and \
                         iteration > 500 and iteration % 15 == 0:
                         # Take the timing operator from the operator collections.
@@ -708,7 +708,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
         # perform an additional timing analysis on the legalized solution. 
         # sta after legalization is not needed anymore.
         logging.info("additional sta after legalization")
-        if params.timing_driven_flag:
+        if params.timing_opt_flag:
             timing_op = self.op_collections.timing_op
  
             # The timing operator has already integrated timer as its
