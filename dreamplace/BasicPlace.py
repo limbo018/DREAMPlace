@@ -139,7 +139,7 @@ class PlaceDataCollection(object):
                 placedb.flat_net2pin_map).to(device)
             self.flat_net2pin_start_map = torch.from_numpy(
                 placedb.flat_net2pin_start_map).to(device)
-            if params.timing_driven_flag:
+            if params.timing_opt_flag:
                 # In timing-driven placement, the net-weighting should always be
                 # considered as it should be updated in every timing iteration.
                 self.net_weights = torch.from_numpy(placedb.net_weights).to(device)
