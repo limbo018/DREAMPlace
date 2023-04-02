@@ -23,6 +23,6 @@ install(
     )
 
 install(
-    DIRECTORY iccad2015 DESTINATION ${PROJECT_NAME}
+    DIRECTORY iccad2015.ot DESTINATION ${PROJECT_NAME}
     )
 
