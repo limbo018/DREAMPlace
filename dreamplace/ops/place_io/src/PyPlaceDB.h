@@ -48,13 +48,18 @@ struct PyPlaceDB
     pybind11::list pin_direct; ///< 1D array, pin direction IO 
     pybind11::list pin_offset_x; ///< 1D array, pin offset x to its node 
     pybind11::list pin_offset_y; ///< 1D array, pin offset y to its node 
+    pybind11::list pin_names; ///< pin name
 
     pybind11::dict net_name2id_map; ///< net name to id map
+    pybind11::dict pin_name2id_map; ///< pin name to id map
     pybind11::list net_names; ///< net name 
     pybind11::list net2pin_map; ///< array of 1D array, each row stores pin id
     pybind11::list flat_net2pin_map; ///< flatten version of net2pin_map 
     pybind11::list flat_net2pin_start_map; ///< starting index of each net in flat_net2pin_map
     pybind11::list net_weights; ///< net weight 
+    pybind11::list net_weight_deltas; ///< net weight deltas
+    pybind11::list net_criticality; ///< net criticality
+    pybind11::list net_criticality_deltas; ///< net criticality deltas
 
     pybind11::list node2pin_map; ///< array of 1D array, contains pin id of each node 
     pybind11::list flat_node2pin_map; ///< flatten version of node2pin_map 

@@ -812,7 +812,7 @@ void PlaceDB::verilog_instance_cbk(
     Net& net = m_vNet.at(foundNet->second);
 
     // add pin
-    addPin(np.pin, net, node);
+    addPin(np.pin, net, node, instName);
   }
 }
 ///==== Bookshelf Callbacks ====
@@ -1376,35 +1376,41 @@ std::pair<PlaceDB::index_type, bool> PlaceDB::addNet(std::string const& n) {
   }
 }
 
-void PlaceDB::addPin(std::string const& macroPinName, Net& net, Node& node) {
+void PlaceDB::addPin(std::string const& macroPinName, Net& net, Node& node, std::string instName) {
   Macro const& macro = m_vMacro.at(macroId(node));
   index_type macroPinId = macro.macroPinIndex(macroPinName);
   dreamplaceAssertMsg(macroPinId < std::numeric_limits<index_type>::max(),
                       "failed to find pin %s in macro %s", macroPinName.c_str(),
                       macro.name().c_str());
-
-  addPin(macroPinId, net, node);
+  if (instName.empty())
+    addPin(macroPinId, net, node, macroPinName);
+  else
+    addPin(macroPinId, net, node, instName + ":" + macroPinName);
 }
 
-void PlaceDB::addPin(index_type macroPinId, Net& net, Node& node) {
+void PlaceDB::addPin(index_type macroPinId, Net& net, Node& node, std::string pinName) {
   Macro const& macro = m_vMacro.at(macroId(node));
   MacroPin const& mpin = macro.macroPin(macroPinId);
 
   // create and add pin
-  createPin(net, node, mpin.direct(), center(mpin.bbox()), macroPinId);
+  createPin(net, node, mpin.direct(), center(mpin.bbox()), macroPinId, pinName);
 }
 Pin& PlaceDB::createPin(Net& net, Node& node, SignalDirect const& direct,
                         Point<PlaceDB::coordinate_type> const& offset,
-                        PlaceDB::index_type macroPinId) {
+                        PlaceDB::index_type macroPinId,
+                        std::string pinName) {
   // create and add pin
   m_vPin.push_back(Pin());
   Pin& pin = m_vPin.back();
   pin.setId(m_vPin.size() - 1);
-  pin.setNodeId(node.id());
-  pin.setNetId(net.id());
-  pin.setMacroPinId(macroPinId);
-  pin.setOffset(offset);
-  pin.setDirect(direct);
+
+  // Assign attributes to the current pin.
+  pin.setNodeId(node.id())
+     .setNetId(net.id())
+     .setMacroPinId(macroPinId)
+     .setOffset(offset)
+     .setDirect(direct)
+     .setName(pinName);
 
   // add pin index to net and node
   node.pins().push_back(pin.id());

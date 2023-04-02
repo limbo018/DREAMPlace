@@ -37,10 +37,10 @@ class PreconditionOp:
     """Preconditioning engine is critical for convergence.
     Need to be carefully designed.
     """
-
-    def __init__(self, placedb, data_collections):
+    def __init__(self, placedb, data_collections, op_collections):
         self.placedb = placedb
         self.data_collections = data_collections
+        self.op_collections = op_collections
         self.iteration = 0
         self.alpha = 1.0
         self.best_overflow = None
@@ -70,9 +70,13 @@ class PreconditionOp:
         It is tricky for this parameter to increase.
         """
         with torch.no_grad():
+            # The preconditioning step in python is time-consuming, as in each gradient
+            # pass, the total net weight should be re-calculated.
+            net_weights = self.placedb.net_weights
+            sum_pin_weights_in_nodes = self.op_collections.pws_op(net_weights)
+            sum_pin_weights_in_nodes = sum_pin_weights_in_nodes.to(self.placedb.device)
             if density_weight.size(0) == 1:
-                precond = (
-                    self.data_collections.num_pins_in_nodes
+                precond = (sum_pin_weights_in_nodes
                     + self.alpha * density_weight * self.data_collections.node_areas
                 )
             else:
@@ -93,7 +97,7 @@ class PreconditionOp:
                     - self.placedb.num_filler_nodes
                     + filler_end
                 ] *= density_weight[-1]
-                precond = self.data_collections.num_pins_in_nodes + self.alpha * node_areas
+                precond = sum_pin_weights_in_nodes + self.alpha * node_areas
 
             precond.clamp_(min=1.0)
             grad[0 : self.placedb.num_nodes].div_(precond)
@@ -235,7 +239,7 @@ class PlaceObj(nn.Module):
         self.op_collections.update_density_weight_op = self.build_update_density_weight(
             params, placedb)
         self.op_collections.precondition_op = self.build_precondition(
-            params, placedb, self.data_collections)
+            params, placedb, self.data_collections, self.op_collections)
         self.op_collections.noise_op = self.build_noise(
             params, placedb, self.data_collections)
         if params.routability_opt_flag:
@@ -916,15 +920,16 @@ class PlaceObj(nn.Module):
 
         return noise_op
 
-    def build_precondition(self, params, placedb, data_collections):
+    def build_precondition(self, params, placedb,
+                           data_collections, op_collections):
         """
         @brief preconditioning to gradient
         @param params parameters
         @param placedb placement database
         @param data_collections a collection of data and variables required for constructing ops
+        @param op_collections a collection of all ops
         """
-
-        return PreconditionOp(placedb, data_collections)
+        return PreconditionOp(placedb, data_collections, op_collections)
 
     def build_route_utilization_map(self, params, placedb, data_collections):
         """

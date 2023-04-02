@@ -35,13 +35,14 @@ class NonLinearPlace(BasicPlace.BasicPlace):
     It takes parameters and placement database and runs placement flow.
     """
 
-    def __init__(self, params, placedb):
+    def __init__(self, params, placedb, timer):
         """
         @brief initialization.
         @param params parameters
         @param placedb placement database
+        @param timer the timing analysis engine
         """
-        super(NonLinearPlace, self).__init__(params, placedb)
+        super(NonLinearPlace, self).__init__(params, placedb, timer)
 
     def __call__(self, params, placedb):
         """
@@ -51,6 +52,9 @@ class NonLinearPlace(BasicPlace.BasicPlace):
         """
         iteration = 0
         all_metrics = []
+        timing_op = self.op_collections.timing_op
+        if params.timing_driven_flag:
+            time_unit = timing_op.timer.time_unit()
 
         # global placement
         if params.global_place_flag:
@@ -317,6 +321,35 @@ class NonLinearPlace(BasicPlace.BasicPlace):
 
                     logging.info("optimizer step %.3f ms" % ((time.time() - t3) * 1000))
 
+                    # Perform timing-opt.
+                    if params.global_place_flag and params.timing_driven_flag and \
+                        params.enable_net_weighting and \
+                        iteration > 500 and iteration % 15 == 0:
+                        # Take the timing operator from the operator collections.
+                        cur_pos = self.pos[0].data.clone().cpu().numpy()
+                        # The timing operator has already integrated timer as its
+                        # instance variable, so it only takes one argument.
+                        timing_op(self.pos[0].data.clone().cpu())
+                        timing_op.timer.update_timing()
+                        npaths = max(1, int(placedb.num_nets * 0.03))
+
+                        # Report timing step.
+                        # Temporary solution: modify net weights
+                        beg = time.time()
+                        timing_op.update_net_weights(npaths)
+                        if self.device != torch.device("cpu"):
+                            # Copy weights from placedb.net_weights to device.
+                            self.data_collections.net_weights.copy_(
+                                torch.from_numpy(placedb.net_weights))
+                        logging.info("net-weight update step %.3f ms" % \
+                            ((time.time() - beg) * 1000))
+
+                        # Report tns and wns in each timing feedback call.
+                        tns = timing_op.timer.report_tns() / (time_unit * 1e17)
+                        wns = timing_op.timer.report_wns() / (time_unit * 1e15)
+                        logging.info("timing tns %.6f (1e+5 ps)" % (tns))
+                        logging.info("timing wns %.6f (1e+3 ps)" % (wns))
+
                     # nesterov has already computed the objective of the next step
                     if optimizer_name.lower() == "nesterov":
                         cur_metric.objective = optimizer.param_groups[0]["obj_k_1"][0].data.clone()
@@ -443,7 +476,8 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                                 len(placedb.regions) == 0
                                 and params.stop_overflow * 1.1 < overflow_list[-1] < params.stop_overflow * 4
                                 and check_divergence(
-                                    divergence_list, window=3, threshold=0.01 * overflow_list[-1]
+                                    # sometimes maybe too aggressive...
+                                    divergence_list, window=3, threshold=0.1 * overflow_list[-1]
                                 )
                             ):
                                 self.pos[0].data.copy_(best_pos[0].data)
@@ -670,6 +704,23 @@ class NonLinearPlace(BasicPlace.BasicPlace):
         # dump legalization solution for detailed placement
         if params.dump_legalize_solution_flag:
             self.dump(params, placedb, self.pos[0].cpu(), "%s.dp.pklz" % (params.design_name()))
+
+        # perform an additional timing analysis on the legalized solution. 
+        # sta after legalization is not needed anymore.
+        logging.info("additional sta after legalization")
+        if params.timing_driven_flag:
+            timing_op = self.op_collections.timing_op
+ 
+            # The timing operator has already integrated timer as its
+            # instance variable, so it only takes one argument.
+            timing_op(self.pos[0].data.clone().cpu())
+            timing_op.timer.update_timing()
+
+            # Report tns and wns in each timing feedback call.
+            tns = timing_op.timer.report_tns() / (time_unit * 1e17)
+            wns = timing_op.timer.report_wns() / (time_unit * 1e15)
+            logging.info("timing tns %.6f (1e+5 ps)" % (tns))
+            logging.info("timing wns %.6f (1e+3 ps)" % (wns))
 
         # detailed placement
         if params.detailed_place_flag:

@@ -435,10 +435,13 @@ class PlaceDB : public DefParser::DefDataBase
         /// add pin to m_vPin, node and net 
         /// \param pinName denotes name of corresponding macro pin 
         /// \param net and \param node are corresponding net and node 
-        void addPin(std::string const& macroPinName, Net& net, Node& node);
-        void addPin(index_type macroPinId, Net& net, Node& node);
+        void addPin(std::string const& macroPinName, Net& net, Node& node,
+                    std::string instName = "");
+        void addPin(index_type macroPinId, Net& net, Node& node, std::string pinName);
         /// lower level helper to addPin()
-        Pin& createPin(Net& net, Node& node, SignalDirect const& direct, Point<coordinate_type> const& offset, index_type macroPinId);
+        Pin& createPin(Net& net, Node& node, SignalDirect const& direct,
+                       Point<coordinate_type> const& offset, index_type macroPinId,
+                       std::string pinName = "");
         /// add region to m_vRegion 
         /// \param r region name 
         /// \return index in m_vRegion and successful flag 
