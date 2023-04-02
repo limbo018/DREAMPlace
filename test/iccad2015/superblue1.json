@@ -34,7 +34,7 @@
 "sort_nets_by_degree" : 0, 
 "num_threads" : 8,
 "deterministic_flag" : 1,
-"timing_driven_flag" : 1,
+"timing_opt_flag" : 1,
 "wire_resistance_per_micron" : 2.535,
 "wire_capacitance_per_micron" : 0.16e-15,
 "net_weighting_scheme": "lilith",

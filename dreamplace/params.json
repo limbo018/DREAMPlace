@@ -220,9 +220,9 @@
     "descripton" : "whether require run-to-run determinism, may have efficiency overhead", 
     "default" : 0
     },
-"timing_driven_flag" : {
-    "description" : "whether to turn on timing-driven flag",
-    "default" : 1
+"timing_opt_flag" : {
+    "description" : "whether to turn on timing-driven optimization flag in global placement",
+    "default" : 0
     },
 "early_lib_input" : {
     "descripton" : "input cell library file (early)", 
