@@ -18,3 +18,7 @@ install(
   DIRECTORY iccad2014 DESTINATION unittest/regression
     )
 
+install(
+  DIRECTORY iccad2015.ot DESTINATION unittest/regression
+    )
+

@@ -345,10 +345,10 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                             ((time.time() - beg) * 1000))
 
                         # Report tns and wns in each timing feedback call.
-                        tns = timing_op.timer.report_tns() / (time_unit * 1e17)
-                        wns = timing_op.timer.report_wns() / (time_unit * 1e15)
-                        logging.info("timing tns %.6f (1e+5 ps)" % (tns))
-                        logging.info("timing wns %.6f (1e+3 ps)" % (wns))
+                        cur_metric.tns = timing_op.timer.report_tns() / (time_unit * 1e17)
+                        cur_metric.wns = timing_op.timer.report_wns() / (time_unit * 1e15)
+                        #logging.info("timing TNS %.6f (1e+5 ps)" % (cur_metric.tns))
+                        #logging.info("timing WNS %.6f (1e+3 ps)" % (cur_metric.wns))
 
                     # nesterov has already computed the objective of the next step
                     if optimizer_name.lower() == "nesterov":
@@ -694,6 +694,24 @@ class NonLinearPlace(BasicPlace.BasicPlace):
             cur_metric = EvalMetrics.EvalMetrics(iteration)
             all_metrics.append(cur_metric)
             cur_metric.evaluate(placedb, {"hpwl": self.op_collections.hpwl_op}, self.pos[0])
+
+            # perform an additional timing analysis on the legalized solution. 
+            # sta after legalization is not needed anymore.
+            logging.info("additional sta after legalization")
+            if params.timing_opt_flag:
+                timing_op = self.op_collections.timing_op
+     
+                # The timing operator has already integrated timer as its
+                # instance variable, so it only takes one argument.
+                timing_op(self.pos[0].data.clone().cpu())
+                timing_op.timer.update_timing()
+
+                # Report tns and wns in each timing feedback call.
+                cur_metric.tns = timing_op.timer.report_tns() / (time_unit * 1e17)
+                cur_metric.wns = timing_op.timer.report_wns() / (time_unit * 1e15)
+                #logging.info("timing TNS %.6f (1e+5 ps)" % (cur_metric.tns))
+                #logging.info("timing WNS %.6f (1e+3 ps)" % (cur_metric.wns))
+
             logging.info(cur_metric)
             iteration += 1
 
@@ -704,23 +722,6 @@ class NonLinearPlace(BasicPlace.BasicPlace):
         # dump legalization solution for detailed placement
         if params.dump_legalize_solution_flag:
             self.dump(params, placedb, self.pos[0].cpu(), "%s.dp.pklz" % (params.design_name()))
-
-        # perform an additional timing analysis on the legalized solution. 
-        # sta after legalization is not needed anymore.
-        logging.info("additional sta after legalization")
-        if params.timing_opt_flag:
-            timing_op = self.op_collections.timing_op
- 
-            # The timing operator has already integrated timer as its
-            # instance variable, so it only takes one argument.
-            timing_op(self.pos[0].data.clone().cpu())
-            timing_op.timer.update_timing()
-
-            # Report tns and wns in each timing feedback call.
-            tns = timing_op.timer.report_tns() / (time_unit * 1e17)
-            wns = timing_op.timer.report_wns() / (time_unit * 1e15)
-            logging.info("timing tns %.6f (1e+5 ps)" % (tns))
-            logging.info("timing wns %.6f (1e+3 ps)" % (wns))
 
         # detailed placement
         if params.detailed_place_flag:
