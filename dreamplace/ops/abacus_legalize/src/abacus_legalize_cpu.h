@@ -227,7 +227,8 @@ bool abacusPlaceRowCPU(const T* init_x, const T* node_size_x,
       dreamplaceAssertMsg(cluster->x + site_width * NumericTolerance<T>::rtol >= range_xl 
           && cluster->x + cluster->w <= range_xh + site_width * NumericTolerance<T>::rtol, 
                        "%.6f >= %.6f && %.6f + %.6f <= %.6f", 
-                       cluster->x, range_xl, cluster->x, cluster->w, range_xh);
+                       cluster->x, range_xl, cluster->x, cluster->w,
+                       range_xh + site_width * NumericTolerance<T>::rtol);
 
       prev_cluster_id = cluster->prev_cluster_id;
       if (prev_cluster_id >= 0) {
