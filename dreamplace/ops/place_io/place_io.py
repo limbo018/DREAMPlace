@@ -52,8 +52,9 @@ class PlaceIOFunction(Function):
         @param node_x x coordinates of cells, only need movable cells; if none, use original position 
         @param node_y y coordinates of cells, only need movable cells; if none, use original position
         """
-        return place_io_cpp.write(raw_db, filename, sol_file_format, node_x,
-                                  node_y)
+        if raw_db is not None:
+            return place_io_cpp.write(raw_db, filename, sol_file_format, node_x,
+                                      node_y)
 
     @staticmethod
     def apply(raw_db, node_x, node_y):
