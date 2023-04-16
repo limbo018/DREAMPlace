@@ -63,4 +63,5 @@ class PlaceIOFunction(Function):
         @param node_x x coordinates of cells, only need movable cells
         @param node_y y coordinates of cells, only need movable cells
         """
-        return place_io_cpp.apply(raw_db, node_x, node_y)
+        if raw_db is not None:
+            return place_io_cpp.apply(raw_db, node_x, node_y)
