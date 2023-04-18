@@ -584,7 +584,7 @@ class BasicPlace(nn.Module):
         @param placedb the placement database
         @param timer the timer object used in timing-driven mode
         """
-        return timing.TimingFeedback(
+        return timing.TimingOpt(
             timer, # The timer should be at the same level as placedb.
             placedb.net_names, # The net names are required by OpenTimer.
             placedb.pin_names, # The pin names are required by OpenTimer.
@@ -605,7 +605,8 @@ class BasicPlace(nn.Module):
             momentum_decay_factor=params.momentum_decay_factor,
             scale_factor=params.scale_factor,
             lef_unit=placedb.rawdb.lefUnit(),
-            def_unit=placedb.rawdb.defUnit())
+            def_unit=placedb.rawdb.defUnit(),
+            ignore_net_degree=params.ignore_net_degree)
 
     def build_legality_check(self, params, placedb, data_collections, device):
         """

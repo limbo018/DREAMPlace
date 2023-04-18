@@ -4,6 +4,7 @@ from torch import nn
 import numpy as np
 import dreamplace.ops.timing.timing_cpp as timing_cpp
 import logging
+import pdb
 
 class TimingIO(Function):
     """
@@ -34,13 +35,14 @@ class TimingIO(Function):
 
         return timing_cpp.io_forward(args.split(' '))
 
-class TimingFeedbackFunction(Function):
+class TimingOptFunction(Function):
     @staticmethod
     def forward(ctx, timer, pos, net_names, pin_names, flat_netpin,
                 netpin_start, pin2node_map, pin_offset_x, pin_offset_y,
                 wire_resistance_per_micron,
                 wire_capacitance_per_micron,
-                scale_factor, lef_unit, def_unit):
+                scale_factor, lef_unit, def_unit,
+                ignore_net_degree):
         """
         @brief compute Elmore delay using Flute.
         @param timer the timer used when timing_cpp-driven mode is opened
@@ -58,6 +60,7 @@ class TimingFeedbackFunction(Function):
         @param scale_factor the scaling factor to be applied to the design
         @param lef_unit the unit distance microns defined in the LEF file
         @param def_unit the unit distance microns defined in the DEF file 
+        @param ignore_net_degree the degree threshold
         """
         num_pins = netpin_start[-1].item()
         # Construct some new position arrays.
@@ -78,10 +81,11 @@ class TimingFeedbackFunction(Function):
                 torch.from_numpy(pin_offset_y),
                 wire_resistance_per_micron,
                 wire_capacitance_per_micron,
-                scale_factor, lef_unit, def_unit)
+                scale_factor, lef_unit, def_unit,
+                ignore_net_degree)
         return torch.zeros(num_pins);
 
-class TimingFeedback(nn.Module):
+class TimingOpt(nn.Module):
     def __init__(self, timer, net_names, pin_names, flat_netpin,
                  netpin_start, net_name2id_map, pin_name2id_map,
                  pin2node_map, pin_offset_x, pin_offset_y,
@@ -91,7 +95,8 @@ class TimingFeedback(nn.Module):
                  wire_capacitance_per_micron,
                  net_weighting_scheme,
                  momentum_decay_factor,
-                 scale_factor, lef_unit, def_unit):
+                 scale_factor, lef_unit, def_unit,
+                 ignore_net_degree):
         """
         @brief Initialize the feedback module that inherits from the
          base neural network module in torch framework.
@@ -116,8 +121,9 @@ class TimingFeedback(nn.Module):
         @param scale_factor the scaling factor to be applied to the design
         @param lef_unit the unit distance microns defined in the LEF file
         @param def_unit the unit distance microns defined in the DEF file 
+        @param ignore_net_degree the degree threshold
         """
-        super(TimingFeedback, self).__init__()
+        super(TimingOpt, self).__init__()
         self.timer = timer
         self.net_names = net_names
         self.pin_names = pin_names
@@ -144,13 +150,15 @@ class TimingFeedback(nn.Module):
         self.scale_factor = scale_factor
         self.lef_unit = lef_unit
         self.def_unit = def_unit
+        self.ignore_net_degree = ignore_net_degree
+        self.degree_map = self.netpin_start[1:] - self.netpin_start[:-1]
 
     def forward(self, pos):
         """
         @brief call timing_forward function defined in the c++ operator.
         @pos the tensor determining a sketch placement.
         """
-        return TimingFeedbackFunction.apply(
+        return TimingOptFunction.apply(
             self.timer.raw_timer, # Pass the raw object!!
             pos, # The coordinates
             self.net_names, self.pin_names,
@@ -159,7 +167,8 @@ class TimingFeedback(nn.Module):
             self.pin2node_map, self.pin_offset_x, self.pin_offset_y,
             self.wire_resistance_per_micron,
             self.wire_capacitance_per_micron,
-            self.scale_factor, self.lef_unit, self.def_unit)
+            self.scale_factor, self.lef_unit, self.def_unit,
+            self.ignore_net_degree)
     
     def report_timing(self, n=1):
         """
@@ -189,9 +198,11 @@ class TimingFeedback(nn.Module):
             torch.from_numpy(self.net_criticality_deltas),
             torch.from_numpy(self.net_weights),
             torch.from_numpy(self.net_weight_deltas),
+            torch.from_numpy(self.degree_map),
             scm, # Pass integers instead of strings.
             self.momentum_decay_factor,
-            max_net_weight # -1 indicates infinity upper bound
+            max_net_weight, # -1 indicates infinity upper bound
+            self.ignore_net_degree
             )
 
     def evaluate_slack(self):

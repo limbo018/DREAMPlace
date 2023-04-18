@@ -35,16 +35,20 @@ enum class NetWeightingScheme {
 /// \param net_criticality_deltas the criticality delta values of nets (array).
 /// \param net_weights the weights of nets (array).
 /// \param net_weight_deltas the increment of net weights.
+/// \param degree_map the degree map of nets.
 /// \param decay the decay factor in momemtum iteration.
+/// \param max_net_weight the maximum net weight in timing opt.
+/// \param ignore_net_degree the net degree threshold.
 /// \param num_threads number of threads for parallel computing.
 ///
-#define DEFINE_APPLY_SCHEME                                   \
-  static void apply(                                          \
-      ot::Timer& timer, int n,                                \
+#define DEFINE_APPLY_SCHEME                                        \
+  static void apply(                                               \
+      ot::Timer& timer, int n,                                     \
       const _timing_impl::string2index_map_type& net_name2id_map,  \
-      T* net_criticality, T* net_criticality_deltas,          \
-      T* net_weights, T* net_weight_deltas,                   \
-      T decay, T max_net_weight, int num_threads)
+      T* net_criticality, T* net_criticality_deltas,               \
+      T* net_weights, T* net_weight_deltas, const int* degree_map, \
+      T decay, T max_net_weight, int ignore_net_degree,            \
+      int num_threads)
 
 ///
 /// \brief The implementation of net-weighting algorithms.
@@ -133,7 +137,8 @@ struct NetWeighting<T, NetWeightingScheme::ADAMS> {
     }
     // Update the net weights accordingly.
 #pragma omp parallel for num_threads(num_threads)
-    for (size_t i = 1; i < num_nets; ++i) {
+    for (size_t i = 0; i < num_nets; ++i) {
+      if (degree_map[i] > ignore_net_degree) continue;
       net_criticality[i] *= 0.5;
       if (net_critical_flag[i]) net_criticality[i] += 0.5;
       net_weights[i] *= (1 + net_criticality[i]);
@@ -168,7 +173,9 @@ struct NetWeighting<T, NetWeightingScheme::LILITH> {
           std::pow(1 + nc, 1 - decay) - 1;
       }
       // Update the net weights accordingly.
-      if (net_id == 0) continue; // Ignore the clock net.
+      // Ignore the clock net.
+      if (degree_map[net_id] > ignore_net_degree)
+        continue;
       net_weights[net_id] *= (1 + net_criticality[net_id]);
 
       // Manually limit the upper bound of the net weights, as it may

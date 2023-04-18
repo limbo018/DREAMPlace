@@ -32,6 +32,7 @@ public:
   /// \param scale_factor the scaling factor to be applied to the design.
   /// \param lef_unit the unit distance microns defined in the LEF file.
   /// \param def_unit the unit distance microns defined in the DEF file.
+  /// \param ignore_net_degree the degree threshold.
   ///
   static void forward(
     ot::Timer& timer, torch::Tensor pos,
@@ -41,7 +42,8 @@ public:
     torch::Tensor pin2node, torch::Tensor pin_offset_x, torch::Tensor pin_offset_y,
     double wire_resistance_per_micron,
     double wire_capacitance_per_micron,
-    double scale_factor, int lef_unit, int def_unit);
+    double scale_factor, int lef_unit, int def_unit,
+    int ignore_net_degree = std::numeric_limits<int>::max());
   
   ///
   /// \brief The forward function of net-weighting
@@ -52,6 +54,7 @@ public:
   /// \param net_criticality_deltas the criticality deltas of nets (array).
   /// \param net_weights the weights of nets (torch tensor).
   /// \param net_weight_deltas the increment of net weights.
+  /// \param degree_map the degree map of nets.
   /// \param net_weighting_scheme the net-weighting scheme.
   /// \param max_net_weight maximum net weight in timing opt.
   /// \param num_threads number of threads for parallel computing.
@@ -61,8 +64,9 @@ public:
     const _timing_impl::string2index_map_type& net_name2id_map,
     torch::Tensor net_criticality, torch::Tensor net_criticality_deltas,
     torch::Tensor net_weights, torch::Tensor net_weight_deltas,
+    torch::Tensor degree_map,
     int net_weighting_scheme, double max_net_weight,
-    double momentum_decay_factor);
+    double momentum_decay_factor, int ignore_net_degree);
 
   ///
   /// \brief Compute pin slack at once.
