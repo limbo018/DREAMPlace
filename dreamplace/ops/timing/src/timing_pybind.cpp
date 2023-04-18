@@ -103,6 +103,44 @@ float _report_slack(ot::Timer& timer, const std::string& pin_name, bool split, b
   return slack.value_or(std::nanf(""));
 }
 
+///
+/// \brief report tns with early/late or rise/fall
+/// \param split binary number determining Split::MIN, Splot::MAX.
+/// \param tran binary number determining Tran::RISE, Tran::FALL.
+/// \return the corresponding tns value
+///
+auto _report_tns_all(ot::Timer& timer) {
+  return timer.report_tns().value_or(std::nanf(""));
+}
+auto _report_tns_el(ot::Timer& timer, bool split) {
+  return timer.report_tns(static_cast<ot::Split>(split), std::nullopt).value_or(std::nanf(""));
+}
+auto _report_tns_rf(ot::Timer& timer, bool tran) {
+  return timer.report_tns(std::nullopt, static_cast<ot::Tran>(tran)).value_or(std::nanf(""));
+}
+auto _report_tns_el_rf(ot::Timer& timer, bool split, bool tran) {
+  return timer.report_tns(static_cast<ot::Split>(split), static_cast<ot::Tran>(tran)).value_or(std::nanf(""));
+}
+
+///
+/// \brief report wns with early/late or rise/fall
+/// \param split binary number determining Split::MIN, Splot::MAX.
+/// \param tran binary number determining Tran::RISE, Tran::FALL.
+/// \return the corresponding wns value
+///
+auto _report_wns_all(ot::Timer& timer) {
+  return timer.report_wns().value_or(std::nanf(""));
+}
+auto _report_wns_el(ot::Timer& timer, bool split) {
+  return timer.report_wns(static_cast<ot::Split>(split), std::nullopt).value_or(std::nanf(""));
+}
+auto _report_wns_rf(ot::Timer& timer, bool tran) {
+  return timer.report_wns(std::nullopt, static_cast<ot::Tran>(tran)).value_or(std::nanf(""));
+}
+auto _report_wns_el_rf(ot::Timer& timer, bool split, bool tran) {
+  return timer.report_wns(static_cast<ot::Split>(split), static_cast<ot::Tran>(tran)).value_or(std::nanf(""));
+}
+
 DREAMPLACE_END_NAMESPACE
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
@@ -142,11 +180,17 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
       .def("dump_timer_file",    [](ot::Timer& timer, const std::string& out) { std::ofstream f(out); timer.dump_timer(f); f.close(); })
       .def("dump_spef_file",     [](ot::Timer& timer, const std::string& out) { std::ofstream f(out); timer.dump_spef(f); f.close(); })
       .def("dump_rctree_file",   [](ot::Timer& timer, const std::string& out) { std::ofstream f(out); timer.dump_rctree(f); f.close(); })
-      .def("report_tns", [](ot::Timer& timer) { return timer.report_tns().value_or(std::nanf("")); })
-      .def("report_wns", [](ot::Timer& timer) { return timer.report_wns().value_or(std::nanf("")); })
       .def("cap_unit", [](ot::Timer& timer) { return timer.capacitance_unit()->value(); })
       .def("res_unit", [](ot::Timer& timer) { return timer.resistance_unit()->value(); })
       .def("time_unit", [](ot::Timer& timer) { return timer.time_unit()->value(); })
+      .def("report_tns_all", &DREAMPLACE_NAMESPACE::_report_tns_all)
+      .def("report_tns_el", &DREAMPLACE_NAMESPACE::_report_tns_el)
+      .def("report_tns_rf", &DREAMPLACE_NAMESPACE::_report_tns_rf)
+      .def("report_tns_el_rf", &DREAMPLACE_NAMESPACE::_report_tns_el_rf)
+      .def("report_wns_all", &DREAMPLACE_NAMESPACE::_report_wns_all)
+      .def("report_wns_el", &DREAMPLACE_NAMESPACE::_report_wns_el)
+      .def("report_wns_rf", &DREAMPLACE_NAMESPACE::_report_wns_rf)
+      .def("report_wns_el_rf", &DREAMPLACE_NAMESPACE::_report_wns_el_rf)
       .def("report_at", &DREAMPLACE_NAMESPACE::_report_at)
       .def("report_slack", &DREAMPLACE_NAMESPACE::_report_slack)
       ;

@@ -347,10 +347,10 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                             ((time.time() - beg) * 1000))
 
                         # Report tns and wns in each timing feedback call.
-                        cur_metric.tns = timing_op.timer.report_tns() / (time_unit * 1e17)
-                        cur_metric.wns = timing_op.timer.report_wns() / (time_unit * 1e15)
-                        #logging.info("timing TNS %.6f (1e+5 ps)" % (cur_metric.tns))
-                        #logging.info("timing WNS %.6f (1e+3 ps)" % (cur_metric.wns))
+                        # Note that OpenTimer considers early,late,rise,fall for tns/wns.
+                        # The following values are for reference.
+                        cur_metric.tns = timing_op.timer.report_tns(split=1) / (time_unit * 1e17)
+                        cur_metric.wns = timing_op.timer.report_wns(split=1) / (time_unit * 1e15)
 
                     # nesterov has already computed the objective of the next step
                     if optimizer_name.lower() == "nesterov":
@@ -713,8 +713,10 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                 timing_op.timer.update_timing()
 
                 # Report tns and wns in each timing feedback call.
-                cur_metric.tns = timing_op.timer.report_tns() / (time_unit * 1e17)
-                cur_metric.wns = timing_op.timer.report_wns() / (time_unit * 1e15)
+                # Note that OpenTimer considers early,late,rise,fall for tns/wns.
+                # The following values are for reference.
+                cur_metric.tns = timing_op.timer.report_tns(split=1, tran=1) / (time_unit * 1e17)
+                cur_metric.wns = timing_op.timer.report_wns(split=1) / (time_unit * 1e15)
 
             logging.info(cur_metric)
             iteration += 1

@@ -170,7 +170,7 @@ class TimingFeedback(nn.Module):
             self.timer.raw_timer, n,
             self.net_name2id_map)
     
-    def update_net_weights(self, max_net_weight=-1, n=1):
+    def update_net_weights(self, max_net_weight=np.inf, n=1):
         """
         @brief update net weights of placedb
         @param max_net_weight the maximum net weight in timing opt
@@ -193,25 +193,6 @@ class TimingFeedback(nn.Module):
             self.momentum_decay_factor,
             max_net_weight # -1 indicates infinity upper bound
             )
-    
-    def evaluate_nets_hpwl(self, pos):
-        """
-        @brief Evaluate hpwl of nets according to the current position.
-        @param pos current cell position.
-        @return a 1d numpy array of net hpwl.
-        """
-        num_nets = self.net_names.shape[0]
-        wl = np.zeros(num_nets, dtype=np.float32)
-        timing_cpp.evaluate_nets_hpwl(
-            torch.from_numpy(pos),
-            torch.from_numpy(self.flat_netpin),
-            torch.from_numpy(self.netpin_start),
-            torch.from_numpy(self.pin2node_map),
-            num_nets,
-            torch.from_numpy(self.pin_offset_x),
-            torch.from_numpy(self.pin_offset_y),
-            torch.from_numpy(wl))
-        return wl
 
     def evaluate_slack(self):
         """
