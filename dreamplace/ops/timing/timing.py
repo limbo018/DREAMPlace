@@ -89,7 +89,8 @@ class TimingFeedback(nn.Module):
                  net_weights, net_weight_deltas,
                  wire_resistance_per_micron,
                  wire_capacitance_per_micron,
-                 net_weighting_scheme, momentum_decay_factor,
+                 net_weighting_scheme,
+                 momentum_decay_factor,
                  scale_factor, lef_unit, def_unit):
         """
         @brief Initialize the feedback module that inherits from the
@@ -169,9 +170,10 @@ class TimingFeedback(nn.Module):
             self.timer.raw_timer, n,
             self.net_name2id_map)
     
-    def update_net_weights(self, n=1):
+    def update_net_weights(self, max_net_weight=-1, n=1):
         """
         @brief update net weights of placedb
+        @param max_net_weight the maximum net weight in timing opt
         @param n the maximum number of paths to be reported.
         """
         if self.net_weighting_scheme == "adams": scm = 0
@@ -188,7 +190,9 @@ class TimingFeedback(nn.Module):
             torch.from_numpy(self.net_weights),
             torch.from_numpy(self.net_weight_deltas),
             scm, # Pass integers instead of strings.
-            self.momentum_decay_factor)
+            self.momentum_decay_factor,
+            max_net_weight # -1 indicates infinity upper bound
+            )
     
     def evaluate_nets_hpwl(self, pos):
         """

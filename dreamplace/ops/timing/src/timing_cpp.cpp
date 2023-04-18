@@ -356,13 +356,14 @@ void updateNetWeightCppLauncher(
     T* net_criticality, T* net_criticality_deltas,
     T* net_weights, T* net_weight_deltas,
     int net_weighting_scheme, T momentum_decay_factor,
-    int num_threads) {
+    T max_net_weight, int num_threads) {
 #define SELECT_SCHEME(angel)                         \
   NetWeighting<T, NetWeightingScheme::angel>::apply( \
       timer, n, net_name2id_map,                     \
       net_criticality, net_criticality_deltas,       \
       net_weights, net_weight_deltas,                \
-      momentum_decay_factor, num_threads)
+      momentum_decay_factor, max_net_weight,         \
+      num_threads)
   // Apply the net-weighting algorithm.
   switch (net_weighting_scheme) {
     case 0:
@@ -386,8 +387,8 @@ void TimingCpp::update_net_weights(
     const _timing_impl::string2index_map_type& net_name2id_map,
     torch::Tensor net_criticality, torch::Tensor net_criticality_deltas,
     torch::Tensor net_weights, torch::Tensor net_weight_deltas,
-    int net_weighting_scheme,
-    float momentum_decay_factor) {
+    int net_weighting_scheme, double momentum_decay_factor,
+    double max_net_weight) {
   // Check torch tensors.
   CHECK_FLAT_CPU(net_criticality);
   CHECK_CONTIGUOUS(net_criticality);
@@ -408,85 +409,8 @@ void TimingCpp::update_net_weights(
             DREAMPLACE_TENSOR_DATA_PTR(net_weight_deltas, scalar_t),
             net_weighting_scheme,
             static_cast<scalar_t>(momentum_decay_factor),
+            static_cast<scalar_t>(max_net_weight),
             at::get_num_threads());
-      });
-}
-
-///
-/// \brief Compute hpwl given cell locations.
-/// \param pos the cell locations in each iteration.
-/// \param flat_netpin flatten version of net2pin_map which stores
-///  pins contained in specific nets.
-/// \param net2pin_start the 1d array with each entry specifying the
-///  starting index of a specific net in flat_net2pin_map.
-/// \param pin2node the 1d array pin2node map.
-/// \param num_nets the total number of nets.
-/// \param pin_offset_x the 1d array indicating pin offset x to its node.
-/// \param pin_offset_y the 1d array indicating pin offset y to its node.
-/// \param wlv the wirelength vector to be written.
-///
-template <typename T>
-void netsWireLengthCppLauncher(
-    const T* x, const T* y,
-    const int* flat_netpin, const int* netpin_start,
-    const int* pin2node, int num_nets,
-    const T* pin_offset_x, const T* pin_offset_y,
-    T* wlv) {
-  auto pinf = std::numeric_limits<T>::max();
-  auto ninf = -std::numeric_limits<T>::max();
-
-  for (int i = 0; i < num_nets; ++i) {
-    auto start = netpin_start[i], end = netpin_start[i + 1];
-    auto [xl, yl, xh, yh] = std::tie(pinf, pinf, ninf, ninf);
-    for (int net2pin_id = start; net2pin_id < end; ++net2pin_id) {
-      int pin_id = flat_netpin[net2pin_id];
-      int node_id = pin2node[pin_id];
-      xl = std::min(xl, x[node_id] + pin_offset_x[pin_id]);
-      yl = std::min(yl, y[node_id] + pin_offset_y[pin_id]);
-      xh = std::max(xh, x[node_id] + pin_offset_x[pin_id]);
-      yh = std::max(yh, y[node_id] + pin_offset_y[pin_id]);
-    }
-    if (xl == pinf || yl == ninf)
-      wlv[i] = 0;
-    else
-      wlv[i] = (xh - xl) + (yh - yl);
-  }
-}
-
-// Implementation of a static class method.
-void TimingCpp::evaluate_nets_hpwl(
-    torch::Tensor pos,
-    torch::Tensor flat_netpin, torch::Tensor netpin_start,
-    torch::Tensor pin2node, int num_nets,
-    torch::Tensor pin_offset_x, torch::Tensor pin_offset_y,
-    torch::Tensor wlv) {
-  // Check torch tensors.
-  CHECK_FLAT_CPU(flat_netpin);
-  CHECK_CONTIGUOUS(flat_netpin);
-  CHECK_FLAT_CPU(netpin_start);
-  CHECK_CONTIGUOUS(netpin_start);
-  CHECK_FLAT_CPU(pin2node);
-  CHECK_CONTIGUOUS(pin2node);
-  CHECK_FLAT_CPU(pin_offset_x);
-  CHECK_CONTIGUOUS(pin_offset_x);
-  CHECK_FLAT_CPU(pin_offset_y);
-  CHECK_CONTIGUOUS(pin_offset_y);
-  CHECK_FLAT_CPU(wlv);
-  CHECK_CONTIGUOUS(wlv);
-
-  DREAMPLACE_DISPATCH_FLOATING_TYPES(
-      pos, "netsWireLengthCppLauncher",
-      [&] {
-        netsWireLengthCppLauncher<scalar_t>(
-            DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t),
-            DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + pos.numel() / 2,
-            DREAMPLACE_TENSOR_DATA_PTR(flat_netpin, int),
-            DREAMPLACE_TENSOR_DATA_PTR(netpin_start, int),
-            DREAMPLACE_TENSOR_DATA_PTR(pin2node, int),
-            num_nets,
-            DREAMPLACE_TENSOR_DATA_PTR(pin_offset_x, scalar_t),
-            DREAMPLACE_TENSOR_DATA_PTR(pin_offset_y, scalar_t),
-            DREAMPLACE_TENSOR_DATA_PTR(wlv, scalar_t));
       });
 }
 

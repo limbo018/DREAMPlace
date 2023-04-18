@@ -336,7 +336,9 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         # Report timing step.
                         # Temporary solution: modify net weights
                         beg = time.time()
-                        timing_op.update_net_weights(npaths)
+                        timing_op.update_net_weights(
+                            max_net_weight=placedb.max_net_weight,
+                            n=npaths)
                         if self.device != torch.device("cpu"):
                             # Copy weights from placedb.net_weights to device.
                             self.data_collections.net_weights.copy_(
@@ -713,8 +715,6 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                 # Report tns and wns in each timing feedback call.
                 cur_metric.tns = timing_op.timer.report_tns() / (time_unit * 1e17)
                 cur_metric.wns = timing_op.timer.report_wns() / (time_unit * 1e15)
-                #logging.info("timing TNS %.6f (1e+5 ps)" % (cur_metric.tns))
-                #logging.info("timing WNS %.6f (1e+3 ps)" % (cur_metric.wns))
 
             logging.info(cur_metric)
             iteration += 1

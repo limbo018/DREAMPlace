@@ -23,7 +23,7 @@
 "detailed_place_flag" : 0,
 "detailed_place_engine" : "thirdparty/ntuplace3", 
 "detailed_place_command" : "-nolegal -nodetail", 
-"stop_overflow" : 0.15, 
+"stop_overflow" : 0.1, 
 "dtype" : "float32", 
 "plot_flag" : 0, 
 "random_center_init_flag" : 1, 
@@ -35,5 +35,6 @@
 "wire_capacitance_per_micron" : 0.16e-15,
 "net_weighting_scheme": "lilith",
 "momentum_decay_factor" : 0.5,
+"max_net_weight" : 64,
 "enable_net_weighting" : 1
 }

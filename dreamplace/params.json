@@ -268,5 +268,10 @@
     "description" : "enable net weighting during global placement",
     "default" : 1,
     "required" : "required for timing-driven mode"
+    },
+"max_net_weight" : {
+    "description" : "maximum net weight in timing opt (negative for infinity)",
+    "default" : "inf",
+    "required" : "required for timing-driven mode"
     }
 }

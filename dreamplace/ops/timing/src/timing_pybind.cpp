@@ -14,11 +14,11 @@ DREAMPLACE_BEGIN_NAMESPACE
 /// \param net_name2id_map the net name to id map.
 /// \return the indices of nets on the critical paths.
 ///
-pybind11::list _report_timing(
+std::vector<std::vector<int> > _report_timing(
     ot::Timer& timer, int n,
     const _timing_impl::string2index_map_type& net_name2id_map) {
   // The return object is the list of net indices.
-  pybind11::list result;
+  std::vector<std::vector<int> > result;
 
   // Report the first several paths of the critical ones.
   // Note that a path is actually a derived class of std::list<ot::Point>.
@@ -30,15 +30,15 @@ pybind11::list _report_timing(
     return result;
   }
   for (auto& path : paths) {
-    pybind11::list pl;
+    result.emplace_back();
+    auto& pl = result.back();
     int prev = -1; // Remove duplication.
     for (auto& point : path) {
       auto name = point.pin.net()->name();
       int net_id = net_name2id_map.at(name);
       if (net_id != prev)
-        pl.append(prev = net_id);
+        pl.push_back(prev = net_id);
     }
-    result.append(pl);
   }
   return result;
 }
@@ -153,7 +153,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
   m.def("forward", &DREAMPLACE_NAMESPACE::TimingCpp::forward, "Report timing forward");
   m.def("update_net_weights", &DREAMPLACE_NAMESPACE::TimingCpp::update_net_weights, "Update net weights");
-  m.def("evaluate_nets_hpwl", &DREAMPLACE_NAMESPACE::TimingCpp::evaluate_nets_hpwl, "Evaluate nets hpwl");
   m.def("evaluate_slack", &DREAMPLACE_NAMESPACE::TimingCpp::evaluate_slack, "Evaluate nets hpwl");
   m.def("report_timing", &DREAMPLACE_NAMESPACE::_report_timing, "Report timing paths");
   m.def("io_forward", &DREAMPLACE_NAMESPACE::_timing_io_forward, "Timing IO function parsing constraint files");

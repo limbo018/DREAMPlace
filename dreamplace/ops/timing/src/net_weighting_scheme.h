@@ -44,7 +44,7 @@ enum class NetWeightingScheme {
       const _timing_impl::string2index_map_type& net_name2id_map,  \
       T* net_criticality, T* net_criticality_deltas,          \
       T* net_weights, T* net_weight_deltas,                   \
-      T decay, int num_threads)
+      T decay, T max_net_weight, int num_threads)
 
 ///
 /// \brief The implementation of net-weighting algorithms.
@@ -156,6 +156,7 @@ struct NetWeighting<T, NetWeightingScheme::LILITH> {
     // Calculate run-time of net-weighting update.
     auto beg = std::chrono::steady_clock::now();
     float wns = timer.report_wns().value();
+    double max_nw = 0;
     for (const auto& [name, net] : timer.nets()) {
       // The net id in the dreamplace database.
       int net_id = net_name2id_map.at(name);
@@ -169,11 +170,18 @@ struct NetWeighting<T, NetWeightingScheme::LILITH> {
       // Update the net weights accordingly.
       if (net_id == 0) continue; // Ignore the clock net.
       net_weights[net_id] *= (1 + net_criticality[net_id]);
+
+      // Manually limit the upper bound of the net weights, as it may
+      // introduce illegality or divergence for some cases.
+      if (net_weights[net_id] > max_net_weight)
+        net_weights[net_id] = max_net_weight;
+      if (max_nw < net_weights[net_id]) max_nw = net_weights[net_id];
     }
     auto end = std::chrono::steady_clock::now();
     dreamplacePrint(kINFO, "finish net-weighting (%f s)\n",
       std::chrono::duration_cast<std::chrono::milliseconds>(
         end - beg).count() * 0.001);
+    dreamplacePrint(kINFO, "maximum net weight %f\n", max_nw);
   }
 };
 
