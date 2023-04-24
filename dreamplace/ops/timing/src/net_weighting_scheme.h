@@ -188,7 +188,6 @@ struct NetWeighting<T, NetWeightingScheme::LILITH> {
     dreamplacePrint(kINFO, "finish net-weighting (%f s)\n",
       std::chrono::duration_cast<std::chrono::milliseconds>(
         end - beg).count() * 0.001);
-    dreamplacePrint(kINFO, "maximum net weight %f\n", max_nw);
   }
 };
 

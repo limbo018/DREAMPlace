@@ -205,6 +205,15 @@ class Timer(object):
         else:
             return self.raw_timer.report_wns_el_rf(split, tran)
 
+    def report_tns_elw(self, split=None):
+        """@brief report tns value with only the worst between rise
+        and fall considered
+        """
+        if split is None:
+            return self.raw_timer.report_tns_elw()
+        else:
+            return self.raw_timer.report_tns_elw(split)
+
     # ----------------------
     # In the following, we define some functions related to units.
     def cap_unit(self):

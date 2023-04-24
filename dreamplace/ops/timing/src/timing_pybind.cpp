@@ -109,6 +109,9 @@ float _report_slack(ot::Timer& timer, const std::string& pin_name, bool split, b
 /// \param tran binary number determining Tran::RISE, Tran::FALL.
 /// \return the corresponding tns value
 ///
+auto _report_tns_elw(ot::Timer& timer, bool split) {
+  return timer.report_tns_elw(static_cast<ot::Split>(split)).value_or(std::nanf(""));
+}
 auto _report_tns_all(ot::Timer& timer) {
   return timer.report_tns().value_or(std::nanf(""));
 }
@@ -183,6 +186,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
       .def("cap_unit", [](ot::Timer& timer) { return timer.capacitance_unit()->value(); })
       .def("res_unit", [](ot::Timer& timer) { return timer.resistance_unit()->value(); })
       .def("time_unit", [](ot::Timer& timer) { return timer.time_unit()->value(); })
+      .def("report_tns_elw", &DREAMPLACE_NAMESPACE::_report_tns_elw)
       .def("report_tns_all", &DREAMPLACE_NAMESPACE::_report_tns_all)
       .def("report_tns_el", &DREAMPLACE_NAMESPACE::_report_tns_el)
       .def("report_tns_rf", &DREAMPLACE_NAMESPACE::_report_tns_rf)

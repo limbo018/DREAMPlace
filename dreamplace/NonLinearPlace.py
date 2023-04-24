@@ -349,7 +349,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         # Report tns and wns in each timing feedback call.
                         # Note that OpenTimer considers early,late,rise,fall for tns/wns.
                         # The following values are for reference.
-                        cur_metric.tns = timing_op.timer.report_tns(split=1) / (time_unit * 1e17)
+                        cur_metric.tns = timing_op.timer.report_tns_elw(split=1) / (time_unit * 1e17)
                         cur_metric.wns = timing_op.timer.report_wns(split=1) / (time_unit * 1e15)
 
                     # nesterov has already computed the objective of the next step
@@ -715,7 +715,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                 # Report tns and wns in each timing feedback call.
                 # Note that OpenTimer considers early,late,rise,fall for tns/wns.
                 # The following values are for reference.
-                cur_metric.tns = timing_op.timer.report_tns(split=1) / (time_unit * 1e17)
+                cur_metric.tns = timing_op.timer.report_tns_elw(split=1) / (time_unit * 1e17)
                 cur_metric.wns = timing_op.timer.report_wns(split=1) / (time_unit * 1e15)
 
             logging.info(cur_metric)
