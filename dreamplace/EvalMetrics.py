@@ -61,7 +61,7 @@ class EvalMetrics (object):
             else:
                 content += ", DensityWeight [%s]" % ", ".join(["%.3E" % i for i in self.density_weight])
         if self.hpwl is not None:
-            content += ", HPWL %.6E" % (self.hpwl)
+            content += ", wHPWL %.6E" % (self.hpwl)
         if self.rmst_wl is not None:
             content += ", RMSTWL %.3E" % (self.rmst_wl)
         if self.overflow is not None:
