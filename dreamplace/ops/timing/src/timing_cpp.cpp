@@ -158,7 +158,11 @@ int timingCppLauncher(
     // The reference to the net instance in the timer.
     // We are goint to add RC nodes and RC edges into the RC tree stored
     // as the instance variable in this net.
-    auto& net = timer.nets().find(net_names[i])->second;
+    auto net_iter = timer.nets().find(net_names[i]);
+    dreamplaceAssertMsg(
+        net_iter != timer.nets().end(),
+        "could not find net name %s in timer\n", net_names[i].c_str());
+    auto& net = net_iter->second;
     auto& tree = net.emplace_rct();
     const int degree = netpin_start[i + 1] - netpin_start[i];
     const int root = flat_netpin[netpin_start[i]];
@@ -173,7 +177,11 @@ int timingCppLauncher(
         name = pin_names[flat_netpin[index + netpin_start[i]]];
         if (!tree.node(name)) tree.insert_node(name, 0);
         // Set the inner pin pointer of this rc node.
-        tree.node(name)->pin(timer.pins().at(name));
+        auto pin_iter = timer.pins().find(name);
+        dreamplaceAssertMsg(
+            pin_iter != timer.pins().end(),
+            "could not find pin name %s in timer\n", name.c_str());
+        tree.node(name)->pin(pin_iter->second);
       } else {  // This rc node is a Steiner point.
         if (!tree.node(name)) tree.insert_node(name, 0);
       }
