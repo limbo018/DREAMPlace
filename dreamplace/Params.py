@@ -75,7 +75,7 @@ class Params:
         for key, value in self.params_dict.items():
             key_length_map.append(len(key))
             default_length_map.append(len(str(getDefaultColumn(key, value))))
-            description_length_map.append(len(value['descripton']))
+            description_length_map.append(len(value['description']))
             key_length = max(key_length, key_length_map[-1])
             default_length = max(default_length, default_length_map[-1])
             description_length = max(description_length, description_length_map[-1])
@@ -100,7 +100,7 @@ class Params:
                     " " * (key_length - key_length_map[count] + 1), 
                     str(getDefaultColumn(key, value)), 
                     " " * (default_length - default_length_map[count] + 1), 
-                    value['descripton'], 
+                    value['description'], 
                     " " * (description_length - description_length_map[count] + 1)
                     )
             count += 1
