@@ -21,6 +21,11 @@ struct NumericTolerance {
   static constexpr T rtol = 0.001; 
 };
 
+template <>
+struct NumericTolerance<float> {
+  static constexpr float rtol = 0.005; 
+};
+
 template <typename T, typename V>
 inline DREAMPLACE_HOST_DEVICE T div(T a, V b) {
   return a / b;

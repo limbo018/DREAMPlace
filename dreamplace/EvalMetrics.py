@@ -33,6 +33,8 @@ class EvalMetrics (object):
         self.max_density = None
         self.gmax_density = None
         self.gamma = None
+        self.tns = None
+        self.wns = None
         self.eval_time = None
 
     def __str__(self):
@@ -59,7 +61,7 @@ class EvalMetrics (object):
             else:
                 content += ", DensityWeight [%s]" % ", ".join(["%.3E" % i for i in self.density_weight])
         if self.hpwl is not None:
-            content += ", HPWL %.6E" % (self.hpwl)
+            content += ", wHPWL %.6E" % (self.hpwl)
         if self.rmst_wl is not None:
             content += ", RMSTWL %.3E" % (self.rmst_wl)
         if self.overflow is not None:
@@ -80,6 +82,10 @@ class EvalMetrics (object):
             content += ", PinOverflow %.6E" % (self.pin_utilization)
         if self.gamma is not None:
             content += ", gamma %.6E" % (self.gamma)
+        if self.tns is not None:
+            content += ", TNS %.6f (1e+5 ps)" % (self.tns)
+        if self.wns is not None:
+            content += ", WNS %.6f (1e+3 ps)" % (self.wns)
         if self.eval_time is not None:
             content += ", time %.3fms" % (self.eval_time*1000)
 

@@ -12,9 +12,9 @@ set(INCLUDE_DIRS
 
 set(LINK_LIBS utility_cxx
   OpenMP::OpenMP_CXX
-  programoptions # ${LIMBO_BINARY_DIR}/limbo/programoptions/libprogramoptions.a
-  flute # ${FLUTE_LINK_DIRS}/libflute.a
-  OpenTimer # ${OPENTIMER_SOURCE_DIR}/lib/libOpenTimer.a
+  programoptions
+  flute
+  OpenTimer
   stdc++fs
   )
 

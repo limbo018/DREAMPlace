@@ -22,6 +22,7 @@ DREAMPLACE_BEGIN_NAMESPACE
 /// \param scale_factor the scaling factor to be applied to the design.
 /// \param lef_unit the unit distance microns defined in the LEF file.
 /// \param def_unit the unit distance microns defined in the DEF file.
+/// \param ignore_net_degree the degree threshold.
 ///
 template <typename T>
 int timingCppLauncher(
@@ -40,7 +41,8 @@ int timingCppLauncher(
     const int* pin2node, const T* pin_offset_x, const T* pin_offset_y,
     T wire_resistance_per_micron,
     T wire_capacitance_per_micron,
-    double scale_factor, int lef_unit, int def_unit);
+    double scale_factor, int lef_unit, int def_unit,
+    int ignore_net_degree);
 
 // Implementation of a static class method.
 void TimingCpp::forward(
@@ -51,7 +53,8 @@ void TimingCpp::forward(
     torch::Tensor pin2node, torch::Tensor pin_offset_x, torch::Tensor pin_offset_y,
     double wire_resistance_per_micron,
     double wire_capacitance_per_micron,
-    double scale_factor, int lef_unit, int def_unit) {
+    double scale_factor, int lef_unit, int def_unit,
+    int ignore_net_degree) {
   // Check configuity and cpu info.
   CHECK_EVEN(pos);
   CHECK_CONTIGUOUS(pos);
@@ -82,9 +85,8 @@ void TimingCpp::forward(
             DREAMPLACE_TENSOR_DATA_PTR(pin_offset_y, scalar_t),
             wire_resistance_per_micron,
             wire_capacitance_per_micron,
-            scale_factor,
-            lef_unit,
-            def_unit);
+            scale_factor, lef_unit, def_unit,
+            ignore_net_degree);
       });
 }
 
@@ -121,7 +123,8 @@ int timingCppLauncher(
     const int* pin2node, const T* pin_offset_x, const T* pin_offset_y,
     T wire_resistance_per_micron,
     T wire_capacitance_per_micron,
-    double scale_factor, int lef_unit, int def_unit) {
+    double scale_factor, int lef_unit, int def_unit,
+    int ignore_net_degree) {
   // Before generating the trees, calculate some important factors required.
   // The units of dreamplace coordinates and timer analysis are different.
   double unit_to_micron = scale_factor * def_unit;
@@ -155,7 +158,11 @@ int timingCppLauncher(
     // The reference to the net instance in the timer.
     // We are goint to add RC nodes and RC edges into the RC tree stored
     // as the instance variable in this net.
-    auto& net = timer.nets().find(net_names[i])->second;
+    auto net_iter = timer.nets().find(net_names[i]);
+    dreamplaceAssertMsg(
+        net_iter != timer.nets().end(),
+        "could not find net name %s in timer\n", net_names[i].c_str());
+    auto& net = net_iter->second;
     auto& tree = net.emplace_rct();
     const int degree = netpin_start[i + 1] - netpin_start[i];
     const int root = flat_netpin[netpin_start[i]];
@@ -170,7 +177,11 @@ int timingCppLauncher(
         name = pin_names[flat_netpin[index + netpin_start[i]]];
         if (!tree.node(name)) tree.insert_node(name, 0);
         // Set the inner pin pointer of this rc node.
-        tree.node(name)->pin(timer.pins().at(name));
+        auto pin_iter = timer.pins().find(name);
+        dreamplaceAssertMsg(
+            pin_iter != timer.pins().end(),
+            "could not find pin name %s in timer\n", name.c_str());
+        tree.node(name)->pin(pin_iter->second);
       } else {  // This rc node is a Steiner point.
         if (!tree.node(name)) tree.insert_node(name, 0);
       }
@@ -212,7 +223,7 @@ int timingCppLauncher(
     }
     // A temporary store of degree value of the current net.
     const int valid_size = static_cast<int>(vx.size());
-    int num_nodes = degree;
+    int num_pins = degree;
 
     // This variable stores all points that is taken by multiple pins.
     std::set<Point2i> multipin_pos;
@@ -231,7 +242,7 @@ int timingCppLauncher(
         // a hyperparameter so that they can handle float-point data.
         Point2i p1(branch1.x, branch1.y), p2(branch2.x, branch2.y);
 
-        // We only care about 2d steiner tree generation without any info
+        // We only care about 2d steiner tree construction without any info
         // about layer assignment or routing. Therefore, simply skip the
         // current iteration if two points are the same.
         if (p1 == p2) continue;
@@ -240,14 +251,19 @@ int timingCppLauncher(
         // It is possible that the two points have exactly the same
         // coordinates.
         pos2neighbor_map.emplace(p2, p1);
-        auto& id1 = retrieve_pins_from_pos(pos2pins_map, p1, num_nodes);
-        auto& id2 = retrieve_pins_from_pos(pos2pins_map, p2, num_nodes);
+        auto& id1 = retrieve_pins_from_pos(pos2pins_map, p1, num_pins);
+        auto& id2 = retrieve_pins_from_pos(pos2pins_map, p2, num_pins);
 
         // Calculate the Manhattan distance (l1) between the two pins and
         // add an edge to the vector.
         auto distance = manhattanDistance(p1, p2);
         T wl = static_cast<T>(distance * 1.0) / scale / unit_to_micron;
-        if (i == 0) wl = 0;
+        if (degree > ignore_net_degree) {
+          // We manage to ignore the clock net.
+          // If the net degree is larger than a threshold, we directly
+          // ignore it by treating any line segment here as degraded.
+          wl = 0;
+        }
 
         // params @id1 and @id2 should both be non-empty sets.
         if (!id1.empty() && !id2.empty()) {
@@ -346,6 +362,10 @@ int timingCppLauncher(
 /// \param net_criticality_deltas the criticality deltas of nets (array).
 /// \param net_weights the weights of nets (array).
 /// \param net_weight_deltas the increment of net weights.
+/// \param degree_map the degree map of nets.
+/// \param momentum_decay_factor the decay factor in momemtum iteration.
+/// \param max_net_weight the maximum net weight in timing opt.
+/// \param ignore_net_degree the net degree threshold.
 /// \param net_weighting_scheme the net-weighting scheme.
 /// \param num_threads number of threads for parallel computing.
 ///
@@ -354,15 +374,16 @@ void updateNetWeightCppLauncher(
     ot::Timer& timer, int n,
     const _timing_impl::string2index_map_type& net_name2id_map,
     T* net_criticality, T* net_criticality_deltas,
-    T* net_weights, T* net_weight_deltas,
+    T* net_weights, T* net_weight_deltas, const int* degree_map,
     int net_weighting_scheme, T momentum_decay_factor,
-    int num_threads) {
+    T max_net_weight, int ignore_net_degree, int num_threads) {
 #define SELECT_SCHEME(angel)                         \
   NetWeighting<T, NetWeightingScheme::angel>::apply( \
       timer, n, net_name2id_map,                     \
       net_criticality, net_criticality_deltas,       \
-      net_weights, net_weight_deltas,                \
-      momentum_decay_factor, num_threads)
+      net_weights, net_weight_deltas, degree_map,    \
+      momentum_decay_factor, max_net_weight,         \
+      ignore_net_degree, num_threads)
   // Apply the net-weighting algorithm.
   switch (net_weighting_scheme) {
     case 0:
@@ -386,8 +407,9 @@ void TimingCpp::update_net_weights(
     const _timing_impl::string2index_map_type& net_name2id_map,
     torch::Tensor net_criticality, torch::Tensor net_criticality_deltas,
     torch::Tensor net_weights, torch::Tensor net_weight_deltas,
-    int net_weighting_scheme,
-    float momentum_decay_factor) {
+    torch::Tensor degree_map,
+    int net_weighting_scheme, double momentum_decay_factor,
+    double max_net_weight, int ignore_net_degree) {
   // Check torch tensors.
   CHECK_FLAT_CPU(net_criticality);
   CHECK_CONTIGUOUS(net_criticality);
@@ -395,6 +417,8 @@ void TimingCpp::update_net_weights(
   CHECK_CONTIGUOUS(net_weights);
   CHECK_FLAT_CPU(net_weight_deltas);
   CHECK_CONTIGUOUS(net_weight_deltas);
+  CHECK_FLAT_CPU(degree_map);
+  CHECK_CONTIGUOUS(degree_map);
 
   DREAMPLACE_DISPATCH_FLOATING_TYPES(
       net_weights, "updateNetWeightCppLauncher",
@@ -406,87 +430,12 @@ void TimingCpp::update_net_weights(
             DREAMPLACE_TENSOR_DATA_PTR(net_criticality_deltas, scalar_t),
             DREAMPLACE_TENSOR_DATA_PTR(net_weights, scalar_t),
             DREAMPLACE_TENSOR_DATA_PTR(net_weight_deltas, scalar_t),
+            DREAMPLACE_TENSOR_DATA_PTR(degree_map, int),
             net_weighting_scheme,
             static_cast<scalar_t>(momentum_decay_factor),
+            static_cast<scalar_t>(max_net_weight),
+            ignore_net_degree,
             at::get_num_threads());
-      });
-}
-
-///
-/// \brief Compute hpwl given cell locations.
-/// \param pos the cell locations in each iteration.
-/// \param flat_netpin flatten version of net2pin_map which stores
-///  pins contained in specific nets.
-/// \param net2pin_start the 1d array with each entry specifying the
-///  starting index of a specific net in flat_net2pin_map.
-/// \param pin2node the 1d array pin2node map.
-/// \param num_nets the total number of nets.
-/// \param pin_offset_x the 1d array indicating pin offset x to its node.
-/// \param pin_offset_y the 1d array indicating pin offset y to its node.
-/// \param wlv the wirelength vector to be written.
-///
-template <typename T>
-void netsWireLengthCppLauncher(
-    const T* x, const T* y,
-    const int* flat_netpin, const int* netpin_start,
-    const int* pin2node, int num_nets,
-    const T* pin_offset_x, const T* pin_offset_y,
-    T* wlv) {
-  auto pinf = std::numeric_limits<T>::max();
-  auto ninf = -std::numeric_limits<T>::max();
-
-  for (int i = 0; i < num_nets; ++i) {
-    auto start = netpin_start[i], end = netpin_start[i + 1];
-    auto [xl, yl, xh, yh] = std::tie(pinf, pinf, ninf, ninf);
-    for (int net2pin_id = start; net2pin_id < end; ++net2pin_id) {
-      int pin_id = flat_netpin[net2pin_id];
-      int node_id = pin2node[pin_id];
-      xl = std::min(xl, x[node_id] + pin_offset_x[pin_id]);
-      yl = std::min(yl, y[node_id] + pin_offset_y[pin_id]);
-      xh = std::max(xh, x[node_id] + pin_offset_x[pin_id]);
-      yh = std::max(yh, y[node_id] + pin_offset_y[pin_id]);
-    }
-    if (xl == pinf || yl == ninf)
-      wlv[i] = 0;
-    else
-      wlv[i] = (xh - xl) + (yh - yl);
-  }
-}
-
-// Implementation of a static class method.
-void TimingCpp::evaluate_nets_hpwl(
-    torch::Tensor pos,
-    torch::Tensor flat_netpin, torch::Tensor netpin_start,
-    torch::Tensor pin2node, int num_nets,
-    torch::Tensor pin_offset_x, torch::Tensor pin_offset_y,
-    torch::Tensor wlv) {
-  // Check torch tensors.
-  CHECK_FLAT_CPU(flat_netpin);
-  CHECK_CONTIGUOUS(flat_netpin);
-  CHECK_FLAT_CPU(netpin_start);
-  CHECK_CONTIGUOUS(netpin_start);
-  CHECK_FLAT_CPU(pin2node);
-  CHECK_CONTIGUOUS(pin2node);
-  CHECK_FLAT_CPU(pin_offset_x);
-  CHECK_CONTIGUOUS(pin_offset_x);
-  CHECK_FLAT_CPU(pin_offset_y);
-  CHECK_CONTIGUOUS(pin_offset_y);
-  CHECK_FLAT_CPU(wlv);
-  CHECK_CONTIGUOUS(wlv);
-
-  DREAMPLACE_DISPATCH_FLOATING_TYPES(
-      pos, "netsWireLengthCppLauncher",
-      [&] {
-        netsWireLengthCppLauncher<scalar_t>(
-            DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t),
-            DREAMPLACE_TENSOR_DATA_PTR(pos, scalar_t) + pos.numel() / 2,
-            DREAMPLACE_TENSOR_DATA_PTR(flat_netpin, int),
-            DREAMPLACE_TENSOR_DATA_PTR(netpin_start, int),
-            DREAMPLACE_TENSOR_DATA_PTR(pin2node, int),
-            num_nets,
-            DREAMPLACE_TENSOR_DATA_PTR(pin_offset_x, scalar_t),
-            DREAMPLACE_TENSOR_DATA_PTR(pin_offset_y, scalar_t),
-            DREAMPLACE_TENSOR_DATA_PTR(wlv, scalar_t));
       });
 }
 

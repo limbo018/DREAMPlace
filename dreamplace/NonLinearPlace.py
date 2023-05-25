@@ -336,7 +336,9 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         # Report timing step.
                         # Temporary solution: modify net weights
                         beg = time.time()
-                        timing_op.update_net_weights(npaths)
+                        timing_op.update_net_weights(
+                            max_net_weight=placedb.max_net_weight,
+                            n=npaths)
                         if self.device != torch.device("cpu"):
                             # Copy weights from placedb.net_weights to device.
                             self.data_collections.net_weights.copy_(
@@ -345,10 +347,10 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                             ((time.time() - beg) * 1000))
 
                         # Report tns and wns in each timing feedback call.
-                        tns = timing_op.timer.report_tns() / (time_unit * 1e17)
-                        wns = timing_op.timer.report_wns() / (time_unit * 1e15)
-                        logging.info("timing tns %.6f (1e+5 ps)" % (tns))
-                        logging.info("timing wns %.6f (1e+3 ps)" % (wns))
+                        # Note that OpenTimer considers early,late,rise,fall for tns/wns.
+                        # The following values are for reference.
+                        cur_metric.tns = timing_op.timer.report_tns_elw(split=1) / (time_unit * 1e17)
+                        cur_metric.wns = timing_op.timer.report_wns(split=1) / (time_unit * 1e15)
 
                     # nesterov has already computed the objective of the next step
                     if optimizer_name.lower() == "nesterov":
@@ -472,13 +474,17 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         for Lsub_step in range(model.Lsub_iteration):
                             ## divergence threshold should decrease as overflow decreases
                             ## only detect divergence when overflow is relatively low but not too low
+                            div_flag = check_divergence(
+                                # sometimes maybe too aggressive...
+                                divergence_list, window=3, threshold=0.1 * overflow_list[-1])
+                            if params.timing_opt_flag:
+                                # currently do not check divergence in timing-driven placement
+                                # TODO: a better way for divergence detection and roll-back for tdp.
+                                div_flag = False
                             if (
                                 len(placedb.regions) == 0
                                 and params.stop_overflow * 1.1 < overflow_list[-1] < params.stop_overflow * 4
-                                and check_divergence(
-                                    # sometimes maybe too aggressive...
-                                    divergence_list, window=3, threshold=0.1 * overflow_list[-1]
-                                )
+                                and div_flag
                             ):
                                 self.pos[0].data.copy_(best_pos[0].data)
                                 stop_placement = 1
@@ -694,6 +700,24 @@ class NonLinearPlace(BasicPlace.BasicPlace):
             cur_metric = EvalMetrics.EvalMetrics(iteration)
             all_metrics.append(cur_metric)
             cur_metric.evaluate(placedb, {"hpwl": self.op_collections.hpwl_op}, self.pos[0])
+
+            # perform an additional timing analysis on the legalized solution. 
+            # sta after legalization is not needed anymore.
+            logging.info("additional sta after legalization")
+            if params.timing_opt_flag:
+                timing_op = self.op_collections.timing_op
+     
+                # The timing operator has already integrated timer as its
+                # instance variable, so it only takes one argument.
+                timing_op(self.pos[0].data.clone().cpu())
+                timing_op.timer.update_timing()
+
+                # Report tns and wns in each timing feedback call.
+                # Note that OpenTimer considers early,late,rise,fall for tns/wns.
+                # The following values are for reference.
+                cur_metric.tns = timing_op.timer.report_tns_elw(split=1) / (time_unit * 1e17)
+                cur_metric.wns = timing_op.timer.report_wns(split=1) / (time_unit * 1e15)
+
             logging.info(cur_metric)
             iteration += 1
 
@@ -704,23 +728,6 @@ class NonLinearPlace(BasicPlace.BasicPlace):
         # dump legalization solution for detailed placement
         if params.dump_legalize_solution_flag:
             self.dump(params, placedb, self.pos[0].cpu(), "%s.dp.pklz" % (params.design_name()))
-
-        # perform an additional timing analysis on the legalized solution. 
-        # sta after legalization is not needed anymore.
-        logging.info("additional sta after legalization")
-        if params.timing_opt_flag:
-            timing_op = self.op_collections.timing_op
- 
-            # The timing operator has already integrated timer as its
-            # instance variable, so it only takes one argument.
-            timing_op(self.pos[0].data.clone().cpu())
-            timing_op.timer.update_timing()
-
-            # Report tns and wns in each timing feedback call.
-            tns = timing_op.timer.report_tns() / (time_unit * 1e17)
-            wns = timing_op.timer.report_wns() / (time_unit * 1e15)
-            logging.info("timing tns %.6f (1e+5 ps)" % (tns))
-            logging.info("timing wns %.6f (1e+3 ps)" % (wns))
 
         # detailed placement
         if params.detailed_place_flag:
