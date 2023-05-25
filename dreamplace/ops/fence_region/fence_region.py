@@ -169,7 +169,7 @@ def slice_non_fence_region(
         if isinstance(intersect, Polygon) and len(intersect.bounds) == 4:
             slices.append(intersect.bounds)
         elif isinstance(intersect, (GeometryCollection, MultiPolygon)):
-            slices.extend([j.bounds for j in intersect if (isinstance(j, Polygon) and len(j.bounds) == 4)])
+            slices.extend([j.bounds for j in intersect.geoms if (isinstance(j, Polygon) and len(j.bounds) == 4)])
 
     if merge:
         raw_bbox_list = sorted(slices, key=lambda x: (x[1], x[0]))
