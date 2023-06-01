@@ -1030,9 +1030,9 @@ row height = %g, site width = %g
 
         for net_id in range(len(self.net2pin_map)):
             pins = self.net2pin_map[net_id]
-            content += "\nNetDegree : %d %s" % (len(pins), self.net_names[net_id])
+            content += "\nNetDegree : %d %s" % (len(pins), self.net_names[net_id].decode())
             for pin_id in pins:
-                content += "\n\t%s %s : %d %d" % (self.node_names[self.pin2node_map[pin_id]], self.pin_direct[pin_id], self.pin_offset_x[pin_id]/params.scale_factor, self.pin_offset_y[pin_id]/params.scale_factor)
+                content += "\n\t%s %s : %d %d" % (self.node_names[self.pin2node_map[pin_id]].decode(), self.pin_direct[pin_id].decode(), self.pin_offset_x[pin_id]/params.scale_factor, self.pin_offset_y[pin_id]/params.scale_factor)
 
         with open(net_file, "w") as f:
             f.write(content)
