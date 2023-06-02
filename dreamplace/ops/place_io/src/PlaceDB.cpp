@@ -1931,23 +1931,28 @@ void PlaceDB::sortNodeByPlaceStatus() {
 
   // I assume the total number does not change,
   // but the number of movable and fixed cells may change
-  m_vMovableNodeIndex.clear();
-  m_vFixedNodeIndex.clear();
-  for (std::vector<Node>::const_iterator
-           it = m_vNode.begin(),
-           ite = m_vNode.begin() + numMovable() + numFixed();
-       it != ite; ++it) {
-    Node const& node = *it;
-    // Macro const& macro = m_vMacro.at(macroId(node));
-    if (node.status() == PlaceStatusEnum::FIXED) {
-      m_vFixedNodeIndex.push_back(node.id());
-    } else {
-      m_vMovableNodeIndex.push_back(node.id());
-    }
-  }
-  m_numMovable = m_vMovableNodeIndex.size();
-  m_numFixed = m_vFixedNodeIndex.size();
-
+  // m_vMovableNodeIndex.clear();
+  // m_vFixedNodeIndex.clear();
+  dreamplaceAssert(m_vNode.size() == numMovable() + numFixed() + numIOPin() + numPlaceBlockages());
+  // for (std::vector<Node>::const_iterator
+  //          it = m_vNode.begin(),
+  //          ite = m_vNode.begin() + numMovable() + numFixed() + numIOPin();
+  //      it != ite; ++it) {
+  //   Node const& node = *it;
+  //   Macro const& macro = m_vMacro.at(macroId(node));
+  //   // exclude io pins
+  //   if (not limbo::iequals(macro.className(), "DREAMPlace.IOPin") ) {
+  //     if (node.status() == PlaceStatusEnum::FIXED) {
+  //       m_vFixedNodeIndex.push_back(node.id());
+  //     } else {
+  //       m_vMovableNodeIndex.push_back(node.id());
+  //     }
+  //   }
+  // }
+  dreamplaceAssert(m_numMovable == m_vMovableNodeIndex.size());
+  dreamplaceAssert(m_numFixed == m_vFixedNodeIndex.size());
+  // m_numMovable = m_vMovableNodeIndex.size();
+  // m_numFixed = m_vFixedNodeIndex.size();
   // sort m_vNode, m_vNodeProperty, m_mNodeName2Index
   // map order to node id
   // only work on movable and fixed cells, excluding IO pins
@@ -2054,6 +2059,9 @@ void PlaceDB::sortNodeByPlaceStatus() {
     }
   }
 
+  dreamplaceAssert(m_numMovable == m_vMovableNodeIndex.size());
+  dreamplaceAssert(m_numFixed == m_vFixedNodeIndex.size());
+
 #ifdef DEBUG
   // check pins, nodes, and nets
   for (std::vector<Node>::const_iterator it = m_vNode.begin(),
@@ -2089,6 +2097,7 @@ void PlaceDB::sortNodeByPlaceStatus() {
   }
 #endif
 }
+
 
 void PlaceDB::processGroups() {
   dreamplacePrint(kINFO, "Group cells for fence regions\n");
