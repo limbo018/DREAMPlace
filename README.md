@@ -50,16 +50,16 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
 
 # Dependency 
 
-- Python 3.5/3.6/3.7/3.8
+- [Python](https://www.python.org/) 3.5/3.6/3.7/3.8/3.9
 
-- [Pytorch](https://pytorch.org/) 1.6/1.7/1.8
+- [Pytorch](https://pytorch.org/) 1.6/1.7/1.8/2.0
     - Other versions may also work, but not tested
 
 - [GCC](https://gcc.gnu.org/)
-    - Recommend GCC 5.1 or later. 
+    - Recommend GCC 7.5 or later (with `c++17` support).
     - Other compilers may also work, but not tested. 
 
-- [Boost](https://www.boost.org)
+- [Boost](https://www.boost.org) >= 1.55.0
     - Need to install and visible for linking
   
 - [Bison](https://www.gnu.org/software/bison) >= 3.3

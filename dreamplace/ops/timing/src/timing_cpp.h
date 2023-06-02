@@ -32,6 +32,7 @@ public:
   /// \param scale_factor the scaling factor to be applied to the design.
   /// \param lef_unit the unit distance microns defined in the LEF file.
   /// \param def_unit the unit distance microns defined in the DEF file.
+  /// \param ignore_net_degree the degree threshold.
   ///
   static void forward(
     ot::Timer& timer, torch::Tensor pos,
@@ -41,7 +42,8 @@ public:
     torch::Tensor pin2node, torch::Tensor pin_offset_x, torch::Tensor pin_offset_y,
     double wire_resistance_per_micron,
     double wire_capacitance_per_micron,
-    double scale_factor, int lef_unit, int def_unit);
+    double scale_factor, int lef_unit, int def_unit,
+    int ignore_net_degree = std::numeric_limits<int>::max());
   
   ///
   /// \brief The forward function of net-weighting
@@ -52,7 +54,9 @@ public:
   /// \param net_criticality_deltas the criticality deltas of nets (array).
   /// \param net_weights the weights of nets (torch tensor).
   /// \param net_weight_deltas the increment of net weights.
+  /// \param degree_map the degree map of nets.
   /// \param net_weighting_scheme the net-weighting scheme.
+  /// \param max_net_weight maximum net weight in timing opt.
   /// \param num_threads number of threads for parallel computing.
   ///
   static void update_net_weights(
@@ -60,28 +64,9 @@ public:
     const _timing_impl::string2index_map_type& net_name2id_map,
     torch::Tensor net_criticality, torch::Tensor net_criticality_deltas,
     torch::Tensor net_weights, torch::Tensor net_weight_deltas,
-    int net_weighting_scheme,
-    float momentum_decay_factor);
-  
-  ///
-  /// \brief Evaluate hpwl of nets according to the current position.
-  /// \param pos the cell locations in each iteration.
-  /// \param flat_netpin flatten version of net2pin_map which stores 
-  ///  pins contained in specific nets.
-  /// \param net2pin_start the 1d array with each entry specifying the
-  ///  starting index of a specific net in flat_net2pin_map.
-  /// \param pin2node the 1d array pin2node map.
-  /// \param num_nets the total number of nets.
-  /// \param pin_offset_x the 1d array indicating pin offset x to its node.
-  /// \param pin_offset_y the 1d array indicating pin offset y to its node.
-  /// \param wlv the wirelength vector to be written.
-  ///
-  static void evaluate_nets_hpwl(
-    torch::Tensor pos,
-    torch::Tensor flat_netpin, torch::Tensor netpin_start,
-    torch::Tensor pin2node, int num_nets,
-    torch::Tensor pin_offset_x, torch::Tensor pin_offset_y,
-    torch::Tensor wlv);
+    torch::Tensor degree_map,
+    int net_weighting_scheme, double max_net_weight,
+    double momentum_decay_factor, int ignore_net_degree);
 
   ///
   /// \brief Compute pin slack at once.

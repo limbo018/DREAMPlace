@@ -114,6 +114,7 @@ class PlaceDB (object):
         self.initial_horizontal_demand_map = None # routing demand map from fixed cells, indexed by (grid x, grid y), projected to one layer
         self.initial_vertical_demand_map = None # routing demand map from fixed cells, indexed by (grid x, grid y), projected to one layer
 
+        self.max_net_weight = None # maximum net weight in timing opt
         self.dtype = None
 
     def scale_pl(self, shift_factor, scale_factor):
@@ -596,6 +597,10 @@ class PlaceDB (object):
         for i in range(len(self.net2pin_map)):
             self.net2pin_map[i] = np.array(self.net2pin_map[i], dtype=np.int32)
         self.net2pin_map = np.array(self.net2pin_map, dtype=object)
+
+        # convert the max_net_weight from params
+        # note that infinity may be included so we need a type cast
+        self.max_net_weight = np.float64(params.max_net_weight)
 
     def initialize_num_bins(self, params):
         """

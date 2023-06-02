@@ -181,15 +181,38 @@ class Timer(object):
     
     # ----------------------    
     # In the following, we define some report functions.
-    def report_tns(self):
+    def report_tns(self, split=None, tran=None):
         """@brief report tns value
         """
-        return self.raw_timer.report_tns()
+        if split is None and tran is None:
+            return self.raw_timer.report_tns_all()
+        elif split is not None and tran is None:
+            return self.raw_timer.report_tns_el(split)
+        elif split is None and tran is not None:
+            return self.raw_timer.report_tns_rl(tran)
+        else:
+            return self.raw_timer.report_tns_el_rf(split, tran)
     
-    def report_wns(self):
+    def report_wns(self, split=None, tran=None):
         """@brief report wns value
         """
-        return self.raw_timer.report_wns()
+        if split is None and tran is None:
+            return self.raw_timer.report_wns_all()
+        elif split is not None and tran is None:
+            return self.raw_timer.report_wns_el(split)
+        elif split is None and tran is not None:
+            return self.raw_timer.report_wns_rl(tran)
+        else:
+            return self.raw_timer.report_wns_el_rf(split, tran)
+
+    def report_tns_elw(self, split=None):
+        """@brief report tns value with only the worst between rise
+        and fall considered
+        """
+        if split is None:
+            return self.raw_timer.report_tns_elw()
+        else:
+            return self.raw_timer.report_tns_elw(split)
 
     # ----------------------
     # In the following, we define some functions related to units.
@@ -213,57 +236,3 @@ class Timer(object):
         @return the time unit value (s)
         """
         return self.raw_timer.time_unit()
-    
-    def report_at(self, pin_name, split=None, tran=None):
-        """
-        @brief report the arrival time of a pin
-        @param pin_name the specific pin name.
-        @param split binary number determining Split::MIN, Splot::MAX.
-        @param tran binary number determining Tran::RISE, Tran::FALL.
-        """
-        if split is None and tran is None:
-            at = max( # Comparison
-                self.raw_timer.report_at(pin_name, 0, 0),
-                self.raw_timer.report_at(pin_name, 0, 1),
-                self.raw_timer.report_at(pin_name, 1, 0),
-                self.raw_timer.report_at(pin_name, 1, 1))
-            return at
-        elif split is not None and tran is None:
-            at = max( # Comparison
-                self.raw_timer.report_at(pin_name, split, 0),
-                self.raw_timer.report_at(pin_name, split, 1))
-            return at
-        elif split is None and tran is not None:
-            at = max( # Comparison
-                self.raw_timer.report_at(pin_name, 0, tran),
-                self.raw_timer.report_at(pin_name, 1, tran))
-            return at
-        else:
-            return self.raw_timer.report_at(pin_name, split, tran)
-
-    def report_slack(self, pin_name, split=None, tran=None):
-        """
-        @brief report the slack of a pin.
-        @param pin_name the specific pin name.
-        @param split binary number determining Split::MIN, Splot::MAX.
-        @param tran binary number determining Tran::RISE, Tran::FALL.
-        """
-        if split is None and tran is None:
-            at = min( # Comparison
-                self.raw_timer.report_slack(pin_name, 0, 0),
-                self.raw_timer.report_slack(pin_name, 0, 1),
-                self.raw_timer.report_slack(pin_name, 1, 0),
-                self.raw_timer.report_slack(pin_name, 1, 1))
-            return at
-        elif split is not None and tran is None:
-            at = min( # Comparison
-                self.raw_timer.report_slack(pin_name, split, 0),
-                self.raw_timer.report_slack(pin_name, split, 1))
-            return at
-        elif split is None and tran is not None:
-            at = min( # Comparison
-                self.raw_timer.report_slack(pin_name, 0, tran),
-                self.raw_timer.report_slack(pin_name, 1, tran))
-            return at
-        else:
-            return self.raw_timer.report_slack(pin_name, split, tran)
