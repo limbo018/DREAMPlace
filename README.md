@@ -56,7 +56,8 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
     - Other versions may also work, but not tested
 
 - [GCC](https://gcc.gnu.org/)
-    - Recommend GCC 7.5 or later (with `c++17` support).
+    - Recommend GCC 7.5 (with `c++17` support).
+    - Do not recommend GCC 9 or later due to backward compatibility issues. 
     - Other compilers may also work, but not tested. 
 
 - [Boost](https://www.boost.org) >= 1.55.0
