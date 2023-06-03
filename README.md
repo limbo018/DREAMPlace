@@ -72,6 +72,10 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
 - [Flute](https://doi.org/10.1109/TCAD.2007.907068)
     - Integrated as a submodule
 
+- [OpenTimer](https://github.com/OpenTimer/OpenTimer)
+    - [Modified version](https://github.com/enzoleo/OpenTimer) for timing optimization
+    - Integrated as a submodule
+
 - [CUB](https://github.com/NVlabs/cub)
     - Integrated as a git submodule
 
@@ -267,3 +271,4 @@ The list of options as follows will be shown.
     - Support timing optimization in global placement as published at DATE 2022
     - Add momentum-based net weighting strategy
     - Integrate OpenTimer for static timing analysis
+    - Tested under ICCAD 2015 contest benchmarks (see test/iccad2015.ot)
