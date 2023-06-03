@@ -1,36 +1,24 @@
-cmake_minimum_required(VERSION 3.0.2)
+set(OP_NAME rmst_wl)
 
-project(rmst_wl)
+set(TARGET_NAME ${OP_NAME})
 
-if (PYTHON)
-    set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")
-    set(SETUP_PY    "${CMAKE_CURRENT_BINARY_DIR}/setup.py")
-    file(GLOB SOURCES 
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c"
-        )
-    set(OUTPUT      "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.stamp")
+set(INCLUDE_DIRS 
+  ${CMAKE_CURRENT_SOURCE_DIR}/..
+  ${FLUTE_INCLUDE_DIRS}
+  )
 
-    configure_file(${SETUP_PY_IN} ${SETUP_PY})
+set(LINK_LIBS utility_cxx
+  ${FLUTE_LINK_DIRS}/libflute.a
+  OpenMP::OpenMP_CXX
+  )
 
-    add_custom_command(OUTPUT ${OUTPUT}
-        COMMAND ${PYTHON} ${SETUP_PY} build --build-temp=${CMAKE_CURRENT_BINARY_DIR}/build --build-lib=${CMAKE_CURRENT_BINARY_DIR}/lib
-        COMMAND ${CMAKE_COMMAND} -E touch ${OUTPUT}
-        DEPENDS ${SOURCES} flute
-        )
+add_pytorch_extension(${TARGET_NAME}_cpp 
+  src/rmst_wl.cpp
+  EXTRA_INCLUDE_DIRS ${INCLUDE_DIRS}
+  EXTRA_LINK_LIBRARIES ${LINK_LIBS})
 
-    add_custom_target(clean_${PROJECT_NAME}
-        COMMAND rm -rf ${OUTPUT} ${CMAKE_CURRENT_BINARY_DIR}/build ${CMAKE_CURRENT_BINARY_DIR}/lib
-        )
-
-    add_custom_target(${PROJECT_NAME} ALL DEPENDS ${OUTPUT})
-
-    install(
-        DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/ DESTINATION dreamplace/ops/${PROJECT_NAME}
-        )
-    file(GLOB INSTALL_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/*.py")
-    list(FILTER INSTALL_SRCS EXCLUDE REGEX ".*setup.py$")
-    install(
-        FILES ${INSTALL_SRCS} DESTINATION dreamplace/ops/${PROJECT_NAME}
-        )
-endif()
+install(TARGETS 
+  ${TARGET_NAME}_cpp 
+  DESTINATION dreamplace/ops/${OP_NAME})
+file(GLOB INSTALL_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/*.py)
+install(FILES ${INSTALL_SRCS} DESTINATION dreamplace/ops/${OP_NAME})

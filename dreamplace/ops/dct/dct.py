@@ -12,10 +12,9 @@ from torch.autograd import Function
 from torch import nn
 
 import dreamplace.ops.dct.dct_cpp as dct_cpp
-try: 
+import dreamplace.configure as configure
+if configure.compile_configurations["CUDA_FOUND"] == "TRUE": 
     import dreamplace.ops.dct.dct_cuda as dct_cuda
-except:
-    pass 
 
 import dreamplace.ops.dct.discrete_spectral_transform as discrete_spectral_transform
 
@@ -34,9 +33,9 @@ def dct(x, expk, algorithm):
             output = dct_cuda.dct_2N(x.view([-1, x.size(-1)]), expk)
     else:
         if algorithm == 'N': 
-            output = dct_cpp.dct(x.view([-1, x.size(-1)]), expk)
+            output = dct_cpp.dct(x.view([-1, x.size(-1)]), expk, torch.get_num_threads())
         elif algorithm == '2N':
-            output = dct_cpp.dct_2N(x.view([-1, x.size(-1)]), expk)
+            output = dct_cpp.dct_2N(x.view([-1, x.size(-1)]), expk, torch.get_num_threads())
     return output.view(x.size())  
 
 class DCTFunction(Function):
@@ -70,9 +69,9 @@ def idct(x, expk, algorithm):
             output = dct_cuda.idct_2N(x.view([-1, x.size(-1)]), expk)
     else:
         if algorithm == 'N': 
-            output = dct_cpp.idct(x.view([-1, x.size(-1)]), expk)
+            output = dct_cpp.idct(x.view([-1, x.size(-1)]), expk, torch.get_num_threads())
         elif algorithm == '2N': 
-            output = dct_cpp.idct_2N(x.view([-1, x.size(-1)]), expk)
+            output = dct_cpp.idct_2N(x.view([-1, x.size(-1)]), expk, torch.get_num_threads())
     return output.view(x.size())  
 
 class IDCTFunction(Function):
@@ -102,10 +101,10 @@ def dct2(x, expk0, expk1, algorithm='N'):
             #output = dct_cuda.dct_2N(dct_cuda.dct_2N(x, expk1).transpose_(dim0=-2, dim1=-1).contiguous(), expk0).transpose_(dim0=-2, dim1=-1).contiguous()
     else:
         if algorithm == 'N': 
-            output = dct_cpp.dct2(x, expk0, expk1)
-            #output = dct_cpp.dct(dct_cpp.dct(x, expk1).transpose_(dim0=-2, dim1=-1).contiguous(), expk0).transpose_(dim0=-2, dim1=-1).contiguous()
+            output = dct_cpp.dct2(x, expk0, expk1, torch.get_num_threads())
+            #output = dct_cpp.dct(dct_cpp.dct(x, expk1, torch.get_num_threads()).transpose_(dim0=-2, dim1=-1).contiguous(), expk0, torch.get_num_threads()).transpose_(dim0=-2, dim1=-1).contiguous()
         elif algorithm == '2N':
-            output = dct_cpp.dct2_2N(x, expk0, expk1)
+            output = dct_cpp.dct2_2N(x, expk0, expk1, torch.get_num_threads())
     return output 
 
 class DCT2Function(Function):
@@ -137,10 +136,10 @@ def idct2(x, expk0, expk1, algorithm='N'):
             output = dct_cuda.idct2_2N(x, expk0, expk1)
     else:
         if algorithm == 'N': 
-            output = dct_cpp.idct2(x, expk0, expk1)
-            #output = dct_cpp.idct(dct_cpp.idct(x, expk1).transpose_(dim0=-2, dim1=-1).contiguous(), expk0).transpose_(dim0=-2, dim1=-1).contiguous()
+            output = dct_cpp.idct2(x, expk0, expk1, torch.get_num_threads())
+            #output = dct_cpp.idct(dct_cpp.idct(x, expk1, torch.get_num_threads()).transpose_(dim0=-2, dim1=-1).contiguous(), expk0, torch.get_num_threads()).transpose_(dim0=-2, dim1=-1).contiguous()
         elif algorithm == '2N': 
-            output = dct_cpp.idct2_2N(x, expk0, expk1)
+            output = dct_cpp.idct2_2N(x, expk0, expk1, torch.get_num_threads())
     return output 
 
 class IDCT2Function(Function):
@@ -168,7 +167,7 @@ def dst(x, expk):
     if x.is_cuda:
         output = dct_cuda.dst(x.view([-1, x.size(-1)]), expk)
     else:
-        output = dct_cpp.dst(x.view([-1, x.size(-1)]), expk)
+        output = dct_cpp.dst(x.view([-1, x.size(-1)]), expk, torch.get_num_threads())
     return output.view(x.size())  
 
 class DSTFunction(Function):
@@ -193,7 +192,7 @@ def idst(x, expk):
     if x.is_cuda:
         output = dct_cuda.idst(x.view([-1, x.size(-1)]), expk)
     else:
-        output = dct_cpp.idst(x.view([-1, x.size(-1)]), expk)
+        output = dct_cpp.idst(x.view([-1, x.size(-1)]), expk, torch.get_num_threads())
     return output.view(x.size())  
 
 class IDSTFunction(Function):
@@ -218,7 +217,7 @@ def idxct(x, expk):
     if x.is_cuda:
         output = dct_cuda.idxct(x.view([-1, x.size(-1)]), expk)
     else:
-        output = dct_cpp.idxct(x.view([-1, x.size(-1)]), expk)
+        output = dct_cpp.idxct(x.view([-1, x.size(-1)]), expk, torch.get_num_threads())
     #output = IDCTFunction.forward(ctx, x, expk)
     #output.add_(x[..., 0].unsqueeze(-1)).mul_(0.5)
     ##output.mul_(0.5).add_(x[..., 0].unsqueeze(-1).mul(0.5))
@@ -246,7 +245,7 @@ def idxst(x, expk):
     if x.is_cuda:
         output = dct_cuda.idxst(x.view([-1, x.size(-1)]), expk)
     else:
-        output = dct_cpp.idxst(x.view([-1, x.size(-1)]), expk)
+        output = dct_cpp.idxst(x.view([-1, x.size(-1)]), expk, torch.get_num_threads())
     return output.view(x.size())  
 
 class IDXSTFunction(Function):
@@ -270,7 +269,7 @@ def idcct2(x, expk0, expk1):
     if x.is_cuda:
         output = dct_cuda.idcct2(x.view([-1, x.size(-1)]), expk0, expk1)
     else:
-        output = dct_cpp.idcct2(x.view([-1, x.size(-1)]), expk0, expk1)
+        output = dct_cpp.idcct2(x.view([-1, x.size(-1)]), expk0, expk1, torch.get_num_threads())
     return output.view(x.size())  
 
 class IDCCT2Function(Function):
@@ -297,7 +296,7 @@ def idcst2(x, expk0, expk1):
     if x.is_cuda:
         output = dct_cuda.idcst2(x.view([-1, x.size(-1)]), expk0, expk1)
     else:
-        output = dct_cpp.idcst2(x.view([-1, x.size(-1)]), expk0, expk1)
+        output = dct_cpp.idcst2(x.view([-1, x.size(-1)]), expk0, expk1, torch.get_num_threads())
     return output.view(x.size())  
 
 class IDCST2Function(Function):
@@ -324,7 +323,7 @@ def idsct2(x, expk0, expk1):
     if x.is_cuda:
         output = dct_cuda.idsct2(x.view([-1, x.size(-1)]), expk0, expk1)
     else:
-        output = dct_cpp.idsct2(x.view([-1, x.size(-1)]), expk0, expk1)
+        output = dct_cpp.idsct2(x.view([-1, x.size(-1)]), expk0, expk1, torch.get_num_threads())
     return output.view(x.size())  
 
 class IDSCT2Function(Function):
@@ -344,3 +343,57 @@ class IDSCT2(nn.Module):
             self.expk1 = discrete_spectral_transform.get_expk(x.size(-1), dtype=x.dtype, device=x.device)
         return IDSCT2Function.apply(x, self.expk0, self.expk1)
 
+def idct_idxst(x, expk0, expk1):
+    """compute inverse discrete cosine-sine transformation
+    This is equivalent to idct(idxst(x)^T)^T
+    """
+    if x.is_cuda:
+        output = dct_cuda.idct_idxst(x.view([-1, x.size(-1)]), expk0, expk1)
+    else:
+        output = dct_cpp.idct_idxst(x.view([-1, x.size(-1)]), expk0, expk1, torch.get_num_threads())
+    return output.view(x.size())  
+
+class IDCT_IDXSTFunction(Function):
+    @staticmethod
+    def forward(ctx, x, expk0, expk1):
+        return idct_idxst(x, expk0, expk1)
+
+class IDCT_IDXST(nn.Module):
+    def __init__(self, expk0=None, expk1=None):
+        super(IDCT_IDXST, self).__init__()
+        self.expk0 = expk0
+        self.expk1 = expk1
+    def forward(self, x): 
+        if self.expk0 is None or self.expk0.size(-2) != x.size(-2):
+            self.expk0 = discrete_spectral_transform.get_expk(x.size(-2), dtype=x.dtype, device=x.device)
+        if self.expk1 is None or self.expk1.size(-2) != x.size(-1):
+            self.expk1 = discrete_spectral_transform.get_expk(x.size(-1), dtype=x.dtype, device=x.device)
+        return IDCT_IDXSTFunction.apply(x, self.expk0, self.expk1)
+
+def idxst_idct(x, expk0, expk1):
+    """compute inverse discrete cosine-sine transformation
+    This is equivalent to idxst(idct(x)^T)^T
+    """
+    if x.is_cuda:
+        output = dct_cuda.idxst_idct(x.view([-1, x.size(-1)]), expk0, expk1)
+    else:
+        output = dct_cpp.idxst_idct(x.view([-1, x.size(-1)]), expk0, expk1, torch.get_num_threads())
+    return output.view(x.size()) 
+
+class IDXST_IDCTFunction(Function):
+    @staticmethod
+    def forward(ctx, x, expk0, expk1):
+        return idxst_idct(x, expk0, expk1)
+
+
+class IDXST_IDCT(nn.Module):
+    def __init__(self, expk0=None, expk1=None):
+        super(IDXST_IDCT, self).__init__()
+        self.expk0 = expk0
+        self.expk1 = expk1
+    def forward(self, x): 
+        if self.expk0 is None or self.expk0.size(-2) != x.size(-2):
+            self.expk0 = discrete_spectral_transform.get_expk(x.size(-2), dtype=x.dtype, device=x.device)
+        if self.expk1 is None or self.expk1.size(-2) != x.size(-1):
+            self.expk1 = discrete_spectral_transform.get_expk(x.size(-1), dtype=x.dtype, device=x.device)
+        return IDXST_IDCTFunction.apply(x, self.expk0, self.expk1)

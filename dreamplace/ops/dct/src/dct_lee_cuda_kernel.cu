@@ -12,9 +12,8 @@
 #include <float.h>
 #include "cuda_runtime.h"
 
-#include "dct_lee_cuda.h"
+// #include "dct_lee_cuda.h"
 #include "dct_lee_cuda_kernel.h"
-#include "utility/src/Msg.h"
 
 DREAMPLACE_BEGIN_NAMESPACE
 
@@ -133,7 +132,7 @@ template <typename TValue>
 void dct(const TValue *vec, TValue *out, TValue* buf, const TValue *cos, int M, int N)
 {
     int block_count = 2048; 
-    int thread_count = 1024; 
+    int thread_count = 512; 
 
     // The input length must be power of 2
     if (! isPowerOf2<int>(N))
@@ -249,77 +248,45 @@ void idct(const TValue *vec, TValue *out, TValue *buf, const TValue *cos, int M,
 } // End of namespace lee
 
 #define REGISTER_DCT_PRECOMPUTE_COS_KERNEL_LAUNCHER(type) \
-    void instantiateDctPrecomputeCosCudaLauncher(\
+    template void lee::precompute_dct_cos<type>(\
         type* cos, \
         int N \
-        ) \
-    { \
-        lee::precompute_dct_cos<type>( \
-                cos, \
-                N \
-                ); \
-    }
+        ); 
 
 REGISTER_DCT_PRECOMPUTE_COS_KERNEL_LAUNCHER(float);
 REGISTER_DCT_PRECOMPUTE_COS_KERNEL_LAUNCHER(double);
 
 #define REGISTER_IDCT_PRECOMPUTE_COS_KERNEL_LAUNCHER(type) \
-    void instantiateIdctPrecomputeCosCudaLauncher(\
+    template void lee::precompute_idct_cos<type>(\
         type* cos, \
         int N \
-        ) \
-    { \
-        lee::precompute_idct_cos<type>( \
-                cos, \
-                N \
-                ); \
-    }
+        ); 
 
 REGISTER_IDCT_PRECOMPUTE_COS_KERNEL_LAUNCHER(float);
 REGISTER_IDCT_PRECOMPUTE_COS_KERNEL_LAUNCHER(double);
 
 #define REGISTER_DCT_KERNEL_LAUNCHER(type) \
-    void instantiateDctCudaLauncher(\
+    template void lee::dct<type>(\
         const type* vec, \
         type* curr, \
         type* next, \
         const type* cos, \
         int M, \
         int N \
-        ) \
-    { \
-        lee::dct<type>( \
-                vec, \
-                curr, \
-                next, \
-                cos, \
-                M, \
-                N \
-                ); \
-    }
+        ); 
 
 REGISTER_DCT_KERNEL_LAUNCHER(float);
 REGISTER_DCT_KERNEL_LAUNCHER(double);
 
 #define REGISTER_IDCT_KERNEL_LAUNCHER(type) \
-    void instantiateIdctCudaLauncher(\
+    template void lee::idct<type>(\
         const type* vec, \
         type* curr, \
         type* next, \
         const type* cos, \
         int M, \
         int N \
-        ) \
-    { \
-        lee::idct<type>( \
-                vec, \
-                curr, \
-                next, \
-                cos, \
-                M, \
-                N \
-                ); \
-    }
+        ); 
 
 REGISTER_IDCT_KERNEL_LAUNCHER(float);
 REGISTER_IDCT_KERNEL_LAUNCHER(double);

@@ -3,11 +3,14 @@
  * @author Yibo Lin
  * @date   Oct 2018
  */
-#ifndef GPUPLACE_NODE_STATUS_SUMMARY_H
-#define GPUPLACE_NODE_STATUS_SUMMARY_H
+#ifndef DREAMPLACE_NODE_STATUS_SUMMARY_H
+#define DREAMPLACE_NODE_STATUS_SUMMARY_H
 
 #include <vector>
 #include <limits>
+#include "utility/src/utils.h"
+
+DREAMPLACE_BEGIN_NAMESPACE
 
 template <typename T>
 void minNodeSizeCPU(
@@ -29,9 +32,11 @@ void minNodeSizeCPU(
         }
         if (min_size_x != std::numeric_limits<int>::max())
         {
-            *min_node_size_x = std::min(*min_node_size_x, (int)ceil(min_size_x/site_width));
+            *min_node_size_x = std::min(*min_node_size_x, (int)ceilDiv(min_size_x, site_width));
         }
     }
 }
+
+DREAMPLACE_END_NAMESPACE
 
 #endif

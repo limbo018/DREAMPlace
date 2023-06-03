@@ -1,0 +1,223 @@
+{
+"aux_input" : {
+    "descripton" : "input .aux file", 
+    "default" : "", 
+    "required" : "required for Bookshelf"
+    }, 
+"lef_input" : {
+    "descripton" : "input LEF file", 
+    "default" : "", 
+    "required" : "required for LEF/DEF"
+    },
+"def_input" : {
+    "descripton" : "input DEF file", 
+    "default" : "", 
+    "required" : "required for LEF/DEF"
+    },
+"verilog_input" : {
+    "descripton" : "input VERILOG file, provide circuit netlist information if it is not included in DEF file", 
+    "default" : "", 
+    "required" : "optional for LEF/DEF"
+    },
+"gpu" : {
+    "descripton" : "enable gpu or not", 
+    "default" : 1
+    },
+"num_bins_x" : {
+    "descripton" : "number of bins in horizontal direction; computed by internal heuristic if not specified", 
+    "default" : 0
+    },
+"num_bins_y" : {
+    "descripton" : "number of bins in vertical direction; computed by internal heuristic if not specified", 
+    "default" : 0
+    },
+"global_place_stages" : {
+    "descripton" : "global placement configurations of each stage, a dictionary of {\"num_bins_x\", \"num_bins_y\", \"iteration\", \"learning_rate\", \"learning_rate_decay\", \"wirelength\", \"optimizer\", \"Llambda_density_weight_iteration\", \"Lsub_iteration\"}", 
+    "default" : [{"num_bins_x" : 0, "num_bins_y" : 0, "iteration" : 1000, "learning_rate" : 0.01, "wirelength" : "weighted_average", "optimizer" : "nesterov", "Llambda_density_weight_iteration" : 1, "Lsub_iteration" : 1}], 
+    "required" : "required"
+    },
+"target_density" : {
+    "descripton" : "target density", 
+    "default" : 0.8
+    },
+"density_weight" : {
+    "descripton" : "initial weight of density cost", 
+    "default" : 8e-5
+    },
+"random_seed" : {
+    "descripton" : "random seed", 
+    "default" : 1000
+    },
+"result_dir" : {
+    "descripton" : "result directory for output", 
+    "default" : "results"
+    },
+"scale_factor" : {
+    "descripton" : "scale factor to avoid numerical overflow; 0.0 means not set", 
+    "default" : 0.0
+    },
+"shift_factor" : {
+    "descripton" : "shift factor to avoid numerical issues when the lower-left origin of rows is not (0, 0);", 
+    "default" : [0.0, 0.0]
+    },
+"ignore_net_degree" : {
+    "descripton" : "ignore net degree larger than some value", 
+    "default" : 100
+    },
+"gp_noise_ratio" : {
+    "descripton" : "noise to initial positions for global placement", 
+    "default" : 0.025
+    },
+"enable_fillers" : {
+    "descripton" : "enable filler cells", 
+    "default" : 1
+    },
+"global_place_flag" : {
+    "descripton" : "whether use global placement", 
+    "default" : 1
+    },
+"legalize_flag" : {
+    "descripton" : "whether use internal legalization", 
+    "default" : 1
+    },
+"detailed_place_flag" : {
+    "descripton" : "whether use internal detailed placement", 
+    "default" : 1
+    },
+"stop_overflow" : {
+    "descripton" : "stopping criteria, consider stop when the overflow reaches to a ratio", 
+    "default" : 0.1
+    },
+"dtype" : {
+    "descripton" : "data type, float32 | float64", 
+    "default" : "float32"
+    },
+"detailed_place_engine" : {
+    "descripton" : "external detailed placement engine to be called after placement", 
+    "default" : ""
+    },
+"detailed_place_command" : {
+    "descripton" : "commands for external detailed placement engine", 
+    "default" : "-nolegal -nodetail"
+    },
+"plot_flag" : {
+    "descripton" : "whether plot solution or not", 
+    "default" : 0
+    },
+"RePlAce_ref_hpwl" : {
+    "descripton" : "reference HPWL used in RePlAce for updating density weight", 
+    "default" : 350000
+    },
+"RePlAce_LOWER_PCOF" : {
+    "descripton" : "lower bound ratio used in RePlAce for updating density weight", 
+    "default" : 0.95
+    },
+"RePlAce_UPPER_PCOF" : {
+    "descripton" : "upper bound ratio used in RePlAce for updating density weight", 
+    "default" : 1.05
+    },
+"gamma" : {
+    "descripton" : "base coefficient for log-sum-exp and weighted-average wirelength, a relative value to bin size",
+    "default" : 4.0
+    },
+"RePlAce_skip_energy_flag" : {
+    "descripton" : "whether skip density energy computation for fast mode, may not work with some solvers", 
+    "default" : 0
+    },
+"random_center_init_flag" : {
+    "descripton" : "whether perform random initialization around the center for global placement", 
+    "default" : 1
+    },
+"sort_nets_by_degree" : {
+    "descripton" : "whether sort nets by degree or not", 
+    "default" : 0
+    },
+"num_threads" : {
+    "descripton" : "number of CPU threads", 
+    "default" : 8
+    },
+"dump_global_place_solution_flag" : {
+    "descripton" : "whether dump intermediate global placement solution as a compressed pickle object", 
+    "default" : 0
+    },
+"dump_legalize_solution_flag" : {
+    "descripton" : "whether dump intermediate legalization solution as a compressed pickle object", 
+    "default" : 0
+    },
+"routability_opt_flag" : {
+    "descripton" : "whether enable routability optimization", 
+    "default" : 0
+    },
+"route_num_bins_x" : {
+    "descripton" : "number of routing grids/tiles", 
+    "default" : 512
+    },
+"route_num_bins_y" : {
+    "descripton" : "number of routing grids/tiles", 
+    "default" : 512
+    },
+"node_area_adjust_overflow" : {
+    "descripton" : "the overflow where to adjust node area", 
+    "default" : 0.15
+    },
+"max_num_area_adjust" : {
+    "descripton" : "maximum times to adjust node area", 
+    "default" : 3
+    },
+"adjust_nctugr_area_flag" : {
+    "descripton" : "whether use NCTUgr congestion map to guide area adjustment", 
+    "default" : 0
+    },
+"adjust_rudy_area_flag" : {
+    "descripton" : "whether use RUDY/RISA map to guide area adjustment", 
+    "default" : 1
+    },
+"adjust_pin_area_flag" : {
+    "descripton" : "whether use pin utilization map to guide area adjustment", 
+    "default" : 1
+    },
+"area_adjust_stop_ratio" : {
+    "descripton" : "area_adjust_stop_ratio", 
+    "default" : 0.01
+    },
+"route_area_adjust_stop_ratio" : {
+    "descripton" : "route_area_adjust_stop_ratio", 
+    "default" : 0.01
+    },
+"pin_area_adjust_stop_ratio" : {
+    "descripton" : "pin_area_adjust_stop_ratio", 
+    "default" : 0.05
+    },
+"unit_horizontal_capacity" : {
+    "descripton" : "number of horizontal routing tracks per unit distance", 
+    "default" : 1.5625
+    },
+"unit_vertical_capacity" : {
+    "descripton" : "number of vertical routing tracks per unit distance", 
+    "default" : 1.45
+    },
+"unit_pin_capacity" : {
+    "descripton" : "number of pins per unit area", 
+    "default" : 0.058
+    },
+"max_route_opt_adjust_rate" : {
+    "descripton" : "max_route_opt_adjust_rate", 
+    "default" : 2.0
+    },
+"route_opt_adjust_exponent" : {
+    "descripton" : "exponent to adjust the routing utilization map", 
+    "default" : 2.0
+    },
+"pin_stretch_ratio" : {
+    "descripton" : "pin_stretch_ratio", 
+    "default" : 1.414213562
+    },
+"max_pin_opt_adjust_rate" : {
+    "descripton" : "max_pin_opt_adjust_rate", 
+    "default" : 1.5
+    }, 
+"deterministic_flag" : {
+    "descripton" : "whether require run-to-run determinism, may have efficiency overhead", 
+    "default" : 0
+    }
+}

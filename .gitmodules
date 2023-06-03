@@ -1,3 +1,12 @@
 [submodule "thirdparty/Limbo"]
 	path = thirdparty/Limbo
 	url = https://github.com/limbo018/Limbo.git
+[submodule "thirdparty/munkres-cpp"]
+	path = thirdparty/munkres-cpp
+	url = https://github.com/saebyn/munkres-cpp.git
+[submodule "thirdparty/cub"]
+	path = thirdparty/cub
+	url = https://github.com/NVlabs/cub.git
+[submodule "thirdparty/pybind11"]
+	path = thirdparty/pybind11
+	url = https://github.com/pybind/pybind11.git

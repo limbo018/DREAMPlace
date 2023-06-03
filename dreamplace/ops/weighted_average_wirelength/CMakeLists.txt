@@ -1,41 +1,67 @@
-cmake_minimum_required(VERSION 2.8.12)
+set(OP_NAME weighted_average_wirelength)
 
-project(weighted_average_wirelength)
+set(TARGET_NAME ${OP_NAME})
 
-if (NOT CMAKE_CUDA_FLAGS)
-    set(CMAKE_CUDA_FLAGS "-gencode=arch=compute_60,code=sm_60")
-endif()
+set(INCLUDE_DIRS 
+  ${CMAKE_CURRENT_SOURCE_DIR}/..
+  )
 
-if (PYTHON)
-    set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")
-    set(SETUP_PY    "${CMAKE_CURRENT_BINARY_DIR}/setup.py")
-    file(GLOB SOURCES 
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cu"
-        )
-    set(OUTPUT      "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.stamp")
+set(LINK_LIBS utility_cxx
+  OpenMP::OpenMP_CXX
+  )
 
-    configure_file(${SETUP_PY_IN} ${SETUP_PY})
+add_pytorch_extension(${TARGET_NAME}_cpp
+  src/weighted_average_wirelength.cpp
+  EXTRA_INCLUDE_DIRS ${INCLUDE_DIRS}
+  EXTRA_LINK_LIBRARIES ${LINK_LIBS})
 
-    add_custom_command(OUTPUT ${OUTPUT}
-        COMMAND ${PYTHON} ${SETUP_PY} build --build-temp=${CMAKE_CURRENT_BINARY_DIR}/build --build-lib=${CMAKE_CURRENT_BINARY_DIR}/lib
-        COMMAND ${CMAKE_COMMAND} -E touch ${OUTPUT}
-        DEPENDS ${SOURCES}
-        )
+add_pytorch_extension(${TARGET_NAME}_cpp_atomic
+  src/weighted_average_wirelength_atomic.cpp
+  EXTRA_INCLUDE_DIRS ${INCLUDE_DIRS}
+  EXTRA_LINK_LIBRARIES ${LINK_LIBS})
 
-    add_custom_target(clean_${PROJECT_NAME}
-        COMMAND rm -rf ${OUTPUT} ${CMAKE_CURRENT_BINARY_DIR}/build ${CMAKE_CURRENT_BINARY_DIR}/lib
-        )
+add_pytorch_extension(${TARGET_NAME}_cpp_merged
+  src/weighted_average_wirelength_merged.cpp
+  EXTRA_INCLUDE_DIRS ${INCLUDE_DIRS}
+  EXTRA_LINK_LIBRARIES ${LINK_LIBS})
 
-    add_custom_target(${PROJECT_NAME} ALL DEPENDS ${OUTPUT})
+install(TARGETS 
+  ${TARGET_NAME}_cpp 
+  ${TARGET_NAME}_cpp_atomic 
+  ${TARGET_NAME}_cpp_merged 
+  DESTINATION dreamplace/ops/${OP_NAME})
 
-    install(
-        DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/ DESTINATION dreamplace/ops/${PROJECT_NAME}
-        )
-    file(GLOB INSTALL_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/*.py")
-    list(FILTER INSTALL_SRCS EXCLUDE REGEX ".*setup.py$")
-    install(
-        FILES ${INSTALL_SRCS} DESTINATION dreamplace/ops/${PROJECT_NAME}
-        )
-endif()
+if(TORCH_ENABLE_CUDA)
+
+add_torch_extension(integrate_net_weights_cuda
+  src/integrate_net_weights_cuda_kernel.cu
+  EXTRA_INCLUDE_DIRS ${INCLUDE_DIRS}
+  EXTRA_LINK_LIBRARIES ${LINK_LIBS})
+
+add_pytorch_extension(${TARGET_NAME}_cuda
+  src/weighted_average_wirelength_cuda.cpp
+  src/weighted_average_wirelength_cuda_kernel.cu
+  EXTRA_INCLUDE_DIRS ${INCLUDE_DIRS}
+  EXTRA_LINK_LIBRARIES integrate_net_weights_cuda ${LINK_LIBS})
+
+add_pytorch_extension(${TARGET_NAME}_cuda_atomic 
+  src/weighted_average_wirelength_cuda_atomic.cpp
+  src/weighted_average_wirelength_cuda_atomic_kernel.cu
+  EXTRA_INCLUDE_DIRS ${INCLUDE_DIRS}
+  EXTRA_LINK_LIBRARIES integrate_net_weights_cuda ${LINK_LIBS})
+
+add_pytorch_extension(${TARGET_NAME}_cuda_merged
+  src/weighted_average_wirelength_cuda_merged.cpp
+  src/weighted_average_wirelength_cuda_merged_kernel.cu
+  EXTRA_INCLUDE_DIRS ${INCLUDE_DIRS}
+  EXTRA_LINK_LIBRARIES integrate_net_weights_cuda ${LINK_LIBS})
+
+install(TARGETS 
+  ${TARGET_NAME}_cuda
+  ${TARGET_NAME}_cuda_atomic
+  ${TARGET_NAME}_cuda_merged 
+  DESTINATION dreamplace/ops/${OP_NAME})
+endif(TORCH_ENABLE_CUDA)
+
+file(GLOB INSTALL_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/*.py)
+install(FILES ${INSTALL_SRCS} DESTINATION dreamplace/ops/${OP_NAME})

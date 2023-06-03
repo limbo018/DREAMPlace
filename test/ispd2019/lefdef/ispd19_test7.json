@@ -1,0 +1,29 @@
+{
+"lef_input" : ["benchmarks/ispd2019/ispd19_test7/ispd19_test7.input.lef"],
+"def_input" : "benchmarks/ispd2019/ispd19_test7/ispd19_test7.input.def",
+"gpu" : 1,
+"num_bins_x" : 1024,
+"num_bins_y" : 1024,
+"global_place_stages" : [
+    {"num_bins_x" : 1024, "num_bins_y" : 1024, "iteration" : 1000, "learning_rate" : 0.01, "wirelength" : "weighted_average", "optimizer" : "nesterov"}
+],
+"target_density" : 1.0,
+"density_weight" : 8e-5,
+"gamma" : 4.0,
+"random_seed" : 1000,
+"ignore_net_degree" : 100,
+"enable_fillers" : 1,
+"gp_noise_ratio" : 0.025,
+"global_place_flag" : 1,
+"legalize_flag" : 1,
+"detailed_place_flag" : 1,
+"detailed_place_engine" : "thirdparty/ntuplace3",
+"detailed_place_command" : "-nolegal -nodetail",
+"stop_overflow" : 0.1,
+"dtype" : "float32",
+"plot_flag" : 0,
+"random_center_init_flag" : 1,
+"sort_nets_by_degree" : 0,
+"num_threads" : 8,
+"deterministic_flag" : 0
+}

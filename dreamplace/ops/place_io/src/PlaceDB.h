@@ -20,6 +20,8 @@
 #include "Pin.h"
 #include "Macro.h"
 #include "Row.h"
+#include "Region.h"
+#include "Group.h"
 #include "Site.h"
 #include "Params.h"
 #include "BenchMetrics.h"
@@ -29,6 +31,7 @@ DREAMPLACE_BEGIN_NAMESPACE
 /// different tags for data traversal 
 struct MovableNodeIteratorTag;
 struct FixedNodeIteratorTag;
+struct PlaceBlockageIteratorTag;
 struct IOPinNodeIteratorTag;
 struct CellMacroIteratorTag;
 struct IOPinMacroIteratorTag;
@@ -43,12 +46,14 @@ class PlaceDB;
 /// iterator 
 typedef DBIterator<PlaceDB, MovableNodeIteratorTag> MovableNodeIterator;
 typedef DBIterator<PlaceDB, FixedNodeIteratorTag> FixedNodeIterator;
+typedef DBIterator<PlaceDB, PlaceBlockageIteratorTag> PlaceBlockageIterator;
 typedef DBIterator<PlaceDB, IOPinNodeIteratorTag> IOPinNodeIterator;
 typedef DBIterator<PlaceDB, CellMacroIteratorTag> CellMacroIterator;
 typedef DBIterator<PlaceDB, IOPinMacroIteratorTag> IOPinMacroIterator;
 /// const iterator 
 typedef DBIterator<const PlaceDB, MovableNodeIteratorTag> MovableNodeConstIterator;
 typedef DBIterator<const PlaceDB, FixedNodeIteratorTag> FixedNodeConstIterator;
+typedef DBIterator<const PlaceDB, PlaceBlockageIteratorTag> PlaceBlockageConstIterator;
 typedef DBIterator<const PlaceDB, IOPinNodeIteratorTag> IOPinNodeConstIterator;
 typedef DBIterator<const PlaceDB, CellMacroIteratorTag> CellMacroConstIterator;
 typedef DBIterator<const PlaceDB, IOPinMacroIteratorTag> IOPinMacroConstIterator;
@@ -69,9 +74,9 @@ class PlaceDB : public DefParser::DefDataBase
         /// default constructor
         PlaceDB(); 
         /// copy constructor, forbidden
-        PlaceDB(PlaceDB const& rhs); 
+        //PlaceDB(PlaceDB const& rhs); 
         /// assignment, forbidden
-        PlaceDB& operator=(PlaceDB const& rhs);
+        //PlaceDB& operator=(PlaceDB const& rhs);
 
         /// destructor
         virtual ~PlaceDB() {}
@@ -84,6 +89,10 @@ class PlaceDB : public DefParser::DefDataBase
         Node& node(index_type id) {return m_vNode.at(id);}
         NodeProperty const& nodeProperty(index_type id) const {return m_vNodeProperty.at(id);}
         NodeProperty const& nodeProperty(Node const& n) const {return nodeProperty(n.id());}
+        /// some shortcut functions to set nodes for python binding 
+        Node const& setNodeStatus(index_type id, PlaceStatusEnum::PlaceStatusType s) {return m_vNode.at(id).setStatus(s);}
+        Node const& setNodeMultiRowAttr(index_type id, MultiRowAttrEnum::MultiRowAttrType a) {return m_vNode.at(id).setMultiRowAttr(a);}
+        Node const& setNodeOrient(index_type id, OrientEnum::OrientType o) {return m_vNode.at(id).setOrient(o);}
 
         std::vector<Net> const& nets() const {return m_vNet;}
         std::vector<Net>& nets() {return m_vNet;}
@@ -91,6 +100,8 @@ class PlaceDB : public DefParser::DefDataBase
         Net& net(index_type id) {return m_vNet.at(id);}
         NetProperty const& netProperty(index_type id) const {return m_vNetProperty.at(id);}
         NetProperty const& netProperty(Net const& n) const {return netProperty(n.id());}
+        /// some shortcut functions to set nets for python binding 
+        Net const& setNetWeight(index_type id, Net::weight_type w) {return m_vNet.at(id).setWeight(w);}
 
         std::vector<Pin> const& pins() const {return m_vPin;}
         std::vector<Pin>& pins() {return m_vPin;}
@@ -107,10 +118,7 @@ class PlaceDB : public DefParser::DefDataBase
         Row const& row(index_type id) const {return m_vRow.at(id);}
         Row& row(index_type id) {return m_vRow.at(id);}
 
-        std::vector<Box<coordinate_type> > const& placeBlockages() const {return m_vPlaceBlockage;}
-        std::vector<Box<coordinate_type> >& placeBlockages() {return m_vPlaceBlockage;}
-
-        Site const& site() const {return m_site;}
+        Site const& site() const {return m_vSite[m_coreSiteId];}
         area_type siteArea() const {return siteWidth()*rowHeight();}
         
         /// be careful to use die area because it is larger than the actual rowBbox() which is the placement area 
@@ -128,6 +136,7 @@ class PlaceDB : public DefParser::DefDataBase
         std::size_t numMacro() const {return m_numMacro;}
         std::size_t numIOPin() const {return m_numIOPin;}
         std::size_t numIgnoredNet() const {return m_numIgnoredNet;}
+        std::size_t numPlaceBlockages() const {return m_numPlaceBlockages;}
 
         std::vector<index_type> const& movableNodeIndices() const {return m_vMovableNodeIndex;}
         std::vector<index_type>& movableNodeIndices() {return m_vMovableNodeIndex;}
@@ -135,12 +144,29 @@ class PlaceDB : public DefParser::DefDataBase
         std::vector<index_type> const& fixedNodeIndices() const {return m_vFixedNodeIndex;}
         std::vector<index_type>& fixedNodeIndices() {return m_vFixedNodeIndex;}
 
+        std::vector<index_type> const& placeBlockageIndices() const {return m_vPlaceBlockageIndex;}
+        std::vector<index_type>& placeBlockageIndices() {return m_vPlaceBlockageIndex;}
+
+        std::vector<Region> const& regions() const {return m_vRegion;}
+        std::vector<Region>& regions() {return m_vRegion;}
+        Region const& region(index_type i) const {return m_vRegion.at(i);}
+        Region& region(index_type i) {return m_vRegion.at(i);}
+
+        std::vector<Group> const& groups() const {return m_vGroup;}
+        std::vector<Group>& groups() {return m_vGroup;}
+        Group const& group(index_type i) const {return m_vGroup.at(i);}
+        Group& group(index_type i) {return m_vGroup.at(i);}
+
         int lefUnit() const {return m_lefUnit;}
         std::string lefVersion() const {return m_lefVersion;}
 
         int defUnit() const {return m_defUnit;}
         std::string defVersion() const {return m_defVersion;}
         std::string designName() const {return m_designName;}
+
+        /// \brief sometimes the units may be different 
+        /// Need to scale to LEF unit 
+        double lefDefUnitRatio() const {return lefUnit() / defUnit();}
 
         UserParam const& userParam() const {return m_userParam;}
         UserParam& userParam() {return m_userParam;}
@@ -171,6 +197,21 @@ class PlaceDB : public DefParser::DefDataBase
         MacroPin const& macroPin(index_type pinId) const;
         MacroPin const& macroPin(Pin const& pin) const;
 
+        /// functions for routing information 
+        index_type numRoutingGrids(Direction1DType d) const {return m_numRoutingGrids[d];}
+        index_type numRoutingLayers() const {return m_numRoutingGrids[2];}
+        std::vector<index_type> const& routingCapacity(PlanarDirectEnum::PlanarDirectType d) const {return m_vRoutingCapacity[d];}
+        std::vector<index_type> const& minWireWidth() const {return m_vMinWireWidth;}
+        std::vector<index_type> const& minWireSpacing() const {return m_vMinWireSpacing;}
+        std::vector<index_type> const& viaSpacing() const {return m_vViaSpacing;}
+        coordinate_type routingGridOrigin(Direction1DType d) const {return m_routingGridOrigin[d];}
+        coordinate_type routingTileSize(Direction1DType d) const {return m_routingTileSize[d];}
+        index_type routingBlockagePorosity() const {return m_routingBlockagePorosity;}
+        /// @brief compute number of routing tracks per tile 
+        index_type numRoutingTracks(PlanarDirectEnum::PlanarDirectType d, index_type layer) const {return routingCapacity(d).at(layer) / (minWireWidth().at(layer) + minWireSpacing().at(layer));}
+        index_type getLayer(std::string const& layerName) const; 
+        std::string getLayerName(index_type layer) const; 
+
         /// traverse movable node 
         MovableNodeIterator movableNodeBegin();
         MovableNodeIterator movableNodeEnd();
@@ -181,6 +222,11 @@ class PlaceDB : public DefParser::DefDataBase
         FixedNodeIterator fixedNodeEnd();
         FixedNodeConstIterator fixedNodeBegin() const;
         FixedNodeConstIterator fixedNodeEnd() const;
+        /// traverse placement blockage 
+        PlaceBlockageIterator placeBlockageBegin();
+        PlaceBlockageIterator placeBlockageEnd();
+        PlaceBlockageConstIterator placeBlockageBegin() const;
+        PlaceBlockageConstIterator placeBlockageEnd() const;
         /// traverse io pin virtual node 
         IOPinNodeIterator iopinNodeBegin();
         IOPinNodeIterator iopinNodeEnd();
@@ -224,7 +270,7 @@ class PlaceDB : public DefParser::DefDataBase
         Interval<index_type> getRowIndexRange(coordinate_type yl, coordinate_type yh) const {return Interval<index_type>(getRowIndex(yl+1), getRowIndex(yh-1));}
 
         /// \return height of a row, assume to be the same as site height 
-        coordinate_type rowHeight() const {return m_site.height();}
+        coordinate_type rowHeight() const {return m_vSite[m_coreSiteId].height();}
         /// \return the region of rows, it may be different from die area 
         Box<coordinate_type> const& rowBbox() const {return m_rowBbox;}
         coordinate_type rowXL() const {return (m_vRow.empty())? xl() : m_rowBbox.xl();}
@@ -245,9 +291,9 @@ class PlaceDB : public DefParser::DefDataBase
         void sortNodeByPlaceStatus();
 
         /// \return site width 
-        coordinate_type siteWidth() const {return m_site.width();}
+        coordinate_type siteWidth() const {return m_vSite[m_coreSiteId].width();}
         /// \return site height 
-        coordinate_type siteHeight() const {return m_site.height();}
+        coordinate_type siteHeight() const {return m_vSite[m_coreSiteId].height();}
         /// \return max displacement in database unit 
         coordinate_type maxDisplace() const {return m_maxDisplace;}
         /// \return minimum width of movable nodes 
@@ -287,8 +333,8 @@ class PlaceDB : public DefParser::DefDataBase
         virtual void lef_dividerchar_cbk(std::string const& ); 
         virtual void lef_units_cbk(LefParser::lefiUnits const& v);
         virtual void lef_manufacturing_cbk(double );
-		virtual void lef_useminspacing_cbk(LefParser::lefiUseMinSpacing const&);
-		virtual void lef_clearancemeasure_cbk(std::string const&);
+        virtual void lef_useminspacing_cbk(LefParser::lefiUseMinSpacing const&);
+        virtual void lef_clearancemeasure_cbk(std::string const&);
         virtual void lef_busbitchars_cbk(std::string const& );
         virtual void lef_layer_cbk(LefParser::lefiLayer const& );
         virtual void lef_via_cbk(LefParser::lefiVia const& );
@@ -299,8 +345,8 @@ class PlaceDB : public DefParser::DefDataBase
         virtual void lef_macro_cbk(LefParser::lefiMacro const& m);
         virtual void lef_pin_cbk(LefParser::lefiPin const& p);
         virtual void lef_obstruction_cbk(LefParser::lefiObstruction const& o);
-		virtual void lef_prop_cbk(LefParser::lefiProp const&);
-		virtual void lef_maxstackvia_cbk(LefParser::lefiMaxStackVia const&);
+        virtual void lef_prop_cbk(LefParser::lefiProp const&);
+        virtual void lef_maxstackvia_cbk(LefParser::lefiMaxStackVia const&);
         ///==== DEF Callbacks ====
         virtual void set_def_busbitchars(std::string const&);
         virtual void set_def_dividerchar(std::string const&);
@@ -316,10 +362,14 @@ class PlaceDB : public DefParser::DefDataBase
         virtual void resize_def_net(int s);
         virtual void add_def_net(DefParser::Net const& n);
         virtual void resize_def_blockage(int);
-        virtual void add_def_placement_blockage(int, int, int, int);
-        virtual void add_def_routing_blockage(int, int, int, int);
+        virtual void add_def_placement_blockage(std::vector<std::vector<int> > const&);
+        virtual void resize_def_region(int);
+        virtual void add_def_region(DefParser::Region const& r);
+        virtual void resize_def_group(int);
+        virtual void add_def_group(DefParser::Group const& g);
         virtual void end_def_design(); 
         ///==== Verilog Callbacks ==== 
+        virtual void verilog_module_declaration_cbk(std::string const& module_name, std::vector<VerilogParser::GeneralName> const& vPinName); 
         virtual void verilog_net_declare_cbk(std::string const&, VerilogParser::Range const&);
         virtual void verilog_pin_declare_cbk(std::string const&, unsigned, VerilogParser::Range const&);
         virtual void verilog_instance_cbk(std::string const&, std::string const&, std::vector<VerilogParser::NetPin> const& vNetPin);
@@ -328,11 +378,20 @@ class PlaceDB : public DefParser::DefDataBase
         virtual void resize_bookshelf_net(int n);
         virtual void resize_bookshelf_pin(int n);
         virtual void resize_bookshelf_row(int n);
+        virtual void resize_bookshelf_shapes(int n);
+        virtual void resize_bookshelf_niterminal_layers(int);
+        virtual void resize_bookshelf_blockage_layers(int);
         virtual void add_bookshelf_terminal(std::string& name, int w, int h);
-        virtual void add_bookshelf_node(std::string& name, int w, int h);
+        virtual void add_bookshelf_terminal_NI(std::string& name, int w, int h);
+        virtual void add_bookshelf_node(std::string& name, int w, int h, bool is_cell);
         virtual void add_bookshelf_net(BookshelfParser::Net const& n);
         virtual void add_bookshelf_row(BookshelfParser::Row const& r);
         virtual void set_bookshelf_node_position(std::string const& name, double x, double y, std::string const& orient, std::string const& status, bool plFlag);
+        virtual void set_bookshelf_net_weight(std::string const& name, double w); 
+        virtual void set_bookshelf_shape(BookshelfParser::NodeShape const& shape); 
+        virtual void set_bookshelf_route_info(BookshelfParser::RouteInfo const&);
+        virtual void add_bookshelf_niterminal_layer(std::string const&, std::string const&);
+        virtual void add_bookshelf_blockage_layers(std::string const&, std::vector<std::string> const&);
         virtual void set_bookshelf_design(std::string& name);
         virtual void bookshelf_end(); 
 
@@ -355,7 +414,7 @@ class PlaceDB : public DefParser::DefDataBase
         virtual void reportStatsKernel();
         /// write placement solutions 
         virtual bool write(std::string const& filename) const;
-        virtual bool write(std::string const& filename, SolutionFileFormat ff) const;
+        virtual bool write(std::string const& filename, SolutionFileFormat ff, coordinate_type const* x = NULL, coordinate_type const* y = NULL) const;
 
         /// for debug 
         virtual void printNode(index_type id) const;
@@ -380,17 +439,24 @@ class PlaceDB : public DefParser::DefDataBase
         void addPin(index_type macroPinId, Net& net, Node& node);
         /// lower level helper to addPin()
         Pin& createPin(Net& net, Node& node, SignalDirect const& direct, Point<coordinate_type> const& offset, index_type macroPinId);
+        /// add region to m_vRegion 
+        /// \param r region name 
+        /// \return index in m_vRegion and successful flag 
+        std::pair<index_type, bool> addRegion(std::string const& r);
+        /// collect nodes for groups and summarize the statistics for fence region 
+        void processGroups(); 
 
         /// kernel data for placement 
-        std::vector<Node> m_vNode; ///< instances, including movable and fixed instances, and virtual io pins (appended) 
+        std::vector<Node> m_vNode; ///< instances, including movable and fixed instances, virtual placement blockages, and virtual io pins (appended) 
         std::vector<NodeProperty> m_vNodeProperty; ///< some unimportant properties for instances, together with m_vNode
         std::vector<Net> m_vNet; ///< nets 
         std::vector<NetProperty> m_vNetProperty; ///< some unimportant properties for nets, together with m_vNet
         std::vector<Pin> m_vPin; ///< pins for instances and nets, the offset of a pin must be adjusted when a node is moved 
         std::vector<Macro> m_vMacro; ///< macros for standard cells, for io pins, virtual macros are appended  
         std::vector<Row> m_vRow; ///< placement rows 
-        std::vector<Box<coordinate_type> > m_vPlaceBlockage; ///< placement blockages 
-        Site m_site; ///< placement site 
+        std::vector<Site> m_vSite; ///< all sites defined 
+        std::vector<std::size_t> m_vSiteUsedCount; ///< count how many macros in LEF refer each site 
+        index_type m_coreSiteId; ///< id of core placement site, determine by m_vSiteUsedCount
         diearea_type m_dieArea; ///< die area, it can be larger than actual placement area 
         std::vector<bool> m_vNetIgnoreFlag; ///< whether the net should be ignored due to pins belonging to the same cell 
         std::vector<std::string> m_vDuplicateNet; ///< name of duplicate nets found in verilog file 
@@ -398,6 +464,9 @@ class PlaceDB : public DefParser::DefDataBase
         string2index_map_type m_mMacroName2Index; ///< map name of macro to index of m_vMacro
         string2index_map_type m_mNodeName2Index; ///< map instance name to index of m_vNode
         string2index_map_type m_mNetName2Index; ///< map net name to index of m_vNet 
+        string2index_map_type m_mLayerName2Index; ///< map layer name to layer 
+        std::vector<std::string> m_vLayerName; ///< layer to layer name 
+        string2index_map_type m_mSiteName2Index; ///< map site name to index of m_vSite 
 
         Box<coordinate_type> m_rowBbox; ///< bounding box of row regions, it may be different from die area  
                                         ///< different rows may have different width, this is the largest box 
@@ -407,9 +476,27 @@ class PlaceDB : public DefParser::DefDataBase
         std::size_t m_numMacro; ///< number of standard cells in the library (0~m_numMacro-1 in m_vMacro) 
         std::size_t m_numIOPin; ///< number of io pins (m_numMacro~m_numMacro+m_numIOPin-1 in m_vMacro)
         std::size_t m_numIgnoredNet; ///< number of nets ignored 
+        std::size_t m_numPlaceBlockages; ///< number of placement blockages 
     
         std::vector<index_type> m_vMovableNodeIndex; ///< movable node index 
         std::vector<index_type> m_vFixedNodeIndex; ///< fixed node index 
+        std::vector<index_type> m_vPlaceBlockageIndex; ///< placement blockages are stored in m_vNode, we record the index 
+
+        std::vector<Region> m_vRegion; ///< placement regions like FENCE or GUIDE 
+        std::vector<Group> m_vGroup; ///< cell groups for placement regions 
+
+        string2index_map_type m_mRegionName2Index; ///< map region name to index 
+        string2index_map_type m_mGroupName2Index; ///< map group name to index 
+
+        /// data for routing configuration 
+        index_type m_numRoutingGrids[3]; ///< global routing grids in X, Y and number of layers 
+        std::vector<index_type> m_vRoutingCapacity[2]; ///< horizontal and vertical capacity at each layer 
+        std::vector<index_type> m_vMinWireWidth; ///< min wire width for each layer 
+        std::vector<index_type> m_vMinWireSpacing; ///< min wire spacing for each layer 
+        std::vector<index_type> m_vViaSpacing; ///< via spacing per layer 
+        coordinate_type m_routingGridOrigin[2]; ///< Absolute coordinates of the origin of the grid (grid_lowerleft_X grid_lowerleft_Y)
+        coordinate_type m_routingTileSize[2]; ///< tile_width, tile_height
+        index_type m_routingBlockagePorosity; ///< Porosity for routing blockages (Zero implies the blockage completely blocks overlapping routing tracks. Default = 0)
 
         /// data only used in parsers
         int m_lefUnit;

@@ -251,7 +251,7 @@ class MultiRowAttr : public EnumExt<MultiRowAttrEnum::MultiRowAttrType>
 /// class SignalDirect denotes direction of signal or pins 
 struct SignalDirectEnum 
 {
-    enum SignalDirectType {INPUT, OUTPUT, INOUT, UNKNOWN};
+    enum SignalDirectType {INPUT, OUTPUT, INOUT, OUTPUT_TRISTATE, UNKNOWN};
 };
 class SignalDirect : public EnumExt<SignalDirectEnum::SignalDirectType>
 {
@@ -289,7 +289,12 @@ class SignalDirect : public EnumExt<SignalDirectEnum::SignalDirectType>
 /// class PlanarDirect denotes geometric directions 
 struct PlanarDirectEnum
 {
-    enum PlanarDirectType {HORIZONTAL, VERTICAL, UNKNOWN};
+    enum PlanarDirectType 
+    {
+        HORIZONTAL = 0, 
+        VERTICAL = 1, 
+        UNKNOWN = 2
+    };
 };
 class PlanarDirect : public EnumExt<PlanarDirectEnum::PlanarDirectType>
 {
@@ -579,6 +584,48 @@ class GlobalMoveAlgo : public EnumExt<GlobalMoveAlgoEnum::GlobalMoveAlgoType>
 			return *this;
 		}
 		GlobalMoveAlgo& operator=(std::string const& rhs)
+		{
+            this->base_type::operator=(rhs);
+			return *this;
+		}
+
+	protected:
+        virtual std::string enum2Str(enum_type const& e) const;
+        virtual enum_type str2Enum(std::string const& s) const;
+};
+
+/// class RegionEnumType denotes the region type defined in DEF 
+struct RegionTypeEnum
+{
+    enum RegionEnumType
+    {
+        FENCE = 0, 
+        GUIDE = 1, 
+        UNKNOWN = 2
+    };
+};
+class RegionType : public EnumExt<RegionTypeEnum::RegionEnumType>
+{
+	public:
+        typedef RegionTypeEnum enum_wrap_type;
+        typedef enum_wrap_type::RegionEnumType enum_type;
+        typedef EnumExt<enum_type> base_type;
+
+		RegionType() : base_type() {m_value = enum_wrap_type::UNKNOWN;}
+		RegionType(RegionType const& rhs) : base_type() {m_value = rhs.m_value;}
+		RegionType(enum_type const& rhs) : base_type() {m_value = rhs;}
+		RegionType(std::string const& rhs) : base_type() {m_value = str2Enum(rhs);}
+		RegionType& operator=(RegionType const& rhs)
+		{
+            this->base_type::operator=(rhs);
+			return *this;
+		}
+		RegionType& operator=(enum_type const& rhs)
+		{
+            this->base_type::operator=(rhs);
+			return *this;
+		}
+		RegionType& operator=(std::string const& rhs)
 		{
             this->base_type::operator=(rhs);
 			return *this;

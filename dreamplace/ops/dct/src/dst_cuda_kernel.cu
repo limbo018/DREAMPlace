@@ -2,7 +2,7 @@
 #include <math.h>
 #include <float.h>
 #include "cuda_runtime.h"
-#include "utility/src/Msg.h"
+#include "utility/src/utils.cuh"
 
 DREAMPLACE_BEGIN_NAMESPACE
 
@@ -97,56 +97,33 @@ void negateOddEntriesCudaLauncher(
 }
 
 #define REGISTER_FLIP_KERNEL_LAUNCHER(type) \
-    void instantiateComputeFlipLauncher(\
+    template void computeFlipCudaLauncher<type>(\
         const type* x, \
         const int M, \
         const int N, \
         type* y \
-        ) \
-    { \
-        return computeFlipCudaLauncher<type>( \
-                x, \
-                M, \
-                N, \
-                y \
-                ); \
-    }
+        ); 
 
 REGISTER_FLIP_KERNEL_LAUNCHER(float);
 REGISTER_FLIP_KERNEL_LAUNCHER(double);
 
 #define REGISTER_FLIPANDSHIFT_KERNEL_LAUNCHER(type) \
-    void instantiateComputeFlipAndShiftLauncher(\
+    template void computeFlipAndShiftCudaLauncher<type>(\
         const type* x, \
         const int M, \
         const int N, \
         type* y \
-        ) \
-    { \
-        return computeFlipAndShiftCudaLauncher<type>( \
-                x, \
-                M, \
-                N, \
-                y \
-                ); \
-    }
+        ); 
 
 REGISTER_FLIPANDSHIFT_KERNEL_LAUNCHER(float);
 REGISTER_FLIPANDSHIFT_KERNEL_LAUNCHER(double);
 
 #define REGISTER_NEGATE_KERNEL_LAUNCHER(type) \
-    void instantiateNegateOddEntriesCudaLauncher(\
+    template void negateOddEntriesCudaLauncher<type>(\
         type* x, \
         const int M, \
         const int N \
-        ) \
-    { \
-        return negateOddEntriesCudaLauncher<type>( \
-                x, \
-                M, \
-                N \
-                ); \
-    }
+        ); 
 
 REGISTER_NEGATE_KERNEL_LAUNCHER(float);
 REGISTER_NEGATE_KERNEL_LAUNCHER(double);

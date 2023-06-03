@@ -9,7 +9,9 @@ DREAMPLACE_BEGIN_NAMESPACE
 
 at::Tensor dst_forward(
         at::Tensor x,
-        at::Tensor expk) 
+        at::Tensor expk,
+		int num_threads
+		) 
 {
     auto N = x.size(-1);
     auto M = x.numel()/N; 
@@ -17,21 +19,23 @@ at::Tensor dst_forward(
     //std::cout << "x\n" << x << "\n";
     auto x_reorder = x.clone();
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "dst_forward", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(x, "dst_forward", [&] {
             negateOddEntries<scalar_t>(
-                    x_reorder.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(x_reorder, scalar_t), 
                     M, 
-                    N
+                    N,
+					num_threads
                     );
 
-            auto y = dct_forward(x_reorder, expk);
+            auto y = dct_forward(x_reorder, expk, num_threads);
             //std::cout << "y\n" << y << "\n";
 
             computeFlip<scalar_t>(
-                    y.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(y, scalar_t), 
                     M, 
                     N, 
-                    x_reorder.data<scalar_t>()
+                    DREAMPLACE_TENSOR_DATA_PTR(x_reorder, scalar_t), 
+					num_threads
                     );
             //std::cout << "z\n" << y << "\n";
             });
@@ -41,7 +45,9 @@ at::Tensor dst_forward(
 
 at::Tensor idst_forward(
         at::Tensor x,
-        at::Tensor expk) 
+        at::Tensor expk,
+		int num_threads
+		) 
 {
     auto N = x.size(-1);
     auto M = x.numel()/N; 
@@ -50,21 +56,23 @@ at::Tensor idst_forward(
     auto x_reorder = at::empty_like(x);
     auto y = at::empty_like(x);
 
-    AT_DISPATCH_FLOATING_TYPES(x.type(), "idst_forward", [&] {
+    DREAMPLACE_DISPATCH_FLOATING_TYPES(x, "idst_forward", [&] {
             computeFlip<scalar_t>(
-                    x.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(x, scalar_t), 
                     M, 
                     N, 
-                    x_reorder.data<scalar_t>()
+                    DREAMPLACE_TENSOR_DATA_PTR(x_reorder, scalar_t), 
+					num_threads
                     );
 
-            y = idct_forward(x_reorder, expk);
+            y = idct_forward(x_reorder, expk, num_threads);
             //std::cout << "y\n" << y << "\n";
 
             negateOddEntries<scalar_t>(
-                    y.data<scalar_t>(), 
+                    DREAMPLACE_TENSOR_DATA_PTR(y, scalar_t), 
                     M, 
-                    N
+                    N, 
+					num_threads
                     );
             //std::cout << "z\n" << y << "\n";
             });
