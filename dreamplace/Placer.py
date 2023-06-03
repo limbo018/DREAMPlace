@@ -19,6 +19,7 @@ if root_dir not in sys.path:
 import dreamplace.configure as configure
 import Params
 import PlaceDB
+import Timer
 import NonLinearPlace
 import pdb
 
@@ -39,9 +40,26 @@ def place(params):
     placedb(params)
     logging.info("reading database takes %.2f seconds" % (time.time() - tt))
 
+    # Read timing constraints provided in the benchmarks into out timing analysis
+    # engine and then pass the timer into the placement core.
+    timer = None
+    if params.timing_opt_flag:
+        tt = time.time()
+        timer = Timer.Timer()
+        timer(params, placedb)
+        # This must be done to explicitly execute the parser builders.
+        # The parsers in OpenTimer are all in lazy mode.
+        timer.update_timing()
+        logging.info("reading timer takes %.2f seconds" % (time.time() - tt))
+
+        # Dump example here. Some dump functions are defined.
+        # Check instance methods defined in Timer.py for debugging.
+        # timer.dump_pin_cap("pin_caps.txt")
+        # timer.dump_graph("timing_graph.txt")
+
     # solve placement
     tt = time.time()
-    placer = NonLinearPlace.NonLinearPlace(params, placedb)
+    placer = NonLinearPlace.NonLinearPlace(params, placedb, timer)
     logging.info("non-linear placement initialization takes %.2f seconds" %
                  (time.time() - tt))
     metrics = placer(params, placedb)

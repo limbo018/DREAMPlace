@@ -15,6 +15,7 @@ import torch
 import gzip
 import copy
 import matplotlib.pyplot as plt
+import inspect
 
 if sys.version_info[0] < 3:
     import cPickle as pickle
@@ -34,13 +35,14 @@ class NonLinearPlace(BasicPlace.BasicPlace):
     It takes parameters and placement database and runs placement flow.
     """
 
-    def __init__(self, params, placedb):
+    def __init__(self, params, placedb, timer):
         """
         @brief initialization.
         @param params parameters
         @param placedb placement database
+        @param timer the timing analysis engine
         """
-        super(NonLinearPlace, self).__init__(params, placedb)
+        super(NonLinearPlace, self).__init__(params, placedb, timer)
 
     def __call__(self, params, placedb):
         """
@@ -50,6 +52,9 @@ class NonLinearPlace(BasicPlace.BasicPlace):
         """
         iteration = 0
         all_metrics = []
+        timing_op = self.op_collections.timing_op
+        if params.timing_opt_flag:
+            time_unit = timing_op.timer.time_unit()
 
         # global placement
         if params.global_place_flag:
@@ -274,7 +279,13 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                                 % ", ".join(["%.3E" % i for i in model.density_weight.cpu().numpy().tolist()])
                             )
 
-                    optimizer.zero_grad()
+                    # For backward compatibility
+                    # PyTorch 1.7 introduced zero_grad(set_to_none=False)
+                    # PyTorch 2.0 changed set_to_none=True
+                    if "set_to_none" in inspect.signature(optimizer.zero_grad).parameters: 
+                        optimizer.zero_grad(set_to_none=False)
+                    else:
+                        optimizer.zero_grad()
 
                     # t1 = time.time()
                     cur_metric.evaluate(placedb, eval_ops, pos, model.data_collections)
@@ -309,6 +320,37 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         optimizer.step()
 
                     logging.info("optimizer step %.3f ms" % ((time.time() - t3) * 1000))
+
+                    # Perform timing-opt.
+                    if params.global_place_flag and params.timing_opt_flag and \
+                        params.enable_net_weighting and \
+                        iteration > 500 and iteration % 15 == 0:
+                        # Take the timing operator from the operator collections.
+                        cur_pos = self.pos[0].data.clone().cpu().numpy()
+                        # The timing operator has already integrated timer as its
+                        # instance variable, so it only takes one argument.
+                        timing_op(self.pos[0].data.clone().cpu())
+                        timing_op.timer.update_timing()
+                        npaths = max(1, int(placedb.num_nets * 0.03))
+
+                        # Report timing step.
+                        # Temporary solution: modify net weights
+                        beg = time.time()
+                        timing_op.update_net_weights(
+                            max_net_weight=placedb.max_net_weight,
+                            n=npaths)
+                        if self.device != torch.device("cpu"):
+                            # Copy weights from placedb.net_weights to device.
+                            self.data_collections.net_weights.copy_(
+                                torch.from_numpy(placedb.net_weights))
+                        logging.info("net-weight update step %.3f ms" % \
+                            ((time.time() - beg) * 1000))
+
+                        # Report tns and wns in each timing feedback call.
+                        # Note that OpenTimer considers early,late,rise,fall for tns/wns.
+                        # The following values are for reference.
+                        cur_metric.tns = timing_op.timer.report_tns_elw(split=1) / (time_unit * 1e17)
+                        cur_metric.wns = timing_op.timer.report_wns(split=1) / (time_unit * 1e15)
 
                     # nesterov has already computed the objective of the next step
                     if optimizer_name.lower() == "nesterov":
@@ -349,18 +391,19 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         0
                     ].overflow.item()
                     if wl_ratio > threshold * 1.2:
-                        if overflow_ratio > threshold:
-                            logging.warn(
+                        # this condition is not suitable for routability-driven opt with cell inflation
+                        if (not params.routability_opt_flag) and overflow_ratio > threshold:
+                            logging.warning(
                                 f"Divergence detected: overflow increases too much than best overflow ({overflow_ratio:.4f} > {threshold:.4f})"
                             )
                             return True
                         elif overflow_range / overflow_mean < threshold:
-                            logging.warn(
+                            logging.warning(
                                 f"Divergence detected: overflow plateau ({overflow_range/overflow_mean:.4f} < {threshold:.4f})"
                             )
                             return True
                         elif overflow_diff > 0.6:
-                            logging.warn(
+                            logging.warning(
                                 f"Divergence detected: overflow fluctuate too frequently ({overflow_diff:.2f} > 0.6)"
                             )
                             return True
@@ -431,12 +474,17 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         for Lsub_step in range(model.Lsub_iteration):
                             ## divergence threshold should decrease as overflow decreases
                             ## only detect divergence when overflow is relatively low but not too low
+                            div_flag = check_divergence(
+                                # sometimes maybe too aggressive...
+                                divergence_list, window=3, threshold=0.1 * overflow_list[-1])
+                            if params.timing_opt_flag:
+                                # currently do not check divergence in timing-driven placement
+                                # TODO: a better way for divergence detection and roll-back for tdp.
+                                div_flag = False
                             if (
                                 len(placedb.regions) == 0
                                 and params.stop_overflow * 1.1 < overflow_list[-1] < params.stop_overflow * 4
-                                and check_divergence(
-                                    divergence_list, window=3, threshold=0.01 * overflow_list[-1]
-                                )
+                                and div_flag
                             ):
                                 self.pos[0].data.copy_(best_pos[0].data)
                                 stop_placement = 1
@@ -652,6 +700,24 @@ class NonLinearPlace(BasicPlace.BasicPlace):
             cur_metric = EvalMetrics.EvalMetrics(iteration)
             all_metrics.append(cur_metric)
             cur_metric.evaluate(placedb, {"hpwl": self.op_collections.hpwl_op}, self.pos[0])
+
+            # perform an additional timing analysis on the legalized solution. 
+            # sta after legalization is not needed anymore.
+            logging.info("additional sta after legalization")
+            if params.timing_opt_flag:
+                timing_op = self.op_collections.timing_op
+     
+                # The timing operator has already integrated timer as its
+                # instance variable, so it only takes one argument.
+                timing_op(self.pos[0].data.clone().cpu())
+                timing_op.timer.update_timing()
+
+                # Report tns and wns in each timing feedback call.
+                # Note that OpenTimer considers early,late,rise,fall for tns/wns.
+                # The following values are for reference.
+                cur_metric.tns = timing_op.timer.report_tns_elw(split=1) / (time_unit * 1e17)
+                cur_metric.wns = timing_op.timer.report_wns(split=1) / (time_unit * 1e15)
+
             logging.info(cur_metric)
             iteration += 1
 

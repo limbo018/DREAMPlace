@@ -45,6 +45,9 @@ class Pin : public Object
 
         SignalDirect const& direct() const {return m_direct;}
         Pin& setDirect(SignalDirect const& d) {m_direct = d; return *this;} 
+
+        std::string name() const { return m_name; }
+        Pin& setName(std::string const& n) { m_name = n; return *this; }
     protected:
         void copy(Pin const& rhs);
 
@@ -53,6 +56,7 @@ class Pin : public Object
         index_type m_netId; ///< corresponding net 
         point_type m_offset; ///< offset based on the origin of node 
         SignalDirect m_direct; ///< direction of signal 
+        std::string m_name; ///< name of this pin
 };
 
 inline Pin::Pin() 
@@ -62,6 +66,7 @@ inline Pin::Pin()
     , m_netId(std::numeric_limits<Pin::index_type>::max())
     , m_offset()
     , m_direct()
+    , m_name()
 {
 }
 inline Pin::Pin(Pin const& rhs)
@@ -85,6 +90,7 @@ inline void Pin::copy(Pin const& rhs)
     m_netId = rhs.m_netId; 
     m_offset = rhs.m_offset; 
     m_direct = rhs.m_direct;
+    m_name = rhs.m_name;
 }
 
 

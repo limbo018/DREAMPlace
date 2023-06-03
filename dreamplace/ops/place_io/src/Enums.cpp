@@ -6,6 +6,7 @@
  ************************************************************************/
 
 #include "Enums.h"
+#include <typeinfo>
 
 DREAMPLACE_BEGIN_NAMESPACE
 
@@ -64,7 +65,7 @@ Orient::enum_type Orient::str2Enum(std::string const& s) const
     std::map<std::string, enum_type>::const_iterator found = mStr2Enum.find(s);
     if (found == mStr2Enum.end())
     {
-        dreamplacePrint(kWARN, "%s unknown enum type %s, set to UNKNOWN\n", __func__, s.c_str());
+        dreamplacePrint(kWARN, "%s::%s unknown enum type %s, set to UNKNOWN\n", typeid(*this).name(), __func__, s.c_str());
         return enum_wrap_type::UNKNOWN; 
     }
     else 
@@ -110,7 +111,7 @@ PlaceStatus::enum_type PlaceStatus::str2Enum(std::string const& s) const
     std::map<std::string, enum_type>::const_iterator found = mStr2Enum.find(s);
     if (found == mStr2Enum.end())
     {
-        dreamplacePrint(kWARN, "%s unknown enum type %s, set to UNKNOWN\n", __func__, s.c_str());
+        dreamplacePrint(kWARN, "%s::%s unknown enum type %s, set to UNKNOWN\n", typeid(*this).name(), __func__, s.c_str());
         return enum_wrap_type::UNKNOWN; 
     }
     else 
@@ -156,7 +157,7 @@ MultiRowAttr::enum_type MultiRowAttr::str2Enum(std::string const& s) const
     std::map<std::string, enum_type>::const_iterator found = mStr2Enum.find(s);
     if (found == mStr2Enum.end())
     {
-        dreamplacePrint(kWARN, "%s unknown enum type %s, set to UNKNOWN\n", __func__, s.c_str());
+        dreamplacePrint(kWARN, "%s::%s unknown enum type %s, set to UNKNOWN\n", typeid(*this).name(), __func__, s.c_str());
         return enum_wrap_type::UNKNOWN; 
     }
     else 
@@ -202,7 +203,7 @@ SignalDirect::enum_type SignalDirect::str2Enum(std::string const& s) const
     std::map<std::string, enum_type>::const_iterator found = mStr2Enum.find(s);
     if (found == mStr2Enum.end())
     {
-        dreamplacePrint(kWARN, "%s unknown enum type %s, set to UNKNOWN\n", __func__, s.c_str());
+        dreamplacePrint(kWARN, "%s::%s unknown enum type %s, set to UNKNOWN\n", typeid(*this).name(), __func__, s.c_str());
         return enum_wrap_type::UNKNOWN; 
     }
     else 
@@ -244,7 +245,7 @@ PlanarDirect::enum_type PlanarDirect::str2Enum(std::string const& s) const
     std::map<std::string, enum_type>::const_iterator found = mStr2Enum.find(s);
     if (found == mStr2Enum.end())
     {
-        dreamplacePrint(kWARN, "%s unknown enum type %s, set to UNKNOWN\n", __func__, s.c_str());
+        dreamplacePrint(kWARN, "%s::%s unknown enum type %s, set to UNKNOWN\n", typeid(*this).name(), __func__, s.c_str());
         return enum_wrap_type::UNKNOWN; 
     }
     else 
@@ -294,7 +295,7 @@ ReportFlag::enum_type ReportFlag::str2Enum(std::string const& s) const
     std::map<std::string, enum_type>::const_iterator found = mStr2Enum.find(s);
     if (found == mStr2Enum.end())
     {
-        dreamplacePrint(kWARN, "%s unknown enum type %s, set to UNKNOWN\n", __func__, s.c_str());
+        dreamplacePrint(kWARN, "%s::%s unknown enum type %s, set to UNKNOWN\n", typeid(*this).name(), __func__, s.c_str());
         return enum_wrap_type::UNKNOWN; 
     }
     else 
@@ -347,7 +348,7 @@ RowPlaceSolver::enum_type RowPlaceSolver::str2Enum(std::string const& s) const
     std::map<std::string, enum_type>::const_iterator found = mStr2Enum.find(s);
     if (found == mStr2Enum.end())
     {
-        dreamplacePrint(kWARN, "%s unknown enum type %s, set to UNKNOWN\n", __func__, s.c_str());
+        dreamplacePrint(kWARN, "%s::%s unknown enum type %s, set to UNKNOWN\n", typeid(*this).name(), __func__, s.c_str());
         return enum_wrap_type::UNKNOWN; 
     }
     else 
@@ -392,7 +393,7 @@ MinCostFlowSolver::enum_type MinCostFlowSolver::str2Enum(std::string const& s) c
     std::map<std::string, enum_type>::const_iterator found = mStr2Enum.find(s);
     if (found == mStr2Enum.end())
     {
-        dreamplacePrint(kWARN, "%s unknown enum type %s, set to UNKNOWN\n", __func__, s.c_str());
+        dreamplacePrint(kWARN, "%s::%s unknown enum type %s, set to UNKNOWN\n", typeid(*this).name(), __func__, s.c_str());
         return enum_wrap_type::UNKNOWN; 
     }
     else 
@@ -433,7 +434,7 @@ RegionAssignSolver::enum_type RegionAssignSolver::str2Enum(std::string const& s)
     std::map<std::string, enum_type>::const_iterator found = mStr2Enum.find(s);
     if (found == mStr2Enum.end())
     {
-        dreamplacePrint(kWARN, "%s unknown enum type %s, set to UNKNOWN\n", __func__, s.c_str());
+        dreamplacePrint(kWARN, "%s::%s unknown enum type %s, set to UNKNOWN\n", typeid(*this).name(), __func__, s.c_str());
         return enum_wrap_type::UNKNOWN; 
     }
     else 
@@ -478,7 +479,7 @@ GlobalMoveEffort::enum_type GlobalMoveEffort::str2Enum(std::string const& s) con
     std::map<std::string, enum_type>::const_iterator found = mStr2Enum.find(s);
     if (found == mStr2Enum.end())
     {
-        dreamplacePrint(kWARN, "%s unknown enum type %s, set to UNKNOWN\n", __func__, s.c_str());
+        dreamplacePrint(kWARN, "%s::%s unknown enum type %s, set to UNKNOWN\n", typeid(*this).name(), __func__, s.c_str());
         return enum_wrap_type::UNKNOWN; 
     }
     else 
@@ -519,7 +520,7 @@ GlobalMoveAlgo::enum_type GlobalMoveAlgo::str2Enum(std::string const& s) const
     std::map<std::string, enum_type>::const_iterator found = mStr2Enum.find(s);
     if (found == mStr2Enum.end())
     {
-        dreamplacePrint(kWARN, "%s unknown enum type %s, set to UNKNOWN\n", __func__, s.c_str());
+        dreamplacePrint(kWARN, "%s::%s unknown enum type %s, set to UNKNOWN\n", typeid(*this).name(), __func__, s.c_str());
         return enum_wrap_type::UNKNOWN; 
     }
     else 
@@ -560,7 +561,7 @@ RegionType::enum_type RegionType::str2Enum(std::string const& s) const
     std::map<std::string, enum_type>::const_iterator found = mStr2Enum.find(s);
     if (found == mStr2Enum.end())
     {
-        dreamplacePrint(kWARN, "%s unknown enum type %s, set to UNKNOWN\n", __func__, s.c_str());
+        dreamplacePrint(kWARN, "%s::%s unknown enum type %s, set to UNKNOWN\n", typeid(*this).name(), __func__, s.c_str());
         return enum_wrap_type::UNKNOWN; 
     }
     else 

@@ -25,8 +25,12 @@ add_subdirectory(k_reorder)
 # routing congestion operator
 add_subdirectory(pin_utilization)
 add_subdirectory(rudy)
+add_subdirectory(pinrudy)
 add_subdirectory(nctugr_binary)
 add_subdirectory(adjust_node_area)
+# timing operator
+add_subdirectory(pin_weight_sum)
+add_subdirectory(timing)
 
 file(GLOB INSTALL_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/*.py")
 install(

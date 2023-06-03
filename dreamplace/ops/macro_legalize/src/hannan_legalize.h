@@ -293,8 +293,8 @@ bool hannanLegalizeLauncher(LegalizationDB<T> db, std::vector<int>& macros, cons
         node_size_y.reserve(db.num_nodes);
         for (auto node_id : fixed_macros)
         {
-            vx.push_back(x[node_id]); 
-            vy.push_back(y[node_id]); 
+            vx.push_back(db.x[node_id]); 
+            vy.push_back(db.y[node_id]); 
             node_size_x.push_back(db.node_size_x[node_id]); 
             node_size_y.push_back(db.node_size_y[node_id]); 
         }

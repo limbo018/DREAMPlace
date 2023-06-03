@@ -37,10 +37,10 @@ class PreconditionOp:
     """Preconditioning engine is critical for convergence.
     Need to be carefully designed.
     """
-
-    def __init__(self, placedb, data_collections):
+    def __init__(self, placedb, data_collections, op_collections):
         self.placedb = placedb
         self.data_collections = data_collections
+        self.op_collections = op_collections
         self.iteration = 0
         self.alpha = 1.0
         self.best_overflow = None
@@ -70,9 +70,13 @@ class PreconditionOp:
         It is tricky for this parameter to increase.
         """
         with torch.no_grad():
+            # The preconditioning step in python is time-consuming, as in each gradient
+            # pass, the total net weight should be re-calculated.
+            net_weights = self.placedb.net_weights
+            sum_pin_weights_in_nodes = self.op_collections.pws_op(net_weights)
+            sum_pin_weights_in_nodes = sum_pin_weights_in_nodes.to(self.placedb.device)
             if density_weight.size(0) == 1:
-                precond = (
-                    self.data_collections.num_pins_in_nodes
+                precond = (sum_pin_weights_in_nodes
                     + self.alpha * density_weight * self.data_collections.node_areas
                 )
             else:
@@ -93,7 +97,7 @@ class PreconditionOp:
                     - self.placedb.num_filler_nodes
                     + filler_end
                 ] *= density_weight[-1]
-                precond = self.data_collections.num_pins_in_nodes + self.alpha * node_areas
+                precond = sum_pin_weights_in_nodes + self.alpha * node_areas
 
             precond.clamp_(min=1.0)
             grad[0 : self.placedb.num_nodes].div_(precond)
@@ -113,12 +117,7 @@ class PreconditionOp:
             self.iteration += 1
 
             # only work in benchmarks without fence region, assume overflow has been updated
-            if (
-                len(self.placedb.regions) > 0
-                and self.overflows
-                and self.overflows[-1] < 0.3
-                and self.alpha < 1024
-            ):
+            if len(self.placedb.regions) > 0 and self.overflows and self.overflows[-1].max() < 0.3 and self.alpha < 1024:
                 if (self.iteration % 20) == 0:
                     self.alpha *= 2
                     logging.info(
@@ -191,10 +190,10 @@ class PlaceObj(nn.Module):
                 dtype=self.data_collections.pos[0].dtype,
                 device=self.data_collections.pos[0].device)
         ### Note: even for multi-electric fields, they use the same gamma
-        num_bins_x = global_place_params["num_bins_x"] if global_place_params[
-            "num_bins_x"] else placedb.num_bins_x
-        num_bins_y = global_place_params["num_bins_y"] if global_place_params[
-            "num_bins_y"] else placedb.num_bins_y
+        num_bins_x = global_place_params["num_bins_x"] if "num_bins_x" in global_place_params and global_place_params["num_bins_x"] > 1 else placedb.num_bins_x
+        num_bins_y = global_place_params["num_bins_y"] if "num_bins_y" in global_place_params and global_place_params["num_bins_y"] > 1 else placedb.num_bins_y
+        name = "Global placement: %dx%d bins by default" % (num_bins_x, num_bins_y)
+        logging.info(name)
         self.num_bins_x = num_bins_x
         self.num_bins_y = num_bins_y
         self.bin_size_x = (placedb.xh - placedb.xl) / num_bins_x
@@ -240,7 +239,7 @@ class PlaceObj(nn.Module):
         self.op_collections.update_density_weight_op = self.build_update_density_weight(
             params, placedb)
         self.op_collections.precondition_op = self.build_precondition(
-            params, placedb, self.data_collections)
+            params, placedb, self.data_collections, self.op_collections)
         self.op_collections.noise_op = self.build_noise(
             params, placedb, self.data_collections)
         if params.routability_opt_flag:
@@ -833,7 +832,7 @@ class PlaceObj(nn.Module):
                 self.density_weight *= mu
 
         def update_density_weight_op_overflow(cur_metric, prev_metric, iteration):
-            assert self.quad_penalty == True, "[Error] density weight update based on overflow only works for quadratic density penalty"
+            assert self.quad_penalty == True, logging.error("density weight update based on overflow only works for quadratic density penalty")
             ### based on overflow
             ### stop updating if a region has lower overflow than stop overflow
             with torch.no_grad():
@@ -861,10 +860,10 @@ class PlaceObj(nn.Module):
                 self.density_weight_step_size *= rate
 
         if not self.quad_penalty and algo == "overflow":
-            logging.warn("quadratic density penalty is disabled, density weight update is forced to be based on HPWL")
+            logging.warning("quadratic density penalty is disabled, density weight update is forced to be based on HPWL")
             algo = "hpwl"
         if len(self.placedb.regions) == 0 and algo == "overflow":
-            logging.warn("for benchmark without fence region, density weight update is forced to be based on HPWL")
+            logging.warning("for benchmark without fence region, density weight update is forced to be based on HPWL")
             algo = "hpwl"
 
         update_density_weight_op = {"hpwl":update_density_weight_op_hpwl,
@@ -921,15 +920,16 @@ class PlaceObj(nn.Module):
 
         return noise_op
 
-    def build_precondition(self, params, placedb, data_collections):
+    def build_precondition(self, params, placedb,
+                           data_collections, op_collections):
         """
         @brief preconditioning to gradient
         @param params parameters
         @param placedb placement database
         @param data_collections a collection of data and variables required for constructing ops
+        @param op_collections a collection of all ops
         """
-
-        return PreconditionOp(placedb, data_collections)
+        return PreconditionOp(placedb, data_collections, op_collections)
 
     def build_route_utilization_map(self, params, placedb, data_collections):
         """
@@ -953,7 +953,8 @@ class PlaceObj(nn.Module):
             initial_horizontal_utilization_map=data_collections.
             initial_horizontal_utilization_map,
             initial_vertical_utilization_map=data_collections.
-            initial_vertical_utilization_map)
+            initial_vertical_utilization_map,
+            deterministic_flag=params.deterministic_flag)
 
         def route_utilization_map_op(pos):
             pin_pos = self.op_collections.pin_pos_op(pos)
@@ -982,7 +983,8 @@ class PlaceObj(nn.Module):
             num_bins_x=placedb.num_routing_grids_x,
             num_bins_y=placedb.num_routing_grids_y,
             unit_pin_capacity=data_collections.unit_pin_capacity,
-            pin_stretch_ratio=params.pin_stretch_ratio)
+            pin_stretch_ratio=params.pin_stretch_ratio,
+            deterministic_flag=params.deterministic_flag)
 
     def build_nctugr_congestion_map(self, params, placedb, data_collections):
         """

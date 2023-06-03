@@ -184,8 +184,8 @@ class ElectricOverflow(nn.Module):
                 self.movable_macro_mask] = self.target_density
 
         # compute maximum impacted bins
-        self.num_bins_x = int(math.ceil((self.xh - self.xl) / self.bin_size_x))
-        self.num_bins_y = int(math.ceil((self.yh - self.yl) / self.bin_size_y))
+        self.num_bins_x = int(round((self.xh - self.xl) / self.bin_size_x))
+        self.num_bins_y = int(round((self.yh - self.yl) / self.bin_size_y))
         if self.num_movable_nodes:
             self.num_movable_impacted_bins_x = int(
                 ((self.node_size_x[:self.num_movable_nodes].max() +

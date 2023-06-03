@@ -2,9 +2,13 @@
 # @author Zizheng Guo
 # @brief Use CMake to compile PyTorch extensions
 
+# Activate new FindPython mode, specified in pybind11Config.cmake.in...
+# This one is recommended from CMake 3.12+.
+# It should try to find the Python associated with the environment variable.
+find_package(Python COMPONENTS Interpreter Development)
 add_subdirectory(thirdparty/pybind11)
 
-execute_process(COMMAND ${PYTHON_EXECUTABLE} -c 
+execute_process(COMMAND ${Python_EXECUTABLE} -c 
   "import torch; print(torch.__path__[0]); print(int(torch.cuda.is_available())); print(torch.__version__);" 
   OUTPUT_VARIABLE TORCH_OUTPUT OUTPUT_STRIP_TRAILING_WHITESPACE)
 string(REPLACE "\n" ";" TORCH_OUTPUT_LIST ${TORCH_OUTPUT})
@@ -12,15 +16,15 @@ list(GET TORCH_OUTPUT_LIST 0 TORCH_INSTALL_PREFIX)
 list(GET TORCH_OUTPUT_LIST 1 TORCH_ENABLE_CUDA)
 list(GET TORCH_OUTPUT_LIST 2 TORCH_VERSION)
 string(REPLACE "." ";" TORCH_VERSION_LIST ${TORCH_VERSION})
-list(GET TORCH_VERSION_LIST 0 TORCH_MAJOR_VERSION)
-list(GET TORCH_VERSION_LIST 1 TORCH_MINOR_VERSION)
+list(GET TORCH_VERSION_LIST 0 TORCH_VERSION_MAJOR)
+list(GET TORCH_VERSION_LIST 1 TORCH_VERSION_MINOR)
 
 message(STATUS TORCH_INSTALL_PREFIX=${TORCH_INSTALL_PREFIX})
-message(STATUS TORCH_VERSION=${TORCH_MAJOR_VERSION}.${TORCH_MINOR_VERSION})
+message(STATUS TORCH_VERSION=${TORCH_VERSION_MAJOR}.${TORCH_VERSION_MINOR})
 
-if ("${TORCH_MAJOR_VERSION}.${TORCH_MINOR_VERSION}" VERSION_LESS 1.6)
+if ("${TORCH_VERSION_MAJOR}.${TORCH_VERSION_MINOR}" VERSION_LESS 1.6)
   message(SEND_ERROR "require PyTorch version >=1.6")
-#elseif ("${TORCH_MAJOR_VERSION}.${TORCH_MINOR_VERSION}" VERSION_GREATER_EQUAL 1.8)
+#elseif ("${TORCH_VERSION_MAJOR}.${TORCH_VERSION_MINOR}" VERSION_GREATER_EQUAL 1.8)
 #  message(SEND_ERROR "require PyTorch version < 1.8")
 endif()
 
@@ -81,8 +85,8 @@ function(add_torch_extension target_name)
   target_link_libraries(${target_name} ${ARG_EXTRA_LINK_LIBRARIES} torch pybind11::module)
   target_compile_definitions(${target_name} PRIVATE 
     TORCH_EXTENSION_NAME=${target_name}
-    TORCH_MAJOR_VERSION=${TORCH_MAJOR_VERSION}
-    TORCH_MINOR_VERSION=${TORCH_MINOR_VERSION}
+    TORCH_VERSION_MAJOR=${TORCH_VERSION_MAJOR}
+    TORCH_VERSION_MINOR=${TORCH_VERSION_MINOR}
     ENABLE_CUDA=${TORCH_ENABLE_CUDA}
     ${ARG_EXTRA_DEFINITIONS})
   set_target_properties(${target_name} PROPERTIES 
@@ -125,8 +129,8 @@ function(add_pytorch_extension target_name)
   endif()
   target_compile_definitions(${target_name} PRIVATE 
     TORCH_EXTENSION_NAME=${target_name}
-    TORCH_MAJOR_VERSION=${TORCH_MAJOR_VERSION}
-    TORCH_MINOR_VERSION=${TORCH_MINOR_VERSION}
+    TORCH_VERSION_MAJOR=${TORCH_VERSION_MAJOR}
+    TORCH_VERSION_MINOR=${TORCH_VERSION_MINOR}
     ENABLE_CUDA=${TORCH_ENABLE_CUDA}
     ${ARG_EXTRA_DEFINITIONS})
 endfunction()

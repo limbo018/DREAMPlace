@@ -43,18 +43,24 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
   IEEE/ACM International Conference on Computer-Aided Design (ICCAD), Nov 2-5, 2020
   ([preprint](http://yibolin.com/publications/papers/PLACE_ICCAD2020_Gu.pdf))
 
+* [Peiyu Liao](https://enzoleo.github.io), [Siting Liu](https://lusica1031.github.io), Zhitang Chen, Wenlong Lv, [Yibo Lin](http://yibolin.com) and [Bei Yu](https://www.cse.cuhk.edu.hk/~byu/), 
+  "**DREAMPlace 4.0: Timing-driven Global Placement with Momentum-based Net Weighting**", 
+  IEEE/ACM Proceedings Design, Automation and Test in Eurpoe (DATE), Antwerp, Belgium, Mar 14-23, 2022
+  ([preprint](https://yibolin.com/publications/papers/PLACE_DATE2022_Liao.pdf))
+
 # Dependency 
 
-- Python 3.5/3.6/3.7/3.8
+- [Python](https://www.python.org/) 3.5/3.6/3.7/3.8/3.9
 
-- [Pytorch](https://pytorch.org/) 1.6/1.7/1.8
+- [Pytorch](https://pytorch.org/) 1.6/1.7/1.8/2.0
     - Other versions may also work, but not tested
 
 - [GCC](https://gcc.gnu.org/)
-    - Recommend GCC 5.1 or later. 
+    - Recommend GCC 7.5 (with `c++17` support).
+    - Do not recommend GCC 9 or later due to backward compatibility issues. 
     - Other compilers may also work, but not tested. 
 
-- [Boost](https://www.boost.org)
+- [Boost](https://www.boost.org) >= 1.55.0
     - Need to install and visible for linking
   
 - [Bison](https://www.gnu.org/software/bison) >= 3.3
@@ -64,6 +70,10 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
     - Integrated as a git submodule
 
 - [Flute](https://doi.org/10.1109/TCAD.2007.907068)
+    - Integrated as a submodule
+
+- [OpenTimer](https://github.com/OpenTimer/OpenTimer)
+    - [Modified version](https://github.com/enzoleo/OpenTimer) for timing optimization
     - Integrated as a submodule
 
 - [CUB](https://github.com/NVlabs/cub)
@@ -211,40 +221,14 @@ The list of options as follows will be shown.
 | def_input                        | required for LEF/DEF    | input DEF file                                                                                                                                                    |
 | verilog_input                    | optional for LEF/DEF    | input VERILOG file, provide circuit netlist information if it is not included in DEF file                                                                         |
 | gpu                              | 1                       | enable gpu or not                                                                                                                                                 |
-| num_bins_x                       | 512                     | number of bins in horizontal direction                                                                                                                            |
-| num_bins_y                       | 512                     | number of bins in vertical direction                                                                                                                              |
-| global_place_stages              | required                | global placement configurations of each stage, a dictionary of {"num_bins_x", "num_bins_y", "iteration", "learning_rate"}, learning_rate is relative to bin size  |
-| target_density                   | 0.8                     | target density                                                                                                                                                    |
-| density_weight                   | 1.0                     | initial weight of density cost                                                                                                                                    |
-| gamma                            | 0.5                     | initial coefficient for log-sum-exp and weighted-average wirelength                                                                                               |
-| random_seed                      | 1000                    | random seed                                                                                                                                                       |
-| result_dir                       | results                 | result directory for output                                                                                                                                       |
-| scale_factor                     | 0.0                     | scale factor to avoid numerical overflow; 0.0 means not set                                                                                                       |
-| ignore_net_degree                | 100                     | ignore net degree larger than some value                                                                                                                          |
-| gp_noise_ratio                   | 0.025                   | noise to initial positions for global placement                                                                                                                   |
-| enable_fillers                   | 1                       | enable filler cells                                                                                                                                               |
-| global_place_flag                | 1                       | whether use global placement                                                                                                                                      |
-| legalize_flag                    | 1                       | whether use internal legalization                                                                                                                                 |
-| detailed_place_flag              | 1                       | whether use internal detailed placement                                                                                                                           |
-| stop_overflow                    | 0.1                     | stopping criteria, consider stop when the overflow reaches to a ratio                                                                                             |
-| dtype                            | float32                 | data type, float32 | float64                                                                                                                                      |
-| detailed_place_engine            |                         | external detailed placement engine to be called after placement                                                                                                   |
-| detailed_place_command           | -nolegal -nodetail      | commands for external detailed placement engine                                                                                                                   |
-| plot_flag                        | 0                       | whether plot solution or not                                                                                                                                      |
-| RePlAce_ref_hpwl                 | 350000                  | reference HPWL used in RePlAce for updating density weight                                                                                                        |
-| RePlAce_LOWER_PCOF               | 0.95                    | lower bound ratio used in RePlAce for updating density weight                                                                                                     |
-| RePlAce_UPPER_PCOF               | 1.05                    | upper bound ratio used in RePlAce for updating density weight                                                                                                     |
-| random_center_init_flag          | 1                       | whether perform random initialization around the center for global placement                                                                                      |
-| sort_nets_by_degree              | 0                       | whether sort nets by degree or not                                                                                                                                |
-| num_threads                      | 8                       | number of CPU threads                                                                                                                                             |
-| dump_global_place_solution_flag  | 0                       | whether dump intermediate global placement solution as a compressed pickle object                                                                                 |
-| dump_legalize_solution_flag      | 0                       | whether dump intermediate legalization solution as a compressed pickle object                                                                                     |
+...
 
 # Authors
 
 * [Yibo Lin](http://yibolin.com), supervised by [David Z. Pan](http://users.ece.utexas.edu/~dpan), composed the initial release. 
 * [Zixuan Jiang](https://github.com/ZixuanJiang) and [Jiaqi Gu](https://github.com/JeremieMelo) improved the efficiency of the wirelength and density operators on GPU. 
 * [Yibo Lin](http://yibolin.com) and [Jiaqi Gu](https://github.com/JeremieMelo) developed and integrated ABCDPlace for detailed placement. 
+* [Peiyu Liao](https://enzoleo.github.io) and [Siting Liu](https://lusica1031.github.io) developed and integrated timing optimization in global placement for DREAMPlace 4.0. 
 * **Pull requests to improve the tool are more than welcome.** We appreciate all kinds of contributions from the community. 
 
 # Features
@@ -282,3 +266,9 @@ The list of options as follows will be shown.
     - Support fence regions as published at ICCAD 2020
     - Add quadratic penalty to accelerate gradient descent at plateau during global placement
     - Inject noise to escape from saddle points during global placement
+
+* [4.0.0](https://github.com/limbo018/DREAMPlace/releases/tag/4.0.0)
+    - Support timing optimization in global placement as published at DATE 2022
+    - Add momentum-based net weighting strategy
+    - Integrate OpenTimer for static timing analysis
+    - Tested under ICCAD 2015 contest benchmarks (see test/iccad2015.ot)

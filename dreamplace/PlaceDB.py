@@ -34,6 +34,7 @@ class PlaceDB (object):
         To avoid the usage of list, I flatten everything.
         """
         self.rawdb = None # raw placement database, a C++ object
+        self.pydb = None # python placement database interface
 
         self.num_physical_nodes = 0 # number of real nodes, including movable nodes, terminals, and terminal_NIs
         self.num_terminals = 0 # number of terminals, essentially fixed macros
@@ -113,6 +114,7 @@ class PlaceDB (object):
         self.initial_horizontal_demand_map = None # routing demand map from fixed cells, indexed by (grid x, grid y), projected to one layer
         self.initial_vertical_demand_map = None # routing demand map from fixed cells, indexed by (grid x, grid y), projected to one layer
 
+        self.max_net_weight = None # maximum net weight in timing opt
         self.dtype = None
 
     def scale_pl(self, shift_factor, scale_factor):
@@ -364,6 +366,20 @@ class PlaceDB (object):
             wl += self.net_hpwl(x, y, net_id)
         return wl
 
+    def sum_pin_weights(self, weights=None):
+        """
+        @brief sum pin weights inside a physical node
+        @param weights the torch tensor to store node weight data
+        """
+        if weights is None:
+            weights = torch.zeros(
+                self.num_nodes,
+                dtype=self.net_weights.dtype, device="cpu")
+        self.pydb.sum_pin_weights(
+            torch.tensor(self.net_weights),
+            weights)
+        return weights
+
     def overlap(self, xl1, yl1, xh1, yh1, xl2, yl2, xh2, yh2):
         """
         @brief compute overlap between two boxes
@@ -474,6 +490,8 @@ class PlaceDB (object):
         @param params parameters
         """
         pydb = place_io.PlaceIOFunction.pydb(self.rawdb)
+        self.pydb = pydb
+        self.device = torch.device("cuda" if params.gpu else "cpu")
 
         self.num_physical_nodes = pydb.num_nodes
         self.num_terminals = pydb.num_terminals
@@ -513,12 +531,17 @@ class PlaceDB (object):
         self.pin_direct = np.array(pydb.pin_direct, dtype=np.string_)
         self.pin_offset_x = np.array(pydb.pin_offset_x, dtype=self.dtype)
         self.pin_offset_y = np.array(pydb.pin_offset_y, dtype=self.dtype)
+        self.pin_names = np.array(pydb.pin_names, dtype=np.string_)
         self.net_name2id_map = pydb.net_name2id_map
+        self.pin_name2id_map = pydb.pin_name2id_map
         self.net_names = np.array(pydb.net_names, dtype=np.string_)
         self.net2pin_map = pydb.net2pin_map
         self.flat_net2pin_map = np.array(pydb.flat_net2pin_map, dtype=np.int32)
         self.flat_net2pin_start_map = np.array(pydb.flat_net2pin_start_map, dtype=np.int32)
         self.net_weights = np.array(pydb.net_weights, dtype=self.dtype)
+        self.net_weight_deltas = np.array(pydb.net_weight_deltas, dtype=self.dtype)
+        self.net_criticality = np.array(pydb.net_criticality, dtype=self.dtype)
+        self.net_criticality_deltas = np.array(pydb.net_criticality_deltas, dtype=self.dtype)
         self.node2pin_map = pydb.node2pin_map
         self.flat_node2pin_map = np.array(pydb.flat_node2pin_map, dtype=np.int32)
         self.flat_node2pin_start_map = np.array(pydb.flat_node2pin_start_map, dtype=np.int32)
@@ -568,12 +591,55 @@ class PlaceDB (object):
         # convert node2pin_map to array of array
         for i in range(len(self.node2pin_map)):
             self.node2pin_map[i] = np.array(self.node2pin_map[i], dtype=np.int32)
-        self.node2pin_map = np.array(self.node2pin_map)
+        self.node2pin_map = np.array(self.node2pin_map, dtype=object)
 
         # convert net2pin_map to array of array
         for i in range(len(self.net2pin_map)):
             self.net2pin_map[i] = np.array(self.net2pin_map[i], dtype=np.int32)
-        self.net2pin_map = np.array(self.net2pin_map)
+        self.net2pin_map = np.array(self.net2pin_map, dtype=object)
+
+        # convert the max_net_weight from params
+        # note that infinity may be included so we need a type cast
+        self.max_net_weight = np.float64(params.max_net_weight)
+
+    def initialize_num_bins(self, params):
+        """
+        @brief initialize number of bins with a heuristic method, which many not be optimal.
+        The heuristic is adapted form RePlAce, 2x2 to 4096x4096. 
+        """
+        # derive bin dimensions by keeping the aspect ratio 
+        # this bin setting is not for global placement, only for other steps 
+        # global placement has its bin settings defined in global_place_stages
+        if params.num_bins_x <= 1 or params.num_bins_y <= 1: 
+            total_bin_area = self.area
+            avg_movable_area = self.total_movable_node_area / self.num_movable_nodes
+            ideal_bin_area = avg_movable_area / params.target_density
+            ideal_num_bins = total_bin_area / ideal_bin_area
+            if (ideal_num_bins < 4): # smallest number of bins 
+                ideal_num_bins = 4
+            aspect_ratio = (self.yh - self.yl) / (self.xh - self.xl)
+            y_over_x = True 
+            if aspect_ratio < 1: 
+                aspect_ratio = 1.0 / aspect_ratio
+                y_over_x = False 
+            aspect_ratio = int(math.pow(2, round(math.log2(aspect_ratio))))
+            num_bins_1d = 2 # min(num_bins_x, num_bins_y)
+            while num_bins_1d <= 4096:
+                found_num_bins = num_bins_1d * num_bins_1d * aspect_ratio
+                if (found_num_bins > ideal_num_bins / 4 and found_num_bins <= ideal_num_bins): 
+                    break 
+                num_bins_1d *= 2
+            if y_over_x:
+                self.num_bins_x = num_bins_1d
+                self.num_bins_y = num_bins_1d * aspect_ratio
+            else:
+                self.num_bins_x = num_bins_1d * aspect_ratio
+                self.num_bins_y = num_bins_1d
+            params.num_bins_x = self.num_bins_x
+            params.num_bins_y = self.num_bins_y
+        else:
+            self.num_bins_x = params.num_bins_x
+            self.num_bins_y = params.num_bins_y
 
     def __call__(self, params):
         """
@@ -699,21 +765,6 @@ row height = %g, site width = %g
                 self.row_height, self.site_width
                 )
 
-        # set number of bins
-        # derive bin dimensions by keeping the aspect ratio
-        # this bin setting is not for global placement, only for other steps
-        # global placement has its bin settings defined in global_place_stages
-        aspect_ratio = (self.yh - self.yl) / (self.xh - self.xl)
-        num_bins_x = int(math.pow(2, max(np.ceil(math.log2(math.sqrt(self.num_movable_nodes / aspect_ratio))), 0)))
-        num_bins_y = int(math.pow(2, max(np.ceil(math.log2(math.sqrt(self.num_movable_nodes * aspect_ratio))), 0)))
-        self.num_bins_x = max(params.num_bins_x, num_bins_x)
-        self.num_bins_y = max(params.num_bins_y, num_bins_y)
-        # set bin size 
-        self.bin_size_x = (self.xh - self.xl) / self.num_bins_x
-        self.bin_size_y = (self.yh - self.yl) / self.num_bins_y
-
-        content += "num_bins = %dx%d, bin sizes = %gx%g\n" % (self.num_bins_x, self.num_bins_y, self.bin_size_x / self.row_height, self.bin_size_y / self.row_height)
-
         # set num_movable_pins
         if self.num_movable_pins is None:
             self.num_movable_pins = 0
@@ -737,7 +788,7 @@ row height = %g, site width = %g
 
         target_density = min(self.total_movable_node_area / self.total_space_area, 1.0)
         if target_density > params.target_density:
-            logging.warn("target_density %g is smaller than utilization %g, ignored" % (params.target_density, target_density))
+            logging.warning("target_density %g is smaller than utilization %g, ignored" % (params.target_density, target_density))
             params.target_density = target_density
         content += "utilization = %g, target_density = %g\n" % (self.total_movable_node_area / self.total_space_area, params.target_density)
 
@@ -835,30 +886,35 @@ row height = %g, site width = %g
                 )
             else:
                 node_size_order = np.argsort(self.node_size_x[: self.num_movable_nodes])
-                filler_size_x = np.mean(
-                    self.node_size_x[
-                        node_size_order[int(self.num_movable_nodes * 0.05) : int(self.num_movable_nodes * 0.95)]
-                    ]
-                )
+                range_lb = int(self.num_movable_nodes*0.05)
+                range_ub = int(self.num_movable_nodes*0.95)
+                if range_lb >= range_ub: # when there are too few cells, i.e., <= 1
+                    filler_size_x = 0
+                else:
+                    filler_size_x = np.mean(self.node_size_x[node_size_order[range_lb:range_ub]])
                 filler_size_y = self.row_height
                 placeable_area = max(self.area - self.total_fixed_node_area, self.total_space_area)
                 content += "use placeable_area = %g to compute fillers\n" % (placeable_area)
                 self.total_filler_node_area = max(
                     placeable_area * params.target_density - self.total_movable_node_area, 0.0
                 )
-                self.num_filler_nodes = int(round(self.total_filler_node_area / (filler_size_x * filler_size_y)))
-                self.node_size_x = np.concatenate(
-                    [
-                        self.node_size_x,
-                        np.full(self.num_filler_nodes, fill_value=filler_size_x, dtype=self.node_size_x.dtype),
-                    ]
-                )
-                self.node_size_y = np.concatenate(
-                    [
-                        self.node_size_y,
-                        np.full(self.num_filler_nodes, fill_value=filler_size_y, dtype=self.node_size_y.dtype),
-                    ]
-                )
+                filler_area = filler_size_x * filler_size_y
+                if filler_area == 0: 
+                    self.num_filler_nodes = 0
+                else:
+                    self.num_filler_nodes = int(round(self.total_filler_node_area / filler_area))
+                    self.node_size_x = np.concatenate(
+                        [
+                            self.node_size_x,
+                            np.full(self.num_filler_nodes, fill_value=filler_size_x, dtype=self.node_size_x.dtype),
+                        ]
+                    )
+                    self.node_size_y = np.concatenate(
+                        [
+                            self.node_size_y,
+                            np.full(self.num_filler_nodes, fill_value=filler_size_y, dtype=self.node_size_y.dtype),
+                        ]
+                    )
                 content += "total_filler_node_area = %g, #fillers = %d, filler sizes = %gx%g\n" % (
                     self.total_filler_node_area,
                     self.num_filler_nodes,
@@ -879,6 +935,15 @@ row height = %g, site width = %g
                 filler_size_x,
                 filler_size_y,
             )
+
+        # set number of bins 
+        # derive bin dimensions by keeping the aspect ratio 
+        self.initialize_num_bins(params)
+        # set bin size 
+        self.bin_size_x = (self.xh - self.xl) / self.num_bins_x
+        self.bin_size_y = (self.yh - self.yl) / self.num_bins_y
+
+        content += "num_bins = %dx%d, bin sizes = %gx%g\n" % (self.num_bins_x, self.num_bins_y, self.bin_size_x / self.row_height, self.bin_size_y / self.row_height)
 
         if params.routability_opt_flag:
             content += "================================== routing information =================================\n"
@@ -992,9 +1057,9 @@ row height = %g, site width = %g
 
         for net_id in range(len(self.net2pin_map)):
             pins = self.net2pin_map[net_id]
-            content += "\nNetDegree : %d %s" % (len(pins), self.net_names[net_id])
+            content += "\nNetDegree : %d %s" % (len(pins), self.net_names[net_id].decode())
             for pin_id in pins:
-                content += "\n\t%s %s : %d %d" % (self.node_names[self.pin2node_map[pin_id]], self.pin_direct[pin_id], self.pin_offset_x[pin_id]/params.scale_factor, self.pin_offset_y[pin_id]/params.scale_factor)
+                content += "\n\t%s %s : %d %d" % (self.node_names[self.pin2node_map[pin_id]].decode(), self.pin_direct[pin_id].decode(), self.pin_offset_x[pin_id]/params.scale_factor, self.pin_offset_y[pin_id]/params.scale_factor)
 
         with open(net_file, "w") as f:
             f.write(content)

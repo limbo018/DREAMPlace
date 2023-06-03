@@ -126,6 +126,7 @@ class ElectricPotentialFunction(Function):
         ctx.num_movable_impacted_bins_y = num_movable_impacted_bins_y
         ctx.num_filler_impacted_bins_x = num_filler_impacted_bins_x
         ctx.num_filler_impacted_bins_y = num_filler_impacted_bins_y
+        ctx.deterministic_flag = deterministic_flag
         ctx.pos = pos
         ctx.sorted_node_map = sorted_node_map
         #density_map = torch.ones([ctx.num_bins_x, ctx.num_bins_y], dtype=pos.dtype, device=pos.device)
@@ -229,7 +230,7 @@ class ElectricPotentialFunction(Function):
                 ctx.node_size_y_clamped, ctx.offset_x, ctx.offset_y, ctx.ratio,
                 ctx.bin_center_x, ctx.bin_center_y, ctx.xl, ctx.yl, ctx.xh,
                 ctx.yh, ctx.bin_size_x, ctx.bin_size_y, ctx.num_movable_nodes,
-                ctx.num_filler_nodes, ctx.sorted_node_map)
+                ctx.num_filler_nodes, ctx.deterministic_flag, ctx.sorted_node_map)
         else:
             output = -electric_potential_cpp.electric_force(
                 grad_pos, ctx.num_bins_x, ctx.num_bins_y,

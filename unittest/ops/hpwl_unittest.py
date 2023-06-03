@@ -38,7 +38,7 @@ def all_hpwl(x, y, net2pin_map, net_weights):
 class HPWLOpTest(unittest.TestCase):
     def test_hpwlRandom(self):
         pin_pos = np.array([[0.0, 0.0], [1.0, 2.0], [1.5, 0.2], [0.5, 3.1], [0.6, 1.1]], dtype=np.float32)
-        net2pin_map = np.array([np.array([0, 4]), np.array([1, 2, 3])])
+        net2pin_map = np.array([np.array([0, 4]), np.array([1, 2, 3])],dtype=object)
         # net weights 
         net_weights = np.array([1, 2], dtype=np.float32)
         print("net_weights = ", net_weights)

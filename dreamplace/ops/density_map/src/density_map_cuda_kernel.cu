@@ -12,19 +12,21 @@
 
 DREAMPLACE_BEGIN_NAMESPACE
 
-template <typename T>
+template <typename T, typename AtomicOp>
 inline __device__ void distributeBox2Bin(
-        const T* bin_center_x_tensor, const T* bin_center_y_tensor, 
         const int num_bins_x, const int num_bins_y, 
         const T xl, const T yl, const T xh, const T yh, 
         const T bin_size_x, const T bin_size_y, 
-        T bxl, T byl, T bxh, T byh, 
-        T* buf_map
+        T bxl, T byl, T bxh, T byh, AtomicOp atomic_add_op, 
+        typename AtomicOp::type* buf_map
         )
 {
     // density overflow function 
-    auto computeDensityFunc = [](T x, T node_size, T bin_center, T bin_size){
-        return DREAMPLACE_STD_NAMESPACE::max(T(0.0), DREAMPLACE_STD_NAMESPACE::min(x+node_size, bin_center+bin_size/2) - DREAMPLACE_STD_NAMESPACE::max(x, bin_center-bin_size/2));
+    auto computeDensityFunc = [](T node_xl, T node_xh, T bin_xl, T bin_xh) {
+      return DREAMPLACE_STD_NAMESPACE::max(
+          T(0.0),
+          DREAMPLACE_STD_NAMESPACE::min(node_xh, bin_xh) -
+          DREAMPLACE_STD_NAMESPACE::max(node_xl, bin_xl));
     };
     // x direction 
     int bin_index_xl = int((bxl-xl)/bin_size_x);
@@ -40,43 +42,58 @@ inline __device__ void distributeBox2Bin(
 
     for (int k = bin_index_xl; k < bin_index_xh; ++k)
     {
-        T px = computeDensityFunc(bxl, bxh - bxl, bin_center_x_tensor[k], bin_size_x);
+        T bin_xl = xl + bin_size_x * k;
+        T bin_xh = DREAMPLACE_STD_NAMESPACE::min(bin_xl + bin_size_x, xh); 
+        // special treatment for rightmost bins 
+        if (k + 1 == num_bins_x) {
+          bin_xh = bxh; 
+        }
+        T px = computeDensityFunc(bxl, bxh, bin_xl, bin_xh);
         for (int h = bin_index_yl; h < bin_index_yh; ++h)
         {
-            T py = computeDensityFunc(byl, byh - byl, bin_center_y_tensor[h], bin_size_y);
+            T bin_yl = yl + bin_size_y * h; 
+            T bin_yh = DREAMPLACE_STD_NAMESPACE::min(bin_yl + bin_size_y, yh); 
+            // special treatment for upmost bins
+            if (h + 1 == num_bins_y) {
+              bin_yh = byh; 
+            }
+            T py = computeDensityFunc(byl, byh, bin_yl, bin_yh);
 
             // still area 
-            atomicAdd(&buf_map[k*num_bins_y+h], px * py);
+            atomic_add_op(&buf_map[k * num_bins_y + h], px * py);
         }
     }
-};
+}
 
-template <typename T>
+template <typename T, typename AtomicOp>
 __global__ void computeDensityMap(
-        const T* x_tensor, const T* y_tensor, 
-        const T* node_size_x_tensor, const T* node_size_y_tensor, 
-        const T* bin_center_x_tensor, const T* bin_center_y_tensor, 
-        const int num_nodes, 
-        const int num_bins_x, const int num_bins_y, 
-        const T xl, const T yl, const T xh, const T yh, 
-        const T bin_size_x, const T bin_size_y, 
-        T* density_map_tensor
-        )
+    const T* x_tensor, const T* y_tensor,
+    const T* node_size_x_tensor,
+    const T* node_size_y_tensor,
+    const int num_nodes,
+    const int num_bins_x, const int num_bins_y,
+    const T xl, const T yl, const T xh, const T yh,
+    AtomicOp atomic_add_op,
+    typename AtomicOp::type* buf_map
+    )
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
+    T bin_size_x = (xh - xl) / num_bins_x; 
+    T bin_size_y = (yh - yl) / num_bins_y; 
+
     if (i < num_nodes)
     {
         T bxl = x_tensor[i]; 
         T byl = y_tensor[i]; 
         T bxh = bxl + node_size_x_tensor[i]; 
         T byh = byl + node_size_y_tensor[i]; 
+
         distributeBox2Bin(
-                bin_center_x_tensor, bin_center_y_tensor, 
                 num_bins_x, num_bins_y, 
                 xl, yl, xh, yh, 
                 bin_size_x, bin_size_y, 
                 bxl, byl, bxh, byh, 
-                density_map_tensor
+                atomic_add_op, buf_map
                 );
     }
 }
@@ -100,29 +117,60 @@ __global__ void computeDensityMap(
 /// @param density_map_tensor 2D density map in column-major to write 
 template <typename T>
 int computeDensityMapCudaLauncher(
-        const T* x_tensor, const T* y_tensor, 
-        const T* node_size_x_tensor, const T* node_size_y_tensor, 
-        const T* bin_center_x_tensor, const T* bin_center_y_tensor, 
-        const int num_nodes, 
-        const int num_bins_x, const int num_bins_y, 
-        const T xl, const T yl, const T xh, const T yh, 
-        const T bin_size_x, const T bin_size_y, 
-        T* density_map_tensor
-        )
+    const T* x_tensor, const T* y_tensor, 
+    const T* node_size_x_tensor, const T* node_size_y_tensor, 
+    const int num_nodes, 
+    const int num_bins_x, const int num_bins_y, 
+    const T xl, const T yl, const T xh, const T yh,
+    bool deterministic_flag, 
+    T* density_map_tensor
+    )
 {
-    int thread_count = 256; 
-    int block_count = ceilDiv(num_nodes, thread_count);
+    if (deterministic_flag) {
+        // total die area
+        double diearea = (xh - xl) * (yh - yl);
+        int integer_bits = max((int)ceil(log2(diearea)) + 1, 32);
+        int fraction_bits = max(64 - integer_bits, 0);
+        unsigned long long int scale_factor = (1UL << fraction_bits);
+        int num_bins = num_bins_x * num_bins_y;
+        unsigned long long int *buf_map = NULL;
+        allocateCUDA(buf_map, num_bins, unsigned long long int);
 
-    computeDensityMap<<<block_count, thread_count>>>(
+        AtomicAddCUDA<unsigned long long int> atomic_add_op(scale_factor);
+
+        int thread_count = 512;
+        int block_count = ceilDiv(num_bins, thread_count);
+        copyScaleArray<<<block_count, thread_count>>>(
+            buf_map, density_map_tensor, scale_factor, num_bins);
+
+        block_count = ceilDiv(num_nodes, thread_count);
+        computeDensityMap<<<block_count, thread_count>>>(
             x_tensor, y_tensor, 
             node_size_x_tensor, node_size_y_tensor, 
-            bin_center_x_tensor, bin_center_y_tensor, 
             num_nodes, 
             num_bins_x, num_bins_y, 
             xl, yl, xh, yh, 
-            bin_size_x, bin_size_y, 
-            density_map_tensor
+            atomic_add_op, buf_map
             );
+
+        block_count = ceilDiv(num_bins, thread_count);
+        copyScaleArray<<<block_count, thread_count>>>(
+            density_map_tensor, buf_map, T(1.0 / scale_factor), num_bins);
+
+        destroyCUDA(buf_map);
+    } else {
+        AtomicAddCUDA<T> atomic_add_op;
+        int thread_count = 512;
+        int block_count = ceilDiv(num_nodes, thread_count);
+        computeDensityMap<<<block_count, thread_count>>>(
+            x_tensor, y_tensor, 
+            node_size_x_tensor, node_size_y_tensor, 
+            num_nodes, 
+            num_bins_x, num_bins_y, 
+            xl, yl, xh, yh, 
+            atomic_add_op, density_map_tensor
+            );
+    }
 
     return 0; 
 }
@@ -131,12 +179,11 @@ int computeDensityMapCudaLauncher(
     template int computeDensityMapCudaLauncher<T>(\
             const T* x_tensor, const T* y_tensor, \
             const T* node_size_x_tensor, const T* node_size_y_tensor, \
-            const T* bin_center_x_tensor, const T* bin_center_y_tensor, \
             const int num_nodes, \
             const int num_bins_x, const int num_bins_y, \
             const T xl, const T yl, const T xh, const T yh, \
-            const T bin_size_x, const T bin_size_y, \
-            T* density_map_tensor\
+            bool deterministic_flag, \
+            T* density_map_tensor \
             );
 
 REGISTER_KERNEL_LAUNCHER(float);

@@ -435,10 +435,13 @@ class PlaceDB : public DefParser::DefDataBase
         /// add pin to m_vPin, node and net 
         /// \param pinName denotes name of corresponding macro pin 
         /// \param net and \param node are corresponding net and node 
-        void addPin(std::string const& macroPinName, Net& net, Node& node);
-        void addPin(index_type macroPinId, Net& net, Node& node);
+        void addPin(std::string const& macroPinName, Net& net, Node& node,
+                    std::string instName = "");
+        void addPin(index_type macroPinId, Net& net, Node& node, std::string pinName);
         /// lower level helper to addPin()
-        Pin& createPin(Net& net, Node& node, SignalDirect const& direct, Point<coordinate_type> const& offset, index_type macroPinId);
+        Pin& createPin(Net& net, Node& node, SignalDirect const& direct,
+                       Point<coordinate_type> const& offset, index_type macroPinId,
+                       std::string pinName = "");
         /// add region to m_vRegion 
         /// \param r region name 
         /// \return index in m_vRegion and successful flag 
@@ -455,7 +458,8 @@ class PlaceDB : public DefParser::DefDataBase
         std::vector<Macro> m_vMacro; ///< macros for standard cells, for io pins, virtual macros are appended  
         std::vector<Row> m_vRow; ///< placement rows 
         std::vector<Site> m_vSite; ///< all sites defined 
-        index_type m_coreSiteId; ///< id of core placement site 
+        std::vector<std::size_t> m_vSiteUsedCount; ///< count how many macros in LEF refer each site 
+        index_type m_coreSiteId; ///< id of core placement site, determine by m_vSiteUsedCount
         diearea_type m_dieArea; ///< die area, it can be larger than actual placement area 
         std::vector<bool> m_vNetIgnoreFlag; ///< whether the net should be ignored due to pins belonging to the same cell 
         std::vector<std::string> m_vDuplicateNet; ///< name of duplicate nets found in verilog file 

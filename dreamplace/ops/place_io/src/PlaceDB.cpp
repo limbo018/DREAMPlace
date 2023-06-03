@@ -57,24 +57,35 @@ void PlaceDB::lef_via_cbk(LefParser::lefiVia const&) {}
 void PlaceDB::lef_viarule_cbk(LefParser::lefiViaRule const&) {}
 void PlaceDB::lef_spacing_cbk(LefParser::lefiSpacing const&) {}
 void PlaceDB::lef_site_cbk(LefParser::lefiSite const& s) {
-  m_vSite.push_back(Site());
-  Site& site = m_vSite.back();
-  site.setId(m_vSite.size() - 1);
-  site.setName(s.name());
-  if (s.hasClass()) site.setClassName(s.siteClass());
-  if (s.hasSize()) {
-    site.setSize(kX, round(s.sizeX() * m_lefUnit));
-    site.setSize(kY, round(s.sizeY() * m_lefUnit));
-  }
-  dreamplaceAssertMsg(
-      m_mSiteName2Index.find(site.name()) == m_mSiteName2Index.end(),
-      "Site %s has already been defined", site.name().c_str());
-  m_mSiteName2Index[site.name()] = site.id();
+  if (m_mSiteName2Index.find(s.name()) != m_mSiteName2Index.end()) {
+    dreamplacePrint(kERROR, "Site %s has already been defined, ignored", s.name()); 
+  } else {
+    m_vSite.push_back(Site());
+    Site& site = m_vSite.back();
+    site.setId(m_vSite.size() - 1);
+    site.setName(s.name());
+    if (s.hasClass()) site.setClassName(s.siteClass());
+    if (s.hasSize()) {
+      site.setSize(kX, round(s.sizeX() * m_lefUnit));
+      site.setSize(kY, round(s.sizeY() * m_lefUnit));
+    }
+    m_mSiteName2Index[site.name()] = site.id();
+    m_vSiteUsedCount.push_back(0); 
 
-  if (limbo::iequals(site.className(), "CORE")) {
-    dreamplacePrint(kINFO, "set CORE site to %s, %d x %d\n",
-                    site.name().c_str(), site.width(), site.height());
-    m_coreSiteId = site.id();
+    if (limbo::iequals(site.className(), "CORE")) {
+      // a heuristic to guess core site, may change later after reading LEF 
+      // we only update if the recorded core site is not named "core" 
+      // choose the site with the lowest height and smallest area  
+      Site const& coreSite = m_vSite[m_coreSiteId];
+      if (m_coreSiteId != site.id()) {
+        if (coreSite.height() > site.height() 
+            || (coreSite.height() == site.height() && coreSite.width() > site.width())) {
+          m_coreSiteId = site.id();
+          dreamplacePrint(kINFO, "set smallest CORE site to %s, %d x %d, id = %u\n",
+              site.name().c_str(), site.width(), site.height(), m_coreSiteId);
+        }
+      }
+    }
   }
 }
 void PlaceDB::lef_macrobegin_cbk(std::string const& n) {
@@ -91,6 +102,16 @@ void PlaceDB::lef_macro_cbk(LefParser::lefiMacro const& m) {
   Macro& macro = m_vMacro.back();
 
   if (m.hasClass()) macro.setClassName(m.macroClass());
+  if (m.hasSiteName()) {
+    if (m_mSiteName2Index.find(m.siteName()) != m_mSiteName2Index.end()) {
+      index_type siteId = m_mSiteName2Index.at(m.siteName());
+      m_vSiteUsedCount[siteId] += 1; 
+    } else {
+      dreamplacePrint(kWARN, "Macro site name %s is NOT DEFINED in site names, add to default site %s\n", 
+          m.siteName(), m_vSite[m_coreSiteId].name().c_str());
+      m_vSiteUsedCount[m_coreSiteId] += 1; 
+    }
+  }
   // all other coordinates corresponding to origins are mapped to that
   if (m.hasOrigin())
     macro.setInitOrigin(round(m.originX() * m_lefUnit),
@@ -162,7 +183,18 @@ void PlaceDB::set_def_busbitchars(std::string const&) {}
 void PlaceDB::set_def_dividerchar(std::string const&) {}
 void PlaceDB::set_def_version(std::string const& v) { m_defVersion = v; }
 void PlaceDB::set_def_unit(int u) { m_defUnit = u; }
-void PlaceDB::set_def_design(std::string const& d) { m_designName = d; }
+void PlaceDB::set_def_design(std::string const& d) { 
+  m_designName = d; 
+
+  // A heuristic to set core site according to number of occurrence in macro definitions 
+  std::vector<std::size_t>::const_iterator itMax = std::max_element(m_vSiteUsedCount.begin(), m_vSiteUsedCount.end()); 
+  if (itMax != m_vSiteUsedCount.end()) {
+    m_coreSiteId = itMax - m_vSiteUsedCount.begin(); 
+  }
+  Site const& site = m_vSite[m_coreSiteId]; 
+  dreamplacePrint(kINFO, "set CORE site to %s, %d x %d, id = %u\n",
+      site.name().c_str(), site.width(), site.height(), m_coreSiteId);
+}
 void PlaceDB::set_def_diearea(int xl, int yl, int xh, int yh) {
   m_dieArea.set(
       xl * lefDefUnitRatio(), 
@@ -245,7 +277,11 @@ void PlaceDB::add_def_component(DefParser::Component const& c) {
       c.origin[0] * lefDefUnitRatio() + macro.width(),
       c.origin[1] * lefDefUnitRatio() + macro.height()
       );  // must update width and height
-  node.setStatus(c.status);                // update status
+  // update status
+  node.setStatus(PlaceStatusEnum::UNPLACED); 
+  if (!c.status.empty()) {
+    node.setStatus(c.status); 
+  }
   if (macro.className() != "CORE") {
     // always fix cells whose macro class is not CORE
     dreamplaceAssertMsg(node.status() == PlaceStatusEnum::FIXED ||
@@ -281,38 +317,139 @@ void PlaceDB::resize_def_pin(int s) {
   m_numIOPin = s;
 }
 void PlaceDB::add_def_pin(DefParser::Pin const& p) {
-  if (p.vLayer.empty()) {
-    dreamplacePrint(kWARN, "no layer specified by pin %s\n",
-                    p.pin_name.c_str());
+  // containing dirty processing to consider various situations
+  bool hasLayer = false; 
+  // check pin layer
+  if (!p.vLayer.empty()) {
+    hasLayer = true; 
+  } else if (!p.vPinPort.empty()) {
+    // check pin port 
+    for (std::size_t i = 0; i < p.vPinPort.size(); ++i) {
+      // check pin port has box 
+      if (!p.vPinPort[i].vLayer.empty()) {
+        hasLayer = true; 
+        break; 
+      }
+    }
   }
-  std::vector<int> bbox = {0, 0, 0, 0}; 
-  if (p.vBbox.empty()) {
-    dreamplacePrint(
-        kWARN, "no position or bounding box specified by pin %s, set to (%d, %d, %d, %d)\n",
-        p.pin_name.c_str(), bbox[0], bbox[1], bbox[2], bbox[3]);
-  } else {
-    // only read the first layer of pins
-    bbox = p.vBbox.front();
+  if (!hasLayer) {
+    dreamplacePrint(kWARN, "IO pin %s: no layer specified\n",
+                    p.pin_name.c_str());
   }
   // create virtual macro
   std::pair<index_type, bool> insertMacroRet = addMacro(p.pin_name);
   dreamplaceAssertMsg(insertMacroRet.second,
-                      "failed to create virtual macro for io pin: %s",
+                      "IO pin %s: failed to create virtual macro",
                       p.pin_name.c_str());
   Macro& macro = m_vMacro.at(insertMacroRet.first);
   // indicate this is an IO pin
   macro.setClassName("DREAMPlace.IOPin");
 
-  macro.setInitOrigin(
-      bbox[0] * lefDefUnitRatio(), 
-      bbox[1] * lefDefUnitRatio()
-      );
-  macro.set(
-      0, 
-      0, 
-      (bbox[2] - bbox[0]) * lefDefUnitRatio(),
-      (bbox[3] - bbox[1]) * lefDefUnitRatio()
-      );  // adjust to origin (0, 0)
+  // create and add virtual node
+  std::pair<index_type, bool> insertNodeRet = addNode(p.pin_name);
+  dreamplaceAssertMsg(insertNodeRet.second,
+                      "failed to create virtual node for io pin %s",
+                      p.pin_name.c_str());
+  Node& node = m_vNode.at(insertNodeRet.first);
+  NodeProperty& property = m_vNodeProperty.at(node.id());
+
+  property.setMacroId(macro.id());
+  node.setStatus(PlaceStatusEnum::FIXED);  // io pin should always be fixed
+  if (!p.orient.empty()) {
+    node.setOrient(p.orient);
+  } else if (!p.vPinPort.empty()) {
+    node.setOrient(p.vPinPort.front().orient); 
+  } else {
+    node.setOrient(OrientEnum::N);
+  }
+  deriveMultiRowAttr(node);
+  if (node.status() == PlaceStatusEnum::FIXED ||
+      node.status() == PlaceStatusEnum::DUMMY_FIXED ||
+      node.status() == PlaceStatusEnum::PLACED) {
+    // check pin origin initialized 
+    bool hasOrigin = false; 
+    // construct an invalid box 
+    node.set(
+        std::numeric_limits<coordinate_type>::max(), 
+        std::numeric_limits<coordinate_type>::max(), 
+        std::numeric_limits<coordinate_type>::min(), 
+        std::numeric_limits<coordinate_type>::min()
+        );
+    if (!p.vBbox.empty()) {
+      for (std::size_t i = 0; i < p.vLayer.size(); ++i) {
+        if (!(p.origin[0] == -1 && p.origin[1] == -1)) {
+          node.encompass(MacroPort::box_type(
+                (p.origin[0] + p.vBbox[i][0]) * lefDefUnitRatio(), 
+                (p.origin[1] + p.vBbox[i][1]) * lefDefUnitRatio(), 
+                (p.origin[0] + p.vBbox[i][2]) * lefDefUnitRatio(),
+                (p.origin[1] + p.vBbox[i][3]) * lefDefUnitRatio()
+                )); 
+          hasOrigin = true; 
+        }
+      }
+    } else if (!p.vPinPort.empty()) {
+      for (std::size_t i = 0; i < p.vPinPort.size(); ++i) {
+        DefParser::PinPort const& pport = p.vPinPort[i]; 
+        for (std::size_t j = 0; j < pport.vLayer.size(); ++j) {
+          if (!(pport.origin[0] == -1 && pport.origin[1] == -1)) {
+            node.encompass(MacroPort::box_type(
+                  (pport.origin[0] + pport.vBbox[i][0]) * lefDefUnitRatio(), 
+                  (pport.origin[1] + pport.vBbox[i][1]) * lefDefUnitRatio(), 
+                  (pport.origin[0] + pport.vBbox[i][2]) * lefDefUnitRatio(),
+                  (pport.origin[1] + pport.vBbox[i][3]) * lefDefUnitRatio()
+                  ));
+            hasOrigin = true; 
+          }
+        }
+      }
+    }
+    /*
+    if (!(p.origin[0] == -1 && p.origin[1] == -1)) {
+      node.set(
+          p.origin[0] * lefDefUnitRatio(), 
+          p.origin[1] * lefDefUnitRatio(),
+          p.origin[0] * lefDefUnitRatio(), 
+          p.origin[1] * lefDefUnitRatio()
+          );
+      hasOrigin = true; 
+    } else {
+      // check pin port 
+      for (std::size_t i = 0; i < p.vPinPort.size(); ++i) {
+        // check pin port origin initialized 
+        DefParser::PinPort const& pport = p.vPinPort[i]; 
+        if (!(pport.origin[0] == -1 && pport.origin[1] == -1)) {
+          node.set(
+              pport.origin[0] * lefDefUnitRatio(), 
+              pport.origin[1] * lefDefUnitRatio(),
+              pport.origin[0] * lefDefUnitRatio(), 
+              pport.origin[1] * lefDefUnitRatio()
+              ); 
+          hasOrigin = true; 
+          // only consider first port 
+          break; 
+        }
+      }
+    }
+    */
+    if (!hasOrigin) {
+      node.set(0, 0, 0, 0);
+      dreamplacePrint(
+          kWARN, "IO pin: no position specified, set to (%d, %d, %d, %d)\n",
+          p.pin_name.c_str(), node.xl(), node.yl(), node.xh(), node.yh());
+    } else {
+      node.set(
+          center(node).x(), 
+          center(node).y(), 
+          center(node).x(), 
+          center(node).y()
+          ); 
+    }
+    node.setInitPos(ll(node));
+  }
+
+  // initialize macro bounding box 
+  macro.setInitOrigin(0, 0);
+  macro.set(0, 0, node.width(), node.height());  
 
   // create and add io pin
   std::pair<index_type, bool> insertMacroPinRet = macro.addMacroPin(p.pin_name);
@@ -330,47 +467,43 @@ void PlaceDB::add_def_pin(DefParser::Pin const& p) {
     iopin.setDirect(p.direct);
 
   // create and add port for io pin
-  iopin.macroPorts().push_back(MacroPort());
-  MacroPort& macroPort = iopin.macroPorts().back();
-  macroPort.setId(iopin.macroPorts().size() - 1);
   if (!p.vLayer.empty()) {
-    macroPort.layers().push_back(p.vLayer.front());
-  } 
-  macroPort.boxes().push_back(MacroPort::box_type(
-      0, 
-      0, 
-      (bbox[2] - bbox[0]) * lefDefUnitRatio(), 
-      (bbox[3] - bbox[1]) * lefDefUnitRatio()
-      ));  // adjust to origin (0, 0)
-  deriveMacroPortBbox(macroPort);
-  deriveMacroPinBbox(iopin);
-
-  // create and add virtual node
-  std::pair<index_type, bool> insertNodeRet = addNode(p.pin_name);
-  dreamplaceAssertMsg(insertNodeRet.second,
-                      "failed to create virtual node for io pin %s",
-                      p.pin_name.c_str());
-  Node& node = m_vNode.at(insertNodeRet.first);
-  NodeProperty& property = m_vNodeProperty.at(node.id());
-
-  property.setMacroId(macro.id());
-  node.setStatus(PlaceStatusEnum::FIXED);  // io pin should always be fixed
-  if (p.orient.empty())
-    node.setOrient(OrientEnum::N);
-  else
-    node.setOrient(p.orient);
-  deriveMultiRowAttr(node);
-  if (node.status() == PlaceStatusEnum::FIXED ||
-      node.status() == PlaceStatusEnum::DUMMY_FIXED ||
-      node.status() == PlaceStatusEnum::PLACED) {
-    node.set(
-        (p.origin[0] + bbox[0]) * lefDefUnitRatio(), 
-        (p.origin[1] + bbox[1]) * lefDefUnitRatio(),
-        (p.origin[0] + bbox[2]) * lefDefUnitRatio(), 
-        (p.origin[1] + bbox[3]) * lefDefUnitRatio()
-        );
-    node.setInitPos(ll(node));
+    iopin.macroPorts().push_back(MacroPort());
+    MacroPort& macroPort = iopin.macroPorts().back();
+    macroPort.setId(iopin.macroPorts().size() - 1);
+    for (std::size_t i = 0; i < p.vLayer.size(); ++i) {
+      if (!(p.origin[0] == -1 && p.origin[1] == -1)) {
+        macroPort.layers().push_back(p.vLayer[i]);
+        macroPort.boxes().push_back(MacroPort::box_type(
+              (p.origin[0] + p.vBbox[i][0] - node.xl()) * lefDefUnitRatio(), 
+              (p.origin[1] + p.vBbox[i][1] - node.yl()) * lefDefUnitRatio(), 
+              (p.origin[0] + p.vBbox[i][2] - node.xl()) * lefDefUnitRatio(),
+              (p.origin[1] + p.vBbox[i][3] - node.yl()) * lefDefUnitRatio()
+              )); 
+      }
+    }
+    deriveMacroPortBbox(macroPort);
+  } else if (!p.vPinPort.empty()) {
+    for (std::size_t i = 0; i < p.vPinPort.size(); ++i) {
+      iopin.macroPorts().push_back(MacroPort());
+      MacroPort& macroPort = iopin.macroPorts().back();
+      macroPort.setId(iopin.macroPorts().size() - 1);
+      DefParser::PinPort const& pport = p.vPinPort[i]; 
+      for (std::size_t j = 0; j < pport.vLayer.size(); ++j) {
+        if (!(pport.origin[0] == -1 && pport.origin[1] == -1)) {
+          macroPort.layers() .push_back(pport.vLayer[i]); 
+          macroPort.boxes().push_back(MacroPort::box_type(
+                (pport.origin[0] + pport.vBbox[i][0] - node.xl()) * lefDefUnitRatio(), 
+                (pport.origin[1] + pport.vBbox[i][1] - node.yl()) * lefDefUnitRatio(), 
+                (pport.origin[0] + pport.vBbox[i][2] - node.xl()) * lefDefUnitRatio(),
+                (pport.origin[1] + pport.vBbox[i][3] - node.yl()) * lefDefUnitRatio()
+                ));
+        }
+      }
+      deriveMacroPortBbox(macroPort);
+    }
   }
+  deriveMacroPinBbox(iopin);
 }
 void PlaceDB::resize_def_net(int s) {
   if ((long)m_vNet.capacity() < s)  // only if PlaceDB::prepare() is not called
@@ -679,7 +812,7 @@ void PlaceDB::verilog_instance_cbk(
     Net& net = m_vNet.at(foundNet->second);
 
     // add pin
-    addPin(np.pin, net, node);
+    addPin(np.pin, net, node, instName);
   }
 }
 ///==== Bookshelf Callbacks ====
@@ -1243,35 +1376,41 @@ std::pair<PlaceDB::index_type, bool> PlaceDB::addNet(std::string const& n) {
   }
 }
 
-void PlaceDB::addPin(std::string const& macroPinName, Net& net, Node& node) {
+void PlaceDB::addPin(std::string const& macroPinName, Net& net, Node& node, std::string instName) {
   Macro const& macro = m_vMacro.at(macroId(node));
   index_type macroPinId = macro.macroPinIndex(macroPinName);
   dreamplaceAssertMsg(macroPinId < std::numeric_limits<index_type>::max(),
                       "failed to find pin %s in macro %s", macroPinName.c_str(),
                       macro.name().c_str());
-
-  addPin(macroPinId, net, node);
+  if (instName.empty())
+    addPin(macroPinId, net, node, macroPinName);
+  else
+    addPin(macroPinId, net, node, instName + ":" + macroPinName);
 }
 
-void PlaceDB::addPin(index_type macroPinId, Net& net, Node& node) {
+void PlaceDB::addPin(index_type macroPinId, Net& net, Node& node, std::string pinName) {
   Macro const& macro = m_vMacro.at(macroId(node));
   MacroPin const& mpin = macro.macroPin(macroPinId);
 
   // create and add pin
-  createPin(net, node, mpin.direct(), center(mpin.bbox()), macroPinId);
+  createPin(net, node, mpin.direct(), center(mpin.bbox()), macroPinId, pinName);
 }
 Pin& PlaceDB::createPin(Net& net, Node& node, SignalDirect const& direct,
                         Point<PlaceDB::coordinate_type> const& offset,
-                        PlaceDB::index_type macroPinId) {
+                        PlaceDB::index_type macroPinId,
+                        std::string pinName) {
   // create and add pin
   m_vPin.push_back(Pin());
   Pin& pin = m_vPin.back();
   pin.setId(m_vPin.size() - 1);
-  pin.setNodeId(node.id());
-  pin.setNetId(net.id());
-  pin.setMacroPinId(macroPinId);
-  pin.setOffset(offset);
-  pin.setDirect(direct);
+
+  // Assign attributes to the current pin.
+  pin.setNodeId(node.id())
+     .setNetId(net.id())
+     .setMacroPinId(macroPinId)
+     .setOffset(offset)
+     .setDirect(direct)
+     .setName(pinName);
 
   // add pin index to net and node
   node.pins().push_back(pin.id());
@@ -1792,23 +1931,28 @@ void PlaceDB::sortNodeByPlaceStatus() {
 
   // I assume the total number does not change,
   // but the number of movable and fixed cells may change
-  m_vMovableNodeIndex.clear();
-  m_vFixedNodeIndex.clear();
-  for (std::vector<Node>::const_iterator
-           it = m_vNode.begin(),
-           ite = m_vNode.begin() + numMovable() + numFixed();
-       it != ite; ++it) {
-    Node const& node = *it;
-    // Macro const& macro = m_vMacro.at(macroId(node));
-    if (node.status() == PlaceStatusEnum::FIXED) {
-      m_vFixedNodeIndex.push_back(node.id());
-    } else {
-      m_vMovableNodeIndex.push_back(node.id());
-    }
-  }
-  m_numMovable = m_vMovableNodeIndex.size();
-  m_numFixed = m_vFixedNodeIndex.size();
-
+  // m_vMovableNodeIndex.clear();
+  // m_vFixedNodeIndex.clear();
+  dreamplaceAssert(m_vNode.size() == numMovable() + numFixed() + numIOPin() + numPlaceBlockages());
+  // for (std::vector<Node>::const_iterator
+  //          it = m_vNode.begin(),
+  //          ite = m_vNode.begin() + numMovable() + numFixed() + numIOPin();
+  //      it != ite; ++it) {
+  //   Node const& node = *it;
+  //   Macro const& macro = m_vMacro.at(macroId(node));
+  //   // exclude io pins
+  //   if (not limbo::iequals(macro.className(), "DREAMPlace.IOPin") ) {
+  //     if (node.status() == PlaceStatusEnum::FIXED) {
+  //       m_vFixedNodeIndex.push_back(node.id());
+  //     } else {
+  //       m_vMovableNodeIndex.push_back(node.id());
+  //     }
+  //   }
+  // }
+  dreamplaceAssert(m_numMovable == m_vMovableNodeIndex.size());
+  dreamplaceAssert(m_numFixed == m_vFixedNodeIndex.size());
+  // m_numMovable = m_vMovableNodeIndex.size();
+  // m_numFixed = m_vFixedNodeIndex.size();
   // sort m_vNode, m_vNodeProperty, m_mNodeName2Index
   // map order to node id
   // only work on movable and fixed cells, excluding IO pins
@@ -1915,6 +2059,9 @@ void PlaceDB::sortNodeByPlaceStatus() {
     }
   }
 
+  dreamplaceAssert(m_numMovable == m_vMovableNodeIndex.size());
+  dreamplaceAssert(m_numFixed == m_vFixedNodeIndex.size());
+
 #ifdef DEBUG
   // check pins, nodes, and nets
   for (std::vector<Node>::const_iterator it = m_vNode.begin(),
@@ -1951,6 +2098,7 @@ void PlaceDB::sortNodeByPlaceStatus() {
 #endif
 }
 
+
 void PlaceDB::processGroups() {
   dreamplacePrint(kINFO, "Group cells for fence regions\n");
   std::vector<unsigned char> markers(numMovable() + numFixed(), 0);
@@ -1959,7 +2107,7 @@ void PlaceDB::processGroups() {
     Node const& node = this->node(node_id); 
     if (node.id() >= numMovable() + numFixed()) {
       dreamplacePrint(kWARN, "node %s in group %s (%u) not movable, ignored\n", 
-          nodeName(node), group.name().c_str(), group.id()); 
+          nodeName(node).c_str(), group.name().c_str(), group.id()); 
     } else if (markers.at(node.id())) {
       dreamplacePrint(
           kWARN, "node %u in multiple groups, currently add to group %u\n",
