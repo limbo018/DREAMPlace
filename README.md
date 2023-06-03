@@ -254,7 +254,7 @@ python dreamplace/Placer.py --help
 The list of options as follows will be shown.
 
 | JSON Parameter                  | Default                | Description                                                                                                                                                      |
-| ------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| ------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | aux_input                       | required for Bookshelf | input .aux file                                                                                                                                                  |
 | lef_input                       | required for LEF/DEF   | input LEF file                                                                                                                                                   |
 | def_input                       | required for LEF/DEF   | input DEF file                                                                                                                                                   |
@@ -276,7 +276,7 @@ The list of options as follows will be shown.
 | legalize_flag                   | 1                      | whether use internal legalization                                                                                                                                |
 | detailed_place_flag             | 1                      | whether use internal detailed placement                                                                                                                          |
 | stop_overflow                   | 0.1                    | stopping criteria, consider stop when the overflow reaches to a ratio                                                                                            |
-| dtype                           | float32                | data type, float32                                                                                                                                               | float64 |
+| dtype                           | float32                | data type, float32 or float64                                                                                                                                    |
 | detailed_place_engine           |                        | external detailed placement engine to be called after placement                                                                                                  |
 | detailed_place_command          | -nolegal -nodetail     | commands for external detailed placement engine                                                                                                                  |
 | plot_flag                       | 0                      | whether plot solution or not                                                                                                                                     |
