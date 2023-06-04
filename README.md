@@ -188,7 +188,7 @@ docker run -it -v /dreamplace limbo018/dreamplace:cuda bash
 ```
 
 6. `cd /DREAMPlace`.
-7. Go to next section to complete building.
+7. Go to [next section](#build-without-docker) to complete building within the container.
 
 ## Build without Docker
 
@@ -198,11 +198,11 @@ To build, go to the root directory.
 ```
 mkdir build
 cd build
-cmake .. -DCMAKE_INSTALL_PREFIX=your_install_path -DPYTHON_EXECUTABLE=$(which python)
+cmake .. -DCMAKE_INSTALL_PREFIX=<installation directory> -DPYTHON_EXECUTABLE=$(which python)
 make
 make install
 ```
-
+Where `<installation directory>` is the directory where you want to install OpenPARF (e.g., `../install`).
 Third party submodules are automatically built except for [Boost](https://www.boost.org).
 
 To clean, go to the root directory.
@@ -236,12 +236,14 @@ Before running, make sure the benchmarks have been downloaded and the python dep
 Go to the **install directory** and run with JSON configuration file for full placement.
 
 ```
+cd <installation directory>
 python dreamplace/Placer.py test/ispd2005/adaptec1.json
 ```
 
 Test individual `pytorch` op with the unit tests in the root directory.
 
 ```
+cd <installation directory>
 python unittest/ops/hpwl_unittest.py
 ```
 
@@ -250,6 +252,7 @@ python unittest/ops/hpwl_unittest.py
 Descriptions of options in JSON configuration file can be found by running the following command.
 
 ```
+cd <installation directory>
 python dreamplace/Placer.py --help
 ```
 
