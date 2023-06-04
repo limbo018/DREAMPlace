@@ -202,7 +202,7 @@ cmake .. -DCMAKE_INSTALL_PREFIX=<installation directory> -DPYTHON_EXECUTABLE=$(w
 make
 make install
 ```
-Where `<installation directory>` is the directory where you want to install OpenPARF (e.g., `../install`).
+Where `<installation directory>` is the directory where you want to install DREAMPlace (e.g., `../install`).
 Third party submodules are automatically built except for [Boost](https://www.boost.org).
 
 To clean, go to the root directory.
