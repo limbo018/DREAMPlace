@@ -6,6 +6,19 @@ The tool runs on both CPU and GPU.
 Over `30X` speedup over the CPU implementation ([RePlAce](https://doi.org/10.1109/TCAD.2018.2859220)) is achieved in global placement and legalization on ISPD 2005 contest benchmarks with a Nvidia Tesla V100 GPU.
 DREAMPlace also integrates a GPU-accelerated detailed placer, _ABCDPlace_, which can achieve around `16X` speedup on million-size benchmarks over the widely-adopted sequential placer [NTUPlace3](https://doi.org/10.1109/TCAD.2008.923063) on CPU.
 
+- [DREAMPlace](#dreamplace)
+- [Publications](#publications)
+- [Dependency](#dependency)
+- [How to Install Python Dependency](#how-to-install-python-dependency)
+- [How to Build](#how-to-build)
+  - [Build with Docker](#build-with-docker)
+  - [Build without Docker](#build-without-docker)
+- [How to Get Benchmarks](#how-to-get-benchmarks)
+- [How to Run](#how-to-run)
+- [Configurations](#configurations)
+- [Authors](#authors)
+- [Features](#features)
+
 DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU, only CPU support will be enabled with multi-threading.
 
 - Animation
