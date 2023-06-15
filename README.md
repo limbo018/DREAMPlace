@@ -197,12 +197,12 @@ To build, go to the root directory.
 
 ```
 mkdir build
-cd build
+cd build # we call this <build directory>
 cmake .. -DCMAKE_INSTALL_PREFIX=<installation directory> -DPYTHON_EXECUTABLE=$(which python)
 make
 make install
 ```
-Where `<installation directory>` is the directory where you want to install DREAMPlace (e.g., `../install`).
+Where `<build directory>` is the directory where you compile the code, and `<installation directory>` is the directory where you want to install DREAMPlace (e.g., `../install`).
 Third party submodules are automatically built except for [Boost](https://www.boost.org).
 
 To clean, go to the root directory.
@@ -210,6 +210,7 @@ To clean, go to the root directory.
 ```
 rm -r build
 ```
+`<build directory>` can be removed after installation if you do not need incremental compilation later. 
 
 Here are the available options for CMake.
 
