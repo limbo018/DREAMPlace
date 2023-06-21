@@ -165,6 +165,14 @@ class PlaceDB (object):
         self.xh *= scale_factor
         self.yh -= shift_factor[1]
         self.yh *= scale_factor
+        self.routing_grid_xl -= shift_factor[0]
+        self.routing_grid_xl *= scale_factor
+        self.routing_grid_yl -= shift_factor[1]
+        self.routing_grid_yl *= scale_factor
+        self.routing_grid_xh -= shift_factor[0]
+        self.routing_grid_xh *= scale_factor
+        self.routing_grid_yh -= shift_factor[1]
+        self.routing_grid_yh *= scale_factor
         self.row_height *= scale_factor
         self.site_width *= scale_factor
 
