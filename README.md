@@ -198,7 +198,7 @@ To build, go to the root directory.
 ```
 mkdir build
 cd build # we call this <build directory>
-cmake .. -DCMAKE_INSTALL_PREFIX=<installation directory> -DPYTHON_EXECUTABLE=$(which python)
+cmake .. -DCMAKE_INSTALL_PREFIX=<installation directory> -DPython_EXECUTABLE=$(which python)
 make
 make install
 ```
