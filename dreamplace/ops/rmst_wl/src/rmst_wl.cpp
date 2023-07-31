@@ -1,14 +1,14 @@
 /**
- * @file   rmst_wl.cpp
- * @author Yibo Lin
- * @date   Jun 2018
+ * File              : rmst_wl.cpp
+ * Author            : Yibo Lin <yibolin@pku.edu.cn>
+ * Date              : 06.20.2018
+ * Last Modified Date: 07.20.2023
+ * Last Modified By  : Yibo Lin <yibolin@pku.edu.cn>
  */
 #include "utility/src/torch.h"
 #include "utility/src/utils.h"
 
-extern "C" {
-#include <flute.h>
-}
+#include <flute.hpp>
 
 DREAMPLACE_BEGIN_NAMESPACE
 
@@ -52,7 +52,7 @@ int computeRMSTWLLauncher(const T* x, const T* y, const int* flat_netpin,
                           const char* POSTFILE, T* rmst_wl) {
   // read look-up table for flute
   if (read_lut_flag) {
-    readLUT(POWVFILE, POSTFILE);
+    ::flute::readLUT(POWVFILE, POSTFILE);
   }
   // temporary store x and y positions
   std::vector<int> vx(ignore_net_degree, 0);
@@ -73,7 +73,7 @@ int computeRMSTWLLauncher(const T* x, const T* y, const int* flat_netpin,
       vy[k] = y[flat_netpin[j]] * scale;
     }
     // printf("net %d degree %d\n", i, degree);
-    int wl = flute_wl(degree, vx.data(), vy.data(), ACCURACY);
+    int wl = ::flute::flute_wl(degree, vx.data(), vy.data(), ACCURACY);
     // printf("net %d wl %g\n", i, wl/(double)scale);
     rmst_wl[i] = wl / (T)scale;
   }

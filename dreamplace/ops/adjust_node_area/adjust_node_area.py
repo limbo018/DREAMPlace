@@ -159,6 +159,9 @@ class AdjustNodeArea(nn.Module):
             # compute old areas of movable nodes
             node_size_x_movable = node_size_x[:self.num_movable_nodes]
             node_size_y_movable = node_size_y[:self.num_movable_nodes]
+            old_node_size_x_movable = node_size_x_movable.clone()
+            old_node_size_y_movable = node_size_y_movable.clone()
+            
             old_movable_area = node_size_x_movable * node_size_y_movable
             old_movable_area_sum = old_movable_area.sum()
             # compute old areas of filler nodes
@@ -321,7 +324,9 @@ class AdjustNodeArea(nn.Module):
                 func = update_pin_offset_cuda.forward
             else:
                 func = update_pin_offset_cpp.forward
-            func(node_size_x, node_size_y, self.flat_node2pin_start_map,
+            # update_pin_offset requires node_size before adjustment
+            # update_pin_offset makes sure the absolute pin locations remain the same after inflation
+            func(old_node_size_x_movable , old_node_size_y_movable , self.flat_node2pin_start_map,
                  self.flat_node2pin_map, movable_nodes_ratio,
                  self.num_movable_nodes, pin_offset_x, pin_offset_y)
             return adjust_area_flag, adjust_route_area_flag, adjust_pin_area_flag
