@@ -72,9 +72,7 @@ class PreconditionOp:
         with torch.no_grad():
             # The preconditioning step in python is time-consuming, as in each gradient
             # pass, the total net weight should be re-calculated.
-            net_weights = self.placedb.net_weights
-            sum_pin_weights_in_nodes = self.op_collections.pws_op(net_weights)
-            sum_pin_weights_in_nodes = sum_pin_weights_in_nodes.to(self.placedb.device)
+            sum_pin_weights_in_nodes = self.op_collections.pws_op(self.data_collections.net_weights)
             if density_weight.size(0) == 1:
                 precond = (sum_pin_weights_in_nodes
                     + self.alpha * density_weight * self.data_collections.node_areas
