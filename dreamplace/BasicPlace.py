@@ -139,18 +139,8 @@ class PlaceDataCollection(object):
                 placedb.flat_net2pin_map).to(device)
             self.flat_net2pin_start_map = torch.from_numpy(
                 placedb.flat_net2pin_start_map).to(device)
-            if params.timing_opt_flag:
-                # In timing-driven placement, the net-weighting should always be
-                # considered as it should be updated in every timing iteration.
-                self.net_weights = torch.from_numpy(placedb.net_weights).to(device)
-            else:
-                if np.amin(placedb.net_weights) != np.amax(
-                        placedb.net_weights):  # weights are meaningful
-                    self.net_weights = torch.from_numpy(
-                        placedb.net_weights).to(device)
-                else:  # an empty tensor
-                    logging.warning("net weights are all the same, ignored")
-                    self.net_weights = torch.Tensor().to(device)
+
+            self.net_weights = torch.from_numpy(placedb.net_weights).to(device)
 
             # regions
             self.flat_region_boxes = torch.from_numpy(
@@ -534,9 +524,9 @@ class BasicPlace(nn.Module):
         """
         # CPU version by default...
         pws_op = pws.PinWeightSum(
-            flat_nodepin=data_collections.flat_node2pin_map.cpu(),
-            nodepin_start=data_collections.flat_node2pin_start_map.cpu(),
-            pin2net_map=data_collections.pin2net_map.cpu(),
+            flat_nodepin=data_collections.flat_node2pin_map,
+            nodepin_start=data_collections.flat_node2pin_start_map,
+            pin2net_map=data_collections.pin2net_map,
             num_nodes=placedb.num_nodes,
             algorithm='node-by-node')
 

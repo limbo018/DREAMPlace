@@ -60,6 +60,6 @@ class PinWeightSum(nn.Module):
     def forward(self, net_weights):
         if self.algorithm == 'node-by-node':
             return PinWeightSumFunction.apply(
-                torch.from_numpy(net_weights), # CPU by default
+                net_weights, 
                 self.flat_nodepin, self.nodepin_start,
                 self.pin2net_map, self.num_nodes)
