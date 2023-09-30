@@ -15,7 +15,6 @@
 #include "utility/src/defs.h"
 //#include <boost/timer/timer.hpp>
 
-DREAMPLACE_BEGIN_NAMESPACE
 #include <boost/version.hpp>
 
 #if (BOOST_VERSION/100)%1000 > 55
@@ -32,6 +31,7 @@ namespace boost { namespace polygon {
 namespace gtl = boost::polygon;
 using namespace boost::polygon::operators;
 
+DREAMPLACE_BEGIN_NAMESPACE
 
 /// default constructor
 PlaceDB::PlaceDB() {
