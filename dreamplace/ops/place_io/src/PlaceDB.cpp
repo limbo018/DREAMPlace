@@ -349,11 +349,11 @@ void PlaceDB::add_def_component(DefParser::Component const& c) {
   if (!c.status.empty()) {
     node.setStatus(c.status); 
   }
-  if (macro.className() != "CORE") {
-    // always fix cells whose macro class is not CORE
+  if (!limbo::iequals(macro.className(), "CORE") && !limbo::iequals(macro.className(), "BLOCK")) {
+    // always fix cells whose macro class is not CORE or BLOCK
     dreamplaceAssertMsg(node.status() == PlaceStatusEnum::FIXED ||
                             node.status() == PlaceStatusEnum::PLACED,
-                        "non-CORE class cells must be FIXED or PLACED: %s %s",
+                        "non-CORE or non-BLOCK class cells must be FIXED or PLACED: %s %s",
                         c.comp_name.c_str(), macro.className().c_str());
     node.setStatus(PlaceStatusEnum::FIXED);
   }
