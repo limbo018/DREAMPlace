@@ -60,6 +60,14 @@ at::Tensor hpwl_atomic_forward(at::Tensor pos, at::Tensor pin2net_map,
   // std::cout << "partial_hpwl = \n" <<
   // (partial_hpwl_max-partial_hpwl_min).to(torch::kDouble).mul(1.0/1000) << "\n";
 
+  auto min_value = std::numeric_limits<T>::min();
+  auto max_value = std::numeric_limits<T>::max();
+  auto zero_value = static_cast<T>(0);
+  // replace min or max value with zero
+  partial_hpwl_max.masked_fill_(partial_hpwl_max == min_value, zero_value);
+  partial_hpwl_max.masked_fill_(partial_hpwl_max == max_value, zero_value);
+  partial_hpwl_min.masked_fill_(partial_hpwl_min == min_value, zero_value);
+  partial_hpwl_min.masked_fill_(partial_hpwl_min == max_value, zero_value);
   auto delta = partial_hpwl_max - partial_hpwl_min;
 
   at::Tensor hpwl;

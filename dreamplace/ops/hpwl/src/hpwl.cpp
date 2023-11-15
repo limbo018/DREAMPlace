@@ -74,7 +74,16 @@ int computeHPWLLauncher(const T* x, const T* y, const int* flat_netpin,
         min_y = std::min(min_y, y[flat_netpin[j]]);
         max_y = std::max(max_y, y[flat_netpin[j]]);
       }
-      hpwl[i] = max_x - min_x + max_y - min_y;
+
+      // Return 0 if the net has no pins.
+      if (max_x == -std::numeric_limits<T>::max() ||
+          min_x == std::numeric_limits<T>::max() ||
+          max_y == -std::numeric_limits<T>::max() ||
+          min_y == std::numeric_limits<T>::max()) {
+        hpwl[i] = 0;
+      } else {
+        hpwl[i] = max_x - min_x + max_y - min_y;
+      }
     }
   }
 

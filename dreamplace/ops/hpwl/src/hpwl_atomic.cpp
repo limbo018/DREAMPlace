@@ -60,6 +60,19 @@ at::Tensor hpwl_atomic_forward(at::Tensor pos, at::Tensor pin2net_map,
   // std::cout << "partial_hpwl = \n" <<
   // (partial_hpwl_max-partial_hpwl_min).to(torch::kDouble).mul(1.0/1000) << "\n";
 
+DREAMPLACE_DISPATCH_FLOATING_TYPES(
+    pos, "get_scalar_t_type", [&] {
+      // define min, max and zero value for scalar_t type
+      auto min_value = std::numeric_limits<scalar_t>::min();
+      auto max_value = std::numeric_limits<scalar_t>::max();
+      auto zero_value = static_cast<scalar_t>(0);
+      // replace min or max value with zero
+      partial_hpwl_max.masked_fill_(partial_hpwl_max == min_value, zero_value);
+      partial_hpwl_max.masked_fill_(partial_hpwl_max == min_value, zero_value);
+      partial_hpwl_min.masked_fill_(partial_hpwl_min == max_value, zero_value);
+      partial_hpwl_min.masked_fill_(partial_hpwl_min == max_value, zero_value);
+    });
+
   auto hpwl = (partial_hpwl_max - partial_hpwl_min);
   if (net_weights.numel()) {
     hpwl.mul_(net_weights.view({1, num_nets}));

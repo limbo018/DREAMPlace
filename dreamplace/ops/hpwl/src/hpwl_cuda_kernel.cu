@@ -29,11 +29,11 @@ __global__ void computeHPWL(
                 min_x = min(min_x, x[flat_netpin[j]]);
                 max_x = max(max_x, x[flat_netpin[j]]);
             }
-            partial_hpwl[i] = max_x-min_x;
         }
-        else
-        {
+        if (max_x == -FLT_MAX || min_x == FLT_MAX) {
             partial_hpwl[i] = 0;
+        } else {
+            partial_hpwl[i] = max_x-min_x;
         }
     }
 }
