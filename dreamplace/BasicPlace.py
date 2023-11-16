@@ -160,16 +160,11 @@ class PlaceDataCollection(object):
                 ## this is not used yet
                 self.num_filler_nodes_fence_region = torch.from_numpy(placedb.num_filler_nodes_fence_region).to(device)
 
-            self.net_mask_all = torch.from_numpy(
-                np.ones(placedb.num_nets,
-                        dtype=np.uint8)).to(device)  # all nets included
-            net_degrees = np.array(
-                [len(net2pin) for net2pin in placedb.net2pin_map])
-            net_mask = np.logical_and(
-                2 <= net_degrees,
-                net_degrees < params.ignore_net_degree).astype(np.uint8)
-            self.net_mask_ignore_large_degrees = torch.from_numpy(net_mask).to(
-                device)  # nets with large degrees are ignored
+            net_degrees = self.flat_net2pin_start_map[1:] - self.flat_net2pin_start_map[:-1]
+            self.net_mask_all = (2 <= net_degrees).to(torch.uint8) # all valid nets included
+            self.net_mask_ignore_large_degrees = torch.logical_and(
+                    self.net_mask_all, 
+                    net_degrees < params.ignore_net_degree).to(torch.uint8) # nets with large degrees are ignored
 
             # number of pins for each node
             num_pins_in_nodes = np.zeros(placedb.num_nodes)

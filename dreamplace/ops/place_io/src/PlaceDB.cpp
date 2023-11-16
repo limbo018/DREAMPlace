@@ -503,14 +503,14 @@ void PlaceDB::add_def_pin(DefParser::Pin const& p) {
       dreamplacePrint(
           kWARN, "IO pin: no position specified, set to (%d, %d, %d, %d)\n",
           p.pin_name.c_str(), node.xl(), node.yl(), node.xh(), node.yh());
-    } else {
+    } /* else { // IO pins are considered as terminal NI. Their sizes should not affect the functionality of placement.
       node.set(
           center(node).x(), 
           center(node).y(), 
           center(node).x(), 
           center(node).y()
           ); 
-    }
+    } */
     node.setInitPos(ll(node));
   }
 
@@ -571,6 +571,7 @@ void PlaceDB::add_def_pin(DefParser::Pin const& p) {
     }
   }
   deriveMacroPinBbox(iopin);
+
 }
 void PlaceDB::resize_def_net(int s) {
   if ((long)m_vNet.capacity() < s)  // only if PlaceDB::prepare() is not called

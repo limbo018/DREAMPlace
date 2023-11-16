@@ -77,7 +77,7 @@ class HPWL(nn.Module):
         @param netpin_start starting index in netpin map for each net, length of #nets+1, the last entry is #pins  
         @param pin2net_map pin2net map 
         @param net_weights weight of nets 
-        @param net_mask whether to compute wirelength, 1 means to compute, 0 means to ignore  
+        @param net_mask whether to compute wirelength, 1 means to compute, 0 means to ignore; users should guarantee invalid nets are filtered out  
         @param algorithm must be net-by-net | atomic
         """
         super(HPWL, self).__init__()
