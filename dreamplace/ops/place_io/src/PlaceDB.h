@@ -354,6 +354,7 @@ class PlaceDB : public DefParser::DefDataBase
         virtual void set_def_unit(int u);
         virtual void set_def_design(std::string const& d);
         virtual void set_def_diearea(int xl, int yl, int xh, int yh);
+        virtual void set_def_diearea(int n, const int* x, const int* y);
         virtual void add_def_row(DefParser::Row const& r);
         virtual void resize_def_component(int s);
         virtual void add_def_component(DefParser::Component const& c);

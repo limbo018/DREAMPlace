@@ -15,6 +15,22 @@
 #include "utility/src/defs.h"
 //#include <boost/timer/timer.hpp>
 
+#include <boost/version.hpp>
+
+#if (BOOST_VERSION/100)%1000 > 55
+// this is to fix the problem in boost 1.57.0 (1.55.0 works fine)
+// it reports problem to find abs 
+namespace boost { namespace polygon {
+  using std::abs;
+}} // namespace boost // namespace polygon
+#endif
+
+#include <boost/geometry.hpp>
+// use adapted boost.polygon in boost.geometry, which is compatible to rtree
+#include <boost/geometry/geometries/adapted/boost_polygon.hpp>
+namespace gtl = boost::polygon;
+using namespace boost::polygon::operators;
+
 DREAMPLACE_BEGIN_NAMESPACE
 
 /// default constructor
@@ -203,6 +219,57 @@ void PlaceDB::set_def_diearea(int xl, int yl, int xh, int yh) {
       yh * lefDefUnitRatio()
       );
 }
+void PlaceDB::set_def_diearea(int n, const int* x, const int* y) {
+  // construct bounding box of diearea and polygon shape 
+  int dieareaXL = std::numeric_limits<int>::max(); 
+  int dieareaYL = std::numeric_limits<int>::max(); 
+  int dieareaXH = std::numeric_limits<int>::min(); 
+  int dieareaYH = std::numeric_limits<int>::min(); 
+  std::vector<gtl::point_data<int>> vPoint;
+  vPoint.reserve(n); 
+  for (int i = 0; i < n; ++i) {
+    vPoint.emplace_back(x[i], y[i]);
+    dieareaXL = std::min(dieareaXL, x[i]); 
+    dieareaYL = std::min(dieareaYL, y[i]); 
+    dieareaXH = std::max(dieareaXH, x[i]); 
+    dieareaYH = std::max(dieareaYH, y[i]); 
+  }
+  gtl::polygon_90_data<int> polygon; 
+  polygon.set(vPoint.begin(), vPoint.end());
+  gtl::rectangle_data<int> dieareaBbox (dieareaXL, dieareaYL, dieareaXH, dieareaYH);
+  gtl::polygon_90_set_data<int> dieareaBboxSet;
+  dieareaBboxSet.insert(dieareaBbox);
+
+  // add to polygon set 
+  gtl::polygon_90_set_data<int> dieareaSet; 
+  dieareaSet.insert(polygon); 
+
+  // the complimentary polygon is the blockage set
+  // blockageSet = dieareaBboxSet - dieareaSet
+  gtl::polygon_90_set_data<int> blockageSet; 
+  blockageSet = dieareaBboxSet; 
+  blockageSet -= dieareaSet; 
+
+  // get rectangles from blockage set 
+  std::vector<gtl::rectangle_data<int>> vBlockageBox; 
+  gtl::get_rectangles(vBlockageBox, blockageSet);
+  std::vector<std::vector<int>> vBbox (vBlockageBox.size(), std::vector<int>(4));
+  for (std::size_t i = 0; i < vBlockageBox.size(); ++i) {
+    vBbox[i][0] = gtl::xl(vBlockageBox[i]);
+    vBbox[i][1] = gtl::yl(vBlockageBox[i]);
+    vBbox[i][2] = gtl::xh(vBlockageBox[i]);
+    vBbox[i][3] = gtl::yh(vBlockageBox[i]);
+
+    dreamplacePrint(kDEBUG, "Extra blockage for non-rectangular diearea (%d, %d, %d, %d)\n", vBbox[i][0], vBbox[i][1], vBbox[i][2], vBbox[i][3]);
+  }
+
+  // set diearea as the bounding box and add placement blockages 
+  if (!vBbox.empty()) {
+    add_def_placement_blockage(vBbox);
+  }
+  dreamplacePrint(kDEBUG, "Bounding box of diearea (%d, %d, %d, %d)\n", dieareaXL, dieareaYL, dieareaXH, dieareaYH);
+  set_def_diearea(dieareaXL, dieareaYL, dieareaXH, dieareaYH);
+}
 void PlaceDB::add_def_row(DefParser::Row const& r) {
   // create and add row
   m_vRow.push_back(Row());
@@ -282,11 +349,11 @@ void PlaceDB::add_def_component(DefParser::Component const& c) {
   if (!c.status.empty()) {
     node.setStatus(c.status); 
   }
-  if (macro.className() != "CORE") {
-    // always fix cells whose macro class is not CORE
+  if (!limbo::iequals(macro.className(), "CORE") && !limbo::iequals(macro.className(), "BLOCK")) {
+    // always fix cells whose macro class is not CORE or BLOCK
     dreamplaceAssertMsg(node.status() == PlaceStatusEnum::FIXED ||
                             node.status() == PlaceStatusEnum::PLACED,
-                        "non-CORE class cells must be FIXED or PLACED: %s %s",
+                        "non-CORE or non-BLOCK class cells must be FIXED or PLACED: %s %s",
                         c.comp_name.c_str(), macro.className().c_str());
     node.setStatus(PlaceStatusEnum::FIXED);
   }
@@ -436,14 +503,14 @@ void PlaceDB::add_def_pin(DefParser::Pin const& p) {
       dreamplacePrint(
           kWARN, "IO pin: no position specified, set to (%d, %d, %d, %d)\n",
           p.pin_name.c_str(), node.xl(), node.yl(), node.xh(), node.yh());
-    } else {
+    } /* else { // IO pins are considered as terminal NI. Their sizes should not affect the functionality of placement.
       node.set(
           center(node).x(), 
           center(node).y(), 
           center(node).x(), 
           center(node).y()
           ); 
-    }
+    } */
     node.setInitPos(ll(node));
   }
 
@@ -504,6 +571,7 @@ void PlaceDB::add_def_pin(DefParser::Pin const& p) {
     }
   }
   deriveMacroPinBbox(iopin);
+
 }
 void PlaceDB::resize_def_net(int s) {
   if ((long)m_vNet.capacity() < s)  // only if PlaceDB::prepare() is not called
