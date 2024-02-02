@@ -327,3 +327,39 @@ The list of options as follows will be shown.
   - Add momentum-based net weighting strategy
   - Integrate OpenTimer for static timing analysis
   - Tested under ICCAD 2015 contest benchmarks (see test/iccad2015.ot)
+
+# Macro Placement
+
+Recently, DREAMPLace is chosen as the macro placement baseline in many works. However, the current open-source version of DREAMPlace does not support macro placement very well. Besides, the congfigurations and benchmarks settings of running DREAMPlace differ in different works. For better comparing the performance, we provide the results of our ICCAD work [Stronger Mixed-Size Placement Backbone Considering Second-Order Information](https://ieeexplore.ieee.org/document/10323700) .
+
+|Design | Iteration |HPWL ($\times$ 10^6) |Time (s) |
+|--|--|--|--|
+|adaptec1(IO)| 749|	65.92| 	127.88| 
+|adaptec2(IO)| 753|	77.65| 	143.08|
+|adaptec3(IO)| 898|	151.31| 	173.44 |
+|adaptec4(IO)| 873|	141.45| 	94.16 |
+|bigblue1(IO)| 810|	82.55| 	132.95 |
+|bigblue2(IO)| 918|	99.92| 	149.06 |
+|bigblue3(IO)| 1302|	296.79| 	197.04 |
+|bigblue4(IO)| 1961|	620.00 |	314.13 |
+|adaptec1| 745	|64.63 	|26.09 |
+|adaptec2| 762	|74.71 	|43.88 |
+|adaptec3| 834	|155.58 	|79.11 |
+|adaptec4 |783	|142.48 	|85.95 |
+|adaptec5 |1300	|306.84 	|92.71 |
+|bigblue1 |808	|85.32 	|32.57 |
+|bigblue2 |775	|125.33 	|164.33 |
+|bigblue3 |1095	|273.84 	|194.47 |
+|bigblue4 |1513	|642.88 	|282.51 |
+|newblue1 |743	|59.33 	|34.45 |
+|newblue2 |848	|152.87 	|80.42 |
+|newblue3 |834	|270.08 	|92.85 |
+|newblue4 |1148	|223.24 	|59.69 |
+|newblue5 |1344	|388.98 	|160.38 |
+|newblue6 |1145	|406.82 	|168.85 |
+|newblue7 |1489	|881.64 	|304.60 |
+|ariane133 |716	|9.36 	|91.12 |
+|ariane136 |700	|12.94 	|28.29 |
+|mempool_tile |779|	10.68 	|26.36 | 
+|bp_quad |953	|130.60 |	133.48 |
+|nvdla |742|	34.61 |	60.25 |
