@@ -327,3 +327,53 @@ The list of options as follows will be shown.
   - Add momentum-based net weighting strategy
   - Integrate OpenTimer for static timing analysis
   - Tested under ICCAD 2015 contest benchmarks (see test/iccad2015.ot)
+ 
+# Macro Placement
+
+Recently, many studies chose DREAMPLace for macro placement, e.g., [[Cheng+, NeurIPS2021](https://arxiv.org/abs/2111.00234)], [[Liu+, DAC2022](https://dl.acm.org/doi/abs/10.1145/3489517.3530484)], [[Lai+, NeurIPS2023](https://arxiv.org/pdf/2211.13382)], etc. However, the results reported on the same benchmarks vary significantly from one work to another. For better comparison, we provide the results collected from our machine for reference [[Chen+, ICCAD2023](https://ieeexplore.ieee.org/document/10323700)]. If your results deviate significantly (i.e., >5% longer HPWL) from the following numbers, something may be wrong. We recommend you to contact us with logs for validation. 
+
+[ISPD2005 benchmark](https://dl.acm.org/doi/10.1145/1629911.1630028) with IO pads free to move. 
+
+|Design | Iteration |HPWL ($\times$ 10^6) |Time (s) |
+|--|--|--|--|
+|adaptec1(IO Freed)| 600|	101.27|	26.33|
+|adaptec2(IO Freed)| 588|	137.52|	40.63|
+|adaptec3(IO Freed)| 765|	179.51|	54.08|
+|adaptec4(IO Freed)| 876|	153.27|	48.91|
+|bigblue1(IO Freed)| 699|	86.18|	23.45|
+|bigblue2(IO Freed)| 1267|	2426.69|	679.43|
+|bigblue3(IO Freed)| 1207|	330.15|	115.36|
+|bigblue4(IO Freed)| 1581|	820.07|	239.64|
+
+[MMS benchmark](https://dl.acm.org/doi/10.1145/1629911.1630028) (modified from ISPD2005 benchmarks with movable macros and fixed IO pads)
+
+|Design | Iteration |HPWL ($\times$ 10^6) |Time (s) |
+|--|--|--|--|
+|adaptec1| 607|	65.30|	17.79|
+|adaptec2| 569|	79.29|	28.45|
+|adaptec3| 659|	158.06|	44.58|
+|adaptec4 |735|	141.71|	46.77|
+|adaptec5 |1053|	326.30|	63.84|
+|bigblue1 |646|	85.38|	21.26|
+|bigblue2 |638|	125.35|	41.97|
+|bigblue3 |911|	279.33|	112.49|
+|bigblue4 |1189|	648.84|	172.40|
+|newblue1 |574|	62.82|	22.46|
+|newblue2 |730|	155.53|	34.82|
+|newblue3 |1318|	597.32|	55.71|
+|newblue4 |1009|	246.24|	52.61|
+|newblue5 |1254|	444.20|	99.37|
+|newblue6 |929|	410.61|	96.13|
+|newblue7 |1077|	903.59|	184.07|
+
+[TILOS benchmark](https://github.com/TILOS-AI-Institute/MacroPlacement)
+
+|Design | Iteration |HPWL ($\times$ 10^6) |Time (s) |
+|--|--|--|--|
+|ariane133 |573|	10.03|	11.26|
+|ariane136 |569|	13.80|	12.18|
+|mempool_tile |611|	10.92|	11.36|
+|bp_quad |829|	342.59|	91.34|
+|nvdla |490|	326.83|	22.52|
+
+Note that if you observe divergence or legalization errors in the log, then the results may not be representative. 
