@@ -330,9 +330,9 @@ The list of options as follows will be shown.
  
 # Macro Placement
 
-Recently, many works have chosen DREAMPLace as the macro placement baseline. However, the current open-source version of DREAMPlace does not support macro placement well. In addition, the configuration and benchmarks for running DREAMPlace vary from one work to another. To better compare performance, we provide the results of our ICCAD work [Stronger Mixed-Size Placement Backbone Considering Second-Order Information](https://ieeexplore.ieee.org/document/10323700).
+Recently, many studies chose DREAMPLace for macro placement, e.g., [[Cheng+, NeurIPS2021](https://arxiv.org/abs/2111.00234)], [[Liu+, DAC2022](https://dl.acm.org/doi/abs/10.1145/3489517.3530484)], [[Lai+, NeurIPS2023](https://arxiv.org/pdf/2211.13382)], etc. However, the results reported on the same benchmarks vary significantly from one work to another. For better comparison, we provide the results collected from our machine for reference [[Chen+, ICCAD2023](https://ieeexplore.ieee.org/document/10323700)]. If your results deviate significantly (i.e., >5% longer HPWL) from the following numbers, something may be wrong. We recommend you to contact us with logs for validation. 
 
-IO Pads Freed [ISPD2005 benchmark](https://dl.acm.org/doi/10.1145/1629911.1630028)
+[ISPD2005 benchmark](https://dl.acm.org/doi/10.1145/1629911.1630028) with IO pads free to move. 
 
 |Design | Iteration |HPWL ($\times$ 10^6) |Time (s) |
 |--|--|--|--|
@@ -345,7 +345,7 @@ IO Pads Freed [ISPD2005 benchmark](https://dl.acm.org/doi/10.1145/1629911.163002
 |bigblue3(IO Freed)| 1207|	330.15|	115.36|
 |bigblue4(IO Freed)| 1581|	820.07|	239.64|
 
-[MMS Benchmark](https://dl.acm.org/doi/10.1145/1629911.1630028)
+[MMS benchmark](https://dl.acm.org/doi/10.1145/1629911.1630028) (modified from ISPD2005 benchmarks with movable macros and fixed IO pads)
 
 |Design | Iteration |HPWL ($\times$ 10^6) |Time (s) |
 |--|--|--|--|
@@ -366,7 +366,7 @@ IO Pads Freed [ISPD2005 benchmark](https://dl.acm.org/doi/10.1145/1629911.163002
 |newblue6 |929|	410.61|	96.13|
 |newblue7 |1077|	903.59|	184.07|
 
-[TILOS Benchmark](https://github.com/TILOS-AI-Institute/MacroPlacement)
+[TILOS benchmark](https://github.com/TILOS-AI-Institute/MacroPlacement)
 
 |Design | Iteration |HPWL ($\times$ 10^6) |Time (s) |
 |--|--|--|--|
@@ -375,3 +375,5 @@ IO Pads Freed [ISPD2005 benchmark](https://dl.acm.org/doi/10.1145/1629911.163002
 |mempool_tile |611|	10.92|	11.36|
 |bp_quad |829|	342.59|	91.34|
 |nvdla |490|	326.83|	22.52|
+
+Note that if you observe divergence or legalization errors in the log, then the results may not be representative. 
