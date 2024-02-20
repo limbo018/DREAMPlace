@@ -275,6 +275,7 @@ The list of options as follows will be shown.
 - [Zixuan Jiang](https://github.com/ZixuanJiang) and [Jiaqi Gu](https://github.com/JeremieMelo) improved the efficiency of the wirelength and density operators on GPU.
 - [Yibo Lin](http://yibolin.com) and [Jiaqi Gu](https://github.com/JeremieMelo) developed and integrated ABCDPlace for detailed placement.
 - [Peiyu Liao](https://enzoleo.github.io) and [Siting Liu](https://lusica1031.github.io) developed and integrated timing optimization in global placement for DREAMPlace 4.0.
+- Yifan Chen developed the two-stage flow and improved the optimizer for macro placement in DREAMPlace 4.1. 
 - **Pull requests to improve the tool are more than welcome.** We appreciate all kinds of contributions from the community.
 
 # Features
