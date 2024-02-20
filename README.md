@@ -327,3 +327,48 @@ The list of options as follows will be shown.
   - Add momentum-based net weighting strategy
   - Integrate OpenTimer for static timing analysis
   - Tested under ICCAD 2015 contest benchmarks (see test/iccad2015.ot)
+
+- [4.1.0](https://github.com/limbo018/DREAMPlace/releases/tag/4.1.0)
+  - Support bb step and 2-stage macro placement flow as published at ICCAD 2023
+  - Tested under ISPD 2005 with all fixed macros and IO pads regarded as movable macros (see test/ispd2005free) and mms benchmarks (see test/mms)
+ 
+# Reference Results for Macro Placement
+
+Recently, many studies chose DREAMPLace for macro placement, e.g., [[Cheng+, NeurIPS2021](https://arxiv.org/abs/2111.00234)], [[Lai+, NeurIPS2023](https://arxiv.org/pdf/2211.13382)], etc. However, the results reported on the same benchmarks vary significantly from one work to another. For better comparison, we provide the results collected from our GPU machine for reference [[Chen+, ICCAD2023](https://ieeexplore.ieee.org/document/10323700)]. If your results deviate significantly (i.e., >5% longer HPWL) from the following numbers, something may be wrong. We recommend you to contact us with logs for validation. 
+
+[ISPD2005 benchmark](https://dl.acm.org/doi/10.1145/1629911.1630028) with all fixed macros and IO pads regarded as movable macros
+
+|Design | Iteration |HPWL ($\times$ 10^6) |Time (s) |
+|--|--|--|--|
+|adaptec1 | 600|	101.27|	26.33|
+|adaptec2* | 588|	137.52|	40.63|
+|adaptec3 | 765|	179.51|	54.08|
+|adaptec4 | 876|	153.27|	48.91|
+|bigblue1 | 699|	86.18|	23.45|
+|bigblue2* | 1267|	2426.69|	679.43|
+|bigblue3 | 1207|	330.15|	115.36|
+|bigblue4 | 1581|	820.07|	239.64|
+
+[MMS benchmark](https://dl.acm.org/doi/10.1145/1629911.1630028) (modified from ISPD2005 benchmarks with movable macros and fixed IO pads)
+
+|Design | Iteration |HPWL ($\times$ 10^6) |Time (s) |
+|--|--|--|--|
+|adaptec1| 607|	65.30|	17.79|
+|adaptec2| 569|	79.29|	28.45|
+|adaptec3| 659|	158.06|	44.58|
+|adaptec4 |735|	141.71|	46.77|
+|adaptec5 |1053|	326.30|	63.84|
+|bigblue1 |646|	85.38|	21.26|
+|bigblue2 |638|	125.35|	41.97|
+|bigblue3 |911|	279.33|	112.49|
+|bigblue4 |1189|	648.84|	172.40|
+|newblue1 |574|	62.82|	22.46|
+|newblue2 |730|	155.53|	34.82|
+|newblue3* |1318|	597.32|	55.71|
+|newblue4 |1009|	246.24|	52.61|
+|newblue5 |1254|	444.20|	99.37|
+|newblue6 |929|	410.61|	96.13|
+|newblue7 |1077|	903.59|	184.07|
+
+```*``` denotes divergence or legalization failure. 
+Note that if you observe divergence or legalization errors in the log, then the results may not be representative. 

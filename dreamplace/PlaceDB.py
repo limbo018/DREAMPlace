@@ -95,6 +95,10 @@ class PlaceDB (object):
         self.total_fixed_node_area = None # total fixed cell area
         self.total_space_area = None # total placeable space area excluding fixed cells
 
+        # macro mask
+        self.movable_macro_mask = None # movable macros in movables nodes
+        self.movable_macro_pins = None # pins of movable macros
+
         # enable filler cells
         # the Idea from e-place and RePlace
         self.total_filler_node_area = None
@@ -792,13 +796,30 @@ row height = %g, site width = %g
                         - np.maximum(self.node_y[self.num_movable_nodes:self.num_physical_nodes - self.num_terminal_NIs], self.yl),
                         0.0)
                 ))
-        content += "total_movable_node_area = %g, total_fixed_node_area = %g, total_space_area = %g\n" % (self.total_movable_node_area, self.total_fixed_node_area, self.total_space_area)
+        # detect movable macros
+        movable_node_area = self.node_size_x[:self.num_movable_nodes] * self.node_size_y[:self.num_movable_nodes]
+        mean_movable_node_area = self.total_movable_node_area / self.num_movable_nodes
+        self.movable_macro_mask = np.zeros(self.num_movable_nodes, dtype=bool)
+        self.movable_macro_mask[:self.num_movable_nodes] = (movable_node_area > mean_movable_node_area * 10) & (self.node_size_y[:self.num_movable_nodes] > self.row_height * 2)
+        self.movable_macro_pins = np.isin(self.pin2node_map, np.arange(0, self.num_movable_nodes)[self.movable_macro_mask])
 
-        target_density = min(self.total_movable_node_area / self.total_space_area, 1.0)
+        total_movable_macro_area = movable_node_area[self.movable_macro_mask].sum()
+        total_movable_cell_area = self.total_movable_node_area - total_movable_macro_area
+        total_cell_space_area = self.total_space_area - total_movable_macro_area
+        cell_utilization = total_movable_cell_area / total_cell_space_area
+
+        # if no movable macro, turn off macro place flag
+        if total_movable_macro_area <= 0:
+            params.macro_place_flag = False
+
+        content += "total_movable_node_area = %g, total_fixed_node_area = %g, total_space_area = %g\ntotal_movable_cell_area = %g, total_movable_macro_area = %g\n" % \
+                        (self.total_movable_node_area, self.total_fixed_node_area, self.total_space_area, total_movable_cell_area, total_movable_macro_area)
+
+        target_density = min(cell_utilization, 1.0)
         if target_density > params.target_density:
-            logging.warning("target_density %g is smaller than utilization %g, ignored" % (params.target_density, target_density))
+            logging.warning("target_density %g is smaller than cell utilization %g, ignored" % (params.target_density, target_density))
             params.target_density = target_density
-        content += "utilization = %g, target_density = %g\n" % (self.total_movable_node_area / self.total_space_area, params.target_density)
+        content += "utilization = %g, cell utilization = %g, target_density = %g\n" % (self.total_movable_node_area / self.total_space_area, cell_utilization, params.target_density)
 
         # calculate fence region virtual macro
         if len(self.regions) > 0:

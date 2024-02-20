@@ -58,8 +58,31 @@ class NonLinearPlace(BasicPlace.BasicPlace):
 
         # global placement
         if params.global_place_flag:
+
+            global_place_stages  = params.global_place_stages
+            # macro place use external 1 stage to place macros
+            if params.macro_place_flag:
+                first_place_params = global_place_stages[0]
+                global_place_stages.insert(0, first_place_params)
+                macro_placed = False
+
+                # add macro halo
+                if params.macro_halo_x > 0 or params.macro_halo_y > 0:
+                    with torch.no_grad():
+                        movable_macro_mask = self.data_collections.movable_macro_mask
+                        movable_macro_pins = self.data_collections.movable_macro_pins
+                        # node sizes
+                        self.data_collections.node_size_x[: placedb.num_movable_nodes][movable_macro_mask] += (2 * params.macro_halo_x)
+                        self.data_collections.node_size_y[: placedb.num_movable_nodes][movable_macro_mask] += (2 * params.macro_halo_y)
+                        # pin offsets
+                        self.data_collections.pin_offset_x[movable_macro_pins] += params.macro_halo_x
+                        self.data_collections.pin_offset_y[movable_macro_pins] += params.macro_halo_y
+                        # macro locations
+                        self.pos[0][: placedb.num_movable_nodes][movable_macro_mask] -= params.macro_halo_x
+                        self.pos[0][placedb.num_nodes : placedb.num_nodes + placedb.num_movable_nodes][movable_macro_mask] -= params.macro_halo_y
+
             # global placement may run in multiple stages according to user specification
-            for global_place_params in params.global_place_stages:
+            for cur_stage, global_place_params in enumerate(global_place_stages):
 
                 # we formulate each stage as a 3-nested optimization problem
                 # f_gamma(g_density(h(x) ; density weight) ; gamma)
@@ -76,6 +99,9 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                 tt = time.time()
                 # construct model and optimizer
                 density_weight = 0.0
+                if params.macro_place_flag and cur_stage == 1:
+                    density_weight = all_metrics[-1][-1][-1].density_weight.item() / params.two_stage_density_scaler
+
                 # construct placement model
                 model = PlaceObj.PlaceObj(
                     density_weight,
@@ -85,6 +111,15 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                     self.op_collections,
                     global_place_params,
                 ).to(self.data_collections.pos[0].device)
+
+                if params.macro_place_flag and macro_placed:
+                    movable_macro_mask =  self.data_collections.movable_macro_mask
+                    model.fix_nodes_mask = movable_macro_mask.new_zeros(placedb.num_nodes)
+                    model.fix_nodes_mask[placedb.num_movable_nodes:placedb.num_physical_nodes] = 1
+                    model.fix_nodes_mask[:placedb.num_movable_nodes] = movable_macro_mask[:placedb.num_movable_nodes]
+                    # params.use_bb = False
+                    # pdb.set_trace()
+
                 optimizer_name = global_place_params["optimizer"]
 
                 # determine optimizer
@@ -102,6 +137,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         lr=0,
                         obj_and_grad_fn=model.obj_and_grad_fn,
                         constraint_fn=self.op_collections.move_boundary_op,
+                        use_bb = params.use_bb
                     )
                 else:
                     assert 0, "unknown optimizer %s" % (optimizer_name)
@@ -141,11 +177,11 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                     for param_group in optimizer.param_groups:
                         param_group["lr"] = learning_rate.data
 
-                if iteration == 0:
-                    if params.gp_noise_ratio > 0.0:
+                if iteration == 0 or (params.macro_place_flag and cur_stage == 1):
+                    if iteration == 0 and params.gp_noise_ratio > 0.0:
                         logging.info("add %g%% noise" % (params.gp_noise_ratio * 100))
                         model.op_collections.noise_op(model.data_collections.pos[0], params.gp_noise_ratio)
-                        initialize_learning_rate(model.data_collections.pos[0])
+                    initialize_learning_rate(model.data_collections.pos[0])
                 # the state must be saved after setting learning rate
                 initial_state = copy.deepcopy(optimizer.state_dict())
 
@@ -476,7 +512,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                             ## only detect divergence when overflow is relatively low but not too low
                             div_flag = check_divergence(
                                 # sometimes maybe too aggressive...
-                                divergence_list, window=3, threshold=0.1 * overflow_list[-1])
+                                divergence_list, window=50, threshold=overflow_list[-1])
                             if params.timing_opt_flag:
                                 # currently do not check divergence in timing-driven placement
                                 # TODO: a better way for divergence detection and roll-back for tdp.
@@ -653,6 +689,31 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                 #     and last_metric.hpwl > best_metric[0].hpwl
                 # ):
                 #     all_metrics.append([best_metric])
+                # fix movable macros
+                if params.macro_place_flag and not macro_placed:
+                    macro_placed = True
+                    # recover halo
+                    if params.macro_halo_x > 0 or params.macro_halo_y > 0:
+                        with torch.no_grad():
+                            movable_macro_mask = self.data_collections.movable_macro_mask
+                            movable_macro_pins = self.data_collections.movable_macro_pins
+                            # node sizes
+                            self.data_collections.node_size_x[: placedb.num_movable_nodes][movable_macro_mask] -= (2 * params.macro_halo_x)
+                            self.data_collections.node_size_y[: placedb.num_movable_nodes][movable_macro_mask] -= (2 * params.macro_halo_y)
+                            # pin offsets
+                            self.data_collections.pin_offset_x[movable_macro_pins] -= params.macro_halo_x
+                            self.data_collections.pin_offset_y[movable_macro_pins] -= params.macro_halo_y
+                            # macro locations
+                            self.pos[0][: placedb.num_movable_nodes][movable_macro_mask] += params.macro_halo_x
+                            self.pos[0][placedb.num_nodes : placedb.num_nodes + placedb.num_movable_nodes][movable_macro_mask] += params.macro_halo_y
+
+                    if params.plot_flag:
+                        self.plot(params, placedb, iteration, self.pos[0].data.clone().cpu().numpy())
+                    self.pos[0].data.copy_(self.op_collections.macro_legalize_op(self.pos[0]))
+                    iteration += 1
+                    if params.plot_flag:
+                        self.plot(params, placedb, iteration, self.pos[0].data.clone().cpu().numpy())
+
 
                 logging.info("optimizer %s takes %.3f seconds" % (optimizer_name, time.time() - tt))
 
