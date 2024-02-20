@@ -327,6 +327,10 @@ The list of options as follows will be shown.
   - Add momentum-based net weighting strategy
   - Integrate OpenTimer for static timing analysis
   - Tested under ICCAD 2015 contest benchmarks (see test/iccad2015.ot)
+
+- [4.1.0](https://github.com/limbo018/DREAMPlace/releases/tag/4.1.0)
+  - Support bb step and 2-stage macro placement flow as published at ICCAD 2023
+  - Tested under ISPD 2005 with all fixed macros and IO pads regarded as movable macros (see test/ispd2005free) and mms benchmarks (see test/mms)
  
 # Reference Results for Macro Placement
 
