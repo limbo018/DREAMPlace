@@ -273,5 +273,25 @@
     "description" : "maximum net weight in timing opt (negative for infinity)",
     "default" : "inf",
     "required" : "required for timing-driven mode"
+    },
+"use_bb" : {
+    "descripton" : "whether use bb step", 
+    "default" : 0
+    }, 
+"macro_place_flag" : {
+        "descripton" : "whether enable macro placement", 
+        "default" : 0
+    },
+"two_stage_density_scaler" : {
+        "descripton" : "scale density weight after macro place", 
+        "default" : 1000
+    },
+"macro_halo_x": {
+    "description": "horizontal halo around movable macros",
+    "default": 0
+    },
+"macro_halo_y": {
+    "description": "vertical halo around movable macros",
+    "default": 0
     }
 }
