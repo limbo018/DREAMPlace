@@ -25,7 +25,5 @@
 "random_center_init_flag" : 1, 
 "sort_nets_by_degree" : 0,
 "num_threads" : 8,
-"deterministic_flag" : 0,
-"use_bb" : 1,
-"macro_place_falg" : 0
+"deterministic_flag" : 0
 }

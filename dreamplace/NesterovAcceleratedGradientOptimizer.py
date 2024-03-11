@@ -186,7 +186,9 @@ class NesterovAcceleratedGradientOptimizer(Optimizer):
                 u_k = group['u_k'][i]
                 v_k = group['v_k'][i]
                 obj_k, g_k = obj_and_grad_fn(v_k)
-                group['obj_k'].append(obj_k.data.clone())
+                if not group['obj_k']:
+                    group['obj_k'].append(None)
+                group['obj_k'][i] = obj_k.data.clone()
                 if not group['a_k']:
                     group['a_k'].append(torch.ones(1, dtype=g_k.dtype, device=g_k.device))
                     group['v_k_1'].append(torch.autograd.Variable(torch.zeros_like(v_k), requires_grad=True))
@@ -194,7 +196,9 @@ class NesterovAcceleratedGradientOptimizer(Optimizer):
                 a_k = group['a_k'][i]
                 v_k_1 = group['v_k_1'][i]
                 obj_k_1, g_k_1 = obj_and_grad_fn(v_k_1)
-                group['obj_k_1'].append(obj_k_1.data.clone())
+                if not group['obj_k_1']:
+                    group['obj_k_1'].append(None)
+                group['obj_k_1'][i] = obj_k_1.data.clone()
                 if group['v_kp1'][i] is None:
                     group['v_kp1'][i] = torch.autograd.Variable(torch.zeros_like(v_k), requires_grad=True)
                 v_kp1 = group['v_kp1'][i]
