@@ -29,7 +29,7 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
 
 - Reference Flow
 
-<img src=/images/DREAMPlace2_flow.png width=600>
+<img src=images/DREAMPlace4.1_flow.png width=600>
 
 # Publications
 
@@ -335,41 +335,288 @@ The list of options as follows will be shown.
  
 # Reference Results for Macro Placement
 
-Recently, many studies chose DREAMPLace for macro placement, e.g., [[Cheng+, NeurIPS2021](https://arxiv.org/abs/2111.00234)], [[Lai+, NeurIPS2023](https://arxiv.org/pdf/2211.13382)], etc. However, the results reported on the same benchmarks vary significantly from one work to another. For better comparison, we provide the results collected from our GPU machine for reference [[Chen+, ICCAD2023](https://ieeexplore.ieee.org/document/10323700)]. If your results deviate significantly (i.e., >5% longer HPWL) from the following numbers, something may be wrong. We recommend you to contact us with logs for validation. 
+Recently, many studies chose DREAMPLace for macro placement, e.g., [[Cheng+, NeurIPS2021](https://arxiv.org/abs/2111.00234)], [[Lai+, NeurIPS2023](https://arxiv.org/pdf/2211.13382)], etc. However, the results reported on the same benchmarks vary significantly from one work to another. For better comparison, we provide the results collected from our GPU machine for reference [[Chen+, ICCAD2023](https://ieeexplore.ieee.org/document/10323700)]. If your results deviate significantly (i.e., >5% longer HPWL) from the following numbers, something may be wrong. We recommend you to contact us with logs for validation.
 
 [ISPD2005 benchmark](https://dl.acm.org/doi/10.1145/1629911.1630028) with all fixed macros and IO pads regarded as movable macros
-
-|Design | Iteration |HPWL ($\times$ 10^6) |Time (s) |
-|--|--|--|--|
-|adaptec1 | 600|	101.27|	26.33|
-|adaptec2* | 588|	137.52|	40.63|
-|adaptec3 | 765|	179.51|	54.08|
-|adaptec4 | 876|	153.27|	48.91|
-|bigblue1 | 699|	86.18|	23.45|
-|bigblue2* | 1267|	2426.69|	679.43|
-|bigblue3 | 1207|	330.15|	115.36|
-|bigblue4 | 1581|	820.07|	239.64|
+<table>
+<thead>
+  <tr>
+    <th></th>
+    <th colspan="3">Default</th>
+    <th colspan="3">DREAMPlace 4.1.0</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td></td>
+    <td>Iterations</td>
+    <td>HPWL(x10^6)</td>
+    <td>Time(s)</td>
+    <td>Iterations</td>
+    <td>HPWL(x10^6)</td>
+    <td>Time(s)</td>
+  </tr>
+  <tr>
+    <td>adaptec1</td>
+    <td>600</td>
+    <td>101.3</td>
+    <td>26.3</td>
+    <td>748</td>
+    <td>68.2 </td>
+    <td>27.6</td>
+  </tr>
+  <tr>
+    <td>adaptec2</td>
+    <td>588*</td>
+    <td>137.5*</td>
+    <td>40.6*</td>
+    <td>784</td>
+    <td>86.3 </td>
+    <td>40.1</td>
+  </tr>
+  <tr>
+    <td>adaptec3</td>
+    <td>765</td>
+    <td>179.5</td>
+    <td>54.1</td>
+    <td>894</td>
+    <td>144.0 </td>
+    <td>56.1</td>
+  </tr>
+  <tr>
+    <td>adaptec4</td>
+    <td>876</td>
+    <td>153.3</td>
+    <td>48.9</td>
+    <td>872</td>
+    <td>140.8 </td>
+    <td>57.3</td>
+  </tr>
+  <tr>
+    <td>bigblue1</td>
+    <td>699</td>
+    <td>86.2</td>
+    <td>23.5</td>
+    <td>813</td>
+    <td>82.0 </td>
+    <td>25.5</td>
+  </tr>
+  <tr>
+    <td>bigblue2</td>
+    <td>1267*</td>
+    <td>2426.7*</td>
+    <td>679.4*</td>
+    <td>869</td>
+    <td>98.1 </td>
+    <td>193.4</td>
+  </tr>
+  <tr>
+    <td>bigblue3</td>
+    <td>1207</td>
+    <td>330.2</td>
+    <td>115.4</td>
+    <td>1307</td>
+    <td>288.8 </td>
+    <td>140.1</td>
+  </tr>
+  <tr>
+    <td>bigblue4</td>
+    <td>1581</td>
+    <td>820.1</td>
+    <td>239.6</td>
+    <td>1875</td>
+    <td>610.0 </td>
+    <td>234.5</td>
+  </tr>
+  <tr>
+    <td>average ratio</td>
+    <td>0.937</td>
+    <td>4.211</td>
+    <td>1.258</td>
+    <td>1.000</td>
+    <td>1.000</td>
+    <td>1.000</td>
+  </tr>
+</tbody>
+</table>
 
 [MMS benchmark](https://dl.acm.org/doi/10.1145/1629911.1630028) (modified from ISPD2005 benchmarks with movable macros and fixed IO pads)
 
-|Design | Iteration |HPWL ($\times$ 10^6) |Time (s) |
-|--|--|--|--|
-|adaptec1| 607|	65.30|	17.79|
-|adaptec2| 569|	79.29|	28.45|
-|adaptec3| 659|	158.06|	44.58|
-|adaptec4 |735|	141.71|	46.77|
-|adaptec5 |1053|	326.30|	63.84|
-|bigblue1 |646|	85.38|	21.26|
-|bigblue2 |638|	125.35|	41.97|
-|bigblue3 |911|	279.33|	112.49|
-|bigblue4 |1189|	648.84|	172.40|
-|newblue1 |574|	62.82|	22.46|
-|newblue2 |730|	155.53|	34.82|
-|newblue3* |1318|	597.32|	55.71|
-|newblue4 |1009|	246.24|	52.61|
-|newblue5 |1254|	444.20|	99.37|
-|newblue6 |929|	410.61|	96.13|
-|newblue7 |1077|	903.59|	184.07|
+Our modified version can be downloaded from [here](https://www.dropbox.com/scl/fi/23i1jlmc9xhvfnj0jv82k/mms_mod.zip?rlkey=x4c0a4r877ii5ychu5lk4ur48&dl=0).
 
+<table>
+<thead>
+  <tr>
+    <th></th>
+    <th colspan="3">Default</th>
+    <th colspan="3">DREAMPlace 4.1.0</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td></td>
+    <td>Iterations</td>
+    <td>HPWL(x10^6)</td>
+    <td>Time(s)</td>
+    <td>Iterations</td>
+    <td>HPWL(x10^6)</td>
+    <td>Time(s)</td>
+  </tr>
+  <tr>
+    <td>adaptec1</td>
+    <td>607</td>
+    <td>65.3 </td>
+    <td>17.8 </td>
+    <td>746</td>
+    <td>64.7 </td>
+    <td>25.8</td>
+  </tr>
+  <tr>
+    <td>adaptec2</td>
+    <td>569</td>
+    <td>79.3 </td>
+    <td>28.5 </td>
+    <td>734</td>
+    <td>75.8 </td>
+    <td>35.8</td>
+  </tr>
+  <tr>
+    <td>adaptec3</td>
+    <td>659</td>
+    <td>158.1 </td>
+    <td>44.6 </td>
+    <td>755</td>
+    <td>153.3 </td>
+    <td>38.9</td>
+  </tr>
+  <tr>
+    <td>adaptec4</td>
+    <td>735</td>
+    <td>141.7 </td>
+    <td>46.8 </td>
+    <td>782</td>
+    <td>142.4 </td>
+    <td>47.5</td>
+  </tr>
+  <tr>
+    <td>adaptec5</td>
+    <td>1053</td>
+    <td>326.3</td>
+    <td>63.8</td>
+    <td>1405</td>
+    <td>337.6 </td>
+    <td>78.4</td>
+  </tr>
+  <tr>
+    <td>bigblue1</td>
+    <td>646</td>
+    <td>85.4 </td>
+    <td>21.3 </td>
+    <td>809</td>
+    <td>85.3 </td>
+    <td>28.9</td>
+  </tr>
+  <tr>
+    <td>bigblue2</td>
+    <td>638</td>
+    <td>125.3 </td>
+    <td>42.0 </td>
+    <td>773</td>
+    <td>125.4 </td>
+    <td>48.4</td>
+  </tr>
+  <tr>
+    <td>bigblue3</td>
+    <td>911</td>
+    <td>279.3 </td>
+    <td>112.5 </td>
+    <td>1097</td>
+    <td>273.8 </td>
+    <td>136.1</td>
+  </tr>
+  <tr>
+    <td>bigblue4</td>
+    <td>1189</td>
+    <td>648.8 </td>
+    <td>172.4 </td>
+    <td>1515</td>
+    <td>643.2 </td>
+    <td>215.4</td>
+  </tr>
+  <tr>
+    <td>newblue1</td>
+    <td>574</td>
+    <td>62.8 </td>
+    <td>22.5 </td>
+    <td>749</td>
+    <td>62.0 </td>
+    <td>30.4</td>
+  </tr>
+  <tr>
+    <td>newblue2</td>
+    <td>730</td>
+    <td>155.5 </td>
+    <td>34.8 </td>
+    <td>861</td>
+    <td>156.1 </td>
+    <td>43.9</td>
+  </tr>
+  <tr>
+    <td>newblue3</td>
+    <td>1318*</td>
+    <td>597.3*</td>
+    <td>55.71*</td>
+    <td>830</td>
+    <td>270.6 </td>
+    <td>72.8</td>
+  </tr>
+  <tr>
+    <td>newblue4</td>
+    <td>1009</td>
+    <td>246.2</td>
+    <td>52.6</td>
+    <td>1274</td>
+    <td>245.8 </td>
+    <td>53.9</td>
+  </tr>
+  <tr>
+    <td>newblue5</td>
+    <td>1254</td>
+    <td>444.2 </td>
+    <td>99.4 </td>
+    <td>1537</td>
+    <td>446.4 </td>
+    <td>134.9</td>
+  </tr>
+  <tr>
+    <td>newblue6</td>
+    <td>929</td>
+    <td>410.6 </td>
+    <td>96.1 </td>
+    <td>1157</td>
+    <td>409.3 </td>
+    <td>115.1</td>
+  </tr>
+  <tr>
+    <td>newblue7</td>
+    <td>1077</td>
+    <td>903.6 </td>
+    <td>184.1 </td>
+    <td>1578</td>
+    <td>903.2 </td>
+    <td>235.1</td>
+  </tr>
+  <tr>
+    <td>average ratio</td>
+    <td>0.855</td>
+    <td>1.081</td>
+    <td>0.830</td>
+    <td>1.000</td>
+    <td>1.000</td>
+    <td>1.000</td>
+  </tr>
+</tbody>
+</table>
 ```*``` denotes divergence or legalization failure. 
 Note that if you observe divergence or legalization errors in the log, then the results may not be representative. 
+
