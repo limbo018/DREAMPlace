@@ -331,7 +331,7 @@ The list of options as follows will be shown.
 
 - [4.1.0](https://github.com/limbo018/DREAMPlace/releases/tag/4.1.0)
   - Support BB step and 2-stage macro placement flow as published at ICCAD 2023
-  - Tested under ISPD 2005 with all fixed macros and IO pads regarded as movable macros (see test/ispd2005free) and mms benchmarks (see test/mms)
+  - Tested under ISPD 2005 with all fixed macros and IO pads regarded as movable macros (see test/ispd2005free) and MMS benchmarks (see test/MMS)
  
 # Reference Results for Macro Placement
 
