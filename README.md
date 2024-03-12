@@ -61,6 +61,11 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
   IEEE/ACM Proceedings Design, Automation and Test in Eurpoe (DATE), Antwerp, Belgium, Mar 14-23, 2022
   ([preprint](https://yibolin.com/publications/papers/PLACE_DATE2022_Liao.pdf))
 
+- Yifan Chen, [Zaiwen Wen](http://faculty.bicmr.pku.edu.cn/~wenzw/), [Yun Liang](https://ericlyun.github.io/), [Yibo Lin](http://yibolin.com),
+  "**Stronger Mixed-Size Placement Backbone Considering Second-Order Information**",
+  IEEE/ACM International Conference on Computer-Aided Design (ICCAD), San Francisco, CA, Oct, 2023
+  ([preprint](https://yibolin.com/publications/papers/PLACE_ICCAD2023_Chen.pdf))
+
 # Dependency
 
 - [Python](https://www.python.org/) 3.5/3.6/3.7/3.8/3.9
@@ -275,7 +280,7 @@ The list of options as follows will be shown.
 - [Zixuan Jiang](https://github.com/ZixuanJiang) and [Jiaqi Gu](https://github.com/JeremieMelo) improved the efficiency of the wirelength and density operators on GPU.
 - [Yibo Lin](http://yibolin.com) and [Jiaqi Gu](https://github.com/JeremieMelo) developed and integrated ABCDPlace for detailed placement.
 - [Peiyu Liao](https://enzoleo.github.io) and [Siting Liu](https://lusica1031.github.io) developed and integrated timing optimization in global placement for DREAMPlace 4.0.
-- Yifan Chen developed the two-stage flow and improved the optimizer for macro placement in DREAMPlace 4.1. 
+- Yifan Chen developed the 2-stage flow and improved the optimizer for macro placement in DREAMPlace 4.1. 
 - **Pull requests to improve the tool are more than welcome.** We appreciate all kinds of contributions from the community.
 
 # Features
@@ -331,7 +336,7 @@ The list of options as follows will be shown.
 
 - [4.1.0](https://github.com/limbo018/DREAMPlace/releases/tag/4.1.0)
   - Support BB step and 2-stage macro placement flow as published at ICCAD 2023
-  - Tested under ISPD 2005 with all fixed macros and IO pads regarded as movable macros (see test/ispd2005free) and MMS benchmarks (see test/MMS)
+  - Tested under ISPD 2005 with all fixed macros and IO pads regarded as movable macros (see test/ispd2005free) and MMS benchmarks (see test/mms)
  
 # Reference Results for Macro Placement
 
