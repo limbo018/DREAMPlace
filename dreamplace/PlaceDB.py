@@ -925,7 +925,7 @@ row height = %g, site width = %g
                 placeable_area = max(self.area - self.total_fixed_node_area, self.total_space_area)
                 content += "use placeable_area = %g to compute fillers\n" % (placeable_area)
                 self.total_filler_node_area = max(
-                    placeable_area * params.target_density - self.total_movable_node_area, 0.0
+                    total_cell_space_area * params.target_density - total_movable_cell_area, 0.0
                 )
                 filler_area = filler_size_x * filler_size_y
                 if filler_area == 0: 
