@@ -71,7 +71,7 @@ DREAMPLACE_BEGIN_NAMESPACE
 /// A heuristic to detect movable macros.
 /// If a cell has a height larger than how many rows, we regard them as movable
 /// macros.
-#define DUMMY_FIXED_NUM_ROWS 2
+#define DUMMY_FIXED_NUM_ROWS 5
 
 DREAMPLACE_END_NAMESPACE
 
