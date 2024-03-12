@@ -65,7 +65,7 @@ class PreconditionOp:
         elif self.best_overflow.mean() > overflow.mean():
             self.best_overflow = overflow
 
-    def __call__(self, grad, density_weight, update_mask=None):
+    def __call__(self, grad, density_weight, update_mask=None, fix_nodes_mask=None):
         """Introduce alpha parameter to avoid divergence.
         It is tricky for this parameter to increase.
         """
@@ -111,6 +111,11 @@ class PreconditionOp:
                 grad[1, : self.placedb.num_movable_nodes].masked_fill_(movable_mask, 0)
                 grad[0, self.placedb.num_nodes - self.placedb.num_filler_nodes :].masked_fill_(filler_mask, 0)
                 grad[1, self.placedb.num_nodes - self.placedb.num_filler_nodes :].masked_fill_(filler_mask, 0)
+                grad = grad.view(-1)
+            if fix_nodes_mask is not None:
+                grad = grad.view(2, -1)
+                grad[0, :self.placedb.num_movable_nodes].masked_fill_(fix_nodes_mask[:self.placedb.num_movable_nodes], 0)
+                grad[1, :self.placedb.num_movable_nodes].masked_fill_(fix_nodes_mask[:self.placedb.num_movable_nodes], 0)
                 grad = grad.view(-1)
             self.iteration += 1
 
@@ -161,6 +166,7 @@ class PlaceObj(nn.Module):
         ### fence region
         ### update mask controls whether stop gradient/updating, 1 represents allow grad/update
         self.update_mask = None
+        self.fix_nodes_mask = None 
         if len(placedb.regions) > 0:
             ### for subregion rough legalization, once stop updating, perform immediate greddy legalization once
             ### this is to avoid repeated legalization
@@ -385,7 +391,7 @@ class PlaceObj(nn.Module):
 
         obj.backward()
 
-        self.op_collections.precondition_op(pos.grad, self.density_weight, self.update_mask)
+        self.op_collections.precondition_op(pos.grad, self.density_weight, self.update_mask, self.fix_nodes_mask)
 
         return obj, pos.grad
 
@@ -909,6 +915,11 @@ class PlaceObj(nn.Module):
                 noise = torch.rand_like(pos)
                 noise.sub_(0.5).mul_(node_size).mul_(noise_ratio)
                 # no noise to fixed cells
+                if self.fix_nodes_mask is not None:
+                    noise = noise.view(2, -1)
+                    noise[0, :placedb.num_movable_nodes].masked_fill_(self.fix_nodes_mask[:placedb.num_movable_nodes], 0)
+                    noise[1, :placedb.num_movable_nodes].masked_fill_(self.fix_nodes_mask[:placedb.num_movable_nodes], 0)
+                    noise = noise.view(-1)
                 noise[placedb.num_movable_nodes:placedb.num_nodes -
                       placedb.num_filler_nodes].zero_()
                 noise[placedb.num_nodes +

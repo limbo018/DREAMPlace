@@ -26,3 +26,11 @@ install(
     DIRECTORY iccad2015.ot DESTINATION ${PROJECT_NAME}
     )
 
+install(
+    DIRECTORY ispd2005free DESTINATION ${PROJECT_NAME}
+    )
+
+install(
+    DIRECTORY mms DESTINATION ${PROJECT_NAME}
+    )
+
