@@ -330,19 +330,21 @@ The list of options as follows will be shown.
   - Tested under ICCAD 2015 contest benchmarks (see test/iccad2015.ot)
 
 - [4.1.0](https://github.com/limbo018/DREAMPlace/releases/tag/4.1.0)
-  - Support bb step and 2-stage macro placement flow as published at ICCAD 2023
+  - Support BB step and 2-stage macro placement flow as published at ICCAD 2023
   - Tested under ISPD 2005 with all fixed macros and IO pads regarded as movable macros (see test/ispd2005free) and mms benchmarks (see test/mms)
  
 # Reference Results for Macro Placement
 
-Recently, many studies chose DREAMPLace for macro placement, e.g., [[Cheng+, NeurIPS2021](https://arxiv.org/abs/2111.00234)], [[Lai+, NeurIPS2023](https://arxiv.org/pdf/2211.13382)], etc. However, the results reported on the same benchmarks vary significantly from one work to another. For better comparison, we provide the results collected from our GPU machine for reference [[Chen+, ICCAD2023](https://ieeexplore.ieee.org/document/10323700)]. If your results deviate significantly (i.e., >5% longer HPWL) from the following numbers, something may be wrong. We recommend you to contact us with logs for validation.
+Recently, many studies chose DREAMPLace for macro placement, e.g., [[Cheng+, NeurIPS2021](https://arxiv.org/abs/2111.00234)], [[Lai+, NeurIPS2023](https://arxiv.org/pdf/2211.13382)], etc. However, the results reported on the same benchmarks vary significantly from one work to another. For better comparison, we provide the results collected from our GPU machine for reference. If your results deviate significantly (i.e., >5% longer HPWL) from the following numbers, something may be wrong. We recommend you to contact us with logs for validation.
+
+Note that DREAMPlace 4.1.0 only implements the BB step and 2-stage flow proposed in [[Chen+, ICCAD2023](https://ieeexplore.ieee.org/document/10323700)]. 
 
 [ISPD2005 benchmark](https://dl.acm.org/doi/10.1145/1629911.1630028) with all fixed macros and IO pads regarded as movable macros
 <table>
 <thead>
   <tr>
     <th></th>
-    <th colspan="3">Default</th>
+    <th colspan="3">DREAMPlace 4.0</th>
     <th colspan="3">DREAMPlace 4.1.0</th>
   </tr>
 </thead>
@@ -448,7 +450,7 @@ Our modified version can be downloaded from [here](https://www.dropbox.com/scl/f
 <thead>
   <tr>
     <th></th>
-    <th colspan="3">Default</th>
+    <th colspan="3">DREAMPlace 4.0</th>
     <th colspan="3">DREAMPlace 4.1.0</th>
   </tr>
 </thead>
@@ -617,6 +619,6 @@ Our modified version can be downloaded from [here](https://www.dropbox.com/scl/f
   </tr>
 </tbody>
 </table>
-```*``` denotes divergence or legalization failure. 
+`*` denotes divergence or legalization failure. 
 Note that if you observe divergence or legalization errors in the log, then the results may not be representative. 
 
