@@ -1042,8 +1042,8 @@ row height = %g, site width = %g
         tt = time.time()
         logging.info("writing to %s" % (pl_file))
         content = "UCLA pl 1.0\n"
-        str_node_names = np.array(self.node_names).astype(np.str)
-        str_node_orient = np.array(self.node_orient).astype(np.str)
+        str_node_names = np.array(self.node_names).astype(np.str_)
+        str_node_orient = np.array(self.node_orient).astype(np.str_)
         for i in range(self.num_movable_nodes):
             content += "\n%s %g %g : %s" % (
                     str_node_names[i],
