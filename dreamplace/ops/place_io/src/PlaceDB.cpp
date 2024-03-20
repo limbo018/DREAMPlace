@@ -279,6 +279,9 @@ void PlaceDB::add_def_row(DefParser::Row const& r) {
   row.setName(r.row_name);
   row.setMacroName(r.macro_name);
   row.setOrient(r.orient);
+  auto siteIter = m_mSiteName2Index.find(row.macroName());
+  dreamplaceAssertMsg(m_mSiteName2Index.find(row.macroName()) != m_mSiteName2Index.end(), 
+      "Site name %s in Row %s is not defined in LEF", row.macroName().c_str(), row.name().c_str());
   index_type siteId = m_mSiteName2Index.at(row.macroName());
   Site const& site = m_vSite.at(siteId);
   // only support N and FS, because I'm not sure what the format should be for
