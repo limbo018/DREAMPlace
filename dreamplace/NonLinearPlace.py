@@ -101,7 +101,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                 density_weight = 0.0
                 if params.macro_place_flag and cur_stage == 1:
                     density_weight = all_metrics[-1][-1][-1].density_weight.item() / params.two_stage_density_scaler
-
+                    placedb.total_movable_node_area = placedb.total_movable_cell_area
                 # construct placement model
                 model = PlaceObj.PlaceObj(
                     density_weight,
