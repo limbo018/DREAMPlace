@@ -78,19 +78,15 @@ class PlaceDataCollection(object):
                                               device=device)
             self.target_density.data.fill_(params.target_density)
 
-            # detect movable macros and scale down the density to avoid halos
-            # I use a heuristic that cells whose areas are 10x of the mean area will be regarded movable macros in global placement
-            self.node_areas = self.node_size_x * self.node_size_y
-            if self.target_density < 1:
-                mean_area = self.node_areas[:placedb.num_movable_nodes].mean(
-                ).mul_(10)
-                row_height = self.node_size_y[:placedb.num_movable_nodes].min(
-                ).mul_(2)
-                self.movable_macro_mask = (
-                    self.node_areas[:placedb.num_movable_nodes] > mean_area
-                ) & (self.node_size_y[:placedb.num_movable_nodes] > row_height)
+            if self.target_density < 1 or params.macro_place_flag:
+                self.movable_macro_mask = torch.tensor(placedb.movable_macro_mask, dtype=bool, device=device)
+                self.movable_macro_pins = torch.tensor(placedb.movable_macro_pins, dtype=int, device=device)
             else:  # no movable macros
                 self.movable_macro_mask = None
+                self.movable_macro_pins = None
+
+            self.node_areas = self.node_size_x * self.node_size_y
+
 
             self.pin2node_map = torch.from_numpy(
                 placedb.pin2node_map).to(device)
@@ -417,6 +413,9 @@ class BasicPlace(nn.Module):
         else:
             self.op_collections.legalize_op = self.build_legalization(
             params, placedb, self.data_collections, self.device)
+        if params.macro_place_flag:
+            self.op_collections.macro_legalize_op = self.build_macro_legalization(
+            params, placedb, self.data_collections, self.device)
         # detailed placement
         self.op_collections.detailed_place_op = self.build_detailed_placement(
             params, placedb, self.data_collections, self.device)
@@ -616,6 +615,40 @@ class BasicPlace(nn.Module):
             scale_factor=params.scale_factor,
             num_terminals=placedb.num_terminals,
             num_movable_nodes=placedb.num_movable_nodes)
+
+    def build_macro_legalization(self, params, placedb, data_collections, device):
+        """
+        @brief legalization
+        @param params parameters
+        @param placedb placement database
+        @param data_collections a collection of all data and variables required for constructing the ops
+        @param device cpu or cuda
+        """
+        # for movable macro legalization
+        # the number of bins control the search granularity
+        ml = macro_legalize.MacroLegalize(
+            node_size_x=data_collections.node_size_x,
+            node_size_y=data_collections.node_size_y,
+            node_weights=data_collections.num_pins_in_nodes,
+            flat_region_boxes=data_collections.flat_region_boxes,
+            flat_region_boxes_start=data_collections.flat_region_boxes_start,
+            node2fence_region_map=data_collections.node2fence_region_map,
+            xl=placedb.xl,
+            yl=placedb.yl,
+            xh=placedb.xh,
+            yh=placedb.yh,
+            site_width=placedb.site_width,
+            row_height=placedb.row_height,
+            num_bins_x=placedb.num_bins_x,
+            num_bins_y=placedb.num_bins_y,
+            num_movable_nodes=placedb.num_movable_nodes,
+            num_terminal_NIs=placedb.num_terminal_NIs,
+            num_filler_nodes=placedb.num_filler_nodes)
+    
+        def build_macro_legalization_op(pos):
+            logging.info("Start macro legalization")
+            return ml(pos.clone(), pos)
+        return build_macro_legalization_op
 
     def build_legalization(self, params, placedb, data_collections, device):
         """
