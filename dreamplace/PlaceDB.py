@@ -808,6 +808,8 @@ row height = %g, site width = %g
         total_cell_space_area = self.total_space_area - total_movable_macro_area
         cell_utilization = total_movable_cell_area / total_cell_space_area
 
+        self.total_movable_macro_area = total_movable_macro_area
+        self.total_movable_cell_area = total_movable_cell_area
         # if no movable macro, turn off macro place flag
         if total_movable_macro_area <= 0:
             params.macro_place_flag = False
