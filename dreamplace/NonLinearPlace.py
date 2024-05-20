@@ -765,8 +765,8 @@ class NonLinearPlace(BasicPlace.BasicPlace):
 
             # perform an additional timing analysis on the legalized solution. 
             # sta after legalization is not needed anymore.
-            logging.info("additional sta after legalization")
             if params.timing_opt_flag:
+                logging.info("additional sta after legalization")
                 timing_op = self.op_collections.timing_op
      
                 # The timing operator has already integrated timer as its
