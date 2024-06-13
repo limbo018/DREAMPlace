@@ -402,7 +402,8 @@ class BasicPlace(nn.Module):
         # rectilinear minimum steiner tree wirelength from flute
         # can only be called once
         #self.op_collections.rmst_wl_op = self.build_rmst_wl(params, placedb, self.op_collections.pin_pos_op, torch.device("cpu"))
-        self.op_collections.timing_op = self.build_timing_op(params, placedb, timer)
+        if params.timing_opt_flag:
+            self.op_collections.timing_op = self.build_timing_op(params, placedb, timer)
         # legality check
         self.op_collections.legality_check_op = self.build_legality_check(
             params, placedb, self.data_collections, self.device)
