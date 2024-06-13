@@ -52,8 +52,8 @@ class NonLinearPlace(BasicPlace.BasicPlace):
         """
         iteration = 0
         all_metrics = []
-        timing_op = self.op_collections.timing_op
         if params.timing_opt_flag:
+            timing_op = self.op_collections.timing_op
             time_unit = timing_op.timer.time_unit()
 
         # global placement
