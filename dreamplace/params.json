@@ -80,6 +80,10 @@
     "description" : "whether use internal legalization", 
     "default" : 1
     },
+"legalize.abacus_legalize" : {
+    "description" : "whether use abacus legalization", 
+    "default" : 1
+    },
 "detailed_place_flag" : {
     "description" : "whether use internal detailed placement", 
     "default" : 0
