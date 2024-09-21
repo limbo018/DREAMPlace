@@ -80,8 +80,8 @@
     "description" : "whether use internal legalization", 
     "default" : 1
     },
-"legalize.abacus_legalize" : {
-    "description" : "whether use abacus legalization", 
+"abacus_legalize_flag" : {
+    "description" : "whether turn on abacus legalization", 
     "default" : 1
     },
 "detailed_place_flag" : {
