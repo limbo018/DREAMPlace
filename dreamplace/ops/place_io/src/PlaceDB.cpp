@@ -463,10 +463,10 @@ void PlaceDB::add_def_pin(DefParser::Pin const& p) {
         for (std::size_t j = 0; j < pport.vLayer.size(); ++j) {
           if (!(pport.origin[0] == -1 && pport.origin[1] == -1)) {
             node.encompass(MacroPort::box_type(
-                  (pport.origin[0] + pport.vBbox[i][0]) * lefDefUnitRatio(), 
-                  (pport.origin[1] + pport.vBbox[i][1]) * lefDefUnitRatio(), 
-                  (pport.origin[0] + pport.vBbox[i][2]) * lefDefUnitRatio(),
-                  (pport.origin[1] + pport.vBbox[i][3]) * lefDefUnitRatio()
+                  (pport.origin[0] + pport.vBbox[j][0]) * lefDefUnitRatio(), 
+                  (pport.origin[1] + pport.vBbox[j][1]) * lefDefUnitRatio(), 
+                  (pport.origin[0] + pport.vBbox[j][2]) * lefDefUnitRatio(),
+                  (pport.origin[1] + pport.vBbox[j][3]) * lefDefUnitRatio()
                   ));
             hasOrigin = true; 
           }
@@ -561,12 +561,12 @@ void PlaceDB::add_def_pin(DefParser::Pin const& p) {
       DefParser::PinPort const& pport = p.vPinPort[i]; 
       for (std::size_t j = 0; j < pport.vLayer.size(); ++j) {
         if (!(pport.origin[0] == -1 && pport.origin[1] == -1)) {
-          macroPort.layers() .push_back(pport.vLayer[i]); 
+          macroPort.layers() .push_back(pport.vLayer[j]); 
           macroPort.boxes().push_back(MacroPort::box_type(
-                (pport.origin[0] + pport.vBbox[i][0] - node.xl()) * lefDefUnitRatio(), 
-                (pport.origin[1] + pport.vBbox[i][1] - node.yl()) * lefDefUnitRatio(), 
-                (pport.origin[0] + pport.vBbox[i][2] - node.xl()) * lefDefUnitRatio(),
-                (pport.origin[1] + pport.vBbox[i][3] - node.yl()) * lefDefUnitRatio()
+                (pport.origin[0] + pport.vBbox[j][0] - node.xl()) * lefDefUnitRatio(), 
+                (pport.origin[1] + pport.vBbox[j][1] - node.yl()) * lefDefUnitRatio(), 
+                (pport.origin[0] + pport.vBbox[j][2] - node.xl()) * lefDefUnitRatio(),
+                (pport.origin[1] + pport.vBbox[j][3] - node.yl()) * lefDefUnitRatio()
                 ));
         }
       }
