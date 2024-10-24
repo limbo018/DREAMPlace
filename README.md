@@ -344,7 +344,7 @@ Recently, many studies chose DREAMPLace for macro placement, e.g., [[Cheng+, Neu
 
 Note that DREAMPlace 4.1.0 only implements the BB step and 2-stage flow proposed in [[Chen+, ICCAD2023](https://ieeexplore.ieee.org/document/10323700)]. 
 
-[ISPD2005 benchmark](https://dl.acm.org/doi/10.1145/1629911.1630028) with all fixed macros and IO pads regarded as movable macros
+[ISPD2005 benchmark](https://dl.acm.org/doi/10.1145/1629911.1630028) with all fixed macros and IO pads regarded as movable macros. It can be downloaded from [here](https://www.dropbox.com/scl/fi/01jvzui9hv0aa4krnd8lm/ispd2005free.zip?rlkey=ijwspusl9onncnsu5j4na4tqe&st=l44f3dnw&dl=0).
 <table>
 <thead>
   <tr>
