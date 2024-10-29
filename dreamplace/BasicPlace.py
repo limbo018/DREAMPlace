@@ -731,13 +731,16 @@ class BasicPlace(nn.Module):
                 logging.error("legality check failed in greedy legalization, " \
                     "return illegal results after greedy legalization.")
                 return pos2
-            pos3 = al(pos1, pos2)
-            legal = self.op_collections.legality_check_op(pos3)
-            if not legal:
-                logging.error("legality check failed in abacus legalization, " \
-                    "return legal results after greedy legalization.")
+            if params.abacus_legalize_flag: 
+                pos3 = al(pos1, pos2)
+                legal = self.op_collections.legality_check_op(pos3)
+                if not legal:
+                    logging.error("legality check failed in abacus legalization, " \
+                        "return legal results after greedy legalization.")
+                    return pos2
+                return pos3
+            else:
                 return pos2
-            return pos3
 
         return build_legalization_op
 
@@ -757,8 +760,9 @@ class BasicPlace(nn.Module):
                 return pos
             else:
                 ### start abacus legalizer
-                for i in range(len(placedb.regions)+1):
-                    pos = legal_ops[i][1](pos, pos_ml_list[i], pos_gl_list[i])
+                if params.abacus_legalize_flag: 
+                    for i in range(len(placedb.regions)+1):
+                        pos = legal_ops[i][1](pos, pos_ml_list[i], pos_gl_list[i])
             return pos
 
         def build_individual_legalization_ops(pos, region_id):
