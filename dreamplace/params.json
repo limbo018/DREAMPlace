@@ -132,6 +132,14 @@
     "description" : "whether perform random initialization around the center for global placement", 
     "default" : 1
     },
+"gift_init_flag" : {
+    "description" : "whether perform GiFt initialization for global placement", 
+    "default" : 0
+    },
+"gift_init_scale" : {
+    "description" : "scale parameter in GiFt initialization", 
+    "default" : 0.7
+    },
 "sort_nets_by_degree" : {
     "description" : "whether sort nets by degree or not", 
     "default" : 0

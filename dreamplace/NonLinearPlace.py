@@ -113,13 +113,19 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                     global_place_params,
                 ).to(self.data_collections.pos[0].device)
 
+                # initialization before global placement 
+                if params.global_place_flag and params.gift_init_flag: 
+                    init_pos = self.pos[0].view([2, -1])[:, :placedb.num_physical_nodes]
+                    init_pos = self.op_collections.gift_init_op.forward(init_pos)
+                    self.pos[0][:placedb.num_movable_nodes].data.copy_(init_pos[0, :placedb.num_movable_nodes])
+                    self.pos[0][len(self.pos[0]) // 2:len(self.pos[0]) // 2 + placedb.num_movable_nodes].data.copy_(init_pos[1, :placedb.num_movable_nodes])
+
                 if params.macro_place_flag and macro_placed:
                     movable_macro_mask =  self.data_collections.movable_macro_mask
                     model.fix_nodes_mask = movable_macro_mask.new_zeros(placedb.num_nodes)
                     model.fix_nodes_mask[placedb.num_movable_nodes:placedb.num_physical_nodes] = 1
                     model.fix_nodes_mask[:placedb.num_movable_nodes] = movable_macro_mask[:placedb.num_movable_nodes]
                     # params.use_bb = False
-                    # pdb.set_trace()
 
                 optimizer_name = global_place_params["optimizer"]
 
