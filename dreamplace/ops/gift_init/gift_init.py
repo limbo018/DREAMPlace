@@ -66,7 +66,6 @@ class GiFtInit(nn.Module):
     def forward(self, pos):
         # --------------------Generate the initial locations of movable cells------------------------#
         with torch.no_grad(): 
-            pdb.set_trace()
             pos_t = pos.view([2, -1]).t().cpu().numpy()
             fixed_cell_location = pos_t[self.num_movable_nodes:self.num_movable_nodes+self.num_fixed_nodes]
             random_initial = util.generate_initial_locations(fixed_cell_location, self.num_movable_nodes, self.scale)

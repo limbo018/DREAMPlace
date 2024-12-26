@@ -268,7 +268,8 @@ class PlaceObj(nn.Module):
                     net_weights=self.data_collections.net_weights, 
                     net_mask=self.data_collections.net_mask_ignore_large_degrees, 
                     num_nodes=placedb.num_physical_nodes,  
-                    num_movable_nodes=placedb.num_movable_nodes 
+                    num_movable_nodes=placedb.num_movable_nodes, 
+                    scale=params.gift_init_scale
                     ) 
 
         self.Lgamma_iteration = global_place_params["iteration"]

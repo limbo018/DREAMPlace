@@ -136,6 +136,10 @@
     "description" : "whether perform GiFt initialization for global placement", 
     "default" : 0
     },
+"gift_init_scale" : {
+    "description" : "scale parameter in GiFt initialization", 
+    "default" : 0.7
+    },
 "sort_nets_by_degree" : {
     "description" : "whether sort nets by degree or not", 
     "default" : 0

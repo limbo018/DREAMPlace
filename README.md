@@ -281,7 +281,7 @@ The list of options as follows will be shown.
 - [Yibo Lin](http://yibolin.com) and [Jiaqi Gu](https://github.com/JeremieMelo) developed and integrated ABCDPlace for detailed placement.
 - [Peiyu Liao](https://enzoleo.github.io) and [Siting Liu](https://lusica1031.github.io) developed and integrated timing optimization in global placement for DREAMPlace 4.0.
 - Yifan Chen developed the 2-stage flow and improved the optimizer for macro placement in DREAMPlace 4.1. Set ```use_bb``` to 1 to turn on BB-step and ```macro_place_flag``` to 1 to enable 2-stage flow for macro placement. 
-- Yiting Liu contributed the GiFt operator for placement initialization, published at ICCAD 2024. Set ```gift_init_flag``` to 1 to turn on this feature. 
+- Yiting Liu contributed the GiFt operator for placement initialization, published at ICCAD 2024. Set ```gift_init_flag``` to 1 to turn on this feature, and use ```gift_init_scale``` to control the scale parameter of this operator. 
 ```
 Yiting Liu, Hai Zhou, Jia Wang, Fan Yang, Xuan Zeng, Li Shang, 
 "The Power of Graph Signal Processing for Chip Placement Acceleration", 
@@ -345,6 +345,9 @@ Yiting Liu, Hai Zhou, Jia Wang, Fan Yang, Xuan Zeng, Li Shang,
 - [4.1.0](https://github.com/limbo018/DREAMPlace/releases/tag/4.1.0)
   - Support BB step and 2-stage macro placement flow as published at ICCAD 2023
   - Tested under ISPD 2005 with all fixed macros and IO pads regarded as movable macros (see test/ispd2005free) and MMS benchmarks (see test/mms)
+ 
+- [4.2.0](https://github.com/limbo018/DREAMPlace/releases/tag/4.2.0)
+  - Support GiFt initialization as published at ICCAD 2024
  
 # Reference Results for Macro Placement
 
