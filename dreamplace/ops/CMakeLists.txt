@@ -31,6 +31,8 @@ add_subdirectory(adjust_node_area)
 # timing operator
 add_subdirectory(pin_weight_sum)
 add_subdirectory(timing)
+# gift initial placement 
+add_subdirectory(gift_init)
 
 file(GLOB INSTALL_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/*.py")
 install(
