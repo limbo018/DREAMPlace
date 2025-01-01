@@ -800,6 +800,21 @@ void PlaceDB::add_def_group(DefParser::Group const& g) {
   // node indices in group are not set yet
   // they need to be set in the adjustParams() function
 }
+void PlaceDB::add_def_track(defiTrack const& t) {
+  dreamplacePrint(kWARN, "Track definition in DEF ignored\n");
+}
+void PlaceDB::add_def_via(defiVia const& v) {
+  dreamplacePrint(kWARN, "Via definition in DEF ignored\n");
+}
+void PlaceDB::add_def_snet(defiNet const& n) {
+  dreamplacePrint(kWARN, "SPECIALNET definition in DEF ignored\n");
+}
+void PlaceDB::add_def_gcellgrid(DefParser::GCellGrid const& g) {
+  dreamplacePrint(kWARN, "GCELLGRID definition in DEF ignored\n");
+}
+void PlaceDB::add_def_route_blockage(std::vector<std::vector<int>> const&, std::string const&) {
+  dreamplacePrint(kWARN, "ROUTE BLOCKAGE definition in DEF ignored\n");
+}
 void PlaceDB::end_def_design() {
   // make sure rows are sorted from bottom to up
   std::sort(m_vRow.begin(), m_vRow.end(), CompareByRowBottomCoord());
