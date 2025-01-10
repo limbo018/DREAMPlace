@@ -1747,12 +1747,13 @@ void PlaceDB::adjustParams() {
         userParam().targetPPR = 0.5; // set to empirical utilization
 #endif
 
-  // must adjust the pin offset to orientation for movable and fixed nodes
-  // since the offset is w.r.t orientation N
-  for (index_type i = 0, ie = numMovable() + numFixed(); i < ie; ++i) {
-    Node const& node = this->node(i);
-    updateNodePinOffset(node, OrientEnum::N, node.orient());
-  }
+  // will be processed later in PyPlaceDB::convertOrient()
+  //// must adjust the pin offset to orientation for movable and fixed nodes
+  //// since the offset is w.r.t orientation N
+  //for (index_type i = 0, ie = numMovable() + numFixed(); i < ie; ++i) {
+  //  Node const& node = this->node(i);
+  //  updateNodePinOffset(node, OrientEnum::N, node.orient());
+  //}
 
   // process region groups, like fence region 
   processGroups(); 
