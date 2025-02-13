@@ -167,6 +167,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         lr=0,
                         obj_and_grad_fn=model.obj_and_grad_fn,
                         constraint_fn=self.op_collections.move_boundary_op,
+                        use_bb = params.use_bb
                     )
                 # 2. The torch_optimizer package
                 elif optimizer_name.lower() == "aggmo":
