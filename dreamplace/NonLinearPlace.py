@@ -100,7 +100,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                 # construct model and optimizer
                 density_weight = 0.0
                 if params.macro_place_flag and cur_stage == 1:
-                    density_weight = all_metrics[-1][-1][-1].density_weight.item() / params.two_stage_density_scaler
+                    density_weight = np.array(all_metrics[-1][-1][-1].density_weight.tolist()).mean() / params.two_stage_density_scaler
                     # at the 2nd stage, total_movable_node_area should exclude movable macro area to enable more aggresive spreading of cells
                     placedb.total_movable_node_area = placedb.total_movable_cell_area
                 # construct placement model
@@ -231,7 +231,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                                     )
                                 )
                                 return True
-                            if len(placedb.regions) > 0 and model.update_mask.sum() == 0:
+                            if (len(placedb.regions) > 0 and model.update_mask == None) or (len(placedb.regions) > 0 and model.update_mask.sum() == 0):
                                 logging.debug("All regions stop updating, finish global placement")
                                 return True
                         # a heuristic to detect divergence and stop early

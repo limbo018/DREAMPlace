@@ -125,6 +125,9 @@ def slice_non_fence_region(
     elif isinstance(regions, np.ndarray):
         regions = torch.from_numpy(regions).to(device)
 
+    if regions.dim() == 1:
+        regions = regions.unsqueeze(0)
+
     if macro_pos_x is not None:
         if isinstance(macro_pos_x, np.ndarray):
             macro_pos_x = torch.from_numpy(macro_pos_x).to(device).float()

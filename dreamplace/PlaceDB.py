@@ -187,12 +187,12 @@ class PlaceDB (object):
         self.total_space_area *= scale_factor * scale_factor # this is area
 
         if len(self.flat_region_boxes): 
-            self.flat_region_boxes -= box_shift_factor
+            self.flat_region_boxes -= np.repeat(box_shift_factor, len(self.regions))
             self.flat_region_boxes *= scale_factor
         # may have performance issue
         # I assume there are not many boxes
         for i in range(len(self.regions)):
-            self.regions[i] -= box_shift_factor
+            self.regions[i] -= np.mean(box_shift_factor)
             self.regions[i] *= scale_factor
 
     def sort(self):
@@ -684,11 +684,17 @@ class PlaceDB (object):
         movable_node_size_x = self.node_size_x[:num_movable_nodes][fence_region_mask]
         # movable_node_size_y = self.node_size_y[:num_movable_nodes][fence_region_mask]
 
-        lower_bound = np.percentile(movable_node_size_x, 5)
-        upper_bound = np.percentile(movable_node_size_x, 95)
-        filler_size_x = np.mean(
-            movable_node_size_x[(movable_node_size_x >= lower_bound) & (movable_node_size_x <= upper_bound)]
-        )
+        if len(movable_node_size_x) > 0:
+            lower_bound = np.percentile(movable_node_size_x, 5)
+            upper_bound = np.percentile(movable_node_size_x, 95)
+            filler_size_x = np.mean(
+                movable_node_size_x[(movable_node_size_x >= lower_bound) & (movable_node_size_x <= upper_bound)]
+            )
+        else:
+            lower_bound = 0
+            upper_bound = 0
+            filler_size_x = 0
+            
         filler_size_y = self.row_height
 
         area = (self.xh - self.xl) * (self.yh - self.yl)
@@ -701,10 +707,10 @@ class PlaceDB (object):
         if region_id < num_regions:
             ## placeable area is not just fention region area. Macros can have overlap with fence region. But we approximate by this method temporarily
             region = self.regions[region_id]
-            placeable_area = np.sum((region[:, 2] - region[:, 0]) * (region[:, 3] - region[:, 1]))
+            placeable_area = np.sum((region[2] - region[0]) * (region[3] - region[1]))
         else:
             ### invalid area outside the region, excluding macros? ignore overlap between fence region and macro
-            fence_regions = np.concatenate(self.regions, 0).astype(np.float32)
+            fence_regions = np.array(self.regions)
             fence_regions_size_x = fence_regions[:, 2] - fence_regions[:, 0]
             fence_regions_size_y = fence_regions[:, 3] - fence_regions[:, 1]
             fence_region_area = np.sum(fence_regions_size_x * fence_regions_size_y)
@@ -725,7 +731,11 @@ class PlaceDB (object):
 
         total_filler_node_area = max(placeable_area * target_density_fence_region - total_movable_node_area, 0.0)
 
-        num_filler = int(round(total_filler_node_area / (filler_size_x * filler_size_y)))
+        if filler_size_x > 0 and filler_size_y > 0:
+            num_filler = int(round(total_filler_node_area / (filler_size_x * filler_size_y)))
+        else:
+            num_filler = 0
+            
         logging.info(
             "Region:%2d movable_node_area =%10.1f, placeable_area =%10.1f, utilization =%.3f, filler_node_area =%10.1f, #fillers =%8d, filler sizes =%2.4gx%g\n"
             % (

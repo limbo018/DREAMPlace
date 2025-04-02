@@ -292,6 +292,7 @@ class BasicPlace(nn.Module):
                 ### uniformly spread fillers in fence region
                 ### for cells in the fence region
                 for i, region in enumerate(placedb.regions):
+                    region = np.atleast_2d(region)
                     filler_beg, filler_end = placedb.filler_start_map[i : i + 2]
                     subregion_areas = (region[:, 2] - region[:, 0]) * (region[:, 3] - region[:, 1])
                     total_area = np.sum(subregion_areas)
@@ -786,18 +787,22 @@ class BasicPlace(nn.Module):
             fence_region_mask = data_collections.node2fence_region_map[:num_movable_nodes] >= len(placedb.regions)
 
         virtual_macros = data_collections.virtual_macro_fence_region[region_id]
+        virtual_macros = np.atleast_2d(virtual_macros)
         virtual_macros_center_x = (virtual_macros[:,2] + virtual_macros[:,0]) / 2
         virtual_macros_center_y = (virtual_macros[:,3] + virtual_macros[:,1]) / 2
-        virtual_macros_size_x = (virtual_macros[:,2]-virtual_macros[:,0]).clamp(min=30)
-
-        virtual_macros_size_y = (virtual_macros[:,3]-virtual_macros[:,1]).clamp(min=30)
+        virtual_macros_size_x = np.clip(virtual_macros[:, 2] - virtual_macros[:, 0], a_min=30, a_max=None)
+        virtual_macros_size_y = np.clip(virtual_macros[:, 3] - virtual_macros[:, 1], a_min=30, a_max=None)
         virtual_macros[:, 0] = virtual_macros_center_x - virtual_macros_size_x / 2
         virtual_macros[:, 1] = virtual_macros_center_y - virtual_macros_size_y / 2
-        virtual_macros_pos = virtual_macros[:,0:2].t().contiguous()
+        virtual_macros_tensor = torch.from_numpy(virtual_macros)
+        virtual_macros_pos = virtual_macros_tensor[:,0:2].t().contiguous()
 
         ### node size
         node_size_x, node_size_y = data_collections.node_size_x, data_collections.node_size_y
         filler_beg, filler_end = placedb.filler_start_map[region_id:region_id+2]
+        virtual_macros_size_x = torch.tensor(virtual_macros_size_x, dtype=torch.float32, device=device)
+        virtual_macros_size_y = torch.tensor(virtual_macros_size_y, dtype=torch.float32, device=device)
+        
         node_size_x = torch.cat([node_size_x[:num_movable_nodes][fence_region_mask], ## movable
                                 node_size_x[num_movable_nodes:num_movable_nodes+num_terminals], ## terminals
                                 virtual_macros_size_x, ## virtual macros
