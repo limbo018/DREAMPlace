@@ -267,6 +267,7 @@ class PlaceObj(nn.Module):
                     pin2node_map=self.data_collections.pin2node_map, 
                     net_weights=self.data_collections.net_weights, 
                     net_mask=self.data_collections.net_mask_ignore_large_degrees, 
+                    xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh,
                     num_nodes=placedb.num_physical_nodes,  
                     num_movable_nodes=placedb.num_movable_nodes, 
                     scale=params.gift_init_scale

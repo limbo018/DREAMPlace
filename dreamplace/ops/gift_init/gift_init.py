@@ -33,6 +33,7 @@ class GiFtInit(nn.Module):
                  pin2node_map,
                  net_weights,
                  net_mask, 
+                 xl, yl, xh, yh, 
                  num_nodes, 
                  num_movable_nodes, 
                  scale = 0.7):
@@ -50,6 +51,10 @@ class GiFtInit(nn.Module):
         self.num_nodes = num_nodes 
         self.num_movable_nodes = num_movable_nodes
         self.num_fixed_nodes = num_nodes - num_movable_nodes
+        self.xl = xl 
+        self.yl = yl 
+        self.xh = xh 
+        self.yh = yh 
         self.scale = scale 
 
         logger.info('Construct adjacency matrix using clique model')
@@ -68,7 +73,7 @@ class GiFtInit(nn.Module):
         with torch.no_grad(): 
             pos_t = pos.view([2, -1]).t().cpu().numpy()
             fixed_cell_location = pos_t[self.num_movable_nodes:self.num_movable_nodes+self.num_fixed_nodes]
-            random_initial = util.generate_initial_locations(fixed_cell_location, self.num_movable_nodes, self.scale)
+            random_initial = util.generate_initial_locations(fixed_cell_location, self.num_movable_nodes, self.xl, self.yl, self.xh, self.yh, self.scale)
             random_initial = np.concatenate((random_initial, fixed_cell_location), 0)
             random_initial = torch.from_numpy(random_initial).float().to(pos.device)
 
