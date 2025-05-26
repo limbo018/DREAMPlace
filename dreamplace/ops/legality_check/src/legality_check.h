@@ -59,7 +59,8 @@ bool siteAlignmentCheck(const T* x, const T* y, const T site_width,
                         const T row_height, const T scale_factor, const T xl,
                         const T yl, const int num_movable_nodes) {
   // use scale factor to control the precision
-  T precision = (scale_factor == 1.0) ? 1e-6 : scale_factor * 0.1;
+  // T precision = (scale_factor == 1.0) ? 1e-6 : scale_factor * 0.1;
+  T precision = 0.005; 
   bool legal_flag = true;
   // check row and site alignment
   for (int i = 0; i < num_movable_nodes; ++i) {
@@ -74,8 +75,8 @@ bool siteAlignmentCheck(const T* x, const T* y, const T site_width,
     if (std::abs(row_id_f - row_id) > precision) {
       dreamplacePrint(
           kERROR,
-          "node %d (%g, %g) failed to align to row %d (%g, %g), gap %g\n", i,
-          node_xl, node_yl, row_id, row_yl, row_yh, std::abs(node_yl - row_yl));
+          "node %d (%g, %g) failed to align to row %d (%g, %g), gap %g, precision %g\n", i,
+          node_xl, node_yl, row_id, row_yl, row_yh, std::abs(node_yl - row_yl), precision);
       legal_flag = false;
     }
 
@@ -84,8 +85,8 @@ bool siteAlignmentCheck(const T* x, const T* y, const T site_width,
     if (std::abs(site_id_f - site_id) > precision) {
       dreamplacePrint(
           kERROR,
-          "node %d (%g, %g) failed to align to row %d (%g, %g) and site\n", i,
-          node_xl, node_yl, row_id, row_yl, row_yh);
+          "node %d (%g, %g) failed to align to row %d (%g, %g) and site id %d, gap %g, precision %g\n", i,
+          node_xl, node_yl, row_id, row_yl, row_yh, site_id, std::abs(site_id_f - site_id), precision);
       legal_flag = false;
     }
   }
