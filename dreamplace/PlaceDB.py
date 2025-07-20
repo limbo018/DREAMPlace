@@ -1022,7 +1022,7 @@ row height = %g, site width = %g
         with open(pl_file, "r") as f:
             for line in f:
                 line = line.strip()
-                if line.startswith("UCLA"):
+                if line.startswith("UCLA") or line.startswith("#"):
                     continue
                 # node positions
                 pos = re.search(r"(\w+)\s+([+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?)\s+([+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?)\s*:\s*(\w+)", line)
