@@ -670,7 +670,8 @@ void PyPlaceDB::convertOrient()
 {
   dreamplacePrint(kINFO, "-- Converting Node Orientation --\n"); 
   std::map<std::string, int32_t> orient_count; 
-  for (unsigned int node_id = 0; node_id < node_orient.size(); ++node_id)
+  // ignore initial orientations for movable nodes 
+  for (unsigned int node_id = num_nodes - num_terminals - num_terminal_NIs; node_id < node_orient.size(); ++node_id)
   {
     std::string src_orient = node_orient[node_id].cast<std::string>(); 
     if (src_orient != "N" && src_orient != "UNKNOWN")
