@@ -49,19 +49,24 @@ def find_fixed_point_def(file):
     return totalCellNumber, totalPinNumber, io_id, io_pos
 
 
-def placement_region(fixed_pos):
-    xf = fixed_pos[:, 0]
-    yf = fixed_pos[:, 1]
-    x_min = np.min(xf)
-    x_max = np.max(xf)
-    y_min = np.min(yf)
-    y_max = np.max(yf)
+def placement_region(fixed_pos, xl, yl, xh, yh):
+    x_min = xl 
+    x_max = xh 
+    y_min = yl 
+    y_max = yh 
+    if len(fixed_pos): 
+        xf = fixed_pos[:, 0]
+        yf = fixed_pos[:, 1]
+        x_min = min(np.min(xf), x_min)
+        x_max = max(np.max(xf), x_max)
+        y_min = min(np.min(yf), y_min)
+        y_max = max(np.max(yf), y_max)
     logger.info('placement region: (%g, %g, %g, %g)', x_min, y_min, x_max, y_max)
     return x_min, y_min, x_max, y_max
 
 
-def generate_initial_locations(fixed_cell_location, movable_num, scale):
-    x_min, y_min, x_max, y_max = placement_region(fixed_cell_location)
+def generate_initial_locations(fixed_cell_location, movable_num, xl, yl, xh, yh, scale):
+    x_min, y_min, x_max, y_max = placement_region(fixed_cell_location, xl, yl, xh, yh)
     random_initial = np.random.rand(int(movable_num), 2)
     xcenter = (x_max - x_min) / 2 + x_min
     ycenter = (y_max - y_min) / 2 + y_min

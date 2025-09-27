@@ -267,6 +267,7 @@ class PlaceObj(nn.Module):
                     pin2node_map=self.data_collections.pin2node_map, 
                     net_weights=self.data_collections.net_weights, 
                     net_mask=self.data_collections.net_mask_ignore_large_degrees, 
+                    xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh,
                     num_nodes=placedb.num_physical_nodes,  
                     num_movable_nodes=placedb.num_movable_nodes, 
                     scale=params.gift_init_scale
@@ -402,7 +403,8 @@ class PlaceObj(nn.Module):
             pos.grad.zero_()
         obj = self.obj_fn(pos)
 
-        obj.backward()
+        if obj.requires_grad:
+          obj.backward()
 
         self.op_collections.precondition_op(pos.grad, self.density_weight, self.update_mask, self.fix_nodes_mask)
 
@@ -1146,7 +1148,6 @@ class PlaceObj(nn.Module):
 
         self.op_collections.fence_region_density_overflow_merged_op = merged_density_overflow_op
         return self.op_collections.fence_region_density_ops, self.op_collections.fence_region_density_merged_op, self.op_collections.fence_region_density_overflow_merged_op
-
 
 
 

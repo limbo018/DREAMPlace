@@ -359,6 +359,10 @@ void roughLegalizeLauncher(const LegalizationDB<T>& db,
 
 template <typename T>
 bool macroLegalizationLauncher(LegalizationDB<T> db) {
+  // local copy of node sizes, as we need to inflate movable macros 
+  // to make them integral numbers of sites and rows 
+  std::vector<T> node_size_x_copy (db.node_size_x, db.node_size_x+db.num_nodes); 
+  std::vector<T> node_size_y_copy (db.node_size_y, db.node_size_y+db.num_nodes); 
   // collect macros
   std::vector<int> macros;
   for (int i = 0; i < db.num_movable_nodes; ++i) {
@@ -367,13 +371,18 @@ bool macroLegalizationLauncher(LegalizationDB<T> db) {
       T area = db.node_size_x[i] * db.node_size_y[i];
       if (area > 0) {
         macros.push_back(i);
+        node_size_x_copy[i] = ceilDiv(db.node_size_x[i], db.site_width) * db.site_width; 
+        node_size_y_copy[i] = ceilDiv(db.node_size_y[i], db.row_height) * db.row_height; 
       }
 #ifdef DEBUG
-      dreamplacePrint(kDEBUG, "macro %d %gx%g\n", i, db.node_size_x[i],
-                      db.node_size_y[i]);
+      dreamplacePrint(kDEBUG, "macro %d %gx%g -> %gx%g\n", i, db.node_size_x[i],
+                      db.node_size_y[i], node_size_x_copy[i], node_size_y_copy[i]);
 #endif
     }
   }
+  // now db.node_size_x/y refers to node_size_x/y_copy 
+  db.node_size_x = node_size_x_copy.data();
+  db.node_size_y = node_size_y_copy.data();
   dreamplacePrint(
       kINFO,
       "Macro legalization: regard %lu cells as dummy fixed (movable macros)\n",

@@ -54,7 +54,7 @@ adj_matrix_forward(at::Tensor flat_net2pin_map,
           DREAMPLACE_TENSOR_DATA_PTR(pin2node_map, int),
           DREAMPLACE_TENSOR_DATA_PTR(net_weights, scalar_t),
           DREAMPLACE_TENSOR_DATA_PTR(net_mask, unsigned char),
-          num_nets, num_nodes, 
+          num_nodes, num_nets, 
           row, col, data
           );
 
