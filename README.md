@@ -343,7 +343,7 @@ Yiting Liu, Hai Zhou, Jia Wang, Fan Yang, Xuan Zeng, Li Shang,
   - Tested under ICCAD 2015 contest benchmarks (see test/iccad2015.ot)
 
 - [4.1.0](https://github.com/limbo018/DREAMPlace/releases/tag/4.1.0)
-  - Support BB step and 2-stage macro placement flow as published at ICCAD 2023
+  - Support BB step and 2-stage macro placement flow as published at ICCAD 2023 (Need to set ```use_bb``` to 1 to turn on BB-step and ```macro_place_flag``` to 1 to enable 2-stage flow for macro placement)
   - Tested under ISPD 2005 with all fixed macros and IO pads regarded as movable macros (see test/ispd2005free) and MMS benchmarks (see test/mms)
  
 - [4.2.0](https://github.com/limbo018/DREAMPlace/releases/tag/4.2.0)
@@ -355,7 +355,7 @@ Recently, many studies chose DREAMPLace for macro placement, e.g., [[Cheng+, Neu
 
 Note that DREAMPlace 4.1.0 only implements the BB step and 2-stage flow proposed in [[Chen+, ICCAD2023](https://ieeexplore.ieee.org/document/10323700)]. 
 
-[ISPD2005 benchmark](https://dl.acm.org/doi/10.1145/1629911.1630028) with all fixed macros and IO pads regarded as movable macros
+[ISPD2005 benchmark](https://dl.acm.org/doi/10.1145/1629911.1630028) with all fixed macros and IO pads regarded as movable macros. It can be downloaded from [here](https://www.dropbox.com/scl/fi/01jvzui9hv0aa4krnd8lm/ispd2005free.zip?rlkey=ijwspusl9onncnsu5j4na4tqe&st=l44f3dnw&dl=0).
 <table>
 <thead>
   <tr>
