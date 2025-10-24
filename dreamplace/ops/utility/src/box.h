@@ -13,6 +13,8 @@
 
 DREAMPLACE_BEGIN_NAMESPACE
 
+namespace Utility {
+
 template <typename T>
 struct Box {
   T xl;
@@ -113,6 +115,8 @@ struct SharedBox {
   T xh;
   T yh;
 };
+
+} // namespace Utility
 
 DREAMPLACE_END_NAMESPACE
 

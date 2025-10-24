@@ -113,7 +113,7 @@ struct DetailedPlaceDB
         by = min(by, num_bins_y-1); 
         return by; 
     }
-    inline __device__ void shift_box_to_layout(Box<T>& box) const  
+    inline __device__ void shift_box_to_layout(DreamPlace::Utility::Box<T>& box) const  
     {
         box.xl = max(box.xl, xl);
         box.xl = min(box.xl, xh);
@@ -124,10 +124,10 @@ struct DetailedPlaceDB
         box.yh = max(box.yh, yl);
         box.yh = min(box.yh, yh);
     }
-    inline __device__ Box<int> box2sitebox(const Box<T>& box) const  
+    inline __device__ DreamPlace::Utility::Box<int> box2sitebox(const DreamPlace::Utility::Box<T>& box) const  
     {
         // xh, yh are exclusive 
-        Box<int> sitebox (
+        DreamPlace::Utility::Box<int> sitebox (
                 pos2site_x(box.xl), 
                 pos2site_y(box.yl), 
                 pos2site_ub_x(box.xh), 
@@ -136,9 +136,9 @@ struct DetailedPlaceDB
 
         return sitebox; 
     }
-    inline __device__ Box<int> box2binbox(const Box<T>& box) const
+    inline __device__ DreamPlace::Utility::Box<int> box2binbox(const DreamPlace::Utility::Box<T>& box) const
     {
-        Box<int> binbox (
+        DreamPlace::Utility::Box<int> binbox (
                 pos2bin_x(box.xl), 
                 pos2bin_y(box.yl),  
                 pos2bin_x(box.xh), 
@@ -165,9 +165,9 @@ struct DetailedPlaceDB
     /// If we want to consider the pin offsets, there may not be feasible box for the optimal region. 
     /// Thus, this is just an approximate optimal region. 
     /// When using the optimal region, one needs to refer to the center of the cell to the region, or the region completely covers the entire cell. 
-    __device__ Box<T> compute_optimal_region(int node_id, const T* xx, const T* yy) const
+    __device__ DreamPlace::Utility::Box<T> compute_optimal_region(int node_id, const T* xx, const T* yy) const
     {
-        Box<T> box (
+        DreamPlace::Utility::Box<T> box (
                 xh, // some large number 
                 yh, // some large number 
                 xl, // some small number 
@@ -200,7 +200,7 @@ struct DetailedPlaceDB
     /// @brief compute HPWL for a net 
     __device__ T compute_net_hpwl(int net_id, const T* xx, const T* yy) const
     {
-        Box<T> box (
+        DreamPlace::Utility::Box<T> box (
                 xh, // some large number 
                 yh, // some large number 
                 xl, // some small number 

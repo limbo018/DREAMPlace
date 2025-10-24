@@ -24,7 +24,7 @@ void cost_matrix_construction(const DetailedPlaceDBType& db, IndependentSetMatch
     auto const& independent_set = state.independent_sets[i];
     auto& cost_matrix = state.cost_matrices[i]; 
     unsigned int independent_set_size = independent_set.size();
-    std::vector<Box<T> > bboxes;
+    std::vector<DreamPlace::Utility::Box<T> > bboxes;
     // cells 
     for (unsigned int k = 0; k < independent_set_size; ++k)
     {
@@ -36,7 +36,7 @@ void cost_matrix_construction(const DetailedPlaceDBType& db, IndependentSetMatch
         {
             int node_pin_id = db.flat_node2pin_map[node2pin_id];
             int net_id = db.pin2net_map[node_pin_id];
-            Box<T>& box = bboxes[idx];
+            DreamPlace::Utility::Box<T>& box = bboxes[idx];
             box.xl = db.xh;
             box.yl = db.yh;
             box.xh = db.xl;
@@ -82,7 +82,7 @@ void cost_matrix_construction(const DetailedPlaceDBType& db, IndependentSetMatch
                     {
                         int node_pin_id = db.flat_node2pin_map[node2pin_id];
                         int net_id = db.pin2net_map[node_pin_id];
-                        const Box<T>& box = bboxes[idx];
+                        const DreamPlace::Utility::Box<T>& box = bboxes[idx];
                         if (db.net_mask[net_id])
                         {
                             T xxl = target_x;

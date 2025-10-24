@@ -58,12 +58,12 @@ void compute_search_bins(const DetailedPlaceDB<T>& db, SwapState<T>& state,
 #pragma omp parallel for num_threads(state.num_threads)
   for (int node_id = begin; node_id < end; node_id += 1) {
     // compute optimal region
-    Box<T> opt_box = (state.search_bin_strategy)
+    DreamPlace::Utility::Box<T> opt_box = (state.search_bin_strategy)
                          ? db.compute_optimal_region(node_id)
-                         : Box<T>(db.x[node_id], db.y[node_id],
+                         : DreamPlace::Utility::Box<T>(db.x[node_id], db.y[node_id],
                                   db.x[node_id] + db.node_size_x[node_id],
                                   db.y[node_id] + db.node_size_y[node_id]);
-    // Box<T> opt_box = Box<T>(db.x[node_id],
+    // DreamPlace::Utility::Box<T> opt_box = DreamPlace::Utility::Box<T>(db.x[node_id],
     //        db.y[node_id],
     //        db.x[node_id]+db.node_size_x[node_id],
     //        db.y[node_id]+db.node_size_y[node_id]);
@@ -230,7 +230,7 @@ T compute_pair_hpwl_general(const DetailedPlaceDB<T>& db,
     int node_pin_id = db.flat_node2pin_map[node2pin_id];
     int net_id = db.pin2net_map[node_pin_id];
     if (db.net_mask[net_id]) {
-      Box<T> box(db.xh, db.yh, db.xl, db.yl);
+      DreamPlace::Utility::Box<T> box(db.xh, db.yh, db.xl, db.yl);
       int net2pin_id = db.flat_net2pin_start_map[net_id];
       const int net2pin_id_end = db.flat_net2pin_start_map[net_id + 1];
       for (; net2pin_id < net2pin_id_end; ++net2pin_id) {

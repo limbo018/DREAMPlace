@@ -7,29 +7,57 @@
 
 import time
 import logging
-import dreamplace.ops.timing.timing as timing
-import dreamplace.ops.timing.timing_cpp as timing_cpp
 
 class Timer(object):
     """
-    @brief The timer python class. The timer we are going to use is
-     actually OpenTimer written in c++.
+    @brief The timer python class. The timer supports both Opentimer and HeteroSTA engines.
     """
-    def __init__(self):
+    def __init__(self,timer_engine = "heterosta"):
         """The initialization of the timer python class.
         In fact we do not prefer using timer directly in python, even in
         the timing-driven mode. Ideally, everything should smoothly goes
         on at the underlying level.
         """
         self.raw_timer = None
+        self.timer_engine = timer_engine.lower()
 
-    def read(self, params): 
+        # Validate engine selection
+        if self.timer_engine not in ["opentimer","heterosta"]:
+            raise ValueError(f"Unsupported timer engine:{timer_engine}.Must be 'opentimer' or 'heterosta'")
+        
+        # Lazy import based on engine selection
+        if self.timer_engine == "opentimer":
+            try:
+                import dreamplace.ops.timing.timing as timing
+                import dreamplace.ops.timing.timing_cpp as timing_cpp
+                self.timing_module = timing
+                self.timing_cpp_module = timing_cpp
+                logging.info("Using OpenTimer timing analysis engine")
+            except ImportError as e:
+                raise ImportError(f"Failed to import OpenTimer modules: {e}")
+        else:  # heterosta
+            try:
+                import dreamplace.ops.timing_heterosta.timing_hs as timing
+                import dreamplace.ops.timing_heterosta.timing_heterosta_cpp as timing_cpp
+                self.timing_module = timing
+                self.timing_cpp_module = timing_cpp
+                logging.info("Using HeteroSTA timing analysis engine")
+            except ImportError as e:
+                raise ImportError(f"Failed to import HeteroSTA modules: {e}")
+
+    def read(self, params,placedb=None): 
         """
         @brief read using c++ and save the pybind object.
         @param params the parameters specified in json.
+        @param placedb the placement database (required for HeteroSTA)
         """
-        self.raw_timer = timing.TimingIO.read(params)
-
+        if self.timer_engine == "opentimer":
+            self.raw_timer = self.timing_module.TimingIO.read(params)
+        else:  # heterosta
+            if placedb is None:
+                raise ValueError("HeteroSTA requires placedb parameter")
+            self.raw_timer = self.timing_module.TimingIO.read(params, placedb)
+    
     def __call__(self, params, placedb):
         """
         @brief top API to read placement files 
@@ -37,7 +65,7 @@ class Timer(object):
         @param placedb the placement database.
         """
         tt = time.time()
-        self.read(params)
+        self.read(params,placedb)
         self.placedb = placedb
         logging.info("reading timer constraints takes %g seconds" % \
             (time.time() - tt))
@@ -47,7 +75,14 @@ class Timer(object):
         Note that the parsers only build tasks in cpp-taskflow and will
         not be executed before the update_timing call.
         """        
-        return self.raw_timer.update_timing()
+        if self.timer_engine == "opentimer":
+            return self.raw_timer.update_timing()
+        else: # heterosta
+            pass
+    
+    # ---------------------
+    # In the following,we keep original methods for opentimer.
+    # Not implemented in the heterosta mode
     
     def report_timing(self, n):
         """@brief report timing paths and related nets.

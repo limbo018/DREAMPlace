@@ -34,7 +34,7 @@ int globalSwapCPULauncher(DetailedPlaceDB<T> db, int max_iters) {
       int node_pin_id = db.flat_node2pin_map[node2pin_id];
       int net_id = db.pin2net_map[node_pin_id];
       if (db.net_mask[net_id]) {
-        Box<T> box(db.xh, db.yh, db.xl, db.yl);
+        DreamPlace::Utility::Box<T> box(db.xh, db.yh, db.xl, db.yl);
         for (int net2pin_id = db.flat_net2pin_start_map[net_id];
              net2pin_id < db.flat_net2pin_start_map[net_id + 1]; ++net2pin_id) {
           int net_pin_id = db.flat_net2pin_map[net2pin_id];
@@ -74,7 +74,7 @@ int globalSwapCPULauncher(DetailedPlaceDB<T> db, int max_iters) {
       int node_pin_id = db.flat_node2pin_map[node2pin_id];
       int net_id = db.pin2net_map[node_pin_id];
       if (db.net_mask[net_id]) {
-        Box<T> box(db.xh, db.yh, db.xl, db.yl);
+        DreamPlace::Utility::Box<T> box(db.xh, db.yh, db.xl, db.yl);
         // when encounter nets that have both node_id and target_node_id
         // skip them
         bool duplicate_net_flag = false;
@@ -256,7 +256,7 @@ int globalSwapCPULauncher(DetailedPlaceDB<T> db, int max_iters) {
   // swap candidates
   std::vector<SwapCandidate<T> > candidates;
   // optimal region
-  // std::vector<Box<T> > optimal_regions (db.num_movable_nodes);
+  // std::vector<DreamPlace::Utility::Box<T> > optimal_regions (db.num_movable_nodes);
 
   // profiling variables
   CPUTimer::hr_clock_rep timer_start, timer_stop;
@@ -292,19 +292,19 @@ int globalSwapCPULauncher(DetailedPlaceDB<T> db, int max_iters) {
       if (db.node_size_y[node_id] != db.row_height) {
         continue;
       }
-      Box<T> node_box(db.x[node_id], db.y[node_id],
+      DreamPlace::Utility::Box<T> node_box(db.x[node_id], db.y[node_id],
                       db.x[node_id] + db.node_size_x[node_id],
                       db.y[node_id] + db.node_size_y[node_id]);
       // dreamplacePrint(kDEBUG, "iter %d, node %d\n", iter, node_id);
 
       // compute optimal region
       timer_start = CPUTimer::getGlobaltime();
-      // Box<T> opt_box = (iter&1)? node_box : optimal_regions[node_id];
-      Box<T> opt_box = node_box;
+      // DreamPlace::Utility::Box<T> opt_box = (iter&1)? node_box : optimal_regions[node_id];
+      DreamPlace::Utility::Box<T> opt_box = node_box;
       timer_stop = CPUTimer::getGlobaltime();
       compute_search_region_time += timer_stop - timer_start;
       compute_search_region_runs += 1;
-      // Box<T> opt_box = node_box;
+      // DreamPlace::Utility::Box<T> opt_box = node_box;
       // cell already in optimal region, skip it
       // if (opt_box.contains(node_box.xl, node_box.yl, node_box.xh,
       // node_box.yh))
@@ -338,14 +338,14 @@ int globalSwapCPULauncher(DetailedPlaceDB<T> db, int max_iters) {
         if (bx < 0 || bx >= db.num_bins_x || by < 0 || by >= db.num_bins_y) {
           continue;
         }
-        Box<T> bin(db.xl + bx * db.bin_size_x, db.yl + by * db.bin_size_y,
+        DreamPlace::Utility::Box<T> bin(db.xl + bx * db.bin_size_x, db.yl + by * db.bin_size_y,
                    db.xl + (bx + 1) * db.bin_size_x,
                    db.yl + (by + 1) * db.bin_size_y);
         // dreamplacePrint(kDEBUG, "node %d search bin (%d, %d) distance to opt
         // box %g/%g\n", node_id, bx, by, bin.center_distance(opt_box),
         // node_box.center_distance(opt_box));
 
-        Box<int> sitebox = db.box2sitebox(bin);
+        DreamPlace::Utility::Box<int> sitebox = db.box2sitebox(bin);
 
         // enumerate sites within the site box and check any space that is large
         // enough to host the node

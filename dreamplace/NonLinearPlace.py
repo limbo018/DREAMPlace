@@ -27,9 +27,8 @@ import NesterovAcceleratedGradientOptimizer
 import EvalMetrics
 import pdb
 import dreamplace.ops.fence_region.fence_region as fence_region
+flag = True
 
-import torch_optimizer
-import ncg_optimizer
 
 class NonLinearPlace(BasicPlace.BasicPlace):
     """
@@ -46,23 +45,20 @@ class NonLinearPlace(BasicPlace.BasicPlace):
         """
         super(NonLinearPlace, self).__init__(params, placedb, timer)
 
-    def __call__(self, params, placedb, learning_rate_value):
+    def __call__(self, params, placedb):
         """
         @brief Top API to solve placement.
         @param params parameters
         @param placedb placement database
         """
-        # List with optimizers that don't rebuild the model, i.e. they call the function "step()" instead of "step(closure)".
-        optimizers_no_closure = ["nesterov", "sgd", "sgd_momentum", "sgd_nesterov", "adam", "adamax", "nadam", "adamw", "adadelta", "rmsprop", "aggmo", "qhadam", "yogi", "radam", "adabelief", "adabound", "adafactor", "diffgrad", "novograd"]
-        
-        # List with the available optimizers. ATTENTION: Do not add "nesterov" in this list.
-        optimizers_list = ["sgd", "sgd_momentum", "sgd_nesterov", "adam", "adamax", "nadam", "adamw", "adadelta", "rmsprop", "aggmo", "qhadam", "yogi", "radam", "adabelief", "adabound", "adafactor", "diffgrad", "novograd", "cg_fr", "cg_prp", "cg_hs", "cg_cd", "cg_ls", "cg_dy", "cg_hz", "cg_hs-dy"]
-        
         iteration = 0
         all_metrics = []
         if params.timing_opt_flag:
             timing_op = self.op_collections.timing_op
-            time_unit = timing_op.timer.time_unit()
+            if params.timer_engine == "opentimer":
+                time_unit = timing_op.timer.time_unit()
+            else: 
+                time_unit = timing_op.time_unit()
 
         # global placement
         if params.global_place_flag:
@@ -105,26 +101,22 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                 if params.gpu:
                     torch.cuda.synchronize()
                 tt = time.time()
-                
-                # Construct the model and the optimizer
-                def construct_model():
-                    model = PlaceObj.PlaceObj(
-                        density_weight,
-                        params,
-                        placedb,
-                        self.data_collections,
-                        self.op_collections,
-                        global_place_params,
-                    ).to(self.data_collections.pos[0].device)
-                    return model
+                # construct model and optimizer
                 density_weight = 0.0
-                model = construct_model()
-                
                 if params.macro_place_flag and cur_stage == 1:
                     density_weight = all_metrics[-1][-1][-1].density_weight.item() / params.two_stage_density_scaler
                     # at the 2nd stage, total_movable_node_area should exclude movable macro area to enable more aggresive spreading of cells
                     placedb.total_movable_node_area = placedb.total_movable_cell_area
-                
+                # construct placement model
+                model = PlaceObj.PlaceObj(
+                    density_weight,
+                    params,
+                    placedb,
+                    self.data_collections,
+                    self.op_collections,
+                    global_place_params,
+                ).to(self.data_collections.pos[0].device)
+
                 # initialization before global placement 
                 if params.global_place_flag and params.gift_init_flag: 
                     init_pos = self.pos[0].view([2, -1])[:, :placedb.num_physical_nodes]
@@ -139,92 +131,27 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                     model.fix_nodes_mask[:placedb.num_movable_nodes] = movable_macro_mask[:placedb.num_movable_nodes]
                     # params.use_bb = False
 
+                optimizer_name = global_place_params["optimizer"]
 
-                try:                
-                    optimizer_name = global_place_params["optimizer"]
-
-                    # Determine optimizer
-                    # 1. The official pytorch package
-                    if optimizer_name.lower() == "sgd":
-                        optimizer = torch.optim.SGD(self.parameters(), lr=0)
-                    elif optimizer_name.lower() == "sgd_momentum":
-                        optimizer = torch.optim.SGD(self.parameters(), lr=0, momentum=0.9, nesterov=False)
-                    elif optimizer_name.lower() == "sgd_nesterov":
-                        optimizer = torch.optim.SGD(self.parameters(), lr=0, momentum=0.9, nesterov=True)
-                    elif optimizer_name.lower() == "adadelta":
-                        optimizer = torch.optim.Adadelta(self.parameters(), lr=0)
-                    elif optimizer_name.lower() == "rmsprop":
-                        optimizer = torch.optim.RMSprop(self.parameters(), lr=0)
-                    elif optimizer_name.lower() == "adam":
-                        optimizer = torch.optim.Adam(self.parameters(), lr=0)
-                    elif optimizer_name.lower() == "adamax":
-                        optimizer = torch.optim.Adamax(self.parameters(), lr=0)
-                    elif optimizer_name.lower() == "adamw":
-                        optimizer = torch.optim.AdamW(self.parameters(), lr=0)
-                    elif optimizer_name.lower() == "nadam":
-                        optimizer = torch.optim.NAdam(self.parameters(), lr=0)
-                    elif optimizer_name.lower() == "nesterov":
-                        optimizer = NesterovAcceleratedGradientOptimizer.NesterovAcceleratedGradientOptimizer(
-                            self.parameters(),
-                            lr=0,
-                            obj_and_grad_fn=model.obj_and_grad_fn,
-                            constraint_fn=self.op_collections.move_boundary_op,
-                            use_bb = params.use_bb
-                        )
-                    # 2. The torch_optimizer package
-                    elif optimizer_name.lower() == "aggmo":
-                        optimizer = torch_optimizer.AggMo(self.parameters(), lr=learning_rate_value)
-                    elif optimizer_name.lower() == "qhadam":
-                        optimizer = torch_optimizer.QHAdam(self.parameters(), lr=learning_rate_value)
-                    elif optimizer_name.lower() == "yogi":
-                        optimizer = torch_optimizer.Yogi(self.parameters(), lr=learning_rate_value)
-                    elif optimizer_name.lower() == "radam":
-                        optimizer = torch_optimizer.RAdam(self.parameters(), lr=learning_rate_value)
-                    elif optimizer_name.lower() == "adabelief":
-                        optimizer = torch_optimizer.AdaBelief(self.parameters(), lr=learning_rate_value)
-                    elif optimizer_name.lower() == "adabound":
-                        optimizer = torch_optimizer.AdaBound(self.parameters(), lr=learning_rate_value)
-                    elif optimizer_name.lower() == "adafactor":
-                        optimizer = torch_optimizer.Adafactor(self.parameters(), lr=learning_rate_value)
-                    elif optimizer_name.lower() == "diffgrad":
-                        optimizer = torch_optimizer.DiffGrad(self.parameters(), lr=learning_rate_value)
-                    elif optimizer_name.lower() == "novograd":
-                        optimizer = torch_optimizer.NovoGrad(self.parameters(), lr=learning_rate_value)           
-                
-                    # 3. The ncg_optimizer package
-                    elif optimizer_name.lower() == "cg_fr":
-                        optimizer = ncg_optimizer.BASIC(self.parameters(), method = 'FR', line_search = 'Strong_Wolfe', c1 = 1e-4, c2 = 0.5, lr = 0.2, max_ls = 25,)
-                    elif optimizer_name.lower() == "cg_prp":
-                        optimizer = ncg_optimizer.BASIC(self.parameters(), method = 'PRP', line_search = 'Armijo', c1 = 1e-4, c2 = 0.9, lr = 1, rho = 0.5,)
-                    elif optimizer_name.lower() == "cg_hs":
-                        optimizer = ncg_optimizer.BASIC(self.parameters(), method = 'HS', line_search = 'Strong_Wolfe', c1 = 1e-4, c2 = 0.4, lr = 0.2, max_ls = 25,)
-                    elif optimizer_name.lower() == "cg_cd":
-                        optimizer = ncg_optimizer.BASIC(self.parameters(), method = 'CD', line_search = 'Armijo', c1 = 1e-4, c2 = 0.9, lr = 1, rho = 0.5,)
-                    elif optimizer_name.lower() == "cg_ls":
-                        optimizer = ncg_optimizer.BASIC(self.parameters(), method = 'LS', line_search = 'Armijo', c1 = 1e-4, c2 = 0.9, lr = 1, rho = 0.5,)
-                    elif optimizer_name.lower() == "cg_dy":
-                        optimizer = ncg_optimizer.BASIC(self.parameters(), method = 'DY', line_search = 'Strong_Wolfe', c1 = 1e-4, c2 = 0.9, lr = 0.2, max_ls = 25,)
-                    elif optimizer_name.lower() == "cg_hz":
-                        optimizer = ncg_optimizer.BASIC(self.parameters(), method = 'HZ', line_search = 'Strong_Wolfe', c1 = 1e-4, c2 = 0.9, lr = 0.2, max_ls = 25,)
-                    elif optimizer_name.lower() == "cg_hs-dy":
-                        optimizer = ncg_optimizer.BASIC(self.parameters(), method = 'HS-DY', line_search = 'Armijo', c1 = 1e-4, c2 = 0.9, lr = 1, rho = 0.5,)
-
-                    #4. Else
-                    else:
-                        assert 0, "unknown optimizer %s" % (optimizer_name)
-                except Exception as e:
-                    logging.error(f"Error initializing optimizer %s: %s. Optimizer {optimizer_name} is not supported by torch (version {torch.__version__}) or torch_optimizer or ncg_optimizer. Please check the version of torch, torch_optimizer, and ncg_optimizer.")
-                    raise e
-
-                # Set the run_closure flag
-                if optimizer_name.lower() in optimizers_no_closure:
-                  run_closure = 0
-                  logging.info("Optimizer '%s' does not rebuild the model. "
-                               "Every training epoch calls the function 'step()'." % (optimizer_name))
+                # determine optimizer
+                if optimizer_name.lower() == "adam":
+                    optimizer = torch.optim.Adam(self.parameters(), lr=0)
+                elif optimizer_name.lower() == "sgd":
+                    optimizer = torch.optim.SGD(self.parameters(), lr=0)
+                elif optimizer_name.lower() == "sgd_momentum":
+                    optimizer = torch.optim.SGD(self.parameters(), lr=0, momentum=0.9, nesterov=False)
+                elif optimizer_name.lower() == "sgd_nesterov":
+                    optimizer = torch.optim.SGD(self.parameters(), lr=0, momentum=0.9, nesterov=True)
+                elif optimizer_name.lower() == "nesterov":
+                    optimizer = NesterovAcceleratedGradientOptimizer.NesterovAcceleratedGradientOptimizer(
+                        self.parameters(),
+                        lr=0,
+                        obj_and_grad_fn=model.obj_and_grad_fn,
+                        constraint_fn=self.op_collections.move_boundary_op,
+                        use_bb = params.use_bb
+                    )
                 else:
-                  run_closure = 1
-                  logging.info("Optimizer '%s' rebuilds the model. "
-                               "Every training epoch calls the function 'step(closure)'." % (optimizer_name))
+                    assert 0, "unknown optimizer %s" % (optimizer_name)
 
                 logging.info("use %s optimizer" % (optimizer_name))
                 model.train()
@@ -274,7 +201,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                 logging.info("%s initialization takes %g seconds" % (optimizer_name, (time.time() - tt)))
 
                 # as nesterov requires line search, we cannot follow the convention of other solvers
-                if optimizer_name.lower() in optimizers_list:
+                if optimizer_name.lower() in {"sgd", "adam", "sgd_momentum", "sgd_nesterov"}:
                     model.obj_and_grad_fn(model.data_collections.pos[0])
                 elif optimizer_name.lower() != "nesterov":
                     assert 0, "unsupported optimizer %s" % (optimizer_name)
@@ -414,7 +341,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                     # t2 = time.time()
 
                     # as nesterov requires line search, we cannot follow the convention of other solvers
-                    if optimizer_name.lower() in optimizers_list:
+                    if optimizer_name.lower() in ["sgd", "adam", "sgd_momentum", "sgd_nesterov"]:
                         obj, grad = model.obj_and_grad_fn(pos)
                         cur_metric.objective = obj.data.clone()
                     elif optimizer_name.lower() != "nesterov":
@@ -425,26 +352,11 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         cur_pos = self.pos[0].data.clone().cpu().numpy()
                         self.plot(params, placedb, iteration, cur_pos)
 
-                    # Clear the grads, reconstruct the placement model, compute the loss value, and the gradients
-                    def closure():
-                      density_weight = 0.0
-                      model = construct_model()
-                      obj, grad = model.obj_and_grad_fn(pos)
-                      return obj
-
-                    # Make a parameter update after having checked if closure must be called
-                    def make_parameter_update():
-                        if run_closure == 0:
-                          optimizer.step()
-                        else:
-                          optimizer.step(closure)
-
                     #### stop updating fence regions that are marked stop, exclude the outer cell !
                     t3 = time.time()
                     if model.update_mask is not None:
                         pos_bk = pos.data.clone()
-
-                        make_parameter_update()
+                        optimizer.step()
 
                         for region_id, fence_region_update_flag in enumerate(model.update_mask):
                             if fence_region_update_flag == 0:
@@ -452,7 +364,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                                 mask = self.op_collections.fence_region_density_ops[region_id].pos_mask
                                 pos.data.masked_scatter_(mask, pos_bk[mask])
                     else:
-                        make_parameter_update()
+                        optimizer.step()
 
                     logging.info("optimizer step %.3f ms" % ((time.time() - t3) * 1000))
 
@@ -464,28 +376,46 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         cur_pos = self.pos[0].data.clone().cpu().numpy()
                         # The timing operator has already integrated timer as its
                         # instance variable, so it only takes one argument.
-                        timing_op(self.pos[0].data.clone().cpu())
-                        timing_op.timer.update_timing()
+                        # HeteroSTA can use GPU tensors directly, OpenTimer needs CPU
+                        timing_beg = time.time()
+                        if params.timer_engine == "heterosta":
+                            timing_op(self.pos[0].data.clone())
+                        else:
+                            timing_op(self.pos[0].data.clone().cpu())
+                            timing_op.timer.update_timing()
+                            
                         npaths = max(1, int(placedb.num_nets * 0.03))
 
                         # Report timing step.
                         # Temporary solution: modify net weights
                         beg = time.time()
+
                         timing_op.update_net_weights(
                             max_net_weight=placedb.max_net_weight,
                             n=npaths)
-                        if self.device != torch.device("cpu"):
-                            # Copy weights from placedb.net_weights to device.
+                        
+                        # For HeteroSTA, net_weights are modified in-place on GPU - no copy needed
+                        # For OpenTimer, we still need to copy from placedb to device
+
+                        if params.timer_engine != "heterosta" and self.device != torch.device("cpu"):
                             self.data_collections.net_weights.copy_(
                                 torch.from_numpy(placedb.net_weights))
                         logging.info("net-weight update step %.3f ms" % \
                             ((time.time() - beg) * 1000))
-
-                        # Report tns and wns in each timing feedback call.
-                        # Note that OpenTimer considers early,late,rise,fall for tns/wns.
-                        # The following values are for reference.
-                        cur_metric.tns = timing_op.timer.report_tns_elw(split=1) / (time_unit * 1e17)
-                        cur_metric.wns = timing_op.timer.report_wns(split=1) / (time_unit * 1e15)
+                        logging.info("The entire timing step %.3f ms"% \
+                            ((time.time() - timing_beg) * 1000))
+                        
+                        if params.timer_engine == "opentimer":
+                            # Report tns and wns in each timing feedback call.
+                            # Note that OpenTimer considers early,late,rise,fall for tns/wns.
+                            # The following values are for reference.
+                            cur_metric.tns = timing_op.timer.report_tns_elw(split=1) / (time_unit * 1e17)
+                            cur_metric.wns = timing_op.timer.report_wns(split=1) / (time_unit * 1e15)
+                            logging.info("tns : %f, wns: %f",cur_metric.tns, cur_metric.wns)
+                        else: # heterosta
+                            cur_metric.tns = timing_op.report_tns() / (time_unit * 1e17)
+                            cur_metric.wns = timing_op.report_wns() / (time_unit * 1e15)
+                            logging.info("tns : %f, wns: %f",cur_metric.tns, cur_metric.wns)
 
                     # nesterov has already computed the objective of the next step
                     if optimizer_name.lower() == "nesterov":
@@ -776,7 +706,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         break
 
                     # update learning rate
-                    if optimizer_name.lower() in optimizers_list:
+                    if optimizer_name.lower() in ["sgd", "adam", "sgd_momentum", "sgd_nesterov", "cg"]:
                         if "learning_rate_decay" in global_place_params:
                             for param_group in optimizer.param_groups:
                                 param_group["lr"] *= global_place_params["learning_rate_decay"]
@@ -865,18 +795,26 @@ class NonLinearPlace(BasicPlace.BasicPlace):
             # sta after legalization is not needed anymore.
             if params.timing_opt_flag:
                 logging.info("additional sta after legalization")
+                
                 timing_op = self.op_collections.timing_op
-     
+                
                 # The timing operator has already integrated timer as its
                 # instance variable, so it only takes one argument.
-                timing_op(self.pos[0].data.clone().cpu())
-                timing_op.timer.update_timing()
-
-                # Report tns and wns in each timing feedback call.
-                # Note that OpenTimer considers early,late,rise,fall for tns/wns.
-                # The following values are for reference.
-                cur_metric.tns = timing_op.timer.report_tns_elw(split=1) / (time_unit * 1e17)
-                cur_metric.wns = timing_op.timer.report_wns(split=1) / (time_unit * 1e15)
+                # HeteroSTA can use GPU tensors directly, OpenTimer needs CPU
+                if params.timer_engine == "heterosta":
+                    timing_op(self.pos[0].data.clone())
+                    cur_metric.tns = timing_op.report_tns() / (time_unit * 1e17)
+                    cur_metric.wns = timing_op.report_wns() / (time_unit * 1e15)
+                    logging.info("tns : %f, wns: %f",cur_metric.tns, cur_metric.wns)
+                else:
+                    timing_op(self.pos[0].data.clone().cpu())
+                    timing_op.timer.update_timing()
+                    # Report tns and wns in each timing feedback call.
+                    # Note that OpenTimer considers early,late,rise,fall for tns/wns.
+                    # The following values are for reference.
+                    cur_metric.tns = timing_op.timer.report_tns_elw(split=1) / (time_unit * 1e17)
+                    cur_metric.wns = timing_op.timer.report_wns(split=1) / (time_unit * 1e15)
+                    logging.info("tns : %f, wns: %f",cur_metric.tns, cur_metric.wns)
 
             logging.info(cur_metric)
             iteration += 1

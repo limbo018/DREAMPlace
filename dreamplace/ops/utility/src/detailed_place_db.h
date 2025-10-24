@@ -110,7 +110,7 @@ struct DetailedPlaceDB {
     by = std::min(by, num_bins_y - 1);
     return by;
   }
-  inline void shift_box_to_layout(Box<T>& box) const {
+  inline void shift_box_to_layout(DreamPlace::Utility::Box<T>& box) const {
     box.xl = std::max(box.xl, xl);
     box.xl = std::min(box.xl, xh);
     box.xh = std::max(box.xh, xl);
@@ -120,15 +120,15 @@ struct DetailedPlaceDB {
     box.yh = std::max(box.yh, yl);
     box.yh = std::min(box.yh, yh);
   }
-  inline Box<int> box2sitebox(const Box<T>& box) const {
+  inline DreamPlace::Utility::Box<int> box2sitebox(const DreamPlace::Utility::Box<T>& box) const {
     // xh, yh are exclusive
-    Box<int> sitebox(pos2site_x(box.xl), pos2site_y(box.yl),
+    DreamPlace::Utility::Box<int> sitebox(pos2site_x(box.xl), pos2site_y(box.yl),
                      pos2site_ub_x(box.xh), pos2site_ub_y(box.yh));
 
     return sitebox;
   }
-  inline Box<int> box2binbox(const Box<T>& box) const {
-    Box<int> binbox(pos2bin_x(box.xl), pos2bin_y(box.yl), pos2bin_x(box.xh),
+  inline DreamPlace::Utility::Box<int> box2binbox(const DreamPlace::Utility::Box<T>& box) const {
+    DreamPlace::Utility::Box<int> binbox(pos2bin_x(box.xl), pos2bin_y(box.yl), pos2bin_x(box.xh),
                     pos2bin_y(box.yh));
 
     return binbox;
@@ -150,8 +150,8 @@ struct DetailedPlaceDB {
   /// box for the optimal region. Thus, this is just an approximate optimal
   /// region. When using the optimal region, one needs to refer to the center of
   /// the cell to the region, or the region completely covers the entire cell.
-  Box<T> compute_optimal_region(int node_id) const {
-    Box<T> box(std::numeric_limits<T>::max(), std::numeric_limits<T>::max(),
+  DreamPlace::Utility::Box<T> compute_optimal_region(int node_id) const {
+    DreamPlace::Utility::Box<T> box(std::numeric_limits<T>::max(), std::numeric_limits<T>::max(),
                -std::numeric_limits<T>::max(), -std::numeric_limits<T>::max());
     for (int node2pin_id = flat_node2pin_start_map[node_id];
          node2pin_id < flat_node2pin_start_map[node_id + 1]; ++node2pin_id) {
@@ -181,7 +181,7 @@ struct DetailedPlaceDB {
   }
   /// @brief compute HPWL for a net
   T compute_net_hpwl(int net_id) const {
-    Box<T> box(std::numeric_limits<T>::max(), std::numeric_limits<T>::max(),
+    DreamPlace::Utility::Box<T> box(std::numeric_limits<T>::max(), std::numeric_limits<T>::max(),
                -std::numeric_limits<T>::max(), -std::numeric_limits<T>::max());
     for (int net2pin_id = flat_net2pin_start_map[net_id];
          net2pin_id < flat_net2pin_start_map[net_id + 1]; ++net2pin_id) {

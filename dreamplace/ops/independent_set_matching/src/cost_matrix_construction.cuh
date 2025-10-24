@@ -42,7 +42,7 @@ __global__ void compute_cost_matrix_kernel(DetailedPlaceDBType db, IndependentSe
     auto cost_matrix = state.cost_matrices + i*state.cost_matrix_size + j*state.set_size; 
     __shared__ int node_id; 
     __shared__ typename DetailedPlaceDBType::type node_width; 
-    __shared__ SharedBox<typename DetailedPlaceDBType::type> net_boxes[MAX_NODE_DEGREE]; 
+    __shared__ DreamPlace::Utility::SharedBox<typename DetailedPlaceDBType::type> net_boxes[MAX_NODE_DEGREE]; 
     __shared__ int node2pin_id_bgn; 
     __shared__ int node2pin_id_end; 
     if (threadIdx.x == 0)

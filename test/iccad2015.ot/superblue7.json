@@ -36,5 +36,6 @@
 "net_weighting_scheme": "lilith",
 "momentum_decay_factor" : 0.5,
 "max_net_weight" : 64,
-"enable_net_weighting" : 1
+"enable_net_weighting" : 1,
+"timer_engine" : "heterosta"
 }
