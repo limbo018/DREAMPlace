@@ -10,9 +10,17 @@
 #include <float.h>
 #include <limits.h>
 
+// CUDA 12.8 introduces cuda::std::numeric_limits which conflicts with cuda::numeric_limits
+// We use a macro to conditionally rename our namespace to avoid conflicts
+#if defined(__CUDACC__) && defined(CUDA_VERSION) && (CUDA_VERSION >= 12080)
+  #define DREAMPLACE_CUDA_NAMESPACE dreamplace_cuda
+#else
+  #define DREAMPLACE_CUDA_NAMESPACE cuda
+#endif
+
 DREAMPLACE_BEGIN_NAMESPACE
 
-namespace cuda {  // namespace cuda
+namespace DREAMPLACE_CUDA_NAMESPACE {  // namespace dreamplace_cuda (CUDA >= 12.8) or cuda (CUDA < 12.8)
 
 template <typename T>
 struct numeric_limits_base {
@@ -309,7 +317,7 @@ struct numeric_limits<long double> : public numeric_limits_base<long double> {
     return LDBL_EPSILON;
   }
 };
-}  // namespace cuda
+}  // namespace DREAMPLACE_CUDA_NAMESPACE
 
 DREAMPLACE_END_NAMESPACE
 

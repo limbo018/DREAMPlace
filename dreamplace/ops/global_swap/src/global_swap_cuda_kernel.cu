@@ -122,7 +122,7 @@ __global__ void reduce_min_2d_cub(SwapCandidate<T>* candidates,
 
   ItemWithIndex<T> thread_data;
 
-  thread_data.value = cuda::numeric_limits<T>::max();
+  thread_data.value = DREAMPLACE_CUDA_NAMESPACE::numeric_limits<T>::max();
   thread_data.index = 0;
   for (int col = threadIdx.x; col < max_num_elements; col += ThreadsPerBlock) {
     T cost = row_candidates[col].cost;
@@ -410,7 +410,7 @@ __device__ T compute_positions(const DetailedPlaceDB<T>& db,
     }
     if (space_xh < db.node_size_x[cand.node_id[1]] + space_xl) {
       // some large number
-      return cuda::numeric_limits<T>::max();
+      return DREAMPLACE_CUDA_NAMESPACE::numeric_limits<T>::max();
     }
     int target_node2row2node_index =
         state.node2row2node_index_map[cand.node_id[1]];
@@ -430,7 +430,7 @@ __device__ T compute_positions(const DetailedPlaceDB<T>& db,
             : db.xh;
     if (target_space_xh < db.node_size_x[cand.node_id[0]] + target_space_xl) {
       // some large number
-      return cuda::numeric_limits<T>::max();
+      return DREAMPLACE_CUDA_NAMESPACE::numeric_limits<T>::max();
     }
     cand.node_xl[0][1] = min(max(cand.node_xl[0][1], target_space_xl),
                              target_space_xh - db.node_size_x[cand.node_id[0]]);
@@ -483,7 +483,7 @@ __device__ T compute_positions_hint(const DetailedPlaceDB<T>& db,
     cond |= (target_space.xh < node_width + target_space.xl);
     if (cond) {
       // some large number
-      return cuda::numeric_limits<T>::max();
+      return DREAMPLACE_CUDA_NAMESPACE::numeric_limits<T>::max();
     }
     cand.node_xl[0][1] =
         cand.node_xl[1][0] + (target_node_width - node_width) / 2;
@@ -567,8 +567,8 @@ __global__ void reset_state(DetailedPlaceDB<T> db, SwapState<T> state) {
        i < state.max_num_candidates_all; i += blockDim.x * gridDim.x) {
     SwapCandidate<T>& cand = state.candidates[i];
     cand.cost = 0;
-    cand.node_id[0] = cuda::numeric_limits<int>::max();
-    cand.node_id[1] = cuda::numeric_limits<int>::max();
+    cand.node_id[0] = DREAMPLACE_CUDA_NAMESPACE::numeric_limits<int>::max();
+    cand.node_id[1] = DREAMPLACE_CUDA_NAMESPACE::numeric_limits<int>::max();
     cand.node_xl[0][0] = 0;
     cand.node_xl[0][1] = 0;
     cand.node_yl[0][0] = 0;
@@ -744,7 +744,7 @@ __global__ void reset_candidate_costs(DetailedPlaceDB<T> db,
                                       SwapState<T> state) {
   for (int i = blockIdx.x * blockDim.x + threadIdx.x;
        i < state.max_num_candidates_all; i += blockDim.x * gridDim.x) {
-    state.candidates[i].cost = cuda::numeric_limits<T>::max();
+    state.candidates[i].cost = DREAMPLACE_CUDA_NAMESPACE::numeric_limits<T>::max();
   }
 }
 
@@ -821,7 +821,7 @@ __global__ void __launch_bounds__(64 * 4, 4)
            (cand.node_id[1] < db.num_movable_nodes &&
             !db.inside_fence(cand.node_id[1], cand.node_xl[1][1],
                              cand.node_yl[1][1])))) {
-        cand.cost = cuda::numeric_limits<T>::max();
+        cand.cost = DREAMPLACE_CUDA_NAMESPACE::numeric_limits<T>::max();
       } else {
         // target_cost - orig_cost
         // cand.cost += cost[threadIdx.x]-cost[threadIdx.x-1];
