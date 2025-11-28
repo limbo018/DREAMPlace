@@ -23,7 +23,6 @@ set(LINK_LIBS utility_cxx
   # end targets in Limbo
   OpenMP::OpenMP_CXX
   programoptions
-  heterosta
   ${ZLIB_LIBRARIES}
   ${CUDA_CUDA_LIBRARY}
   stdc++fs
@@ -65,9 +64,15 @@ else()
         EXTRA_LINK_LIBRARIES ${LINK_LIBS})
 endif()
 
+list(GET HETEROSTA_LIB 0 _HET_LIB0)
+get_filename_component(HETEROSTA_LIBDIR "${_HET_LIB0}" DIRECTORY)
+target_link_directories(${TARGET_NAME}_cpp PRIVATE "${HETEROSTA_LIBDIR}")
+target_link_libraries(${TARGET_NAME}_cpp PRIVATE -lheterosta)
+
 set_target_properties(${TARGET_NAME}_cpp PROPERTIES
-    BUILD_RPATH_USE_ORIGIN TRUE
-    INSTALL_RPATH "$ORIGIN")
+    BUILD_RPATH "$ORIGIN"
+    INSTALL_RPATH "$ORIGIN"
+    BUILD_RPATH_USE_ORIGIN TRUE)
 
 install(FILES ${HETEROSTA_LIB}
           DESTINATION dreamplace/ops/${OP_NAME})
