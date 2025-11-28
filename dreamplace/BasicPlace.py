@@ -570,29 +570,67 @@ class BasicPlace(nn.Module):
         @param placedb the placement database
         @param timer the timer object used in timing-driven mode
         """
-        return timing.TimingOpt(
-            timer, # The timer should be at the same level as placedb.
-            placedb.net_names, # The net names are required by OpenTimer.
-            placedb.pin_names, # The pin names are required by OpenTimer.
-            placedb.flat_net2pin_map,
-            placedb.flat_net2pin_start_map,
-            placedb.net_name2id_map,
-            placedb.pin_name2id_map,
-            placedb.pin2node_map,
-            placedb.pin_offset_x,
-            placedb.pin_offset_y,
-            placedb.net_criticality,
-            placedb.net_criticality_deltas,
-            placedb.net_weights,
-            placedb.net_weight_deltas,
-            wire_resistance_per_micron=params.wire_resistance_per_micron,
-            wire_capacitance_per_micron=params.wire_capacitance_per_micron,
-            net_weighting_scheme=params.net_weighting_scheme,
-            momentum_decay_factor=params.momentum_decay_factor,
-            scale_factor=params.scale_factor,
-            lef_unit=placedb.rawdb.lefUnit(),
-            def_unit=placedb.rawdb.defUnit(),
-            ignore_net_degree=params.ignore_net_degree)
+        # Check timer engine to use appropriate TimingOpt class
+        if hasattr(timer, 'timer_engine') and timer.timer_engine == "heterosta":
+            # Import HeteroSTA timing module
+            import dreamplace.ops.timing_heterosta.timing_hs as timing_hs
+
+            # Create GPU tensors for timing-specific data
+            device = self.data_collections.net_weights.device
+            net_criticality_gpu = torch.from_numpy(placedb.net_criticality).to(device)
+            net_criticality_deltas_gpu = torch.from_numpy(placedb.net_criticality_deltas).to(device)
+            net_weight_deltas_gpu = torch.from_numpy(placedb.net_weight_deltas).to(device)
+
+            return timing_hs.TimingOpt(
+                timer,
+                placedb.net_names, # The net names are required by HeteroSTA.
+                placedb.pin_names, # The pin names are required by HeteroSTA.
+                placedb.flat_net2pin_map,
+                placedb.flat_net2pin_start_map,
+                placedb.net_name2id_map,
+                placedb.pin_name2id_map,
+                placedb.pin2node_map,
+                placedb.pin_offset_x,
+                placedb.pin_offset_y,
+                placedb.pin2net_map,  # Pass existing pin2net_map
+                net_criticality_gpu,  # GPU tensor
+                net_criticality_deltas_gpu,  # GPU tensor
+                self.data_collections.net_weights,  # Reuse from data_collections (GPU tensor)
+                net_weight_deltas_gpu,  # GPU tensor
+                wire_resistance_per_micron=params.wire_resistance_per_micron,
+                wire_capacitance_per_micron=params.wire_capacitance_per_micron,
+                momentum_decay_factor=params.momentum_decay_factor,
+                scale_factor=params.scale_factor,
+                lef_unit=placedb.rawdb.lefUnit(),
+                def_unit=placedb.rawdb.defUnit(),
+                pin_pos_op=self.op_collections.pin_pos_op,  # Pass the existing pin_pos_op
+                ignore_net_degree=params.ignore_net_degree,
+                use_cuda=params.gpu)  # Use params.gpu for CUDA setting
+        else:
+            # Use OpenTimer
+            return timing.TimingOpt(
+                timer, # The timer should be at the same level as placedb.
+                placedb.net_names, # The net names are required by OpenTimer.
+                placedb.pin_names, # The pin names are required by OpenTimer.
+                placedb.flat_net2pin_map,
+                placedb.flat_net2pin_start_map,
+                placedb.net_name2id_map,
+                placedb.pin_name2id_map,
+                placedb.pin2node_map,
+                placedb.pin_offset_x,
+                placedb.pin_offset_y,
+                placedb.net_criticality,
+                placedb.net_criticality_deltas,
+                placedb.net_weights,
+                placedb.net_weight_deltas,
+                wire_resistance_per_micron=params.wire_resistance_per_micron,
+                wire_capacitance_per_micron=params.wire_capacitance_per_micron,
+                net_weighting_scheme=params.net_weighting_scheme,
+                momentum_decay_factor=params.momentum_decay_factor,
+                scale_factor=params.scale_factor,
+                lef_unit=placedb.rawdb.lefUnit(),
+                def_unit=placedb.rawdb.defUnit(),
+                ignore_net_degree=params.ignore_net_degree)     
 
     def build_legality_check(self, params, placedb, data_collections, device):
         """

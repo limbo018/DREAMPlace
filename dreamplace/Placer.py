@@ -45,11 +45,14 @@ def place(params, learning_rate_value):
     timer = None
     if params.timing_opt_flag:
         tt = time.time()
-        timer = Timer.Timer()
+        # Get timer engine from parameters,default to "heterosta"
+        timer_engine = getattr(params,'timer_engine','heterosta')
+        timer = Timer.Timer(timer_engine=timer_engine)
         timer(params, placedb)
-        # This must be done to explicitly execute the parser builders.
-        # The parsers in OpenTimer are all in lazy mode.
-        timer.update_timing()
+        if timer_engine == "opentimer" :
+            # This must be done to explicitly execute the parser builders.
+            # The parsers in OpenTimer are all in lazy mode.
+            timer.update_timing()
         logging.info("reading timer takes %.2f seconds" % (time.time() - tt))
 
         # Dump example here. Some dump functions are defined.

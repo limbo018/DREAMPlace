@@ -62,7 +62,10 @@ class NonLinearPlace(BasicPlace.BasicPlace):
         all_metrics = []
         if params.timing_opt_flag:
             timing_op = self.op_collections.timing_op
-            time_unit = timing_op.timer.time_unit()
+            if params.timer_engine == "opentimer":
+                time_unit = timing_op.timer.time_unit()
+            else: 
+                time_unit = timing_op.time_unit()
 
         # global placement
         if params.global_place_flag:
@@ -456,7 +459,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
 
                     logging.info("optimizer step %.3f ms" % ((time.time() - t3) * 1000))
 
-                    # Perform timing-opt.
+                      # Perform timing-opt.
                     if params.global_place_flag and params.timing_opt_flag and \
                         params.enable_net_weighting and \
                         iteration > 500 and iteration % 15 == 0:
@@ -464,28 +467,46 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         cur_pos = self.pos[0].data.clone().cpu().numpy()
                         # The timing operator has already integrated timer as its
                         # instance variable, so it only takes one argument.
-                        timing_op(self.pos[0].data.clone().cpu())
-                        timing_op.timer.update_timing()
+                        # HeteroSTA can use GPU tensors directly, OpenTimer needs CPU
+                        timing_beg = time.time()
+                        if params.timer_engine == "heterosta":
+                            timing_op(self.pos[0].data.clone())
+                        else:
+                            timing_op(self.pos[0].data.clone().cpu())
+                            timing_op.timer.update_timing()
+                            
                         npaths = max(1, int(placedb.num_nets * 0.03))
 
                         # Report timing step.
                         # Temporary solution: modify net weights
                         beg = time.time()
+
                         timing_op.update_net_weights(
                             max_net_weight=placedb.max_net_weight,
                             n=npaths)
-                        if self.device != torch.device("cpu"):
-                            # Copy weights from placedb.net_weights to device.
+                        
+                        # For HeteroSTA, net_weights are modified in-place on GPU - no copy needed
+                        # For OpenTimer, we still need to copy from placedb to device
+
+                        if params.timer_engine != "heterosta" and self.device != torch.device("cpu"):
                             self.data_collections.net_weights.copy_(
                                 torch.from_numpy(placedb.net_weights))
                         logging.info("net-weight update step %.3f ms" % \
                             ((time.time() - beg) * 1000))
-
-                        # Report tns and wns in each timing feedback call.
-                        # Note that OpenTimer considers early,late,rise,fall for tns/wns.
-                        # The following values are for reference.
-                        cur_metric.tns = timing_op.timer.report_tns_elw(split=1) / (time_unit * 1e17)
-                        cur_metric.wns = timing_op.timer.report_wns(split=1) / (time_unit * 1e15)
+                        logging.info("The entire timing step %.3f ms"% \
+                            ((time.time() - timing_beg) * 1000))
+                        
+                        if params.timer_engine == "opentimer":
+                            # Report tns and wns in each timing feedback call.
+                            # Note that OpenTimer considers early,late,rise,fall for tns/wns.
+                            # The following values are for reference.
+                            cur_metric.tns = timing_op.timer.report_tns_elw(split=1) / (time_unit * 1e17)
+                            cur_metric.wns = timing_op.timer.report_wns(split=1) / (time_unit * 1e15)
+                            logging.info("tns : %f, wns: %f",cur_metric.tns, cur_metric.wns)
+                        else: # heterosta
+                            cur_metric.tns = timing_op.report_tns() / (time_unit * 1e17)
+                            cur_metric.wns = timing_op.report_wns() / (time_unit * 1e15)
+                            logging.info("tns : %f, wns: %f",cur_metric.tns, cur_metric.wns)
 
                     # nesterov has already computed the objective of the next step
                     if optimizer_name.lower() == "nesterov":
@@ -867,16 +888,20 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                 logging.info("additional sta after legalization")
                 timing_op = self.op_collections.timing_op
      
-                # The timing operator has already integrated timer as its
-                # instance variable, so it only takes one argument.
-                timing_op(self.pos[0].data.clone().cpu())
-                timing_op.timer.update_timing()
-
-                # Report tns and wns in each timing feedback call.
-                # Note that OpenTimer considers early,late,rise,fall for tns/wns.
-                # The following values are for reference.
-                cur_metric.tns = timing_op.timer.report_tns_elw(split=1) / (time_unit * 1e17)
-                cur_metric.wns = timing_op.timer.report_wns(split=1) / (time_unit * 1e15)
+                if params.timer_engine == "heterosta":
+                    timing_op(self.pos[0].data.clone())
+                    cur_metric.tns = timing_op.report_tns() / (time_unit * 1e17)
+                    cur_metric.wns = timing_op.report_wns() / (time_unit * 1e15)
+                    logging.info("tns : %f, wns: %f",cur_metric.tns, cur_metric.wns)
+                else:
+                    timing_op(self.pos[0].data.clone().cpu())
+                    timing_op.timer.update_timing()
+                    # Report tns and wns in each timing feedback call.
+                    # Note that OpenTimer considers early,late,rise,fall for tns/wns.
+                    # The following values are for reference.
+                    cur_metric.tns = timing_op.timer.report_tns_elw(split=1) / (time_unit * 1e17)
+                    cur_metric.wns = timing_op.timer.report_wns(split=1) / (time_unit * 1e15)
+                    logging.info("tns : %f, wns: %f",cur_metric.tns, cur_metric.wns)
 
             logging.info(cur_metric)
             iteration += 1
