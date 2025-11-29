@@ -115,6 +115,10 @@ set(OPENTIMER_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/thirdparty/OpenTimer)
 message(STATUS "OPENTIMER_BINARY_DIR ${OPENTIMER_BINARY_DIR}")
 include_directories(${OPENTIMER_SOURCE_DIR})
 
+set(HETEROSTA_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/thirdparty/HeteroSTA)
+message(STATUS "HETEROSTA_BINARY_DIR ${HETEROSTA_BINARY_DIR}")
+include_directories(${HETEROSTA_BINARY_DIR})
+
 if (CUDA_FOUND)
   if (NOT CMAKE_CUDA_ARCHITECTURES)
     # Architectures supported by cuda_select_nvcc_arch_flags
