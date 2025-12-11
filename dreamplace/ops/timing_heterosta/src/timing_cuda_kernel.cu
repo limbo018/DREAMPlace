@@ -88,7 +88,7 @@ void updateNetWeightCudaLauncher(
 {
     float wns = 0.0, tns = 0.0;
     // Get WNS/TNS from HeteroSTA directly to GPU memory
-    bool success = heterosta_report_wns_tns(sta, &wns, &tns, true,true);
+    bool success = heterosta_report_wns_tns_max(sta, &wns, &tns, true);
 
     // Allocate GPU memory for slack array
     float *d_slack_data;

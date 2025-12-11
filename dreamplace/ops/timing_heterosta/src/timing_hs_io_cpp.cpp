@@ -4,6 +4,7 @@
 #include <fstream>
 #include <algorithm>
 #include <numeric>
+#include <cstdlib>
 #include <limbo/programoptions/ProgramOptions.h>
 #include "utility/src/utils.h"
 #include "place_io/src/PlaceDB.h"
@@ -576,19 +577,21 @@ TimingHeterostaIO::STAHoldingsPtr TimingHeterostaIO::initialize_heterosta() {
 
 	dreamplacePrint(kINFO, "HeteroSTA instance created successfully\n");
 	heterosta_init_logger(dreamplace_heterosta_print_callback);
-	const char* lic = std::getenv("HeteroSTA_Lic");
-	if (lic == nullptr) {
-        if (hardcode_lic == nullptr) {
-           dreamplacePrint(kERROR, "License not found.\n");
-           dreamplacePrint(kINFO, "Please either set the 'HeteroSTA_Lic' environment variable\n");
-           dreamplacePrint(kINFO, "or provide a hardcoded license in the source code.\n");
-            return  STAHoldingsPtr(nullptr, heterosta_free);
-        }
+    const char* lic = std::getenv("HeteroSTA_Lic");
+    bool have_env = (lic != nullptr) && (lic[0] != '\0');
+    if (have_env) {
+        dreamplacePrint(kINFO, "Successfully loaded license from 'HeteroSTA_Lic' environment variable.\n");
+    } else if (hardcode_lic != nullptr && hardcode_lic[0] != '\0') {
         lic = hardcode_lic;
         dreamplacePrint(kWARN, "'HeteroSTA_Lic' environment variable not found. Using hardcoded license.\n");
     } else {
-        dreamplacePrint(kINFO, "Successfully loaded license from 'HeteroSTA_Lic' environment variable.\n");
-	}
+        dreamplacePrint(kERROR, "License not found.\n");
+        dreamplacePrint(kERROR, "Neither 'HeteroSTA_Lic' environment variable nor hardcoded license is provided.\n");
+        dreamplacePrint(kINFO,  "Please set one of the following before running, e.g.:\n");
+        dreamplacePrint(kINFO,  "  - export HeteroSTA_Lic=\"<your-license-string>\"\n");
+        dreamplacePrint(kINFO,  "  - or set 'hardcode_lic' in timing_hs_io_cpp.cpp to your license string.\n");
+        std::exit(EXIT_FAILURE);
+    }
 
 	heterosta_init_license(lic);
 
@@ -618,4 +621,3 @@ size_t TimingHeterostaIO::getPinCount() {
 }
 
 DREAMPLACE_END_NAMESPACE
-
