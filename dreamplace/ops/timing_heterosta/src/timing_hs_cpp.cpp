@@ -210,7 +210,7 @@ void updateNetWeightCppLauncher(
 
 	// Get WNS/TNS from HeteroSTA
 	float wns, tns;
-	bool success = heterosta_report_wns_tns(&sta, &wns, &tns, true,false);
+	bool success = heterosta_report_wns_tns_max(&sta, &wns, &tns, false);
 
 	// Get pin slacks from HeteroSTA
 	static std::vector<float> slack_data;

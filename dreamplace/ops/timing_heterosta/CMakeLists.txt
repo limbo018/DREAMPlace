@@ -9,7 +9,7 @@ set(INCLUDE_DIRS
   ${Boost_INCLUDE_DIRS}
   ${ZLIB_INCLUDE_DIRS}
   ${CUDA_INCLUDE_DIRS}
-  ${HETEROSTA_BINARY_DIR}
+  ${HETEROSTA_INCLUDE_DIR}
   )
 
 set(LINK_LIBS utility_cxx
@@ -64,9 +64,23 @@ else()
         EXTRA_LINK_LIBRARIES ${LINK_LIBS})
 endif()
 
-list(GET HETEROSTA_LIB 0 _HET_LIB0)
-get_filename_component(HETEROSTA_LIBDIR "${_HET_LIB0}" DIRECTORY)
-target_link_directories(${TARGET_NAME}_cpp PRIVATE "${HETEROSTA_LIBDIR}")
+
+# Derive the library directory from the first item in HETEROSTA_LIB list
+if(HETEROSTA_LIB)
+    list(GET HETEROSTA_LIB 0 _HETEROSTA_ANYLIB)
+    get_filename_component(_HETEROSTA_LIB_DIR "${_HETEROSTA_ANYLIB}" DIRECTORY)
+    if(EXISTS "${_HETEROSTA_LIB_DIR}")
+        message(STATUS "timing_heterosta: adding heterosta lib dir to linker search path: ${_HETEROSTA_LIB_DIR}")
+        # New CMake prefers target_link_directories over link_directories
+        if(COMMAND target_link_directories)
+            target_link_directories(${TARGET_NAME}_cpp PRIVATE "${_HETEROSTA_LIB_DIR}")
+        else()
+            link_directories("${_HETEROSTA_LIB_DIR}")
+        endif()
+    endif()
+endif()
+
+# Link by name to ensure DT_NEEDED == 'libheterosta.so'
 target_link_libraries(${TARGET_NAME}_cpp PRIVATE -lheterosta)
 
 set_target_properties(${TARGET_NAME}_cpp PROPERTIES

@@ -107,6 +107,10 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
 
   - Integrated as a git submodule
 
+- [HeteroSTA](https://heterosta.pkueda.org.cn/)
+
+  - Used as a GPU-accelerated timing analysis engine
+
 - [CUDA 9.1 or later](https://developer.nvidia.com/cuda-toolkit) (Optional)
 
   - If installed and found, GPU acceleration will be enabled.
@@ -124,6 +128,7 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
 
 - [NTUPlace3](http://eda.ee.ntu.edu.tw/research.htm) (Optional)
   - If the binary is provided, it can be used to perform detailed placement.
+
 
 To pull git submodules in the root directory
 
@@ -288,6 +293,7 @@ Yiting Liu, Hai Zhou, Jia Wang, Fan Yang, Xuan Zeng, Li Shang,
   IEEE/ACM International Conference on Computer-Aided Design (ICCAD), New Jersey, USA, Oct, 2024
 (Thanks for contributing the source code!)
 ```
+- [Shenglu Hua](https://shengluhua.github.io/) integated HeteroSTA into DREAMPlace 4.3. Set ```timer_engine``` to "heterosta" to turn on this feature.
 
 - **Pull requests to improve the tool are more than welcome.** We appreciate all kinds of contributions from the community.
 
@@ -348,6 +354,9 @@ Yiting Liu, Hai Zhou, Jia Wang, Fan Yang, Xuan Zeng, Li Shang,
  
 - [4.2.0](https://github.com/limbo018/DREAMPlace/releases/tag/4.2.0)
   - Support GiFt initialization as published at ICCAD 2024
+
+- [4.3.0](https://github.com/limbo018/DREAMPlace/releases/tag/4.3.0)
+  - Support GPU-accelerated timing analysis using HeteroSTA.
  
 # Reference Results for Macro Placement
 
