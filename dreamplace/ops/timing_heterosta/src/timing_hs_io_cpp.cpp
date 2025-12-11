@@ -570,7 +570,7 @@ bool TimingHeterostaIO::create_interface_arrays() {
 }
 
 // A hardcoded fallback license..
-const char* hardcode_lic = "";
+const char* hardcode_lic = nullptr;
 
 /// @brief initialize HeteroSTA instance with logging callback
 TimingHeterostaIO::STAHoldingsPtr TimingHeterostaIO::initialize_heterosta() {
