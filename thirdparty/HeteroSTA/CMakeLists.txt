@@ -3,14 +3,15 @@
 #   are not guaranteed to be a specific value like v1.1.
 # - Download into the build (binary) tree and extract there.
 
+# Version and date variables for HeteroSTA releases
+set(HETEROSTA_VERSION "1.1" CACHE STRING "HeteroSTA version (e.g. 1.1)")
+set(HETEROSTA_VERSION_DATE "20251211" CACHE STRING "HeteroSTA version date (e.g. 20251211)")
 
-set(HETEROSTA_RELEASE_TAG "v1.0-prerelease" CACHE STRING "HeteroSTA release tag (e.g. v1.2) or 'latest'")
-if(DEFINED HETEROSTA_VERSION AND NOT "${HETEROSTA_VERSION}" STREQUAL "")
-  set(HETEROSTA_RELEASE_TAG "${HETEROSTA_VERSION}")
-endif()
+# Construct release tag from version and date
+set(HETEROSTA_RELEASE_TAG "v${HETEROSTA_VERSION}-${HETEROSTA_VERSION_DATE}" CACHE STRING "HeteroSTA release tag (e.g. v1.1-20251211) or 'latest'")
 
-# Asset naming now encodes the version inside the filename, e.g. heterosta.v1.1.tar.gz.
-set(HETEROSTA_ASSET_VERSION "1.1" CACHE STRING "Asset version used in 'heterosta.v<ver>.tar.gz'")
+# Asset naming now encodes the version and date inside the filename, e.g. heterosta.v1.1.20251211.tar.gz.
+set(HETEROSTA_ASSET_VERSION "${HETEROSTA_VERSION}.${HETEROSTA_VERSION_DATE}" CACHE STRING "Asset version used in 'heterosta.v<ver>.<date>.tar.gz'")
 
 # Auto-generate asset name from version unless user overrides HETEROSTA_ASSET
 if(NOT DEFINED HETEROSTA_ASSET_AUTOGEN)
