@@ -9,6 +9,7 @@ set(ENABLE_TEST OFF CACHE BOOL "Turn off test for Limbo")
 add_subdirectory(Limbo)
 add_subdirectory(munkres-cpp)
 add_subdirectory(OpenTimer)
+add_subdirectory(HeteroSTA)
 
 install(
     DIRECTORY NCTUgr.ICCAD2012 DESTINATION thirdparty
