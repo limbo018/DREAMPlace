@@ -291,12 +291,12 @@
     "default" : 0
     }, 
 "macro_place_flag" : {
-        "description" : "whether enable macro placement", 
-        "default" : 0
+    "description" : "whether enable macro placement", 
+    "default" : 0
     },
 "two_stage_density_scaler" : {
-        "description" : "scale density weight after macro place", 
-        "default" : 1000
+    "description" : "scale density weight after macro place", 
+    "default" : 1000
     },
 "macro_halo_x": {
     "description": "horizontal halo around movable macros",
