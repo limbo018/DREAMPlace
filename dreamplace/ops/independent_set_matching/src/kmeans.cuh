@@ -120,8 +120,8 @@ __global__ void kmeans_find_centers_kernel(DetailedPlaceDBType db, IndependentSe
 
     ItemWithIndex<typename DetailedPlaceDBType::type> thread_data; 
 
-    thread_data.value = cuda::numeric_limits<typename DetailedPlaceDBType::type>::max(); 
-    thread_data.index = cuda::numeric_limits<int>::max(); 
+    thread_data.value = DREAMPLACE_CUDA_NAMESPACE::numeric_limits<typename DetailedPlaceDBType::type>::max(); 
+    thread_data.index = DREAMPLACE_CUDA_NAMESPACE::numeric_limits<int>::max(); 
     for (int center_id = threadIdx.x; center_id < kmeans_state.num_seeds; center_id += ThreadsPerBlock)
     {
         assert(center_id < kmeans_state.num_seeds);

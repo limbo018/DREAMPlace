@@ -13,6 +13,7 @@
 
 DREAMPLACE_BEGIN_NAMESPACE
 
+namespace Utility {
 template <typename T>
 struct Box {
   T xl;
@@ -32,10 +33,10 @@ struct Box {
       : xl(xxl), yl(yyl), xh(xxh), yh(yyh) {}
   /// @brief invalidate the box
   DREAMPLACE_HOST_DEVICE void invalidate() {
-    xl = cuda::numeric_limits<T>::max();
-    yl = cuda::numeric_limits<T>::max();
-    xh = cuda::numeric_limits<T>::lowest();
-    yh = cuda::numeric_limits<T>::lowest();
+    xl = DREAMPLACE_CUDA_NAMESPACE::numeric_limits<T>::max();
+    yl = DREAMPLACE_CUDA_NAMESPACE::numeric_limits<T>::max();
+    xh = DREAMPLACE_CUDA_NAMESPACE::numeric_limits<T>::lowest();
+    yh = DREAMPLACE_CUDA_NAMESPACE::numeric_limits<T>::lowest();
   }
   /// @brief check if the box is valid
   DREAMPLACE_HOST_DEVICE bool valid() const { return (xl <= xh) && (yl <= yh); }
@@ -113,6 +114,8 @@ struct SharedBox {
   T xh;
   T yh;
 };
+
+}  // namespace Utility
 
 DREAMPLACE_END_NAMESPACE
 

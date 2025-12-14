@@ -135,7 +135,7 @@ inline __device__ typename DetailedPlaceDBType::type compute_instance_hpwl(
         return i;
       }
     }
-    return cuda::numeric_limits<int>::max();
+    return DREAMPLACE_CUDA_NAMESPACE::numeric_limits<int>::max();
   };
 
   T row_yl = db.yl + inst.row_id * db.row_height;
@@ -344,7 +344,7 @@ __global__ void compute_reorder_hpwl(DetailedPlaceDBType db, StateType state,
           T node_xl = target_x[permuted_offset];
           T node_yl = db.y[node_id];
           if (!db.inside_fence(node_id, node_xl, node_yl)) {
-            cost = cuda::numeric_limits<T>::max();
+            cost = DREAMPLACE_CUDA_NAMESPACE::numeric_limits<T>::max();
             break;
           }
         }
@@ -402,7 +402,7 @@ __global__ void reduce_min_2d_cub(const T* __restrict__ costs,
 
   ItemWithIndex<T> thread_data;
 
-  thread_data.value = cuda::numeric_limits<T>::max();
+  thread_data.value = DREAMPLACE_CUDA_NAMESPACE::numeric_limits<T>::max();
   thread_data.index = 0;
   for (int col = threadIdx.x; col < n; col += ThreadsPerBlock) {
     T cost = inst_costs[col];
@@ -538,7 +538,7 @@ __global__ void compute_net_markers(DetailedPlaceDB<T> db,
                                     KReorderState<T> state) {
   for (int node_id = blockIdx.x * blockDim.x + threadIdx.x;
        node_id < db.num_movable_nodes; node_id += blockDim.x * gridDim.x) {
-    if (state.node2inst_map[node_id] < cuda::numeric_limits<int>::max()) {
+    if (state.node2inst_map[node_id] < DREAMPLACE_CUDA_NAMESPACE::numeric_limits<int>::max()) {
       int node2pin_id = db.flat_node2pin_start_map[node_id];
       const int node2pin_id_end = db.flat_node2pin_start_map[node_id + 1];
       for (; node2pin_id < node2pin_id_end; ++node2pin_id) {
@@ -641,7 +641,7 @@ __global__ void compute_instance_nets(DetailedPlaceDB<T> db,
             db.num_nodes)  // other_node_id may exceed db.num_nodes like IO pins
         {
           int inst_id = state.node2inst_map[other_node_id];
-          if (inst_id < cuda::numeric_limits<int>::max()) {
+          if (inst_id < DREAMPLACE_CUDA_NAMESPACE::numeric_limits<int>::max()) {
             auto instance_nets_size = state.instance_nets_size + inst_id;
 
             int index = atomicAdd(instance_nets_size, 1);
@@ -840,7 +840,7 @@ __global__ void reset_state(DetailedPlaceDBType db, StateType state,
 
   for (int i = blockIdx.x * blockDim.x + threadIdx.x;
        i < group_size_with_permutation; i += blockDim.x * gridDim.x) {
-    state.costs[i] = cuda::numeric_limits<T>::max();
+    state.costs[i] = DREAMPLACE_CUDA_NAMESPACE::numeric_limits<T>::max();
   }
   for (int i = blockIdx.x * blockDim.x + threadIdx.x;
        i < state.reorder_instances.size2; i += blockDim.x * gridDim.x) {
@@ -849,7 +849,7 @@ __global__ void reset_state(DetailedPlaceDBType db, StateType state,
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < db.num_nodes;
        i += blockDim.x * gridDim.x) {
     state.node_markers[i] = 0;
-    state.node2inst_map[i] = cuda::numeric_limits<int>::max();
+    state.node2inst_map[i] = DREAMPLACE_CUDA_NAMESPACE::numeric_limits<int>::max();
   }
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < db.num_nets;
        i += blockDim.x * gridDim.x) {
@@ -860,7 +860,7 @@ __global__ void reset_state(DetailedPlaceDBType db, StateType state,
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < instance_nets_size;
        i += blockDim.x * gridDim.x) {
     auto& instance_net = state.instance_nets[i];
-    instance_net.net_id = cuda::numeric_limits<int>::max();
+    instance_net.net_id = DREAMPLACE_CUDA_NAMESPACE::numeric_limits<int>::max();
     instance_net.node_marker = 0;
     instance_net.bxl = db.xh;
     instance_net.bxh = db.xl;

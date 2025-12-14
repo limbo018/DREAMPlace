@@ -31,6 +31,7 @@ add_subdirectory(adjust_node_area)
 # timing operator
 add_subdirectory(pin_weight_sum)
 add_subdirectory(timing)
+add_subdirectory(timing_heterosta)
 # gift initial placement 
 add_subdirectory(gift_init)
 
