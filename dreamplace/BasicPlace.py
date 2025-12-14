@@ -247,6 +247,7 @@ class PlaceOpCollection(object):
         self.pin_utilization_map_op = None
         self.nctugr_congestion_map_op = None
         self.adjust_node_area_op = None
+        self.gift_init_op = None 
 
 
 class BasicPlace(nn.Module):
@@ -402,7 +403,8 @@ class BasicPlace(nn.Module):
         # rectilinear minimum steiner tree wirelength from flute
         # can only be called once
         #self.op_collections.rmst_wl_op = self.build_rmst_wl(params, placedb, self.op_collections.pin_pos_op, torch.device("cpu"))
-        self.op_collections.timing_op = self.build_timing_op(params, placedb, timer)
+        if params.timing_opt_flag:
+            self.op_collections.timing_op = self.build_timing_op(params, placedb, timer)
         # legality check
         self.op_collections.legality_check_op = self.build_legality_check(
             params, placedb, self.data_collections, self.device)
@@ -568,29 +570,67 @@ class BasicPlace(nn.Module):
         @param placedb the placement database
         @param timer the timer object used in timing-driven mode
         """
-        return timing.TimingOpt(
-            timer, # The timer should be at the same level as placedb.
-            placedb.net_names, # The net names are required by OpenTimer.
-            placedb.pin_names, # The pin names are required by OpenTimer.
-            placedb.flat_net2pin_map,
-            placedb.flat_net2pin_start_map,
-            placedb.net_name2id_map,
-            placedb.pin_name2id_map,
-            placedb.pin2node_map,
-            placedb.pin_offset_x,
-            placedb.pin_offset_y,
-            placedb.net_criticality,
-            placedb.net_criticality_deltas,
-            placedb.net_weights,
-            placedb.net_weight_deltas,
-            wire_resistance_per_micron=params.wire_resistance_per_micron,
-            wire_capacitance_per_micron=params.wire_capacitance_per_micron,
-            net_weighting_scheme=params.net_weighting_scheme,
-            momentum_decay_factor=params.momentum_decay_factor,
-            scale_factor=params.scale_factor,
-            lef_unit=placedb.rawdb.lefUnit(),
-            def_unit=placedb.rawdb.defUnit(),
-            ignore_net_degree=params.ignore_net_degree)
+        # Check timer engine to use appropriate TimingOpt class
+        if hasattr(timer, 'timer_engine') and timer.timer_engine == "heterosta":
+            # Import HeteroSTA timing module
+            import dreamplace.ops.timing_heterosta.timing_hs as timing_hs
+
+            # Create GPU tensors for timing-specific data
+            device = self.data_collections.net_weights.device
+            net_criticality_gpu = torch.from_numpy(placedb.net_criticality).to(device)
+            net_criticality_deltas_gpu = torch.from_numpy(placedb.net_criticality_deltas).to(device)
+            net_weight_deltas_gpu = torch.from_numpy(placedb.net_weight_deltas).to(device)
+
+            return timing_hs.TimingOpt(
+                timer,
+                placedb.net_names, # The net names are required by HeteroSTA.
+                placedb.pin_names, # The pin names are required by HeteroSTA.
+                placedb.flat_net2pin_map,
+                placedb.flat_net2pin_start_map,
+                placedb.net_name2id_map,
+                placedb.pin_name2id_map,
+                placedb.pin2node_map,
+                placedb.pin_offset_x,
+                placedb.pin_offset_y,
+                placedb.pin2net_map,  # Pass existing pin2net_map
+                net_criticality_gpu,  # GPU tensor
+                net_criticality_deltas_gpu,  # GPU tensor
+                self.data_collections.net_weights,  # Reuse from data_collections (GPU tensor)
+                net_weight_deltas_gpu,  # GPU tensor
+                wire_resistance_per_micron=params.wire_resistance_per_micron,
+                wire_capacitance_per_micron=params.wire_capacitance_per_micron,
+                momentum_decay_factor=params.momentum_decay_factor,
+                scale_factor=params.scale_factor,
+                lef_unit=placedb.rawdb.lefUnit(),
+                def_unit=placedb.rawdb.defUnit(),
+                pin_pos_op=self.op_collections.pin_pos_op,  # Pass the existing pin_pos_op
+                ignore_net_degree=params.ignore_net_degree,
+                use_cuda=params.gpu)  # Use params.gpu for CUDA setting
+        else:
+            # Use OpenTimer
+            return timing.TimingOpt(
+                timer, # The timer should be at the same level as placedb.
+                placedb.net_names, # The net names are required by OpenTimer.
+                placedb.pin_names, # The pin names are required by OpenTimer.
+                placedb.flat_net2pin_map,
+                placedb.flat_net2pin_start_map,
+                placedb.net_name2id_map,
+                placedb.pin_name2id_map,
+                placedb.pin2node_map,
+                placedb.pin_offset_x,
+                placedb.pin_offset_y,
+                placedb.net_criticality,
+                placedb.net_criticality_deltas,
+                placedb.net_weights,
+                placedb.net_weight_deltas,
+                wire_resistance_per_micron=params.wire_resistance_per_micron,
+                wire_capacitance_per_micron=params.wire_capacitance_per_micron,
+                net_weighting_scheme=params.net_weighting_scheme,
+                momentum_decay_factor=params.momentum_decay_factor,
+                scale_factor=params.scale_factor,
+                lef_unit=placedb.rawdb.lefUnit(),
+                def_unit=placedb.rawdb.defUnit(),
+                ignore_net_degree=params.ignore_net_degree)     
 
     def build_legality_check(self, params, placedb, data_collections, device):
         """
@@ -730,13 +770,16 @@ class BasicPlace(nn.Module):
                 logging.error("legality check failed in greedy legalization, " \
                     "return illegal results after greedy legalization.")
                 return pos2
-            pos3 = al(pos1, pos2)
-            legal = self.op_collections.legality_check_op(pos3)
-            if not legal:
-                logging.error("legality check failed in abacus legalization, " \
-                    "return legal results after greedy legalization.")
+            if params.abacus_legalize_flag: 
+                pos3 = al(pos1, pos2)
+                legal = self.op_collections.legality_check_op(pos3)
+                if not legal:
+                    logging.error("legality check failed in abacus legalization, " \
+                        "return legal results after greedy legalization.")
+                    return pos2
+                return pos3
+            else:
                 return pos2
-            return pos3
 
         return build_legalization_op
 
@@ -756,8 +799,9 @@ class BasicPlace(nn.Module):
                 return pos
             else:
                 ### start abacus legalizer
-                for i in range(len(placedb.regions)+1):
-                    pos = legal_ops[i][1](pos, pos_ml_list[i], pos_gl_list[i])
+                if params.abacus_legalize_flag: 
+                    for i in range(len(placedb.regions)+1):
+                        pos = legal_ops[i][1](pos, pos_ml_list[i], pos_gl_list[i])
             return pos
 
         def build_individual_legalization_ops(pos, region_id):

@@ -224,14 +224,14 @@ void roughLegalizeLauncher(const LegalizationDB<T>& db,
     unsigned int cluster_macro_numbers_threshold = 2;
     for (unsigned int i = 0, ie = macros.size(); i < ie; ++i) {
       int node_id1 = macros[i];
-      Box<T> box1(db.x[node_id1], db.y[node_id1],
+       DreamPlace::Utility::Box<T> box1(db.x[node_id1], db.y[node_id1],
                   db.x[node_id1] + db.node_size_x[node_id1],
                   db.y[node_id1] + db.node_size_y[node_id1]);
       T a1 = box1.area();
       clusters.at(i).push_back(node_id1);
       for (unsigned int j = i + 1; j < ie; ++j) {
         int node_id2 = macros[j];
-        Box<T> box2(db.x[node_id2], db.y[node_id2],
+         DreamPlace::Utility::Box<T> box2(db.x[node_id2], db.y[node_id2],
                     db.x[node_id2] + db.node_size_x[node_id2],
                     db.y[node_id2] + db.node_size_y[node_id2]);
         T a2 = box2.area();
@@ -265,7 +265,7 @@ void roughLegalizeLauncher(const LegalizationDB<T>& db,
     for (unsigned int i = 0, ie = macros.size(); i < ie; ++i) {
       int node_id1 = macros[i];
       if (!markers[node_id1]) {
-        Box<T> box1(db.x[node_id1], db.y[node_id1],
+         DreamPlace::Utility::Box<T> box1(db.x[node_id1], db.y[node_id1],
                     db.x[node_id1] + db.node_size_x[node_id1],
                     db.y[node_id1] + db.node_size_y[node_id1]);
         T a1 = box1.area();
@@ -276,13 +276,13 @@ void roughLegalizeLauncher(const LegalizationDB<T>& db,
         for (unsigned int j = 0; j < ie; ++j) {
           int node_id2 = macros[j];
           if (i != j && !markers[node_id2]) {
-            Box<T> box2(db.x[node_id2], db.y[node_id2],
+             DreamPlace::Utility::Box<T> box2(db.x[node_id2], db.y[node_id2],
                         db.x[node_id2] + db.node_size_x[node_id2],
                         db.y[node_id2] + db.node_size_y[node_id2]);
             T a2 = box2.area();
 
             if (a1 * blocked_macros_area_ratio < a2) {
-              Box<T> intersect_box(
+               DreamPlace::Utility::Box<T> intersect_box(
                   std::max(box1.xl, box2.xl), std::max(box1.yl, box2.yl),
                   std::min(box1.xh, box2.xh), std::min(box1.yh, box2.yh));
               if (intersect_box.xl < intersect_box.xh &&
@@ -359,6 +359,10 @@ void roughLegalizeLauncher(const LegalizationDB<T>& db,
 
 template <typename T>
 bool macroLegalizationLauncher(LegalizationDB<T> db) {
+  // local copy of node sizes, as we need to inflate movable macros 
+  // to make them integral numbers of sites and rows 
+  std::vector<T> node_size_x_copy (db.node_size_x, db.node_size_x+db.num_nodes); 
+  std::vector<T> node_size_y_copy (db.node_size_y, db.node_size_y+db.num_nodes); 
   // collect macros
   std::vector<int> macros;
   for (int i = 0; i < db.num_movable_nodes; ++i) {
@@ -367,13 +371,18 @@ bool macroLegalizationLauncher(LegalizationDB<T> db) {
       T area = db.node_size_x[i] * db.node_size_y[i];
       if (area > 0) {
         macros.push_back(i);
+        node_size_x_copy[i] = ceilDiv(db.node_size_x[i], db.site_width) * db.site_width; 
+        node_size_y_copy[i] = ceilDiv(db.node_size_y[i], db.row_height) * db.row_height; 
       }
 #ifdef DEBUG
-      dreamplacePrint(kDEBUG, "macro %d %gx%g\n", i, db.node_size_x[i],
-                      db.node_size_y[i]);
+      dreamplacePrint(kDEBUG, "macro %d %gx%g -> %gx%g\n", i, db.node_size_x[i],
+                      db.node_size_y[i], node_size_x_copy[i], node_size_y_copy[i]);
 #endif
     }
   }
+  // now db.node_size_x/y refers to node_size_x/y_copy 
+  db.node_size_x = node_size_x_copy.data();
+  db.node_size_y = node_size_y_copy.data();
   dreamplacePrint(
       kINFO,
       "Macro legalization: regard %lu cells as dummy fixed (movable macros)\n",

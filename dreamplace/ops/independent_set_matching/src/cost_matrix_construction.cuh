@@ -42,13 +42,13 @@ __global__ void compute_cost_matrix_kernel(DetailedPlaceDBType db, IndependentSe
     auto cost_matrix = state.cost_matrices + i*state.cost_matrix_size + j*state.set_size; 
     __shared__ int node_id; 
     __shared__ typename DetailedPlaceDBType::type node_width; 
-    __shared__ SharedBox<typename DetailedPlaceDBType::type> net_boxes[MAX_NODE_DEGREE]; 
+    __shared__ DreamPlace::Utility::SharedBox<typename DetailedPlaceDBType::type> net_boxes[MAX_NODE_DEGREE]; 
     __shared__ int node2pin_id_bgn; 
     __shared__ int node2pin_id_end; 
     if (threadIdx.x == 0)
     {
         node_id = independent_set[j];
-        node_width = cuda::numeric_limits<typename DetailedPlaceDBType::type>::max();
+        node_width = DREAMPLACE_CUDA_NAMESPACE::numeric_limits<typename DetailedPlaceDBType::type>::max();
         if (node_id < db.num_movable_nodes)
         {
             node_width = db.node_size_x[node_id];
@@ -248,7 +248,7 @@ __global__ void check_cost_matrices_kernel(IndependentSetMatchingStateType state
             for (int j = 0; j < state.cost_matrix_size; ++j)
             {
                 auto cost = state.cost_matrices[i*state.cost_matrix_size+j];
-                assert(cost == cuda::numeric_limits<typename IndependentSetMatchingStateType::cost_type>::lowest()
+                assert(cost == DREAMPLACE_CUDA_NAMESPACE::numeric_limits<typename IndependentSetMatchingStateType::cost_type>::lowest()
                         || cost >= 0);
             }
         }

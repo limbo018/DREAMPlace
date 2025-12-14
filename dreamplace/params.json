@@ -32,7 +32,7 @@
     "default" : 0
     },
 "global_place_stages" : {
-    "description" : "global placement configurations of each stage, a dictionary of {\"num_bins_x\", \"num_bins_y\", \"iteration\", \"learning_rate\", \"learning_rate_decay\", \"wirelength\", \"optimizer\", \"Llambda_density_weight_iteration\", \"Lsub_iteration\"}", 
+    "description" : "global placement configurations of each stage, a dictionary of {\"num_bins_x\", \"num_bins_y\", \"iteration\", \"learning_rate\", \"learning_rate_decay\", \"wirelength\", \"optimizer\", \"Llambda_density_weight_iteration\", \"Lsub_iteration\"}. optimizer can be one of the following: nesterov, adam, sgd, rmsprop, adagrad, adadelta, adamax, adamw, nadam, yogi, radam, adabelief, adabound, adafactor, diffgrad, novograd, cg_fr, cg_prp, cg_hs, cg_cd, cg_ls, cg_dy, cg_hz, cg_hs-dy. The default optimizer is nesterov. Convergence is not guaranteed when using other optimizers.", 
     "default" : [{"num_bins_x" : 0, "num_bins_y" : 0, "iteration" : 1000, "learning_rate" : 0.01, "wirelength" : "weighted_average", "optimizer" : "nesterov", "Llambda_density_weight_iteration" : 1, "Lsub_iteration" : 1}], 
     "required" : "required"
     },
@@ -78,6 +78,10 @@
     },
 "legalize_flag" : {
     "description" : "whether use internal legalization", 
+    "default" : 1
+    },
+"abacus_legalize_flag" : {
+    "description" : "whether turn on abacus legalization", 
     "default" : 1
     },
 "detailed_place_flag" : {
@@ -127,6 +131,14 @@
 "random_center_init_flag" : {
     "description" : "whether perform random initialization around the center for global placement", 
     "default" : 1
+    },
+"gift_init_flag" : {
+    "description" : "whether perform GiFt initialization for global placement", 
+    "default" : 0
+    },
+"gift_init_scale" : {
+    "description" : "scale parameter in GiFt initialization", 
+    "default" : 0.7
     },
 "sort_nets_by_degree" : {
     "description" : "whether sort nets by degree or not", 
@@ -275,15 +287,15 @@
     "required" : "required for timing-driven mode"
     },
 "use_bb" : {
-    "descripton" : "whether use bb step", 
+    "description" : "whether use bb step", 
     "default" : 0
     }, 
 "macro_place_flag" : {
-        "descripton" : "whether enable macro placement", 
+        "description" : "whether enable macro placement", 
         "default" : 0
     },
 "two_stage_density_scaler" : {
-        "descripton" : "scale density weight after macro place", 
+        "description" : "scale density weight after macro place", 
         "default" : 1000
     },
 "macro_halo_x": {

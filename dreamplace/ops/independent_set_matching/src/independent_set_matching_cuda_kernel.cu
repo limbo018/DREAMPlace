@@ -150,7 +150,7 @@ __global__ void cost_matrix_init(int* cost_matrix, int set_size)
     {
         for (int j = threadIdx.x; j < set_size; j += blockDim.x)
         {
-            cost_matrix[i*set_size+j] = (i == j)? 0 : cuda::numeric_limits<int>::max();
+            cost_matrix[i*set_size+j] = (i == j)? 0 : DREAMPLACE_CUDA_NAMESPACE::numeric_limits<int>::max();
         }
     }
 }

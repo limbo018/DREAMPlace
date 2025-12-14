@@ -24,7 +24,7 @@ import NonLinearPlace
 import pdb
 
 
-def place(params):
+def place(params, learning_rate_value):
     """
     @brief Top API to run the entire placement flow.
     @param params parameters
@@ -45,11 +45,14 @@ def place(params):
     timer = None
     if params.timing_opt_flag:
         tt = time.time()
-        timer = Timer.Timer()
+        # Get timer engine from parameters,default to "heterosta"
+        timer_engine = getattr(params,'timer_engine','heterosta')
+        timer = Timer.Timer(timer_engine=timer_engine)
         timer(params, placedb)
-        # This must be done to explicitly execute the parser builders.
-        # The parsers in OpenTimer are all in lazy mode.
-        timer.update_timing()
+        if timer_engine == "opentimer" :
+            # This must be done to explicitly execute the parser builders.
+            # The parsers in OpenTimer are all in lazy mode.
+            timer.update_timing()
         logging.info("reading timer takes %.2f seconds" % (time.time() - tt))
 
         # Dump example here. Some dump functions are defined.
@@ -62,7 +65,7 @@ def place(params):
     placer = NonLinearPlace.NonLinearPlace(params, placedb, timer)
     logging.info("non-linear placement initialization takes %.2f seconds" %
                  (time.time() - tt))
-    metrics = placer(params, placedb)
+    metrics = placer(params, placedb, learning_rate_value)
     logging.info("non-linear placement takes %.2f seconds" %
                  (time.time() - tt))
 
@@ -187,7 +190,10 @@ if __name__ == "__main__":
     # control numpy multithreading
     os.environ["OMP_NUM_THREADS"] = "%d" % (params.num_threads)
 
+    # extract the learning rate value from the json file to assign it to the optimizer of the "torch_optimizer" package
+    learning_rate_value = params.__dict__.get('global_place_stages')[0].get('learning_rate')
+    
     # run placement
     tt = time.time()
-    place(params)
+    place(params, learning_rate_value)
     logging.info("placement takes %.3f seconds" % (time.time() - tt))

@@ -21,7 +21,7 @@ __global__ void init_independent_sets_kernel(IndependentSetMatchingStateType sta
         {
             *state.device_num_independent_sets = 0;
         }
-        state.independent_sets[i] = cuda::numeric_limits<int>::max();
+        state.independent_sets[i] = DREAMPLACE_CUDA_NAMESPACE::numeric_limits<int>::max();
     }
 }
 

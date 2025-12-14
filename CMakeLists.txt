@@ -115,8 +115,11 @@ set(OPENTIMER_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/thirdparty/OpenTimer)
 message(STATUS "OPENTIMER_BINARY_DIR ${OPENTIMER_BINARY_DIR}")
 include_directories(${OPENTIMER_SOURCE_DIR})
 
+set(HETEROSTA_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/thirdparty/HeteroSTA)
+
 if (CUDA_FOUND)
   if (NOT CMAKE_CUDA_ARCHITECTURES)
+    # Architectures supported by cuda_select_nvcc_arch_flags
     set(CMAKE_CUDA_ARCHITECTURES 6.0 6.1 7.0)
     if (${CUDA_VERSION_MAJOR} VERSION_GREATER "9")
       list(APPEND CMAKE_CUDA_ARCHITECTURES 7.5)
@@ -126,11 +129,25 @@ if (CUDA_FOUND)
       # arch 8.6 removed for compatability with 3090
       # list(APPEND CMAKE_CUDA_ARCHITECTURES 8.6)
     endif(${CUDA_VERSION_MAJOR} VERSION_GREATER "10")
+    if (${CUDA_VERSION_MAJOR} VERSION_GREATER_EQUAL "11")
+      list(APPEND CMAKE_CUDA_ARCHITECTURES 8.6)
+    endif(${CUDA_VERSION_MAJOR} VERSION_GREATER_EQUAL "11")
+    if (${CUDA_VERSION_MAJOR} VERSION_GREATER_EQUAL "12")
+      list(APPEND CMAKE_CUDA_ARCHITECTURES 8.9 9.0)
+    endif(${CUDA_VERSION_MAJOR} VERSION_GREATER_EQUAL "12")
   endif(NOT CMAKE_CUDA_ARCHITECTURES)
 
   # for cuda_add_library
   cuda_select_nvcc_arch_flags(CUDA_ARCH_FLAGS ${CMAKE_CUDA_ARCHITECTURES})
   message(STATUS "CUDA_ARCH_FLAGS: ${CUDA_ARCH_FLAGS}")
+
+  # Manually add support for compute capability 12.0 (Blackwell)
+  # as cuda_select_nvcc_arch_flags doesn't recognize it yet (cmake version 3.26.4)
+  if (${CUDA_VERSION_MAJOR} VERSION_GREATER_EQUAL "12" AND ${CUDA_VERSION_MINOR} VERSION_GREATER_EQUAL "8")
+    list(APPEND CUDA_ARCH_FLAGS "-gencode" "arch=compute_120,code=sm_120")
+    message(STATUS "Added manual support for sm_120 (Blackwell architecture)")
+  endif()
+
   list(APPEND CUDA_NVCC_FLAGS ${CUDA_ARCH_FLAGS} --compiler-options;-fPIC)
 endif(CUDA_FOUND)
 

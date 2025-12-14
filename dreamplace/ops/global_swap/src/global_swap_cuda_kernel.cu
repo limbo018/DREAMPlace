@@ -122,7 +122,7 @@ __global__ void reduce_min_2d_cub(SwapCandidate<T>* candidates,
 
   ItemWithIndex<T> thread_data;
 
-  thread_data.value = cuda::numeric_limits<T>::max();
+  thread_data.value = DREAMPLACE_CUDA_NAMESPACE::numeric_limits<T>::max();
   thread_data.index = 0;
   for (int col = threadIdx.x; col < max_num_elements; col += ThreadsPerBlock) {
     T cost = row_candidates[col].cost;
@@ -164,7 +164,7 @@ inline __device__ T compute_pair_hpwl_general(
   for (; node2pin_id < node2pin_id_end; ++node2pin_id) {
     int node_pin_id = flat_node2pin_map[node2pin_id];
     int net_id = pin2net_map[node_pin_id];
-    Box<T> box(xh, yh, xl, yl);
+     DreamPlace::Utility::Box<T> box(xh, yh, xl, yl);
     int flag = net_mask[net_id];
     int net2pin_id = flat_net2pin_start_map[net_id];
     const int net2pin_id_end = flat_net2pin_start_map[net_id + 1] * flag;
@@ -210,7 +210,7 @@ inline __device__ T compute_pair_hpwl_general_fast(
         int net_id = node2nets[i];
         int flag = net_mask[net_id];
         auto net2nodepins = net2nodepin_map(net_id);
-        Box<T> box (
+         DreamPlace::Utility::Box<T> box (
                         xh, 
                         yh, 
                         xl, 
@@ -254,7 +254,7 @@ inline __device__ T compute_pair_hpwl_general_fast(
     int net_id = node2nets[i];
     int flag = net_mask[net_id];
     auto net2nodepins = net2nodepin_map(net_id);
-    Box<T> box(xh, yh, xl, yl);
+     DreamPlace::Utility::Box<T> box(xh, yh, xl, yl);
 
     int end = net2nodepin_map.size(net_id) * flag;
     for (int j = 0; j < end; ++j) {
@@ -296,7 +296,7 @@ __device__ T compute_pair_hpwl(const DetailedPlaceDB<T>& db,
        node2pin_id < db.flat_node2pin_start_map[node_id + 1]; ++node2pin_id) {
     int node_pin_id = db.flat_node2pin_map[node2pin_id];
     int net_id = db.pin2net_map[node_pin_id];
-    Box<T> box(db.xh, db.yh, db.xl, db.yl);
+     DreamPlace::Utility::Box<T> box(db.xh, db.yh, db.xl, db.yl);
     if (db.net_mask[net_id]) {
       for (int net2pin_id = db.flat_net2pin_start_map[net_id];
            net2pin_id < db.flat_net2pin_start_map[net_id + 1]; ++net2pin_id) {
@@ -323,7 +323,7 @@ __device__ T compute_pair_hpwl(const DetailedPlaceDB<T>& db,
        ++node2pin_id) {
     int node_pin_id = db.flat_node2pin_map[node2pin_id];
     int net_id = db.pin2net_map[node_pin_id];
-    Box<T> box(db.xh, db.yh, db.xl, db.yl);
+     DreamPlace::Utility::Box<T> box(db.xh, db.yh, db.xl, db.yl);
     if (db.net_mask[net_id]) {
       // when encounter nets that have both node_id and target_node_id
       for (int net2pin_id = db.flat_net2pin_start_map[net_id];
@@ -410,7 +410,7 @@ __device__ T compute_positions(const DetailedPlaceDB<T>& db,
     }
     if (space_xh < db.node_size_x[cand.node_id[1]] + space_xl) {
       // some large number
-      return cuda::numeric_limits<T>::max();
+      return DREAMPLACE_CUDA_NAMESPACE::numeric_limits<T>::max();
     }
     int target_node2row2node_index =
         state.node2row2node_index_map[cand.node_id[1]];
@@ -430,7 +430,7 @@ __device__ T compute_positions(const DetailedPlaceDB<T>& db,
             : db.xh;
     if (target_space_xh < db.node_size_x[cand.node_id[0]] + target_space_xl) {
       // some large number
-      return cuda::numeric_limits<T>::max();
+      return DREAMPLACE_CUDA_NAMESPACE::numeric_limits<T>::max();
     }
     cand.node_xl[0][1] = min(max(cand.node_xl[0][1], target_space_xl),
                              target_space_xh - db.node_size_x[cand.node_id[0]]);
@@ -483,7 +483,7 @@ __device__ T compute_positions_hint(const DetailedPlaceDB<T>& db,
     cond |= (target_space.xh < node_width + target_space.xl);
     if (cond) {
       // some large number
-      return cuda::numeric_limits<T>::max();
+      return DREAMPLACE_CUDA_NAMESPACE::numeric_limits<T>::max();
     }
     cand.node_xl[0][1] =
         cand.node_xl[1][0] + (target_node_width - node_width) / 2;
@@ -524,9 +524,9 @@ __global__ void compute_search_bins(DetailedPlaceDB<T> db, SwapState<T> state,
   for (int node_id = begin + blockIdx.x * blockDim.x + threadIdx.x;
        node_id < end; node_id += blockDim.x * gridDim.x) {
     // compute optimal region
-    Box<T> opt_box = (state.search_bin_strategy)
+     DreamPlace::Utility::Box<T> opt_box = (state.search_bin_strategy)
                          ? db.compute_optimal_region(node_id, db.x, db.y)
-                         : Box<T>(db.x[node_id], db.y[node_id],
+                         :  DreamPlace::Utility::Box<T>(db.x[node_id], db.y[node_id],
                                   db.x[node_id] + db.node_size_x[node_id],
                                   db.y[node_id] + db.node_size_y[node_id]);
     // cell already in optimal region, skip it
@@ -547,13 +547,13 @@ __global__ void compute_search_bins(DetailedPlaceDB<T> db, SwapState<T> state,
     // abs(node_bin_y-info.cy);  info.size = min(distance*distance*2,
     // state.num_search_grids);
 
-    // Box<T> search_box (
+    //  DreamPlace::Utility::Box<T> search_box (
     //        max(opt_box.center_x()-distance*db.bin_size_x, db.xl),
     //        max(opt_box.center_y()-distance*db.bin_size_y, db.yl),
     //        min(opt_box.center_x()+distance*db.bin_size_x, db.xh),
     //        min(opt_box.center_y()+distance*db.bin_size_y, db.yh)
     //        );
-    // Box<T>& bin = state.search_bins[node_id];
+    //  DreamPlace::Utility::Box<T>& bin = state.search_bins[node_id];
     // bin.xl = db.xl+cx*db.bin_size_x;
     // bin.yl = db.yl+cy*db.bin_size_y;
     // bin.xh = db.xl+(cx+1)*db.bin_size_x;
@@ -567,8 +567,8 @@ __global__ void reset_state(DetailedPlaceDB<T> db, SwapState<T> state) {
        i < state.max_num_candidates_all; i += blockDim.x * gridDim.x) {
     SwapCandidate<T>& cand = state.candidates[i];
     cand.cost = 0;
-    cand.node_id[0] = cuda::numeric_limits<int>::max();
-    cand.node_id[1] = cuda::numeric_limits<int>::max();
+    cand.node_id[0] = DREAMPLACE_CUDA_NAMESPACE::numeric_limits<int>::max();
+    cand.node_id[1] = DREAMPLACE_CUDA_NAMESPACE::numeric_limits<int>::max();
     cand.node_xl[0][0] = 0;
     cand.node_xl[0][1] = 0;
     cand.node_yl[0][0] = 0;
@@ -744,7 +744,7 @@ __global__ void reset_candidate_costs(DetailedPlaceDB<T> db,
                                       SwapState<T> state) {
   for (int i = blockIdx.x * blockDim.x + threadIdx.x;
        i < state.max_num_candidates_all; i += blockDim.x * gridDim.x) {
-    state.candidates[i].cost = cuda::numeric_limits<T>::max();
+    state.candidates[i].cost = DREAMPLACE_CUDA_NAMESPACE::numeric_limits<T>::max();
   }
 }
 
@@ -821,7 +821,7 @@ __global__ void __launch_bounds__(64 * 4, 4)
            (cand.node_id[1] < db.num_movable_nodes &&
             !db.inside_fence(cand.node_id[1], cand.node_xl[1][1],
                              cand.node_yl[1][1])))) {
-        cand.cost = cuda::numeric_limits<T>::max();
+        cand.cost = DREAMPLACE_CUDA_NAMESPACE::numeric_limits<T>::max();
       } else {
         // target_cost - orig_cost
         // cand.cost += cost[threadIdx.x]-cost[threadIdx.x-1];

@@ -31,6 +31,7 @@ import dreamplace.ops.rudy.rudy as rudy
 import dreamplace.ops.pin_utilization.pin_utilization as pin_utilization
 import dreamplace.ops.nctugr_binary.nctugr_binary as nctugr_binary
 import dreamplace.ops.adjust_node_area.adjust_node_area as adjust_node_area
+import dreamplace.ops.gift_init.gift_init as gift_init
 
 
 class PreconditionOp:
@@ -258,6 +259,20 @@ class PlaceObj(nn.Module):
             self.op_collections.adjust_node_area_op = self.build_adjust_node_area(
                 params, placedb, self.data_collections)
 
+        # GiFt initialization 
+        if params.global_place_flag and params.gift_init_flag: 
+            self.op_collections.gift_init_op = gift_init.GiFtInit(
+                    flat_netpin=self.data_collections.flat_net2pin_map, 
+                    netpin_start=self.data_collections.flat_net2pin_start_map, 
+                    pin2node_map=self.data_collections.pin2node_map, 
+                    net_weights=self.data_collections.net_weights, 
+                    net_mask=self.data_collections.net_mask_ignore_large_degrees, 
+                    xl=placedb.xl, yl=placedb.yl, xh=placedb.xh, yh=placedb.yh,
+                    num_nodes=placedb.num_physical_nodes,  
+                    num_movable_nodes=placedb.num_movable_nodes, 
+                    scale=params.gift_init_scale
+                    ) 
+
         self.Lgamma_iteration = global_place_params["iteration"]
         if 'Llambda_density_weight_iteration' in global_place_params:
             self.Llambda_density_weight_iteration = global_place_params[
@@ -274,7 +289,6 @@ class PlaceObj(nn.Module):
         else:
             self.routability_Lsub_iteration = self.Lsub_iteration
         self.start_fence_region_density = False
-
 
     def obj_fn(self, pos):
         """
@@ -389,7 +403,8 @@ class PlaceObj(nn.Module):
             pos.grad.zero_()
         obj = self.obj_fn(pos)
 
-        obj.backward()
+        if obj.requires_grad:
+          obj.backward()
 
         self.op_collections.precondition_op(pos.grad, self.density_weight, self.update_mask, self.fix_nodes_mask)
 
@@ -1133,7 +1148,6 @@ class PlaceObj(nn.Module):
 
         self.op_collections.fence_region_density_overflow_merged_op = merged_density_overflow_op
         return self.op_collections.fence_region_density_ops, self.op_collections.fence_region_density_merged_op, self.op_collections.fence_region_density_overflow_merged_op
-
 
 
 

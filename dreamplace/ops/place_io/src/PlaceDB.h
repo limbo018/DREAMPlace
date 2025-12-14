@@ -368,6 +368,11 @@ class PlaceDB : public DefParser::DefDataBase
         virtual void add_def_region(DefParser::Region const& r);
         virtual void resize_def_group(int);
         virtual void add_def_group(DefParser::Group const& g);
+        virtual void add_def_track(defiTrack const& t);
+        virtual void add_def_via(defiVia const& v);
+        virtual void add_def_snet(defiNet const& n);
+        virtual void add_def_gcellgrid(DefParser::GCellGrid const& g);
+        virtual void add_def_route_blockage(std::vector<std::vector<int>> const&, std::string const&); 
         virtual void end_def_design(); 
         ///==== Verilog Callbacks ==== 
         virtual void verilog_module_declaration_cbk(std::string const& module_name, std::vector<VerilogParser::GeneralName> const& vPinName); 

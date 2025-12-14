@@ -621,6 +621,7 @@ std::pair<PyPlaceDB::coordinate_type, PyPlaceDB::coordinate_type> PyPlaceDB::get
 
   return std::make_pair(dst_width, dst_height); 
 }
+/// @param rot_degree assume positive degree means clock-wise rotation
 std::pair<PyPlaceDB::coordinate_type, PyPlaceDB::coordinate_type> PyPlaceDB::getRotatedPinOffsets(int32_t rot_degree, 
     PyPlaceDB::coordinate_type src_width, PyPlaceDB::coordinate_type src_height, 
     PyPlaceDB::coordinate_type src_pin_offset_x, PyPlaceDB::coordinate_type src_pin_offset_y) const 
@@ -640,11 +641,11 @@ std::pair<PyPlaceDB::coordinate_type, PyPlaceDB::coordinate_type> PyPlaceDB::get
       dst_pin_offset_x = src_width - src_pin_offset_x; 
       dst_pin_offset_y = src_height - src_pin_offset_y; 
       break; 
-    case 90:
+    case 270:
       dst_pin_offset_x = src_height - src_pin_offset_y; 
       dst_pin_offset_y = src_pin_offset_x; 
       break; 
-    case 270:
+    case 90:
       dst_pin_offset_x = src_pin_offset_y; 
       dst_pin_offset_y = src_width - src_pin_offset_x; 
       break; 
@@ -669,7 +670,8 @@ void PyPlaceDB::convertOrient()
 {
   dreamplacePrint(kINFO, "-- Converting Node Orientation --\n"); 
   std::map<std::string, int32_t> orient_count; 
-  for (unsigned int node_id = 0; node_id < node_orient.size(); ++node_id)
+  // ignore initial orientations for movable nodes 
+  for (unsigned int node_id = num_nodes - num_terminals - num_terminal_NIs; node_id < node_orient.size(); ++node_id)
   {
     std::string src_orient = node_orient[node_id].cast<std::string>(); 
     if (src_orient != "N" && src_orient != "UNKNOWN")

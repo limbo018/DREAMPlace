@@ -36,10 +36,10 @@ __global__ void pinRudy(const T *pin_pos_x,
         const int start = netpin_start[i];
         const int end = netpin_start[i + 1];
 
-        T x_max = -cuda::numeric_limits<T>::max();
-        T x_min = cuda::numeric_limits<T>::max();
-        T y_max = -cuda::numeric_limits<T>::max();
-        T y_min = cuda::numeric_limits<T>::max();
+        T x_max = -DREAMPLACE_CUDA_NAMESPACE::numeric_limits<T>::max();
+        T x_min = DREAMPLACE_CUDA_NAMESPACE::numeric_limits<T>::max();
+        T y_max = -DREAMPLACE_CUDA_NAMESPACE::numeric_limits<T>::max();
+        T y_min = DREAMPLACE_CUDA_NAMESPACE::numeric_limits<T>::max();
 
         for (int j = start; j < end; ++j)
         {
@@ -80,8 +80,8 @@ __global__ void pinRudy(const T *pin_pos_x,
             
             int index = bin_index_x * num_bins_y + bin_index_y;
 
-            atomic_add_op(&horizontal_utilization_map[index], wt / (bin_index_xh - bin_index_xl + cuda::numeric_limits<T>::epsilon()));
-            atomic_add_op(&vertical_utilization_map[index], wt / (bin_index_yh - bin_index_yl + cuda::numeric_limits<T>::epsilon()));
+            atomic_add_op(&horizontal_utilization_map[index], wt / (bin_index_xh - bin_index_xl + DREAMPLACE_CUDA_NAMESPACE::numeric_limits<T>::epsilon()));
+            atomic_add_op(&vertical_utilization_map[index], wt / (bin_index_yh - bin_index_yl + DREAMPLACE_CUDA_NAMESPACE::numeric_limits<T>::epsilon()));
         }
     }
 }

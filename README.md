@@ -107,6 +107,10 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
 
   - Integrated as a git submodule
 
+- [HeteroSTA](https://heterosta.pkueda.org.cn/)
+
+  - Used as a GPU-accelerated timing analysis engine
+
 - [CUDA 9.1 or later](https://developer.nvidia.com/cuda-toolkit) (Optional)
 
   - If installed and found, GPU acceleration will be enabled.
@@ -124,6 +128,7 @@ DREAMPlace runs on both CPU and GPU. If it is installed on a machine without GPU
 
 - [NTUPlace3](http://eda.ee.ntu.edu.tw/research.htm) (Optional)
   - If the binary is provided, it can be used to perform detailed placement.
+
 
 To pull git submodules in the root directory
 
@@ -280,7 +285,16 @@ The list of options as follows will be shown.
 - [Zixuan Jiang](https://github.com/ZixuanJiang) and [Jiaqi Gu](https://github.com/JeremieMelo) improved the efficiency of the wirelength and density operators on GPU.
 - [Yibo Lin](http://yibolin.com) and [Jiaqi Gu](https://github.com/JeremieMelo) developed and integrated ABCDPlace for detailed placement.
 - [Peiyu Liao](https://enzoleo.github.io) and [Siting Liu](https://lusica1031.github.io) developed and integrated timing optimization in global placement for DREAMPlace 4.0.
-- Yifan Chen developed the 2-stage flow and improved the optimizer for macro placement in DREAMPlace 4.1. 
+- Yifan Chen developed the 2-stage flow and improved the optimizer for macro placement in DREAMPlace 4.1. Set ```use_bb``` to 1 to turn on BB-step and ```macro_place_flag``` to 1 to enable 2-stage flow for macro placement. 
+- Yiting Liu contributed the GiFt operator for placement initialization, published at ICCAD 2024. Set ```gift_init_flag``` to 1 to turn on this feature, and use ```gift_init_scale``` to control the scale parameter of this operator. 
+```
+Yiting Liu, Hai Zhou, Jia Wang, Fan Yang, Xuan Zeng, Li Shang, 
+"The Power of Graph Signal Processing for Chip Placement Acceleration", 
+  IEEE/ACM International Conference on Computer-Aided Design (ICCAD), New Jersey, USA, Oct, 2024
+(Thanks for contributing the source code!)
+```
+- [Shenglu Hua](https://shengluhua.github.io/) integated HeteroSTA into DREAMPlace 4.3. Set ```timer_engine``` to "heterosta" to turn on this feature.
+
 - **Pull requests to improve the tool are more than welcome.** We appreciate all kinds of contributions from the community.
 
 # Features
@@ -335,8 +349,14 @@ The list of options as follows will be shown.
   - Tested under ICCAD 2015 contest benchmarks (see test/iccad2015.ot)
 
 - [4.1.0](https://github.com/limbo018/DREAMPlace/releases/tag/4.1.0)
-  - Support BB step and 2-stage macro placement flow as published at ICCAD 2023
+  - Support BB step and 2-stage macro placement flow as published at ICCAD 2023 (Need to set ```use_bb``` to 1 to turn on BB-step and ```macro_place_flag``` to 1 to enable 2-stage flow for macro placement)
   - Tested under ISPD 2005 with all fixed macros and IO pads regarded as movable macros (see test/ispd2005free) and MMS benchmarks (see test/mms)
+ 
+- [4.2.0](https://github.com/limbo018/DREAMPlace/releases/tag/4.2.0)
+  - Support GiFt initialization as published at ICCAD 2024
+
+- [4.3.0](https://github.com/limbo018/DREAMPlace/releases/tag/4.3.0)
+  - Support GPU-accelerated timing analysis using HeteroSTA.
  
 # Reference Results for Macro Placement
 
@@ -344,7 +364,7 @@ Recently, many studies chose DREAMPLace for macro placement, e.g., [[Cheng+, Neu
 
 Note that DREAMPlace 4.1.0 only implements the BB step and 2-stage flow proposed in [[Chen+, ICCAD2023](https://ieeexplore.ieee.org/document/10323700)]. 
 
-[ISPD2005 benchmark](https://dl.acm.org/doi/10.1145/1629911.1630028) with all fixed macros and IO pads regarded as movable macros
+[ISPD2005 benchmark](https://dl.acm.org/doi/10.1145/1629911.1630028) with all fixed macros and IO pads regarded as movable macros. It can be downloaded from [here](https://www.dropbox.com/scl/fi/01jvzui9hv0aa4krnd8lm/ispd2005free.zip?rlkey=ijwspusl9onncnsu5j4na4tqe&st=l44f3dnw&dl=0).
 <table>
 <thead>
   <tr>
