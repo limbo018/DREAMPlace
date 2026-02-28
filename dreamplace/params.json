@@ -305,5 +305,73 @@
 "macro_halo_y": {
     "description": "vertical halo around movable macros",
     "default": 0
+    },
+"mpc_refine_flag": {
+    "description": "whether enable MPC-based macro refinement for reliability (BeyondPPA features)",
+    "default": 0
+    },
+"mpc_horizon": {
+    "description": "MPC prediction horizon (number of lookahead steps)",
+    "default": 3
+    },
+"mpc_max_iter": {
+    "description": "maximum MPC refinement iterations",
+    "default": 100
+    },
+"mpc_candidates": {
+    "description": "number of candidate moves per macro per MPC step",
+    "default": 8
+    },
+"mpc_macros_per_iter": {
+    "description": "number of macros to refine per MPC iteration (top-K by violation)",
+    "default": 5
+    },
+"mpc_lambda_interval": {
+    "description": "adaptive weight update interval (in MPC iterations)",
+    "default": 10
+    },
+"mpc_lambda_eta": {
+    "description": "learning rate for adaptive lambda weight updates",
+    "default": 0.05
+    },
+"mpc_io_keepout_margin": {
+    "description": "minimum clearance distance from IO pins for keepout zones",
+    "default": 10.0
+    },
+"mpc_grid_step_x": {
+    "description": "horizontal grid spacing for macro alignment (0 = auto from layout)",
+    "default": 0
+    },
+"mpc_grid_step_y": {
+    "description": "vertical grid spacing for macro alignment (0 = auto from layout)",
+    "default": 0
+    },
+"mpc_notch_threshold": {
+    "description": "minimum acceptable gap between macros to avoid notch formation",
+    "default": 5.0
+    },
+"mpc_target_macro_density": {
+    "description": "target macro density per bin for density balance",
+    "default": 0.5
+    },
+"mpc_temperature": {
+    "description": "smoothing temperature for sigmoid-based penalties",
+    "default": 1.0
+    },
+"mpc_density_bins_x": {
+    "description": "number of horizontal bins for macro density balance",
+    "default": 8
+    },
+"mpc_density_bins_y": {
+    "description": "number of vertical bins for macro density balance",
+    "default": 8
+    },
+"mpc_early_stop_tol": {
+    "description": "early stopping tolerance for MPC cost improvement",
+    "default": 0.001
+    },
+"mpc_lambda_init": {
+    "description": "initial weights for [wirelength, density, io_keepout, alignment, notch]",
+    "default": [1.0, 1.0, 1.0, 1.0, 1.0]
     }
 }

@@ -27,6 +27,7 @@ import NesterovAcceleratedGradientOptimizer
 import EvalMetrics
 import pdb
 import dreamplace.ops.fence_region.fence_region as fence_region
+from dreamplace.MPCMacroRefiner import MPCMacroRefiner
 
 import torch_optimizer
 import ncg_optimizer
@@ -834,6 +835,21 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                     if params.plot_flag:
                         self.plot(params, placedb, iteration, self.pos[0].data.clone().cpu().numpy())
 
+                    # MPC-based macro refinement for reliability (BeyondPPA features)
+                    if getattr(params, 'mpc_refine_flag', 0):
+                        logging.info("Starting MPC macro refinement (BeyondPPA)...")
+                        tt_mpc = time.time()
+                        mpc_refiner = MPCMacroRefiner(params, placedb, self.data_collections)
+                        with torch.no_grad():
+                            self.pos[0].data.copy_(
+                                mpc_refiner.refine(self.pos[0], hpwl_op=self.op_collections.hpwl_op)
+                            )
+                        # Re-legalize macros after MPC refinement
+                        self.pos[0].data.copy_(self.op_collections.macro_legalize_op(self.pos[0]))
+                        logging.info("MPC refinement + re-legalization takes %.3f seconds" % (time.time() - tt_mpc))
+                        iteration += 1
+                        if params.plot_flag:
+                            self.plot(params, placedb, iteration, self.pos[0].data.clone().cpu().numpy())
 
                 logging.info("optimizer %s takes %.3f seconds" % (optimizer_name, time.time() - tt))
 
