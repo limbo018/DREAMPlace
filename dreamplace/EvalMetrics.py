@@ -36,6 +36,12 @@ class EvalMetrics (object):
         self.tns = None
         self.wns = None
         self.eval_time = None
+        # MPC structural reliability metrics (BeyondPPA)
+        self.io_keepout_cost = None
+        self.macro_alignment_cost = None
+        self.notch_penalty_cost = None
+        self.density_balance_cost = None
+        self.structural_cost_J = None
 
     def __str__(self):
         """
@@ -86,6 +92,16 @@ class EvalMetrics (object):
             content += ", TNS %.6f (1e+5 ps)" % (self.tns)
         if self.wns is not None:
             content += ", WNS %.6f (1e+3 ps)" % (self.wns)
+        if self.structural_cost_J is not None:
+            content += ", StructJ %.4E" % (self.structural_cost_J)
+        if self.io_keepout_cost is not None:
+            content += ", IOKeepout %.4E" % (self.io_keepout_cost)
+        if self.macro_alignment_cost is not None:
+            content += ", MacroAlign %.4E" % (self.macro_alignment_cost)
+        if self.notch_penalty_cost is not None:
+            content += ", NotchPen %.4E" % (self.notch_penalty_cost)
+        if self.density_balance_cost is not None:
+            content += ", DensBal %.4E" % (self.density_balance_cost)
         if self.eval_time is not None:
             content += ", time %.3fms" % (self.eval_time*1000)
 
