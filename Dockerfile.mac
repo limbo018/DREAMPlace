@@ -1,0 +1,70 @@
+# =============================================================================
+# Dockerfile.mac — DREAMPlace CPU-only image for Apple Silicon (linux/arm64)
+# =============================================================================
+#
+# Designed for MacBook Pro M-series (M1 / M2 / M3 / M4).
+# CPU-only: no CUDA / NVIDIA GPU required.
+# Multi-threaded global placement via OpenMP.
+#
+# Build with:
+#   docker build --platform linux/arm64 -f Dockerfile.mac -t dreamplace-mac:latest .
+# =============================================================================
+
+FROM --platform=linux/arm64 ubuntu:22.04
+LABEL description="DREAMPlace CPU-only build for Apple Silicon (M-series)"
+
+# Prevent apt from asking timezone / locale questions
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+
+# ─── System packages ──────────────────────────────────────────────────────────
+# Versions provided by Ubuntu 22.04 (all satisfy DREAMPlace requirements):
+#   GCC 11, CMake 3.22, Bison 3.8, Boost 1.74
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        gcc \
+        g++ \
+        git \
+        curl \
+        wget \
+        cmake \
+        flex \
+        bison \
+        libboost-all-dev \
+        libcairo2-dev \
+        zlib1g-dev \
+        python3 \
+        python3-pip \
+        python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# ─── Python convenience aliases ───────────────────────────────────────────────
+# Ubuntu 22.04 ships python3/pip3 only; DREAMPlace scripts call plain "python".
+RUN ln -sf /usr/bin/python3 /usr/bin/python \
+ && ln -sf /usr/bin/pip3    /usr/bin/pip
+
+# ─── PyTorch CPU-only (linux_aarch64) ────────────────────────────────────────
+# The official PyTorch CPU WHL index provides linux_aarch64 wheels for 2.x.
+# Installing CPU-only ensures torch.cuda.is_available() == False, which
+# causes cmake/TorchExtension.cmake to set TORCH_ENABLE_CUDA=0 and skip
+# all CUDA kernel compilation automatically.
+RUN pip install --no-cache-dir \
+        torch \
+        --index-url https://download.pytorch.org/whl/cpu
+
+# ─── DREAMPlace Python dependencies ──────────────────────────────────────────
+# Pinned versions match requirements.txt / historical usage.
+# Note: if torch_optimizer==0.3.0 fails to install with PyTorch 2.x due to
+# API changes, bump it to the latest release (>=1.0.0) compatible with 2.x.
+RUN pip install --no-cache-dir \
+        "pyunpack>=0.1.2" \
+        "patool>=1.12" \
+        "matplotlib>=2.2.2" \
+        "cairocffi>=0.9.0" \
+        "pkgconfig>=1.4.0" \
+        "setuptools>=39.1.0" \
+        "scipy>=1.1.0" \
+        "numpy>=1.15.4" \
+        "shapely>=1.7.0" \
+        "torch_optimizer==0.3.0" \
+        "ncg_optimizer==0.2.2"
