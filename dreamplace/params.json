@@ -237,17 +237,17 @@
     "default" : 0
     },
 "early_lib_input" : {
-    "description" : "input cell library file (early)", 
+    "description" : "input early cell library file(s); accepts a string or string array", 
     "default" : "", 
     "required" : "required for timing-driven mode (together with late lib)"
     },
 "late_lib_input" : {
-    "description" : "input cell library file (late)", 
+    "description" : "input late cell library file(s); accepts a string or string array", 
     "default" : "", 
     "required" : "required for timing-driven mode (together with early lib)"
     },
 "lib_input" : {
-    "description" : "input cell library file (early & late)",
+    "description" : "input shared cell library file(s) for early and late; accepts a string or string array",
     "default" : "",
     "required" : "required for timing-driven mode (or separate early/late libs)"
     },

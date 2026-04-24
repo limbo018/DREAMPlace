@@ -5,7 +5,6 @@
 #include <chrono>
 #include <fstream>
 
-
 DREAMPLACE_BEGIN_NAMESPACE
 
 #ifdef CUDA_FOUND
@@ -139,12 +138,6 @@ void TimingHeterostaCpp::forward(
 	// Check tensor properties for input validation
 	CHECK_EVEN(pos);
 	CHECK_CONTIGUOUS(pos);
-	// Device consistency check
-	bool pos_is_cuda = pos.is_cuda();
-
-	if (use_cuda != pos_is_cuda) {
-		dreamplacePrint(kWARN, "Device mismatch detected but proceeding (pos_pin should handle device placement)\n");
-	}
 	// Check slack tensor if provided
 	float (*slacks_rf_ptr)[2] = nullptr;
 	if (slacks_rf.numel() > 0) {
