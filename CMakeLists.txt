@@ -78,14 +78,18 @@ message(STATUS "FLUTE_INCLUDE_DIRS ${FLUTE_INCLUDE_DIRS}")
 message(STATUS "FLUTE_LINK_DIRS ${FLUTE_LINK_DIRS}")
 include_directories(${FLUTE_INCLUDE_DIRS})
 
-# Limbo for parsers 
+# Limbo for parsers
 set(LIMBO_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Limbo)
 message(STATUS "LIMBO_SOURCE_DIR ${LIMBO_SOURCE_DIR}")
 set(LIMBO_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/thirdparty/Limbo)
 message(STATUS "LIMBO_BINARY_DIR ${LIMBO_BINARY_DIR}")
 if(CUDA_FOUND)
+  # Always use system CUB for CUDA 11+ to avoid version conflicts
+  # CUDA 11+ includes a newer CUB version that supports cuda::std namespace
   if (${CUDA_VERSION_MAJOR} VERSION_GREATER_EQUAL "11")
     set(CUB_DIR ${CUDA_INCLUDE_DIRS})
+    # Explicitly exclude old CUB from include paths
+    list(REMOVE_ITEM CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/cub)
   else()
     set(CUB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/cub)
   endif()
