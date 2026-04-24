@@ -284,6 +284,10 @@ The list of options as follows will be shown.
 | lef_input      | required for LEF/DEF   | input LEF file                                                                            |
 | def_input      | required for LEF/DEF   | input DEF file                                                                            |
 | verilog_input  | optional for LEF/DEF   | input VERILOG file, provide circuit netlist information if it is not included in DEF file |
+| lib_input      | optional for HeteroSTA | Liberty input for both corners; supports `"path.lib"` or `["a.lib", "b.lib"]`             |
+| early_lib_input| optional for HeteroSTA | Early-corner Liberty input; supports string or string list                                 |
+| late_lib_input | optional for HeteroSTA | Late-corner Liberty input; supports string or string list                                  |
+| sdc_input      | optional for timing    | input SDC file                                                                             |
 | gpu            | 1                      | enable gpu or not                                                                         |
 
 ...
@@ -655,4 +659,3 @@ Our modified version can be downloaded from [here](https://www.dropbox.com/scl/f
 </table>
 `*` denotes divergence or legalization failure. 
 Note that if you observe divergence or legalization errors in the log, then the results may not be representative. 
-

@@ -66,15 +66,15 @@ public:
     ///
     /// @brief Read Liberty library files with specific paths
     /// @param sta reference to STAHoldings instance
-    /// @param early_lib_path path to early Liberty file
-    /// @param late_lib_path path to late Liberty file 
-    /// @param single_lib_path path to single Liberty file for both early/late
+    /// @param early_lib_paths paths to early Liberty files
+    /// @param late_lib_paths paths to late Liberty files 
+    /// @param shared_lib_paths paths to Liberty files shared by early/late
     /// @return true if successful, false otherwise
     ///
     static bool read_liberty_libraries_with_paths(STAHoldings& sta, 
-                                                 const std::string& early_lib_path,
-                                                 const std::string& late_lib_path, 
-                                                 const std::string& single_lib_path);
+                                                 const std::vector<std::string>& early_lib_paths,
+                                                 const std::vector<std::string>& late_lib_paths, 
+                                                 const std::vector<std::string>& shared_lib_paths);
 
     ///
     /// @brief Get pin name by index (safe accessor for g_netlist_data.pin_names)
@@ -94,15 +94,15 @@ private:
     /// @brief Parse all timing-related command line arguments
     /// @param argc the total number of program options
     /// @param argv the strings of program options
-    /// @param early_lib_path output early Liberty library path
-    /// @param late_lib_path output late Liberty library path
-    /// @param single_lib_path output single Liberty library path
+    /// @param early_lib_paths output early Liberty library paths
+    /// @param late_lib_paths output late Liberty library paths
+    /// @param shared_lib_paths output shared Liberty library paths
     /// @param sdc_path output SDC file path
     /// @return true if successful, false otherwise
     ///
     static bool parse_all_timing_options(int argc, char** argv, 
-                                        std::string& early_lib_path, std::string& late_lib_path,
-                                        std::string& single_lib_path, std::string& sdc_path);
+                                        std::vector<std::string>& early_lib_paths, std::vector<std::string>& late_lib_paths,
+                                        std::vector<std::string>& shared_lib_paths, std::string& sdc_path);
 
 
     ///
