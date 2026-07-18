@@ -810,9 +810,31 @@ row height = %g, site width = %g
 
         self.total_movable_macro_area = total_movable_macro_area
         self.total_movable_cell_area = total_movable_cell_area
-        # if no movable macro, turn off macro place flag
-        if total_movable_macro_area <= 0:
-            params.macro_place_flag = False
+        # Resolve macro_place_flag and use_bb. Both default to "auto", which
+        # enables the macro-placement/BB-step flow only when movable macros are
+        # detected. An explicit 0/1 in the config always overrides "auto", so a
+        # user can force the flow off even on a macro design (e.g. to run the
+        # legacy single-stage flow), or force it on regardless.
+        has_movable_macro = total_movable_macro_area > 0
+
+        def resolve_auto_flag(name, value):
+            if isinstance(value, str) and value.lower() == "auto":
+                resolved = 1 if has_movable_macro else 0
+                if resolved:
+                    logging.info("movable macros detected (total_movable_macro_area = %g), "
+                                 "automatically enabling %s" % (total_movable_macro_area, name))
+                return resolved
+            # explicit config: honor it, but macro placement is a no-op without
+            # movable macros, so force it off in that case
+            resolved = int(value)
+            if resolved and not has_movable_macro:
+                logging.warning("%s is explicitly enabled but no movable macros were "
+                                "detected; disabling it" % name)
+                resolved = 0
+            return resolved
+
+        params.macro_place_flag = resolve_auto_flag("macro_place_flag", params.macro_place_flag)
+        params.use_bb = resolve_auto_flag("use_bb", params.use_bb)
 
         content += "total_movable_node_area = %g, total_fixed_node_area = %g, total_space_area = %g\ntotal_movable_cell_area = %g, total_movable_macro_area = %g\n" % \
                         (self.total_movable_node_area, self.total_fixed_node_area, self.total_space_area, total_movable_cell_area, total_movable_macro_area)

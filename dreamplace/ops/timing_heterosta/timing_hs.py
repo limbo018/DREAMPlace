@@ -6,6 +6,51 @@ import dreamplace.ops.timing_heterosta.timing_heterosta_cpp as timing_hs_cpp
 import logging
 import pdb
 
+def _normalize_lib_input(value):
+    """
+    @brief Normalize liberty config input to a list of file paths
+    @param value string path, list/tuple of paths, or empty value
+    @return list of non-empty string paths
+    """
+    if not value:
+        return []
+    if isinstance(value, (list, tuple)):
+        paths = []
+        for item in value:
+            if not item:
+                continue
+            paths.append(str(item))
+        return paths
+    return [str(value)]
+
+def _build_timing_io_args(params):
+    """
+    @brief Build argv list for HeteroSTA timing IO
+    @param params the parameters defined in json
+    @return argv list suitable for timing_hs_cpp.io_forward
+    """
+    args = ["DREAMPLACE"]
+
+    early_libs = _normalize_lib_input(getattr(params, "early_lib_input", None))
+    late_libs = _normalize_lib_input(getattr(params, "late_lib_input", None))
+    shared_libs = _normalize_lib_input(getattr(params, "lib_input", None))
+
+    if shared_libs and (early_libs or late_libs):
+        raise ValueError("lib_input cannot be used together with early_lib_input or late_lib_input")
+
+    for lib_path in early_libs:
+        args.extend(["--early_lib_input", lib_path])
+    for lib_path in late_libs:
+        args.extend(["--late_lib_input", lib_path])
+    for lib_path in shared_libs:
+        args.extend(["--lib_input", lib_path])
+
+    sdc_input = getattr(params, "sdc_input", None)
+    if sdc_input:
+        args.extend(["--sdc_input", str(sdc_input)])
+
+    return args
+
 def _convert_pin_direction_to_numeric(pin_direct_strings):
     """
     @brief Convert pin direction strings to numeric encoding
@@ -59,25 +104,13 @@ class TimingIO(Function):
         @param params the parameters defined in json
         @param placedb the placement database for netlist integration
         """
-        # Build argument string for HeteroSTA
-        args = "DREAMPLACE"  # First argument should be non-empty
-        
-        if "early_lib_input" in params.__dict__ and params.early_lib_input:
-            args += " --early_lib_input %s" % (params.early_lib_input)
-        if "late_lib_input" in params.__dict__ and params.late_lib_input:
-            args += " --late_lib_input %s" % (params.late_lib_input)
-        if "lib_input" in params.__dict__ and params.lib_input:
-            # Use same library for both early and late if only one specified
-            args += " --lib_input %s" % (params.lib_input)
-        if "sdc_input" in params.__dict__ and params.sdc_input:
-            args += " --sdc_input %s" % (params.sdc_input)
-        # Note: verilog_input is not used since we reuse netlist from PlaceDB
+        args = _build_timing_io_args(params)
         
         # Package DREAMPlace mappings to ensure data consistency
         dreamplace_mappings = _package_dreamplace_mappings(placedb)
         
         return timing_hs_cpp.io_forward(
-            args.split(' '), 
+            args,
             placedb.rawdb,
             dreamplace_mappings
         )
@@ -134,6 +167,8 @@ class TimingOptFunction(Function):
             scale_factor, lef_unit, def_unit,
             slacks_rf,
             ignore_net_degree, bool(use_cuda))
+        if use_cuda:
+            torch.cuda.synchronize(pos.device)
         
         return torch.zeros(num_pins)
 
@@ -221,7 +256,7 @@ class TimingOpt(nn.Module):
         """
         
         result = TimingOptFunction.apply(
-            self.timer.raw_timer,  # Pass the raw C++ timer object
+            self.timer.raw_timer,
             pos,  # The coordinates
             self.num_pins,  # Pass the pin count directly
             self.wire_resistance_per_micron,
@@ -288,7 +323,6 @@ class TimingOpt(nn.Module):
     def write_spef(self,file_path):
         return self.timer.raw_timer.write_spef(file_path)
     
-    
     def report_wns_tns(self):
         """
         @brief report WNS and TNS in the design
@@ -332,7 +366,7 @@ class TimingOpt(nn.Module):
         @param file_path output file path
         @param use_cuda whether to use CUDA
         """
-        return self.timer.raw_timer.dump_paths_setup_to_file(num_paths, nworst, file_path, use_cuda)
+        return self.timer.raw_timer.dump_paths_max_to_file(num_paths, nworst, file_path, use_cuda)
     
 import torch
 from torch.autograd import Function
@@ -395,25 +429,13 @@ class TimingIO(Function):
         @param params the parameters defined in json
         @param placedb the placement database for netlist integration
         """
-        # Build argument string for HeteroSTA
-        args = "DREAMPLACE"  # First argument should be non-empty
-        
-        if "early_lib_input" in params.__dict__ and params.early_lib_input:
-            args += " --early_lib_input %s" % (params.early_lib_input)
-        if "late_lib_input" in params.__dict__ and params.late_lib_input:
-            args += " --late_lib_input %s" % (params.late_lib_input)
-        if "lib_input" in params.__dict__ and params.lib_input:
-            # Use same library for both early and late if only one specified
-            args += " --lib_input %s" % (params.lib_input)
-        if "sdc_input" in params.__dict__ and params.sdc_input:
-            args += " --sdc_input %s" % (params.sdc_input)
-        # Note: verilog_input is not used since we reuse netlist from PlaceDB
+        args = _build_timing_io_args(params)
         
         # Package DREAMPlace mappings to ensure data consistency
         dreamplace_mappings = _package_dreamplace_mappings(placedb)
         
         return timing_hs_cpp.io_forward(
-            args.split(' '), 
+            args,
             placedb.rawdb,
             dreamplace_mappings
         )
@@ -470,6 +492,8 @@ class TimingOptFunction(Function):
             scale_factor, lef_unit, def_unit,
             slacks_rf,
             ignore_net_degree, bool(use_cuda))
+        if use_cuda:
+            torch.cuda.synchronize(pos.device)
         
         return torch.zeros(num_pins)
 
@@ -557,7 +581,7 @@ class TimingOpt(nn.Module):
         """
         
         result = TimingOptFunction.apply(
-            self.timer.raw_timer,  # Pass the raw C++ timer object
+            self.timer.raw_timer,
             pos,  # The coordinates
             self.num_pins,  # Pass the pin count directly
             self.wire_resistance_per_micron,
@@ -624,7 +648,6 @@ class TimingOpt(nn.Module):
     def write_spef(self,file_path):
         return self.timer.raw_timer.write_spef(file_path)
     
-    
     def report_wns_tns(self):
         """
         @brief report WNS and TNS in the design
@@ -668,5 +691,5 @@ class TimingOpt(nn.Module):
         @param file_path output file path
         @param use_cuda whether to use CUDA
         """
-        return self.timer.raw_timer.dump_paths_setup_to_file(num_paths, nworst, file_path, use_cuda)
+        return self.timer.raw_timer.dump_paths_max_to_file(num_paths, nworst, file_path, use_cuda)
     

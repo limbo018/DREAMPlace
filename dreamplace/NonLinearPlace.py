@@ -504,8 +504,9 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                             cur_metric.wns = timing_op.timer.report_wns(split=1) / (time_unit * 1e15)
                             logging.info("tns : %f, wns: %f",cur_metric.tns, cur_metric.wns)
                         else: # heterosta
-                            cur_metric.tns = timing_op.report_tns() / (time_unit * 1e17)
-                            cur_metric.wns = timing_op.report_wns() / (time_unit * 1e15)
+                            cur_metric.wns, cur_metric.tns = timing_op.report_wns_tns()
+                            cur_metric.tns /= (time_unit * 1e17)
+                            cur_metric.wns /= (time_unit * 1e15)
                             logging.info("tns : %f, wns: %f",cur_metric.tns, cur_metric.wns)
 
                     # nesterov has already computed the objective of the next step
@@ -890,8 +891,9 @@ class NonLinearPlace(BasicPlace.BasicPlace):
      
                 if params.timer_engine == "heterosta":
                     timing_op(self.pos[0].data.clone())
-                    cur_metric.tns = timing_op.report_tns() / (time_unit * 1e17)
-                    cur_metric.wns = timing_op.report_wns() / (time_unit * 1e15)
+                    cur_metric.wns, cur_metric.tns = timing_op.report_wns_tns()
+                    cur_metric.tns /= (time_unit * 1e17)
+                    cur_metric.wns /= (time_unit * 1e15)
                     logging.info("tns : %f, wns: %f",cur_metric.tns, cur_metric.wns)
                 else:
                     timing_op(self.pos[0].data.clone().cpu())

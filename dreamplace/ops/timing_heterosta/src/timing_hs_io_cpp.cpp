@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <numeric>
 #include <cstdlib>
+#include <sstream>
 #include <limbo/programoptions/ProgramOptions.h>
 #include "utility/src/utils.h"
 #include "place_io/src/PlaceDB.h"
@@ -48,29 +49,29 @@ void TimingHeterostaIO::NetlistDataStorage::clear() {
 /// @brief Parse all timing options from command line arguments
 /// @param argc 
 /// @param argv 
-/// @param early_lib_path  early timing library path
-/// @param late_lib_path late timing library path
-/// @param single_lib_path  single timing library path
+/// @param early_lib_paths early timing library paths
+/// @param late_lib_paths late timing library paths
+/// @param shared_lib_paths shared timing library paths
 /// @param sdc_path  SDC file path
 /// @return 
 bool TimingHeterostaIO::parse_all_timing_options(int argc, char** argv, 
-		std::string& early_lib_path, std::string& late_lib_path,
-		std::string& single_lib_path, std::string& sdc_path) {
+		std::vector<std::string>& early_lib_paths, std::vector<std::string>& late_lib_paths,
+		std::vector<std::string>& shared_lib_paths, std::string& sdc_path) {
 	typedef limbo::programoptions::ProgramOptions po_type;
 	using limbo::programoptions::Value;
 	po_type desc(std::string("All HeteroSTA timing options"));
 
-	auto options = std::array<Value<std::string>, 4> { {
-		{ "--early_lib_input", &early_lib_path, "input celllib file (early)" },
-			{ "--late_lib_input", &late_lib_path, "input celllib file (late)" },
-			{ "--lib_input",      &single_lib_path, "input celllib file"        },
-			{ "--sdc_input",      &sdc_path,        "input sdc file"            }
-	} };
-	for (auto val : options)
-		desc.add_option(val);
+	desc.add_option(Value<std::vector<std::string>>("--early_lib_input", &early_lib_paths, "input celllib file(s) (early)"))
+		.add_option(Value<std::vector<std::string>>("--late_lib_input", &late_lib_paths, "input celllib file(s) (late)"))
+		.add_option(Value<std::vector<std::string>>("--lib_input", &shared_lib_paths, "input shared celllib file(s)"))
+		.add_option(Value<std::string>("--sdc_input", &sdc_path, "input sdc file"));
 
 	try {
 		desc.parse(argc, argv);
+		if (!shared_lib_paths.empty() && (!early_lib_paths.empty() || !late_lib_paths.empty())) {
+			dreamplacePrint(kERROR, "lib_input cannot be used together with early_lib_input or late_lib_input\n");
+			return false;
+		}
 		return true;
 	} catch (std::exception& e) {
 		dreamplacePrint(kERROR, "Error parsing timing arguments: %s\n", e.what());
@@ -78,52 +79,78 @@ bool TimingHeterostaIO::parse_all_timing_options(int argc, char** argv,
 	}
 }
 
-/// @brief Read timing libraries from specified paths
-/// @param sta 
-/// @param early_lib_path 
-/// @param late_lib_path 
-/// @param single_lib_path 
-/// @return 
-bool TimingHeterostaIO::read_liberty_libraries_with_paths(STAHoldings& sta, 
-		const std::string& early_lib_path,
-		const std::string& late_lib_path, 
-		const std::string& single_lib_path) {
-	// Single library file for both early and late
-	if (!single_lib_path.empty()) {
-		if (heterosta_read_liberty(&sta, EARLY, single_lib_path.c_str()) &&
-				heterosta_read_liberty(&sta, LATE, single_lib_path.c_str())) {
-			return true;
-		} else {
-			dreamplacePrint(kERROR, "Failed to load Liberty library: %s\n", single_lib_path.c_str());
+namespace {
+
+std::string join_lib_paths(const std::vector<std::string>& paths) {
+	std::ostringstream oss;
+	for (size_t i = 0; i < paths.size(); ++i) {
+		if (i != 0) {
+			oss << ", ";
+		}
+		oss << paths[i];
+	}
+	return oss.str();
+}
+
+bool read_liberty_group(STAHoldings& sta, TimerEarlyOrLate el, const std::vector<std::string>& lib_paths) {
+	if (lib_paths.empty()) {
+		return true;
+	}
+
+	const char* corner_name = (el == EARLY) ? "early" : "late";
+	if (lib_paths.size() == 1) {
+		const std::string& lib_path = lib_paths.front();
+		if (!heterosta_read_liberty(&sta, el, lib_path.c_str())) {
+			dreamplacePrint(kERROR, "Failed to load %s Liberty library: %s\n", corner_name, lib_path.c_str());
 			return false;
 		}
-	} 
+		dreamplacePrint(kDEBUG, "%s Liberty library loaded: %s\n", corner_name, lib_path.c_str());
+		return true;
+	}
+
+	std::vector<const char*> c_paths;
+	c_paths.reserve(lib_paths.size());
+	for (const std::string& path : lib_paths) {
+		c_paths.push_back(path.c_str());
+	}
+
+	if (!heterosta_batch_read_liberty(&sta, el, c_paths.data(), c_paths.size())) {
+		const std::string joined_paths = join_lib_paths(lib_paths);
+		dreamplacePrint(kERROR, "Failed to load %s Liberty libraries (%zu files): %s\n",
+				corner_name, lib_paths.size(), joined_paths.c_str());
+		return false;
+	}
+
+	const std::string joined_paths = join_lib_paths(lib_paths);
+	dreamplacePrint(kDEBUG, "%s Liberty libraries loaded (%zu files): %s\n",
+			corner_name, lib_paths.size(), joined_paths.c_str());
+	return true;
+}
+
+}  // namespace
+
+/// @brief Read timing libraries from specified paths
+/// @param sta 
+/// @param early_lib_paths 
+/// @param late_lib_paths 
+/// @param shared_lib_paths 
+/// @return 
+bool TimingHeterostaIO::read_liberty_libraries_with_paths(STAHoldings& sta, 
+		const std::vector<std::string>& early_lib_paths,
+		const std::vector<std::string>& late_lib_paths, 
+		const std::vector<std::string>& shared_lib_paths) {
+	// Shared library files for both early and late
+	if (!shared_lib_paths.empty()) {
+		return read_liberty_group(sta, EARLY, shared_lib_paths) &&
+				read_liberty_group(sta, LATE, shared_lib_paths);
+	}
 
 	// Separate early/late library files
 	bool success = true;
-	bool has_any_lib = false;
+	bool has_any_lib = !early_lib_paths.empty() || !late_lib_paths.empty();
 
-	if (!early_lib_path.empty()) {
-		has_any_lib = true;
-		if (!heterosta_read_liberty(&sta, EARLY, early_lib_path.c_str())) {
-			dreamplacePrint(kERROR, "Failed to load early Liberty library: %s\n", early_lib_path.c_str());
-			success = false;
-		}
-		else {
-			dreamplacePrint(kDEBUG, "Early Liberty library loaded: %s\n", early_lib_path.c_str());
-		}
-	}
-
-	if (!late_lib_path.empty()) {
-		has_any_lib = true;
-		if (!heterosta_read_liberty(&sta, LATE, late_lib_path.c_str())) {
-			dreamplacePrint(kERROR, "Failed to load late Liberty library: %s\n", late_lib_path.c_str());
-			success = false;
-		}
-		else {
-			dreamplacePrint(kDEBUG, "Late Liberty library loaded: %s\n", late_lib_path.c_str());
-		}
-	}
+	success = read_liberty_group(sta, EARLY, early_lib_paths) && success;
+	success = read_liberty_group(sta, LATE, late_lib_paths) && success;
 
 	if (!has_any_lib) {
 		dreamplacePrint(kERROR, "No Liberty library specified\n");
@@ -165,14 +192,15 @@ bool TimingHeterostaIO::read_sdc_constraints_with_path(STAHoldings& sta, const s
 bool TimingHeterostaIO::setupTiming(STAHoldings& sta, PlaceDB& placedb, int argc, char** argv, 
 		const pybind11::dict& dreamplace_mappings) {
 	// Parse all timing-related arguments
-	std::string early_lib_path, late_lib_path, single_lib_path, sdc_path;
-	if (!parse_all_timing_options(argc, argv, early_lib_path, late_lib_path, single_lib_path, sdc_path)) {
+	std::vector<std::string> early_lib_paths, late_lib_paths, shared_lib_paths;
+	std::string sdc_path;
+	if (!parse_all_timing_options(argc, argv, early_lib_paths, late_lib_paths, shared_lib_paths, sdc_path)) {
 		dreamplacePrint(kERROR, "Failed to parse timing arguments\n");
 		return false;
 	}
 
 	// Read Liberty libraries
-	if (!read_liberty_libraries_with_paths(sta, early_lib_path, late_lib_path, single_lib_path)) {
+	if (!read_liberty_libraries_with_paths(sta, early_lib_paths, late_lib_paths, shared_lib_paths)) {
 		dreamplacePrint(kERROR, "Failed to read Liberty libraries\n");
 		return false;
 	}
