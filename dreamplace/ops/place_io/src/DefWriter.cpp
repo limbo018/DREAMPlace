@@ -61,16 +61,15 @@ bool DefWriter::write(std::string const& outFile, std::string const& inFile,
         {
             if (line.substr(0, 3) == "ROW") // match "ROW" entry, it does not hurt even if not matched; mainly for modification of benchmarks   
             {
+                // Consume the complete ROW statement before replacing it.
+                while (line.find(';') == std::string::npos && getline(in, line))
+                {
+                }
                 Row const& row = m_db.row(rowCount);
-                fprintf(out, "ROW %s %s %d %d %s DO %u BY %u STEP %d %d ", 
+                fprintf(out, "ROW %s %s %d %d %s DO %u BY %u STEP %d %d ;\n",
                         row.name().c_str(), row.macroName().c_str(), 
                         row.xl(), row.yl(), std::string(row.orient()).c_str(), 
                         row.numSites(kX), (row.step(kY) == 0)? 1 : row.numSites(kY), row.step(kX), row.step(kY));
-                if (line.back() == ';')
-                {
-                    fprintf(out, ";");
-                }
-                fprintf(out, "\n");
                 ++rowCount;
             }
             else 
