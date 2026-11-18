@@ -108,8 +108,8 @@ function(add_pytorch_extension target_name)
       target_link_libraries(${target_name}_cuda_tmp ${ARG_EXTRA_LINK_LIBRARIES})
       target_compile_definitions(${target_name}_cuda_tmp PRIVATE 
         TORCH_EXTENSION_NAME=${target_name}
-        TORCH_MAJOR_VERSION=${TORCH_MAJOR_VERSION}
-        TORCH_MINOR_VERSION=${TORCH_MINOR_VERSION}
+        TORCH_VERSION_MAJOR=${TORCH_VERSION_MAJOR}
+        TORCH_VERSION_MINOR=${TORCH_VERSION_MINOR}
         ENABLE_CUDA=${TORCH_ENABLE_CUDA}
         ${ARG_EXTRA_DEFINITIONS})
       set_target_properties(${target_name}_cuda_tmp PROPERTIES 
