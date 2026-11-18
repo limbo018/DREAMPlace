@@ -37,4 +37,6 @@ RUN pip install \
         setuptools>=39.1.0 \
         scipy>=1.1.0 \
         numpy>=1.15.4 \
-        shapely>=1.7.0
+        shapely>=1.7.0 \
+        torch_optimizer==0.3.0 \
+        ncg_optimizer==0.2.2

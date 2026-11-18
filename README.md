@@ -262,6 +262,10 @@ cd <installation directory>
 python dreamplace/Placer.py test/ispd2005/adaptec1.json
 ```
 
+Running `Placer.py` from the source tree fails with `No module named 'dreamplace.configure'`, because `configure.py` is generated during the build and only exists in the installation directory.
+`Placer.py` is meant to be run as a script; `import dreamplace.Placer` from another directory does not resolve its sibling modules (`Params`, `PlaceDB`, ...).
+The shipped JSON files set `"gpu" : 1`; set it to `0` for a CPU-only build.
+
 Test individual `pytorch` op with the unit tests in the root directory.
 
 ```
