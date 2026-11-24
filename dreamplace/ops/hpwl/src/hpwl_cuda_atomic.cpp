@@ -60,20 +60,22 @@ at::Tensor hpwl_atomic_forward(at::Tensor pos, at::Tensor pin2net_map,
   // std::cout << "partial_hpwl = \n" <<
   // (partial_hpwl_max-partial_hpwl_min).to(torch::kDouble).mul(1.0/1000) << "\n";
 
-  auto delta = partial_hpwl_max - partial_hpwl_min;
-
+  // Promote before subtracting: int32 endpoints can have a larger span.
+  // The position dtype exactly represents its quantized int32 endpoints.
   at::Tensor hpwl;
   switch (pos.scalar_type()) {
     case at::ScalarType::Double:
-      hpwl = delta.to(torch::kDouble);
+      hpwl = partial_hpwl_max.to(torch::kDouble);
       break;
     case at::ScalarType::Float:
-      hpwl = delta.to(torch::kFloat);
+      hpwl = partial_hpwl_max.to(torch::kFloat);
       break;
     default:
       AT_ERROR("hpwl_atomic_forward", " not implemented for '",
                at::toString(pos.scalar_type()), "'");
   }
+  // Empty nets retain max < min sentinels and must contribute zero.
+  hpwl.sub_(partial_hpwl_min).clamp_min_(0);
 
   if (net_weights.numel()) {
     hpwl.mul_(net_weights.view({1, num_nets}));

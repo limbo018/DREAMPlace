@@ -136,5 +136,21 @@ class HPWLOpTest(unittest.TestCase):
             print("hpwl_value cuda atomic = ", hpwl_value.data.cpu().numpy())
             np.testing.assert_allclose(hpwl_value.data.cpu().numpy(), golden_value)
 
+    @unittest.skipUnless(torch.cuda.is_available(), "CUDA is not available")
+    def test_hpwlAtomicSpan(self):
+        pin2net_map = torch.tensor([0, 0], dtype=torch.int32, device='cuda')
+        net_mask = torch.tensor([1, 0], dtype=torch.uint8, device='cuda')
+        for dtype in (torch.float32, torch.float64):
+            custom = hpwl.HPWL(
+                pin2net_map=pin2net_map,
+                net_weights=torch.ones(2, dtype=dtype, device='cuda'),
+                net_mask=net_mask,
+                algorithm='atomic')
+            for x, expected in (([-1100000, 1100000], 2200000), ([1, 4], 3)):
+                with self.subTest(dtype=dtype, x=x):
+                    pin_pos = torch.tensor([x, [17, 17]], dtype=dtype,
+                                           device='cuda')
+                    np.testing.assert_allclose(custom(pin_pos).item(), expected)
+
 if __name__ == '__main__':
     unittest.main()
